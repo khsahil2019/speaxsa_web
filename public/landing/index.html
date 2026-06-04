@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEAXSA — Empowering Education Through Live Learning</title>
+  <meta name="description" content="SPEAXSA is India's premier EdTech platform offering live interactive classes, expert teachers, and personalized learning for students across all grades.">
+  <meta name="keywords" content="online education, live classes, CBSE, ICSE, tuition, edtech India">
+  <meta property="og:title" content="SPEAXSA — Empowering Education">
+  <meta property="og:description" content="Live interactive classes with expert teachers. Join thousands of students learning with SPEAXSA.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- AOS Animations -->
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Navigation ───────────────────────────────────────────── -->
+<nav class="navbar navbar-expand-lg spx-navbar fixed-top" id="mainNav">
+  <div class="container">
+    <a class="navbar-brand spx-brand" href="/">
+      <div class="brand-icon"><img src="/logo.png" alt="SPEAXSA Logo"></div>
+      <span>SPEAXSA</span>
+    </a>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <i class="fas fa-bars text-white"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav mx-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
+        <li class="nav-item"><a class="nav-link" href="/courses.html">Courses</a></li>
+        <li class="nav-item"><a class="nav-link" href="/teachers.html">Teachers</a></li>
+        <li class="nav-item"><a class="nav-link" href="/pricing.html">Pricing</a></li>
+        <li class="nav-item"><a class="nav-link" href="/blog.html">Blog</a></li>
+        <li class="nav-item"><a class="nav-link" href="/contact.html">Contact</a></li>
+      </ul>
+      <div class="d-flex gap-2 align-items-center">
+        <a href="/student" class="btn btn-outline-light btn-sm px-4">Login</a>
+        <a href="/student" class="btn btn-spx-primary btn-sm px-4">Get Started</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero Section ──────────────────────────────────────────── -->
+<section class="hero-section" id="home">
+  <div class="hero-particles" id="particles"></div>
+  <div class="container">
+    <div class="row align-items-center min-vh-100">
+      <div class="col-lg-6" data-aos="fade-right" data-aos-duration="800">
+        <div class="hero-badge mb-3">
+          <i class="fas fa-star text-warning me-2"></i>
+          <span>#1 Live EdTech Platform in India</span>
+        </div>
+        <h1 class="hero-title">
+          Learn From<br>
+          <span class="gradient-text">Expert Teachers</span><br>
+          In Real-Time
+        </h1>
+        <p class="hero-desc">
+          Join live interactive classes, get personalized attention, and track your child's growth 
+          with SPEAXSA's AI-powered learning management system.
+        </p>
+        <div class="d-flex flex-wrap gap-3 mt-4">
+          <a href="/student" class="btn btn-spx-primary btn-lg px-5 py-3">
+            <i class="fas fa-play me-2"></i>Start Learning Free
+          </a>
+          <a href="#how-it-works" class="btn btn-outline-light btn-lg px-5 py-3">
+            <i class="fas fa-info-circle me-2"></i>How It Works
+          </a>
+        </div>
+        <div class="hero-stats mt-5">
+          <div class="stat-item">
+            <div class="stat-number" data-target="10000" id="stat-students">0</div>
+            <div class="stat-label">Students</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-target="500" id="stat-teachers">0</div>
+            <div class="stat-label">Expert Teachers</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-target="200" id="stat-courses">0</div>
+            <div class="stat-label">Live Courses</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-target="50000" id="stat-classes">0</div>
+            <div class="stat-label">Classes Done</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6 d-none d-lg-flex justify-content-center" data-aos="fade-left" data-aos-duration="1000">
+        <div class="hero-visual">
+          <div class="floating-card card-1" data-aos="fade-up" data-aos-delay="300">
+            <i class="fas fa-video text-primary me-2"></i>Live Class in Progress
+            <div class="mt-1 d-flex align-items-center gap-1">
+              <div class="live-dot"></div><small class="text-success">28 students online</small>
+            </div>
+          </div>
+          <div class="hero-device">
+            <div class="device-screen">
+              <div class="class-preview">
+                <div class="teacher-video">
+                  <div class="teacher-avatar"><i class="fas fa-user-tie fa-3x"></i></div>
+                  <div class="teacher-info"><strong>Dr. Priya Sharma</strong><br><small>Physics • Class 10</small></div>
+                </div>
+                <div class="class-controls">
+                  <div class="ctrl-btn active"><i class="fas fa-microphone"></i></div>
+                  <div class="ctrl-btn active"><i class="fas fa-video"></i></div>
+                  <div class="ctrl-btn"><i class="fas fa-hand-paper"></i></div>
+                  <div class="ctrl-btn"><i class="fas fa-comment"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="floating-card card-2" data-aos="fade-up" data-aos-delay="500">
+            <i class="fas fa-chart-line text-success me-2"></i>Rahul's Progress
+            <div class="progress-mini mt-2">
+              <div class="progress-fill" style="width:82%"></div>
+            </div>
+            <small>82% this month — Excellent!</small>
+          </div>
+          <div class="floating-badge">
+            <i class="fas fa-medal text-warning"></i>
+            <span>Gold Teacher</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-wave">
+    <svg viewBox="0 0 1440 80" preserveAspectRatio="none"><path fill="var(--bg-dark)" d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z"/></svg>
+  </div>
+</section>
+
+<!-- ── How It Works ───────────────────────────────────────────── -->
+<section class="section-py bg-dark-alt" id="how-it-works">
+  <div class="container">
+    <div class="section-header text-center mb-5" data-aos="fade-up">
+      <div class="section-badge">Simple Process</div>
+      <h2 class="section-title">Start Learning in <span class="gradient-text">3 Easy Steps</span></h2>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <div class="step-icon"><i class="fas fa-user-plus"></i></div>
+          <h4>Register Free</h4>
+          <p>Create your student account in under 2 minutes. No credit card required to browse courses.</p>
+        </div>
+      </div>
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <div class="step-icon"><i class="fas fa-search"></i></div>
+          <h4>Choose a Batch</h4>
+          <p>Browse courses, compare teachers, and enroll in the batch that matches your schedule and grade.</p>
+        </div>
+      </div>
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <div class="step-icon"><i class="fas fa-rocket"></i></div>
+          <h4>Learn Live</h4>
+          <p>Join live interactive classes, submit assignments, and track your growth with detailed monthly reports.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Featured Courses ──────────────────────────────────────── -->
+<section class="section-py" id="courses">
+  <div class="container">
+    <div class="section-header d-flex align-items-center justify-content-between mb-5">
+      <div data-aos="fade-right">
+        <div class="section-badge">Explore</div>
+        <h2 class="section-title">Featured <span class="gradient-text">Courses</span></h2>
+      </div>
+      <a href="/courses.html" class="btn btn-outline-primary" data-aos="fade-left">View All <i class="fas fa-arrow-right ms-2"></i></a>
+    </div>
+    <div class="row g-4" id="coursesGrid">
+      <!-- Loaded via JS -->
+      <div class="col-12 text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading courses...</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Top Teachers ───────────────────────────────────────────── -->
+<section class="section-py bg-dark-alt" id="teachers">
+  <div class="container">
+    <div class="section-header text-center mb-5" data-aos="fade-up">
+      <div class="section-badge">Our Faculty</div>
+      <h2 class="section-title">Learn from <span class="gradient-text">Top Teachers</span></h2>
+      <p class="section-desc">All teachers are SOP-verified and background-checked for quality assurance.</p>
+    </div>
+    <div class="row g-4" id="teachersGrid">
+      <div class="col-12 text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+      </div>
+    </div>
+    <div class="text-center mt-5" data-aos="fade-up">
+      <a href="/teachers.html" class="btn btn-spx-primary btn-lg px-5">
+        <i class="fas fa-users me-2"></i>Meet All Teachers
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Platform Features ─────────────────────────────────────── -->
+<section class="section-py">
+  <div class="container">
+    <div class="section-header text-center mb-5" data-aos="fade-up">
+      <div class="section-badge">Why SPEAXSA</div>
+      <h2 class="section-title">Everything You Need to <span class="gradient-text">Excel</span></h2>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="feature-card">
+          <div class="feature-icon" style="background:linear-gradient(135deg,#3CBDB0,#0F766E)">
+            <i class="fas fa-video"></i>
+          </div>
+          <h5>Live Interactive Classes</h5>
+          <p>HD video classes with polls, quizzes, whiteboard, and real-time Q&A powered by Agora SDK.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="150">
+        <div class="feature-card">
+          <div class="feature-icon" style="background:linear-gradient(135deg,#10B981,#059669)">
+            <i class="fas fa-chart-bar"></i>
+          </div>
+          <h5>Monthly Progress Reports</h5>
+          <p>Automated monthly reports tracking attendance, assignments, curiosity, and communication scores.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="feature-card">
+          <div class="feature-icon" style="background:linear-gradient(135deg,#F59E0B,#EF4444)">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h5>Auto Attendance</h5>
+          <p>Join time, exit time, and duration automatically tracked for Present / Late / Half / Absent status.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="250">
+        <div class="feature-card">
+          <div class="feature-icon" style="background:linear-gradient(135deg,#0F766E,#7E8085)">
+            <i class="fas fa-users-cog"></i>
+          </div>
+          <h5>Parent Monitoring</h5>
+          <p>Parents get a dedicated portal with real-time view of their child's attendance, grades, and teacher feedback.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="300">
+        <div class="feature-card">
+          <div class="feature-icon" style="background:linear-gradient(135deg,#14B8A6,#06B6D4)">
+            <i class="fas fa-record-vinyl"></i>
+          </div>
+          <h5>Class Recordings</h5>
+          <p>Every class is recorded automatically. Revisit lectures anytime, on any device.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="350">
+        <div class="feature-card">
+          <div class="feature-icon" style="background:linear-gradient(135deg,#F97316,#EF4444)">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+          <h5>SOP-Verified Teachers</h5>
+          <p>Every teacher passes a rigorous 5-stage SOP verification before being allowed to teach.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Student Testimonials ──────────────────────────────────── -->
+<section class="section-py bg-dark-alt">
+  <div class="container">
+    <div class="section-header text-center mb-5" data-aos="fade-up">
+      <div class="section-badge">Success Stories</div>
+      <h2 class="section-title">What Our <span class="gradient-text">Students Say</span></h2>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="testimonial-card">
+          <div class="stars mb-3">★★★★★</div>
+          <p>"SPEAXSA's live classes with Dr. Priya completely transformed my understanding of Physics. I scored 96/100 in my boards!"</p>
+          <div class="d-flex align-items-center gap-3 mt-4">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=rahul" class="testimonial-avatar" alt="Rahul">
+            <div>
+              <strong>Rahul Verma</strong><br>
+              <small class="text-muted">Class 10 Student, CBSE</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="testimonial-card featured-testimonial">
+          <div class="stars mb-3">★★★★★</div>
+          <p>"The monthly reports are amazing! As a parent, I always know exactly how Priya is performing in every subject. No more surprises!"</p>
+          <div class="d-flex align-items-center gap-3 mt-4">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=suresh" class="testimonial-avatar" alt="Suresh">
+            <div>
+              <strong>Suresh Kumar</strong><br>
+              <small class="text-muted">Parent, Bangalore</small>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+        <div class="testimonial-card">
+          <div class="stars mb-3">★★★★★</div>
+          <p>"Teaching on SPEAXSA is so professional. The SOP system ensures quality, and the earnings are transparent and fair."</p>
+          <div class="d-flex align-items-center gap-3 mt-4">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=priya" class="testimonial-avatar" alt="Priya">
+            <div>
+              <strong>Dr. Priya Sharma</strong><br>
+              <small class="text-muted">Gold Teacher, Physics</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA Section ────────────────────────────────────────────── -->
+<section class="cta-section">
+  <div class="container text-center">
+    <div data-aos="zoom-in">
+      <h2 class="display-5 fw-bold text-white mb-3">Ready to Start Your Learning Journey?</h2>
+      <p class="lead text-white-50 mb-5">Join 10,000+ students who are already excelling with SPEAXSA's live classes.</p>
+      <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <a href="/student" class="btn btn-light btn-lg px-5 py-3 fw-semibold" style="color:#3CBDB0">
+          <i class="fas fa-graduation-cap me-2"></i>Join as Student
+        </a>
+        <a href="/teacher" class="btn btn-outline-light btn-lg px-5 py-3 fw-semibold">
+          <i class="fas fa-chalkboard-teacher me-2"></i>Teach with Us
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Contact Form ───────────────────────────────────────────── -->
+<section class="section-py" id="contact">
+  <div class="container">
+    <div class="row g-5 align-items-center">
+      <div class="col-lg-5" data-aos="fade-right">
+        <div class="section-badge">Get In Touch</div>
+        <h2 class="section-title mb-4">Have Questions? <span class="gradient-text">We're Here</span></h2>
+        <div class="contact-info-items">
+          <div class="contact-info-item">
+            <i class="fas fa-envelope"></i>
+            <div><strong>Email</strong><br><a href="mailto:support@speaxsa.com">support@speaxsa.com</a></div>
+          </div>
+          <div class="contact-info-item">
+            <i class="fas fa-phone"></i>
+            <div><strong>Phone</strong><br><a href="tel:+919999999999">+91 9999 999 999</a></div>
+          </div>
+          <div class="contact-info-item">
+            <i class="fas fa-clock"></i>
+            <div><strong>Support Hours</strong><br>Mon–Sat: 8 AM – 8 PM IST</div>
+          </div>
+        </div>
+        <div class="social-links mt-4">
+          <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
+          <a href="#" class="social-btn"><i class="fab fa-youtube"></i></a>
+          <a href="#" class="social-btn"><i class="fab fa-facebook"></i></a>
+          <a href="#" class="social-btn"><i class="fab fa-twitter"></i></a>
+        </div>
+      </div>
+      <div class="col-lg-7" data-aos="fade-left">
+        <div class="contact-form-card">
+          <h4 class="mb-4">Send Us a Message</h4>
+          <form id="contactForm">
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <input type="text" class="form-control spx-input" id="contactName" placeholder="Your Name" required>
+              </div>
+              <div class="col-sm-6">
+                <input type="email" class="form-control spx-input" id="contactEmail" placeholder="Email Address" required>
+              </div>
+              <div class="col-sm-6">
+                <input type="tel" class="form-control spx-input" id="contactPhone" placeholder="Phone Number">
+              </div>
+              <div class="col-sm-6">
+                <select class="form-select spx-input" id="contactRole">
+                  <option value="">I am a...</option>
+                  <option>Student</option>
+                  <option>Parent</option>
+                  <option>Teacher</option>
+                  <option>School</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <textarea class="form-control spx-input" id="contactMessage" rows="4" placeholder="Your message..." required></textarea>
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn btn-spx-primary btn-lg w-100" id="contactSubmitBtn">
+                  <i class="fas fa-paper-plane me-2"></i>Send Message
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────── -->
+<footer class="spx-footer">
+  <div class="container">
+    <div class="row g-5">
+      <div class="col-lg-4">
+        <div class="footer-brand mb-3 d-flex align-items-center">
+          <img src="/logo.png" alt="SPEAXSA Logo" style="height:32px; width:32px; object-fit:contain; margin-right:8px; border-radius:6px; background:white; padding:2px;">
+          <span class="fw-bold fs-4">SPEAXSA</span>
+        </div>
+        <p class="text-muted mb-4">Empowering students across India with live, interactive, and personalized education. Quality learning, guaranteed.</p>
+        <div class="social-links">
+          <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
+          <a href="#" class="social-btn"><i class="fab fa-youtube"></i></a>
+          <a href="#" class="social-btn"><i class="fab fa-facebook"></i></a>
+        </div>
+      </div>
+      <div class="col-6 col-lg-2">
+        <h6 class="footer-heading">Platform</h6>
+        <ul class="footer-links">
+          <li><a href="/courses.html">Courses</a></li>
+          <li><a href="/teachers.html">Teachers</a></li>
+          <li><a href="/pricing.html">Pricing</a></li>
+          <li><a href="/blog.html">Blog</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-lg-2">
+        <h6 class="footer-heading">Company</h6>
+        <ul class="footer-links">
+          <li><a href="/about.html">About Us</a></li>
+          <li><a href="/success-stories.html">Success Stories</a></li>
+          <li><a href="/faq.html">FAQ</a></li>
+          <li><a href="/contact.html">Contact</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-lg-2">
+        <h6 class="footer-heading">Portals</h6>
+        <ul class="footer-links">
+          <li><a href="/student">Student Portal</a></li>
+          <li><a href="/teacher">Teacher Portal</a></li>
+          <li><a href="/parent">Parent Portal</a></li>
+          <li><a href="/admin">Admin Panel</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-lg-2">
+        <h6 class="footer-heading">Legal</h6>
+        <ul class="footer-links">
+          <li><a href="/privacy.html">Privacy Policy</a></li>
+          <li><a href="/terms.html">Terms of Service</a></li>
+          <li><a href="/faq.html">FAQ</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom mt-5">
+      <p class="text-muted mb-0">© 2024 SPEAXSA EdTech Pvt. Ltd. All rights reserved.</p>
+      <p class="text-muted mb-0 small">Made with ❤️ in India</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

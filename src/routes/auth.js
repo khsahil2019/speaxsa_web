@@ -1,0 +1,384 @@
+const express = require('express');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
+const db = require('../db');
+const { authenticateToken, JWT_SECRET, JWT_EXPIRES_IN } = require('../middleware/auth');
+const { hashPassword, verifyPassword, generateUID, generateStudentCode, generateTeacherReferralCode, sanitizeUser } = require('../utils/security');
+const { createOTP, verifyOTP, sendOTPEmail, sendOTPSms } = require('../services/OTPService');
+const { logAudit } = require('../services/AuditService');
+
+// ── POST /api/auth/register ──────────────────────────────────
+router.post('/register', async (req, res) => {
+  const { name, email, phone, role, password, qualification, board, grade, experience_years, subject_expertise, languages, address } = req.body;
+
+  try {
+    if (!name || !email || !phone || !role || !password) {
+      return res.status(400).json({ error: 'name, email, phone, role, and password are required' });
+    }
+    if (!['teacher', 'student', 'parent'].includes(role)) {
+      return res.status(400).json({ error: 'Role must be teacher, student, or parent' });
+    }
+
+    const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    const id = generateUID(role.substr(0, 3));
+    const passwordHash = hashPassword(password);
+    const photoUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+
+    let approvalStatus = 'approved';
+    let teacherLevel = null;
+    let studentCode = null;
+    let referralCode = null;
+
+    if (role === 'teacher') {
+      approvalStatus = 'pending';
+      teacherLevel = 'Bronze';
+      referralCode = generateTeacherReferralCode(name);
+    }
+
+    if (role === 'student') {
+      // Generate unique student code
+      const countRes = await db.query("SELECT COUNT(*) as cnt FROM users WHERE role = 'student'");
+      const count = parseInt(countRes.rows[0].cnt) + 1;
+      studentCode = generateStudentCode(count);
+    }
+
+    await db.query(`
+      INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url,
+        approval_status, teacher_level, qualification, experience_years, subject_expertise,
+        languages, address, board, grade, student_code, referral_code)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+    `, [
+      id, email, phone, name, role, passwordHash, password, photoUrl,
+      approvalStatus, teacherLevel, qualification || null, experience_years || 0,
+      subject_expertise || null, languages || null, address || null, board || null,
+      grade || null, studentCode, referralCode
+    ]);
+
+    // Create teacher SOP entry if teacher
+    if (role === 'teacher') {
+      await db.query(
+        'INSERT INTO teacher_sop (id, teacher_id, status) VALUES ($1, $2, $3)',
+        [`sop_${id}`, id, 'pending']
+      );
+    }
+
+    // Create teacher wallet if teacher
+    if (role === 'teacher') {
+      await db.query(
+        'INSERT INTO teacher_wallet (teacher_id) VALUES ($1) ON CONFLICT (teacher_id) DO NOTHING', [id]
+      );
+    }
+
+    const token = jwt.sign({ id, email, name, phone, role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+    const userRow = (await db.query('SELECT * FROM users WHERE id = $1', [id])).rows[0];
+    
+    await logAudit(id, 'REGISTER', 'user', id, { role, email });
+
+    return res.status(201).json({
+      message: 'Registration successful',
+      token,
+      user: sanitizeUser(userRow),
+    });
+  } catch (err) {
+    console.error('[Auth] Register error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/login ──────────────────────────────────────
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const result = await db.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    const user = result.rows[0];
+
+    if (!user) return res.status(404).json({ error: 'User not found with this email' });
+    if (user.is_disabled) return res.status(403).json({ error: 'Account disabled. Contact admin.' });
+
+    if (!verifyPassword(password, user.password_hash)) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    await logAudit(user.id, 'LOGIN', 'user', user.id, { method: 'email_password' }, { ip: req.ip });
+
+    return res.json({ message: 'Login successful', token, user: sanitizeUser(user) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/send-otp ───────────────────────────────────
+router.post('/send-otp', async (req, res) => {
+  const { email, phone, identifier, purpose = 'login' } = req.body;
+  const input = email || phone || identifier;
+  try {
+    if (!input) return res.status(400).json({ error: 'Email or phone identifier is required' });
+
+    const isEmail = input.includes('@');
+    let query = isEmail 
+      ? 'SELECT id, name, email, phone FROM users WHERE LOWER(email) = LOWER($1)' 
+      : 'SELECT id, name, email, phone FROM users WHERE phone = $1';
+    
+    const result = await db.query(query, [input]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: isEmail ? 'User not found with this email' : 'User not found with this phone number' });
+    }
+    const user = result.rows[0];
+
+    const { otp } = await createOTP(input, purpose);
+    let sentInfo;
+    if (isEmail) {
+      sentInfo = await sendOTPEmail(user.email, otp, purpose);
+    } else {
+      sentInfo = await sendOTPSms(user.phone, otp, purpose);
+    }
+
+    res.json({
+      message: `OTP sent to ${input}`,
+      method: sentInfo.method,
+      // Only return OTP in development for testing
+      ...(process.env.NODE_ENV !== 'production' && { otp }),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/verify-otp ─────────────────────────────────
+router.post('/verify-otp', async (req, res) => {
+  const { email, phone, identifier, otp, purpose = 'login' } = req.body;
+  const input = email || phone || identifier;
+  try {
+    if (!input || !otp) return res.status(400).json({ error: 'Identifier and OTP are required' });
+
+    const { valid, error } = await verifyOTP(input, otp, purpose);
+    if (!valid) return res.status(400).json({ error });
+
+    const isEmail = input.includes('@');
+    let query = isEmail 
+      ? 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)' 
+      : 'SELECT * FROM users WHERE phone = $1';
+      
+    const result = await db.query(query, [input]);
+    const user = result.rows[0];
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.is_disabled) return res.status(403).json({ error: 'Account disabled' });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    await logAudit(user.id, 'LOGIN_OTP', 'user', user.id, { method: 'otp' }, { ip: req.ip });
+
+    return res.json({ message: 'OTP verified. Login successful.', token, user: sanitizeUser(user) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/forgot-password ───────────────────────────
+router.post('/forgot-password', async (req, res) => {
+  const { email, phone, identifier } = req.body;
+  const input = email || phone || identifier;
+  try {
+    if (!input) return res.status(400).json({ error: 'Identifier is required' });
+
+    const isEmail = input.includes('@');
+    let query = isEmail 
+      ? 'SELECT id, name, email, phone FROM users WHERE LOWER(email) = LOWER($1)' 
+      : 'SELECT id, name, email, phone FROM users WHERE phone = $1';
+
+    const result = await db.query(query, [input]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No account found with this identifier' });
+    }
+    const user = result.rows[0];
+
+    const { otp } = await createOTP(input, 'forgot_password');
+    if (isEmail) {
+      await sendOTPEmail(user.email, otp, 'forgot_password');
+    } else {
+      await sendOTPSms(user.phone, otp, 'forgot_password');
+    }
+
+    res.json({
+      message: 'Password reset OTP sent successfully',
+      ...(process.env.NODE_ENV !== 'production' && { otp }),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/reset-password ────────────────────────────
+router.post('/reset-password', async (req, res) => {
+  const { email, phone, identifier, otp, newPassword } = req.body;
+  const input = email || phone || identifier;
+  try {
+    if (!input || !otp || !newPassword) {
+      return res.status(400).json({ error: 'identifier, otp, and newPassword are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const { valid, error } = await verifyOTP(input, otp, 'forgot_password');
+    if (!valid) return res.status(400).json({ error });
+
+    const hash = hashPassword(newPassword);
+    
+    const isEmail = input.includes('@');
+    let query = isEmail 
+      ? 'UPDATE users SET password_hash = $1, password_plain = $2 WHERE LOWER(email) = LOWER($3)' 
+      : 'UPDATE users SET password_hash = $1, password_plain = $2 WHERE phone = $3';
+
+    await db.query(query, [hash, newPassword, input]);
+
+    res.json({ message: 'Password reset successful. You can now login.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/change-password (authenticated) ───────────
+router.post('/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  try {
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+    }
+
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+
+    if (!verifyPassword(currentPassword, user.password_hash)) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const hash = hashPassword(newPassword);
+    await db.query(
+      'UPDATE users SET password_hash = $1, password_plain = $2 WHERE id = $3',
+      [hash, newPassword, req.user.id]
+    );
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/auth/profile ─────────────────────────────────────
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(sanitizeUser(result.rows[0]));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /api/auth/profile ─────────────────────────────────────
+router.put('/profile', authenticateToken, async (req, res) => {
+  const { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url } = req.body;
+  try {
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    const fields = { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url };
+    for (const [key, val] of Object.entries(fields)) {
+      if (val !== undefined) {
+        updates.push(`${key} = $${idx++}`);
+        values.push(val);
+      }
+    }
+    updates.push(`updated_at = NOW()`);
+
+    if (updates.length === 1) return res.status(400).json({ error: 'No fields to update' });
+
+    values.push(req.user.id);
+    const result = await db.query(
+      `UPDATE users SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    res.json({ message: 'Profile updated', user: sanitizeUser(result.rows[0]) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/upload-avatar ──────────────────────────────
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '../../public/uploads/avatars');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `avatar_${req.user.id}_${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+const avatarUpload = multer({ storage: avatarStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+router.post('/upload-avatar', authenticateToken, avatarUpload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const photoUrl = `/uploads/avatars/${req.file.filename}`;
+    const result = await db.query('UPDATE users SET photo_url = $1 WHERE id = $2 RETURNING *', [photoUrl, req.user.id]);
+    res.json({ message: 'Avatar uploaded', photoUrl, user: sanitizeUser(result.rows[0]) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/fcm-token ──────────────────────────────────
+router.post('/fcm-token', authenticateToken, async (req, res) => {
+  const { token, device_type = 'web' } = req.body;
+  try {
+    if (!token) return res.status(400).json({ error: 'token is required' });
+    await db.query(`
+      INSERT INTO fcm_tokens (user_id, token, device_type, updated_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (user_id, token) DO UPDATE SET updated_at = NOW()
+    `, [req.user.id, token, device_type]);
+    res.json({ message: 'FCM token registered' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/logout ─────────────────────────────────────
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    await logAudit(req.user.id, 'LOGOUT', 'user', req.user.id, {}, { ip: req.ip });
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
