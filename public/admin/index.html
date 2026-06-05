@@ -15,33 +15,78 @@
 
 <!-- ── Login Screen ──────────────────────────────────────────── -->
 <div id="loginScreen" class="login-screen">
-  <div class="login-card">
-    <div class="login-brand">
-      <div class="brand-icon"><img src="/logo.png" alt="SPEAXSA Logo"></div>
-      <h2>SPEAXSA</h2>
-      <p>Admin Control Panel</p>
+  <div class="row g-0 w-100 min-vh-100">
+    <!-- Left Visual Panel -->
+    <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between auth-visual-panel">
+      <div class="visual-brand">
+        <img src="/logo.png" alt="SPEAXSA Logo" class="visual-logo">
+        <span class="visual-brand-text">SPEAXSA</span>
+      </div>
+      <div class="visual-content">
+        <span class="badge visual-badge">Admin Portal</span>
+        <h1 class="visual-title">Control and Scale the Platform</h1>
+        <p class="visual-subtitle">The central command center for Speaxsa. Oversee students, teachers, finance logs, live classrooms, and platform settings.</p>
+        
+        <div class="visual-features mt-5">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="feature-icon"><i class="fas fa-cogs"></i></div>
+            <div>
+              <h5 class="feature-title mb-0">Operations Management</h5>
+              <p class="feature-desc mb-0">Approve SOP applications, manage coupons, and oversee billing.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="feature-icon"><i class="fas fa-users-cog"></i></div>
+            <div>
+              <h5 class="feature-title mb-0">Complete User Management</h5>
+              <p class="feature-desc mb-0">Detailed oversight of student, teacher, and parent profiles.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="feature-icon"><i class="fas fa-chart-pie"></i></div>
+            <div>
+              <h5 class="feature-title mb-0">Platform Analytics</h5>
+              <p class="feature-desc mb-0">Track payouts, payments, class statistics, and platform audit logs.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="visual-footer">
+        <p class="mb-0">© 2026 SPEAXSA EdTech. All rights reserved.</p>
+      </div>
     </div>
-    <form id="loginForm" class="mt-4">
-      <div class="mb-3">
-        <label class="form-label spx-label">Email Address</label>
-        <div class="input-group">
-          <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
-          <input type="email" class="form-control spx-input" id="loginEmail" placeholder="admin@speaxsa.com" required>
+    
+    <!-- Right Form Panel -->
+    <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="brand-icon"><img src="/logo.png" alt="SPEAXSA Logo"></div>
+          <h2>SPEAXSA</h2>
+          <p>Admin Control Panel</p>
         </div>
+        <form id="loginForm" class="mt-4">
+          <div class="mb-3">
+            <label class="form-label spx-label">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
+              <input type="email" class="form-control spx-input" id="loginEmail" placeholder="admin@speaxsa.com" required>
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label spx-label">Password</label>
+            <div class="input-group">
+              <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
+              <input type="password" class="form-control spx-input" id="loginPassword" required>
+              <button class="btn spx-input-prefix" type="button" id="togglePass"><i class="fas fa-eye"></i></button>
+            </div>
+          </div>
+          <div id="loginError" class="alert alert-danger d-none"></div>
+          <button type="submit" class="btn btn-spx w-100 py-3" id="loginBtn">
+            <i class="fas fa-sign-in-alt me-2"></i>Login as Admin
+          </button>
+        </form>
       </div>
-      <div class="mb-4">
-        <label class="form-label spx-label">Password</label>
-        <div class="input-group">
-          <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
-          <input type="password" class="form-control spx-input" id="loginPassword" required>
-          <button class="btn spx-input-prefix" type="button" id="togglePass"><i class="fas fa-eye"></i></button>
-        </div>
-      </div>
-      <div id="loginError" class="alert alert-danger d-none"></div>
-      <button type="submit" class="btn btn-spx w-100 py-3" id="loginBtn">
-        <i class="fas fa-sign-in-alt me-2"></i>Login as Admin
-      </button>
-    </form>
+    </div>
   </div>
 </div>
 

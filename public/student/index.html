@@ -11,76 +11,133 @@
 </head>
 <body>
 <div id="authScreen" class="auth-screen">
-  <div class="auth-card">
-    <div class="auth-brand">
-      <div class="brand-icon"><img src="/logo.png" alt="SPEAXSA Logo"></div>
-      <h2>SPEAXSA</h2><p>Student Portal</p>
-    </div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
-      <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
-    </div>
-    <!-- Login -->
-    <div id="loginSection">
-      <div class="mb-3"><label class="spx-label">Email</label><input class="form-control spx-input" id="loginEmail" type="email" placeholder="your@email.com"></div>
-      <div class="mb-3"><label class="spx-label">Password</label><input class="form-control spx-input" id="loginPassword" type="password"></div>
-      <div class="mb-3 d-flex align-items-center gap-2">
-        <div class="flex-grow-1" style="height:1px;background:var(--border)"></div>
-        <small class="text-muted">or</small>
-        <div class="flex-grow-1" style="height:1px;background:var(--border)"></div>
+  <div class="row g-0 w-100 min-vh-100">
+    <!-- Left Visual Panel -->
+    <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between auth-visual-panel">
+      <div class="visual-brand">
+        <img src="/logo.png" alt="SPEAXSA Logo" class="visual-logo">
+        <span class="visual-brand-text">SPEAXSA</span>
       </div>
-      <div class="mb-3">
-        <div class="d-flex gap-2">
-          <input class="form-control spx-input" id="otpEmail" type="text" placeholder="Email or Phone for OTP">
-          <button class="btn btn-outline-primary" onclick="sendOTP()">Send OTP</button>
-        </div>
-        <input class="form-control spx-input mt-2" id="otpCode" type="text" placeholder="Enter 6-digit OTP">
-        <button class="btn btn-spx w-100 mt-2" onclick="verifyOTP()">Verify OTP & Login</button>
-      </div>
-      <div id="loginError" class="alert alert-danger d-none small"></div>
-      <button class="btn btn-spx w-100 mt-2" onclick="doLogin()">Login with Password</button>
-      <a href="#" onclick="switchTab('forgot')" class="d-block text-center mt-2 text-primary small">Forgot Password?</a>
-    </div>
-    <!-- Register -->
-    <div id="registerSection" class="d-none">
-      <div class="row g-2">
-        <div class="col-12"><input class="form-control spx-input" id="regName" placeholder="Full Name *"></div>
-        <div class="col-12"><input class="form-control spx-input" id="regEmail" type="email" placeholder="Email *"></div>
-        <div class="col-6"><input class="form-control spx-input" id="regPhone" placeholder="Phone *"></div>
-        <div class="col-6"><input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *"></div>
-        <div class="col-6">
-          <select class="form-select spx-input" id="regGrade">
-            <option value="">Select Grade</option>
-            <option>Class 6</option>
-            <option>Class 7</option>
-            <option>Class 8</option>
-            <option>Class 9</option>
-            <option>Class 10</option>
-            <option>Class 11</option>
-            <option>Class 12</option>
-          </select>
-        </div>
-        <div class="col-6">
-          <select class="form-select spx-input" id="regBoard">
-            <option value="">Board</option><option>CBSE</option><option>ICSE</option><option>State</option>
-          </select>
-        </div>
-        <div class="col-12">
-          <div id="registerError" class="alert alert-danger d-none small"></div>
-          <button class="btn btn-spx w-100" onclick="doRegister()">Create Account</button>
+      <div class="visual-content">
+        <span class="badge visual-badge">Student Portal</span>
+        <h1 class="visual-title">Learn from the Best, Achieve Your Dreams</h1>
+        <p class="visual-subtitle">Access your live classrooms, view daily assignments, track your attendance, and monitor your academic performance all in one place.</p>
+        
+        <div class="visual-features mt-5">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="feature-icon"><i class="fas fa-video"></i></div>
+            <div>
+              <h5 class="feature-title mb-0">Live Interactive Batches</h5>
+              <p class="feature-desc mb-0">Connect with teachers in live interactive classrooms.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+            <div>
+              <h5 class="feature-title mb-0">Performance Reports</h5>
+              <p class="feature-desc mb-0">Understand your strengths and weaknesses with detailed metrics.</p>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="feature-icon"><i class="fas fa-book-open"></i></div>
+            <div>
+              <h5 class="feature-title mb-0">Recordings & Study Material</h5>
+              <p class="feature-desc mb-0">Access past recorded sessions and rich resources on the go.</p>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <!-- Forgot -->
-    <div id="forgotSection" class="d-none">
-      <input class="form-control spx-input mb-3" id="forgotEmail" placeholder="Your email">
-      <button class="btn btn-spx w-100" onclick="sendForgotOTP()">Send Reset OTP</button>
-      <div class="mt-3 d-none" id="resetSection">
-        <input class="form-control spx-input mb-2" id="resetOTP" placeholder="OTP">
-        <input class="form-control spx-input mb-2" id="resetPass" type="password" placeholder="New Password">
-        <button class="btn btn-spx w-100" onclick="doReset()">Reset Password</button>
+      <div class="visual-footer">
+        <p class="mb-0">© 2026 SPEAXSA EdTech. All rights reserved.</p>
       </div>
-      <a href="#" onclick="switchTab('login')" class="d-block text-center mt-2 text-muted small">← Back to Login</a>
+    </div>
+    
+    <!-- Right Form Panel -->
+    <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="brand-icon"><img src="/logo.png" alt="SPEAXSA Logo"></div>
+          <h2>SPEAXSA</h2><p>Student Portal</p>
+        </div>
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
+          <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
+        </div>
+        <!-- Login -->
+        <div id="loginSection">
+          <div class="mb-3">
+            <label class="spx-label">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
+              <input class="form-control spx-input" id="loginEmail" type="email" placeholder="your@email.com">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="spx-label">Password</label>
+            <div class="input-group">
+              <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
+              <input class="form-control spx-input" id="loginPassword" type="password" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="mb-3 d-flex align-items-center gap-2">
+            <div class="flex-grow-1" style="height:1px;background:var(--border)"></div>
+            <small class="text-muted">or</small>
+            <div class="flex-grow-1" style="height:1px;background:var(--border)"></div>
+          </div>
+          <div class="mb-3">
+            <div class="d-flex gap-2">
+              <input class="form-control spx-input" id="otpEmail" type="text" placeholder="Email or Phone for OTP">
+              <button class="btn btn-outline-primary" onclick="sendOTP()">Send OTP</button>
+            </div>
+            <input class="form-control spx-input mt-2" id="otpCode" type="text" placeholder="Enter 6-digit OTP">
+            <button class="btn btn-spx w-100 mt-2" onclick="verifyOTP()">Verify OTP & Login</button>
+          </div>
+          <div id="loginError" class="alert alert-danger d-none small"></div>
+          <button class="btn btn-spx w-100 mt-2" onclick="doLogin()">Login with Password</button>
+          <a href="#" onclick="switchTab('forgot')" class="d-block text-center mt-2 text-primary small">Forgot Password?</a>
+        </div>
+        <!-- Register -->
+        <div id="registerSection" class="d-none">
+          <div class="row g-2">
+            <div class="col-12"><input class="form-control spx-input" id="regName" placeholder="Full Name *"></div>
+            <div class="col-12"><input class="form-control spx-input" id="regEmail" type="email" placeholder="Email *"></div>
+            <div class="col-6"><input class="form-control spx-input" id="regPhone" placeholder="Phone *"></div>
+            <div class="col-6"><input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *"></div>
+            <div class="col-6">
+              <select class="form-select spx-input" id="regGrade">
+                <option value="">Select Grade</option>
+                <option>Class 6</option>
+                <option>Class 7</option>
+                <option>Class 8</option>
+                <option>Class 9</option>
+                <option>Class 10</option>
+                <option>Class 11</option>
+                <option>Class 12</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <select class="form-select spx-input" id="regBoard">
+                <option value="">Board</option><option>CBSE</option><option>ICSE</option><option>State</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <div id="registerError" class="alert alert-danger d-none small"></div>
+              <button class="btn btn-spx w-100" onclick="doRegister()">Create Account</button>
+            </div>
+          </div>
+        </div>
+        <!-- Forgot -->
+        <div id="forgotSection" class="d-none">
+          <input class="form-control spx-input mb-3" id="forgotEmail" placeholder="Your email">
+          <button class="btn btn-spx w-100" onclick="sendForgotOTP()">Send Reset OTP</button>
+          <div class="mt-3 d-none" id="resetSection">
+            <input class="form-control spx-input mb-2" id="resetOTP" placeholder="OTP">
+            <input class="form-control spx-input mb-2" id="resetPass" type="password" placeholder="New Password">
+            <button class="btn btn-spx w-100" onclick="doReset()">Reset Password</button>
+          </div>
+          <a href="#" onclick="switchTab('login')" class="d-block text-center mt-2 text-muted small">← Back to Login</a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
