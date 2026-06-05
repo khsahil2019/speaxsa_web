@@ -59,8 +59,8 @@ async function loadCourses() {
     grid.innerHTML = courses.map(c => `
       <div class="col-sm-6 col-lg-3" data-aos="fade-up">
         <div class="course-card">
-          <div class="course-thumbnail" style="background:linear-gradient(135deg,${randomGradient()})">
-            <span style="font-size:3rem">${icons[c.subject] || icons.default}</span>
+          <div class="course-thumbnail" style="${c.thumbnail_url ? `background: url(${c.thumbnail_url}) center/cover no-repeat;` : `background:linear-gradient(135deg,${randomGradient()})`}">
+            ${c.thumbnail_url ? '' : `<span style="font-size:3rem">${icons[c.subject] || icons.default}</span>`}
             <div class="course-badge">${c.grade || ''}</div>
           </div>
           <div class="course-body">
@@ -113,38 +113,52 @@ async function loadTeachers() {
     }
 
     grid.innerHTML = teachers.map(t => `
-      <div class="col-sm-6 col-lg-2" data-aos="fade-up">
+      <div class="col-sm-6 col-md-4 col-lg-3" data-aos="fade-up">
         <div class="teacher-card">
-          <img src="${t.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.name}`}" 
-               class="teacher-avatar-img" alt="${t.name}"
-               onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(t.name)}'">
+          <div class="teacher-avatar-wrapper">
+            <img src="${t.photo_url || `/uploads/profiles/teacher_sahil.png`}" 
+                 class="teacher-avatar-img" alt="${t.name}"
+                 onerror="this.src='/uploads/profiles/teacher_sahil.png'">
+          </div>
           <div class="teacher-level-badge level-${(t.teacher_level || 'bronze').toLowerCase().replace(' ','-')}">
             ${t.teacher_level || 'Bronze'}
           </div>
-          <h6 class="fw-bold mb-1">${t.name}</h6>
-          <div class="teacher-subject mb-2">${t.subject_expertise || 'General'}</div>
-          <div class="teacher-rating">
-            ${'★'.repeat(Math.round(parseFloat(t.rating || 5)))} ${parseFloat(t.rating || 5).toFixed(1)}
+          <h5 class="fw-bold mb-2">${t.name}</h5>
+          <div class="teacher-subject-tag">${t.subject_expertise || 'General'}</div>
+          <div class="teacher-rating-box">
+            <i class="fas fa-star"></i>
+            <span>${parseFloat(t.rating || 5).toFixed(1)}</span>
           </div>
-          <small class="text-muted">${t.experience_years || 0}+ yrs experience</small>
+          <div class="teacher-meta-item">
+            <i class="fas fa-briefcase"></i>
+            <span>${t.experience_years || 0}+ yrs experience</span>
+          </div>
         </div>
       </div>
     `).join('');
   } catch {
     const demos = [
-      { name: 'Dr. Priya Sharma', subject: 'Physics', level: 'Gold', rating: 4.9, exp: 8 },
-      { name: 'Rahul Joshi', subject: 'Mathematics', level: 'Silver', rating: 4.7, exp: 5 },
-      { name: 'Meena Kapoor', subject: 'Chemistry', level: 'Bronze', rating: 4.8, exp: 3 },
+      { name: 'Dr. Priya Sharma', subject: 'Physics', level: 'Gold', rating: 4.9, exp: 8, photo: '/uploads/profiles/teacher_priya.png' },
+      { name: 'Sahil Khan', subject: 'Mathematics', level: 'Elite', rating: 5.0, exp: 12, photo: '/uploads/profiles/teacher_sahil.png' },
+      { name: 'Rahul Joshi', subject: 'Chemistry', level: 'Silver', rating: 4.7, exp: 5, photo: '/uploads/profiles/teacher_sahil.png' },
     ];
     grid.innerHTML = demos.map(t => `
-      <div class="col-sm-6 col-lg-4" data-aos="fade-up">
+      <div class="col-sm-6 col-md-4 col-lg-4" data-aos="fade-up">
         <div class="teacher-card">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${t.name}" class="teacher-avatar-img" alt="${t.name}">
-          <div class="teacher-level-badge level-${t.level.toLowerCase()}">${t.level}</div>
-          <h6 class="fw-bold mb-1">${t.name}</h6>
-          <div class="teacher-subject mb-2">${t.subject}</div>
-          <div class="teacher-rating">★★★★★ ${t.rating}</div>
-          <small class="text-muted">${t.exp}+ yrs experience</small>
+          <div class="teacher-avatar-wrapper">
+            <img src="${t.photo}" class="teacher-avatar-img" alt="${t.name}">
+          </div>
+          <div class="teacher-level-badge level-${t.level.toLowerCase().replace(' ','-')}">${t.level}</div>
+          <h5 class="fw-bold mb-2">${t.name}</h5>
+          <div class="teacher-subject-tag">${t.subject}</div>
+          <div class="teacher-rating-box">
+            <i class="fas fa-star"></i>
+            <span>${t.rating.toFixed(1)}</span>
+          </div>
+          <div class="teacher-meta-item">
+            <i class="fas fa-briefcase"></i>
+            <span>${t.exp}+ yrs experience</span>
+          </div>
         </div>
       </div>
     `).join('');
@@ -236,8 +250,66 @@ function randomGradient() {
   return gradients[Math.floor(Math.random() * gradients.length)];
 }
 
+// ── Load Settings ─────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/admin/settings/public');
+    const settings = await res.json();
+
+    // Update Email
+    const emailEls = document.querySelectorAll('#infoEmail');
+    emailEls.forEach(el => {
+      if (el.tagName === 'A') {
+        el.href = `mailto:${settings.support_email}`;
+        el.textContent = settings.support_email;
+      } else {
+        const link = el.querySelector('a');
+        if (link) {
+          link.href = `mailto:${settings.support_email}`;
+          link.textContent = settings.support_email;
+        } else {
+          el.textContent = settings.support_email;
+        }
+      }
+    });
+
+    // Update Phone
+    const phoneEls = document.querySelectorAll('#infoPhone');
+    phoneEls.forEach(el => {
+      if (el.tagName === 'A') {
+        el.href = `tel:${settings.support_phone.replace(/\s+/g, '')}`;
+        el.textContent = settings.support_phone;
+      } else {
+        const link = el.querySelector('a');
+        if (link) {
+          link.href = `tel:${settings.support_phone.replace(/\s+/g, '')}`;
+          link.textContent = settings.support_phone;
+        } else {
+          el.textContent = settings.support_phone;
+        }
+      }
+    });
+
+    // Update Hours
+    const hoursEls = document.querySelectorAll('#infoHours');
+    hoursEls.forEach(el => {
+      el.textContent = settings.support_hours;
+    });
+
+    // Update Platform Brand Logo Text
+    const brandEls = document.querySelectorAll('.spx-brand span, .footer-brand span');
+    brandEls.forEach(el => {
+      el.textContent = settings.logo_text || 'SPEAXSA';
+    });
+
+  } catch (err) {
+    console.error('Failed to load settings:', err);
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────
 createParticles();
 loadCourses();
 loadTeachers();
 loadStats();
+loadSettings();

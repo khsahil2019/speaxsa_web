@@ -39,8 +39,8 @@ INSERT INTO attendance (id, class_id, batch_id, student_id, teacher_id, join_tim
   ('att_001', 'live_001', 'batch_001', 'student_001', 'teacher_001', NOW() - INTERVAL '1 day 55 minutes', NOW() - INTERVAL '1 day', 55, 60, 'present', CURRENT_DATE - INTERVAL '1 day');
 
 -- 5. Recordings
-INSERT INTO recordings (id, class_id, batch_id, title, recording_url, duration_mins, file_size_mb, is_available) VALUES
-  ('rec_001', 'live_001', 'batch_001', 'Physics Chapter 1 Introduction Class Recording', 'https://res.cloudinary.com/demo/video/upload/dog.mp4', 60, 120.50, true);
+INSERT INTO recordings (id, class_id, batch_id, title, recording_url, duration_mins, file_size_mb, is_available, thumbnail_url) VALUES
+  ('rec_001', 'live_001', 'batch_001', 'Physics Chapter 1 Introduction Class Recording', 'https://res.cloudinary.com/demo/video/upload/dog.mp4', 60, 120.50, true, '/uploads/recordings/recording_physics.png');
 
 -- 6. Class Polls
 INSERT INTO class_polls (id, class_id, teacher_id, question, options, correct_option, is_active) VALUES

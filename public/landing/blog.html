@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blog — SPEAXSA</title>
   <meta name="description" content="Insights, study tips, and resources for CBSE and ICSE students.">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
@@ -29,7 +31,6 @@
         <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
         <li class="nav-item"><a class="nav-link" href="/courses.html">Courses</a></li>
         <li class="nav-item"><a class="nav-link" href="/teachers.html">Teachers</a></li>
-        <li class="nav-item"><a class="nav-link" href="/pricing.html">Pricing</a></li>
         <li class="nav-item"><a class="nav-link active" href="/blog.html">Blog</a></li>
         <li class="nav-item"><a class="nav-link" href="/contact.html">Contact</a></li>
       </ul>
@@ -42,56 +43,85 @@
 </nav>
 
 <!-- Page Header -->
-<section class="section-py bg-dark-alt text-center" style="margin-top: 80px; background: radial-gradient(ellipse at center, rgba(60,189,176,0.1) 0%, transparent 70%);">
-  <div class="container py-4">
+<section class="bg-dark-alt text-center" style="margin-top: 72px; padding: 48px 0 24px 0; background: radial-gradient(ellipse at center, rgba(60,189,176,0.1) 0%, transparent 70%); border-bottom: 1px solid var(--border);">
+  <div class="container py-3">
     <div class="section-badge mb-2">SPEAXSA Insights</div>
-    <h1 class="display-4 fw-bold text-white mb-3">Our <span class="gradient-text">Blog</span></h1>
-    <p class="lead text-muted mx-auto" style="max-width: 600px;">Unlock study secrets, exam updates, and tips to accelerate conceptual understanding.</p>
+    <h1 class="display-5 fw-bold text-white mb-2">Our <span class="gradient-text">Blog</span></h1>
+    <p class="lead text-muted mx-auto mb-0" style="max-width: 600px; font-size: 1.05rem;">Unlock study secrets, exam updates, and tips to accelerate conceptual understanding.</p>
   </div>
 </section>
 
 <!-- Blog Section -->
-<section class="section-py">
+<section style="padding: 40px 0 80px 0;">
+  <!-- Filter Toolbar -->
+  <div class="container mb-5" data-aos="fade-up">
+    <div class="row g-3 align-items-center justify-content-between">
+      <div class="col-md-5 col-lg-4">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--border); padding-left: 16px;"><i class="fas fa-search text-muted"></i></span>
+          <input type="text" class="form-control border-start-0 spx-input mt-0" id="searchBlog" placeholder="Search insights..." style="border-radius: 0 12px 12px 0 !important; padding: 12px 16px 12px 0 !important;" oninput="filterBlog()">
+        </div>
+      </div>
+      <div class="col-md-7 d-flex justify-content-md-end gap-2 flex-wrap" id="blogCategories">
+        <button class="btn btn-sm btn-spx-primary active-cat px-3 py-2" style="border-radius: 10px;" onclick="filterCategory('ALL', this)">All Insights</button>
+        <button class="btn btn-sm btn-outline-light px-3 py-2" style="border-radius: 10px;" onclick="filterCategory('STUDY TIPS', this)">Study Tips</button>
+        <button class="btn btn-sm btn-outline-light px-3 py-2" style="border-radius: 10px;" onclick="filterCategory('SCIENCE EXPLAINED', this)">Science</button>
+        <button class="btn btn-sm btn-outline-light px-3 py-2" style="border-radius: 10px;" onclick="filterCategory('PARENTING', this)">Parenting</button>
+      </div>
+    </div>
+  </div>
+
   <div class="container">
-    <div class="row g-4">
-      <div class="col-md-6 col-lg-4" data-aos="fade-up">
-        <div class="spx-card h-100 overflow-hidden p-0 d-flex flex-column">
-          <div style="height: 180px; background: linear-gradient(135deg, #3CBDB0, #0F766E); display: flex; align-items: center; justify-content: center; font-size: 3.5rem;">📚</div>
-          <div class="p-4 d-flex flex-grow-1 flex-column">
-            <span class="text-primary small fw-bold mb-1">STUDY TIPS</span>
-            <h5 class="text-white mb-2">How to Plan Your CBSE Class 10 Revision Schedule</h5>
-            <p class="text-muted small">Managing multiple subjects can feel overwhelming. Learn how to structure your daily physics and math routines for maximum retention.</p>
-            <div class="mt-auto d-flex align-items-center justify-content-between text-muted pt-3 border-top border-secondary">
-              <small>June 4, 2026</small>
-              <small>5 min read</small>
+    <div class="row g-4" id="blogGrid">
+      <!-- Post 1 -->
+      <div class="col-md-6 col-lg-4 blog-post-item" data-category="STUDY TIPS" data-aos="fade-up">
+        <div class="blog-card h-100 d-flex flex-column">
+          <div class="blog-card-img-wrapper">
+            <img src="/uploads/blog/blog_revision.png" class="blog-card-img" alt="CBSE Revision Schedule">
+          </div>
+          <div class="p-4 d-flex flex-grow-1 flex-column" style="background: var(--bg-card);">
+            <span class="text-primary small fw-bold mb-2">STUDY TIPS</span>
+            <h5 class="text-white mb-2 blog-title" style="font-size: 1.15rem; line-height: 1.4;">How to Plan Your CBSE Class 10 Revision Schedule</h5>
+            <p class="text-muted small blog-desc" style="line-height: 1.6;">Managing multiple subjects can feel overwhelming. Learn how to structure your daily physics and math routines for maximum retention.</p>
+            <div class="mt-auto d-flex align-items-center justify-content-between text-muted pt-3 border-top" style="border-color: var(--border) !important;">
+              <small><i class="far fa-calendar-alt me-1"></i>June 4, 2026</small>
+              <small><i class="far fa-clock me-1"></i>5 min read</small>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
-        <div class="spx-card h-100 overflow-hidden p-0 d-flex flex-column">
-          <div style="height: 180px; background: linear-gradient(135deg, #0F766E, #7E8085); display: flex; align-items: center; justify-content: center; font-size: 3.5rem;">🧪</div>
-          <div class="p-4 d-flex flex-grow-1 flex-column">
-            <span class="text-primary small fw-bold mb-1">SCIENCE EXPLAINED</span>
-            <h5 class="text-white mb-2">Visualizing Organic Chemistry: Tips and Tricks</h5>
-            <p class="text-muted small">Forget memorizing equations blindly. Our elite chemistry mentors share simple visual techniques to master chemical reactions.</p>
-            <div class="mt-auto d-flex align-items-center justify-content-between text-muted pt-3 border-top border-secondary">
-              <small>May 28, 2026</small>
-              <small>4 min read</small>
+      
+      <!-- Post 2 -->
+      <div class="col-md-6 col-lg-4 blog-post-item" data-category="SCIENCE EXPLAINED" data-aos="fade-up" data-aos-delay="100">
+        <div class="blog-card h-100 d-flex flex-column">
+          <div class="blog-card-img-wrapper">
+            <img src="/uploads/blog/blog_chemistry.png" class="blog-card-img" alt="Organic Chemistry Tips">
+          </div>
+          <div class="p-4 d-flex flex-grow-1 flex-column" style="background: var(--bg-card);">
+            <span class="text-primary small fw-bold mb-2">SCIENCE EXPLAINED</span>
+            <h5 class="text-white mb-2 blog-title" style="font-size: 1.15rem; line-height: 1.4;">Visualizing Organic Chemistry: Tips and Tricks</h5>
+            <p class="text-muted small blog-desc" style="line-height: 1.6;">Forget memorizing equations blindly. Our elite chemistry mentors share simple visual techniques to master chemical reactions.</p>
+            <div class="mt-auto d-flex align-items-center justify-content-between text-muted pt-3 border-top" style="border-color: var(--border) !important;">
+              <small><i class="far fa-calendar-alt me-1"></i>May 28, 2026</small>
+              <small><i class="far fa-clock me-1"></i>4 min read</small>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="200">
-        <div class="spx-card h-100 overflow-hidden p-0 d-flex flex-column">
-          <div style="height: 180px; background: linear-gradient(135deg, #3CBDB0, #7E8085); display: flex; align-items: center; justify-content: center; font-size: 3.5rem;">💻</div>
-          <div class="p-4 d-flex flex-grow-1 flex-column">
-            <span class="text-primary small fw-bold mb-1">PARENTING</span>
-            <h5 class="text-white mb-2">The Role of Parents in Remote EdTech Success</h5>
-            <p class="text-muted small">Supporting your child in online classrooms doesn't require teaching. Understand how to monitor telemetry and encourage active participation.</p>
-            <div class="mt-auto d-flex align-items-center justify-content-between text-muted pt-3 border-top border-secondary">
-              <small>May 15, 2026</small>
-              <small>6 min read</small>
+      
+      <!-- Post 3 -->
+      <div class="col-md-6 col-lg-4 blog-post-item" data-category="PARENTING" data-aos="fade-up" data-aos-delay="200">
+        <div class="blog-card h-100 d-flex flex-column">
+          <div class="blog-card-img-wrapper">
+            <img src="/uploads/blog/blog_parenting.png" class="blog-card-img" alt="Remote EdTech Success">
+          </div>
+          <div class="p-4 d-flex flex-grow-1 flex-column" style="background: var(--bg-card);">
+            <span class="text-primary small fw-bold mb-2">PARENTING</span>
+            <h5 class="text-white mb-2 blog-title" style="font-size: 1.15rem; line-height: 1.4;">The Role of Parents in Remote EdTech Success</h5>
+            <p class="text-muted small blog-desc" style="line-height: 1.6;">Supporting your child in online classrooms doesn't require teaching. Understand how to monitor telemetry and encourage active participation.</p>
+            <div class="mt-auto d-flex align-items-center justify-content-between text-muted pt-3 border-top" style="border-color: var(--border) !important;">
+              <small><i class="far fa-calendar-alt me-1"></i>May 15, 2026</small>
+              <small><i class="far fa-clock me-1"></i>6 min read</small>
             </div>
           </div>
         </div>
@@ -121,7 +151,6 @@
         <ul class="footer-links">
           <li><a href="/courses.html">Courses</a></li>
           <li><a href="/teachers.html">Teachers</a></li>
-          <li><a href="/pricing.html">Pricing</a></li>
           <li><a href="/blog.html">Blog</a></li>
         </ul>
       </div>
@@ -152,6 +181,43 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script src="/app.js"></script>
-<script>AOS.init({ once: true });</script>
+<script>
+  AOS.init({ once: true });
+
+  let currentCategory = 'ALL';
+
+  function filterCategory(cat, btn) {
+    currentCategory = cat;
+    
+    // Update active button state
+    document.querySelectorAll('#blogCategories button').forEach(b => {
+      b.classList.remove('btn-spx-primary', 'active-cat');
+      b.classList.add('btn-outline-light');
+    });
+    btn.classList.remove('btn-outline-light');
+    btn.classList.add('btn-spx-primary', 'active-cat');
+    
+    filterBlog();
+  }
+
+  function filterBlog() {
+    const q = document.getElementById('searchBlog').value.toLowerCase();
+    
+    document.querySelectorAll('.blog-post-item').forEach(item => {
+      const title = item.querySelector('.blog-title').textContent.toLowerCase();
+      const desc = item.querySelector('.blog-desc').textContent.toLowerCase();
+      const cat = item.dataset.category;
+      
+      const matchesQuery = !q || title.includes(q) || desc.includes(q);
+      const matchesCategory = currentCategory === 'ALL' || cat === currentCategory;
+      
+      if (matchesQuery && matchesCategory) {
+        item.classList.remove('d-none');
+      } else {
+        item.classList.add('d-none');
+      }
+    });
+  }
+</script>
 </body>
 </html>

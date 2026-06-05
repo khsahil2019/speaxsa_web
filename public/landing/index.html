@@ -11,7 +11,8 @@
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -42,7 +43,6 @@
         <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
         <li class="nav-item"><a class="nav-link" href="/courses.html">Courses</a></li>
         <li class="nav-item"><a class="nav-link" href="/teachers.html">Teachers</a></li>
-        <li class="nav-item"><a class="nav-link" href="/pricing.html">Pricing</a></li>
         <li class="nav-item"><a class="nav-link" href="/blog.html">Blog</a></li>
         <li class="nav-item"><a class="nav-link" href="/contact.html">Contact</a></li>
       </ul>
@@ -112,8 +112,15 @@
             <div class="device-screen">
               <div class="class-preview">
                 <div class="teacher-video">
-                  <div class="teacher-avatar"><i class="fas fa-user-tie fa-3x"></i></div>
-                  <div class="teacher-info"><strong>Dr. Priya Sharma</strong><br><small>Physics • Class 10</small></div>
+                  <img src="/uploads/profiles/teacher_priya.png" alt="Dr. Priya Sharma" class="teacher-video-feed">
+                  <div class="video-overlay-badge">
+                    <span class="live-dot"></span>
+                    <span>LIVE</span>
+                  </div>
+                  <div class="teacher-info">
+                    <strong>Dr. Priya Sharma</strong>
+                    <small>Physics • Class 10</small>
+                  </div>
                 </div>
                 <div class="class-controls">
                   <div class="ctrl-btn active"><i class="fas fa-microphone"></i></div>
@@ -208,7 +215,7 @@
       <h2 class="section-title">Learn from <span class="gradient-text">Top Teachers</span></h2>
       <p class="section-desc">All teachers are SOP-verified and background-checked for quality assurance.</p>
     </div>
-    <div class="row g-4" id="teachersGrid">
+    <div class="row g-4 justify-content-center" id="teachersGrid">
       <div class="col-12 text-center py-5">
         <div class="spinner-border text-primary" role="status"></div>
       </div>
@@ -300,7 +307,7 @@
           <div class="stars mb-3">★★★★★</div>
           <p>"SPEAXSA's live classes with Dr. Priya completely transformed my understanding of Physics. I scored 96/100 in my boards!"</p>
           <div class="d-flex align-items-center gap-3 mt-4">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=rahul" class="testimonial-avatar" alt="Rahul">
+            <img src="/uploads/profiles/student_rahul.png" class="testimonial-avatar" alt="Rahul">
             <div>
               <strong>Rahul Verma</strong><br>
               <small class="text-muted">Class 10 Student, CBSE</small>
@@ -313,7 +320,7 @@
           <div class="stars mb-3">★★★★★</div>
           <p>"The monthly reports are amazing! As a parent, I always know exactly how Priya is performing in every subject. No more surprises!"</p>
           <div class="d-flex align-items-center gap-3 mt-4">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=suresh" class="testimonial-avatar" alt="Suresh">
+            <img src="/uploads/profiles/parent_suresh.png" class="testimonial-avatar" alt="Suresh">
             <div>
               <strong>Suresh Kumar</strong><br>
               <small class="text-muted">Parent, Bangalore</small>
@@ -326,7 +333,7 @@
           <div class="stars mb-3">★★★★★</div>
           <p>"Teaching on SPEAXSA is so professional. The SOP system ensures quality, and the earnings are transparent and fair."</p>
           <div class="d-flex align-items-center gap-3 mt-4">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=priya" class="testimonial-avatar" alt="Priya">
+            <img src="/uploads/profiles/teacher_priya.png" class="testimonial-avatar" alt="Priya">
             <div>
               <strong>Dr. Priya Sharma</strong><br>
               <small class="text-muted">Gold Teacher, Physics</small>
@@ -345,10 +352,10 @@
       <h2 class="display-5 fw-bold text-white mb-3">Ready to Start Your Learning Journey?</h2>
       <p class="lead text-white-50 mb-5">Join 10,000+ students who are already excelling with SPEAXSA's live classes.</p>
       <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a href="/student" class="btn btn-light btn-lg px-5 py-3 fw-semibold" style="color:#3CBDB0">
+        <a href="/student" class="btn btn-cta-primary btn-lg px-5 py-3 fw-semibold">
           <i class="fas fa-graduation-cap me-2"></i>Join as Student
         </a>
-        <a href="/teacher" class="btn btn-outline-light btn-lg px-5 py-3 fw-semibold">
+        <a href="/teacher" class="btn btn-cta-secondary btn-lg px-5 py-3 fw-semibold">
           <i class="fas fa-chalkboard-teacher me-2"></i>Teach with Us
         </a>
       </div>
@@ -366,15 +373,15 @@
         <div class="contact-info-items">
           <div class="contact-info-item">
             <i class="fas fa-envelope"></i>
-            <div><strong>Email</strong><br><a href="mailto:support@speaxsa.com">support@speaxsa.com</a></div>
+            <div><strong>Email</strong><br><a href="mailto:support@speaxsa.com" id="infoEmail">support@speaxsa.com</a></div>
           </div>
           <div class="contact-info-item">
             <i class="fas fa-phone"></i>
-            <div><strong>Phone</strong><br><a href="tel:+919999999999">+91 9999 999 999</a></div>
+            <div><strong>Phone</strong><br><a href="tel:+919999999999" id="infoPhone">+91 9999 999 999</a></div>
           </div>
           <div class="contact-info-item">
             <i class="fas fa-clock"></i>
-            <div><strong>Support Hours</strong><br>Mon–Sat: 8 AM – 8 PM IST</div>
+            <div><strong>Support Hours</strong><br><span id="infoHours">Mon–Sat: 8 AM – 8 PM IST</span></div>
           </div>
         </div>
         <div class="social-links mt-4">
@@ -444,7 +451,6 @@
         <ul class="footer-links">
           <li><a href="/courses.html">Courses</a></li>
           <li><a href="/teachers.html">Teachers</a></li>
-          <li><a href="/pricing.html">Pricing</a></li>
           <li><a href="/blog.html">Blog</a></li>
         </ul>
       </div>

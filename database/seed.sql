@@ -51,7 +51,7 @@ VALUES (
   'admin',
   '$2a$12$AB3q4alQr7oh4YxUO8TOBOWME1JxfQf0Sl80KkSm2RSw0dysOEfVS',
   '123456',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+  '/uploads/profiles/admin_super.png',
   'approved',
   false
 ) ON CONFLICT (id) DO NOTHING;
@@ -66,7 +66,7 @@ VALUES (
   'teacher',
   '$2a$12$N28NyI1eVxhcu5A9q10bteZexI25I4cPKCDkVgoWBasxRPrhiP3Ji',
   'Admin@123',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=teacher1',
+  '/uploads/profiles/teacher_priya.png',
   'approved',
   'M.Sc. Physics, B.Ed.',
   8,
@@ -103,7 +103,7 @@ VALUES (
   'student',
   '$2a$12$N28NyI1eVxhcu5A9q10bteZexI25I4cPKCDkVgoWBasxRPrhiP3Ji',
   'Admin@123',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=student1',
+  '/uploads/profiles/student_rahul.png',
   'approved',
   'SPX-STU-100001',
   'CBSE',
@@ -121,7 +121,7 @@ VALUES (
   'parent',
   '$2a$12$N28NyI1eVxhcu5A9q10bteZexI25I4cPKCDkVgoWBasxRPrhiP3Ji',
   'Admin@123',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=parent1',
+  '/uploads/profiles/parent_suresh.png',
   'approved'
 ) ON CONFLICT (id) DO NOTHING;
 
@@ -131,13 +131,13 @@ VALUES ('parent_001', 'student_001')
 ON CONFLICT (parent_id, student_id) DO NOTHING;
 
 -- Demo course
-INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, status, created_by)
+INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, status, created_by, thumbnail_url)
 VALUES
-  ('course_001', 'Class 10 Physics Mastery', 'Physics', 'Complete CBSE Class 10 Physics covering all chapters with live demonstrations and problem solving.', 24, 'Class 10', 'CBSE', 1999.00, 'active', 'admin_001'),
-  ('course_002', 'Class 10 Mathematics Excellence', 'Mathematics', 'Comprehensive Class 10 Maths covering algebra, geometry, trigonometry and statistics.', 24, 'Class 10', 'CBSE', 1999.00, 'active', 'admin_001'),
-  ('course_003', 'Class 11 Chemistry Foundation', 'Chemistry', 'Strong foundation in Class 11 Chemistry - Physical, Organic and Inorganic chemistry.', 32, 'Class 11', 'CBSE', 2499.00, 'active', 'admin_001'),
-  ('course_004', 'Class 12 Biology Board Prep', 'Biology', 'Targeted Class 12 Biology preparation with emphasis on board exam patterns.', 24, 'Class 12', 'CBSE', 2999.00, 'active', 'admin_001')
-ON CONFLICT (id) DO NOTHING;
+  ('course_001', 'Class 10 Physics Mastery', 'Physics', 'Complete CBSE Class 10 Physics covering all chapters with live demonstrations and problem solving.', 24, 'Class 10', 'CBSE', 1999.00, 'active', 'admin_001', '/uploads/courses/course_physics.png'),
+  ('course_002', 'Class 10 Mathematics Excellence', 'Mathematics', 'Comprehensive Class 10 Maths covering algebra, geometry, trigonometry and statistics.', 24, 'Class 10', 'CBSE', 1999.00, 'active', 'admin_001', '/uploads/courses/course_math.png'),
+  ('course_003', 'Class 11 Chemistry Foundation', 'Chemistry', 'Strong foundation in Class 11 Chemistry - Physical, Organic and Inorganic chemistry.', 32, 'Class 11', 'CBSE', 2499.00, 'active', 'admin_001', '/uploads/courses/course_chemistry.png'),
+  ('course_004', 'Class 12 Biology Board Prep', 'Biology', 'Targeted Class 12 Biology preparation with emphasis on board exam patterns.', 24, 'Class 12', 'CBSE', 2999.00, 'active', 'admin_001', '/uploads/courses/course_biology.png')
+ON CONFLICT (id) DO UPDATE SET thumbnail_url = EXCLUDED.thumbnail_url;
 
 -- Demo batch
 INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, seats_filled, status, agora_channel)

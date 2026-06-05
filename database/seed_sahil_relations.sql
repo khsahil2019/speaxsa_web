@@ -3,42 +3,74 @@
 -- Clean, repeatable database insertions
 -- ============================================================
 
--- Approve teacher and set levels
-UPDATE users 
-SET approval_status = 'approved', 
-    teacher_level = 'Gold',
-    qualification = 'Ph.D. in Mathematics, IIT Delhi',
-    experience_years = 12,
-    subject_expertise = 'Mathematics, Calculus, Algebra',
-    languages = 'English, Hindi, Punjabi'
-WHERE id = 'tea_1780582504586_8bid82';
+-- Ensure teacher exists and set levels
+INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status, teacher_level, qualification, experience_years, subject_expertise, languages)
+VALUES (
+  'tea_1780582504586_8bid82',
+  'sahilkhan@gmail.com',
+  '9111111111',
+  'Master Sahil Khan',
+  'teacher',
+  '$2a$12$N28NyI1eVxhcu5A9q10bteZexI25I4cPKCDkVgoWBasxRPrhiP3Ji', -- Admin@123
+  'Admin@123',
+  '/uploads/profiles/teacher_sahil.png',
+  'approved',
+  'Gold',
+  'Ph.D. in Mathematics, IIT Delhi',
+  12,
+  'Mathematics, Calculus, Algebra',
+  'English, Hindi, Punjabi'
+)
+ON CONFLICT (id) DO UPDATE 
+SET approval_status = EXCLUDED.approval_status,
+    teacher_level = EXCLUDED.teacher_level,
+    qualification = EXCLUDED.qualification,
+    experience_years = EXCLUDED.experience_years,
+    subject_expertise = EXCLUDED.subject_expertise,
+    languages = EXCLUDED.languages;
 
--- Approve student
-UPDATE users
-SET approval_status = 'approved',
-    board = 'ICSE',
-    grade = 'Class 10',
-    student_code = 'SPX-STU-100002',
-    learning_streak = 25
-WHERE id = 'stu_1780567429769_0ko7ck';
+-- Ensure student exists
+INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status, board, grade, student_code, learning_streak)
+VALUES (
+  'stu_1780567429769_0ko7ck',
+  'sahilkh3014@gmail.com',
+  '9222222222',
+  'Sahil Khan',
+  'student',
+  '$2a$12$N28NyI1eVxhcu5A9q10bteZexI25I4cPKCDkVgoWBasxRPrhiP3Ji', -- Admin@123
+  'Admin@123',
+  '/uploads/profiles/student_sahil.png',
+  'approved',
+  'ICSE',
+  'Class 10',
+  'SPX-STU-100002',
+  25
+)
+ON CONFLICT (id) DO UPDATE
+SET approval_status = EXCLUDED.approval_status,
+    board = EXCLUDED.board,
+    grade = EXCLUDED.grade,
+    student_code = EXCLUDED.student_code,
+    learning_streak = EXCLUDED.learning_streak;
 
 -- Clean up existing records to prevent conflicts
-DELETE FROM support_replies WHERE ticket_id IN ('ticket_sahil_01', 'ticket_sahil_02');
-DELETE FROM support_tickets WHERE id IN ('ticket_sahil_01', 'ticket_sahil_02');
-DELETE FROM teacher_payouts WHERE id IN ('payout_sahil_01', 'payout_sahil_02');
-DELETE FROM payments WHERE id IN ('pay_sahil_01', 'pay_sahil_02');
-DELETE FROM monthly_reports WHERE id IN ('report_sahil_001', 'report_sahil_002');
-DELETE FROM student_observations WHERE id IN ('obs_sahil_01', 'obs_sahil_02');
-DELETE FROM assignment_submissions WHERE id IN ('sub_sahil_01', 'sub_sahil_02');
-DELETE FROM class_poll_responses WHERE poll_id IN ('poll_sahil_01');
-DELETE FROM class_polls WHERE id IN ('poll_sahil_01');
-DELETE FROM recordings WHERE id IN ('rec_sahil_01');
-DELETE FROM attendance WHERE id IN ('att_sahil_01', 'att_sahil_02');
-DELETE FROM class_participants WHERE user_id IN ('stu_1780567429769_0ko7ck', 'tea_1780582504586_8bid82');
-DELETE FROM live_classes WHERE id IN ('live_sahil_01', 'live_sahil_02');
-DELETE FROM batch_students WHERE student_id = 'stu_1780567429769_0ko7ck';
-DELETE FROM batches WHERE id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation');
-DELETE FROM teacher_sop WHERE teacher_id = 'tea_1780582504586_8bid82';
+DELETE FROM support_replies WHERE ticket_id IN (SELECT id FROM support_tickets WHERE user_id IN ('stu_1780567429769_0ko7ck', 'tea_1780582504586_8bid82') OR id IN ('ticket_sahil_01', 'ticket_sahil_02'));
+DELETE FROM support_tickets WHERE user_id IN ('stu_1780567429769_0ko7ck', 'tea_1780582504586_8bid82') OR id IN ('ticket_sahil_01', 'ticket_sahil_02');
+DELETE FROM teacher_payouts WHERE teacher_id = 'tea_1780582504586_8bid82' OR id IN ('payout_sahil_01', 'payout_sahil_02');
+DELETE FROM payments WHERE student_id = 'stu_1780567429769_0ko7ck' OR teacher_id = 'tea_1780582504586_8bid82' OR batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR id IN ('pay_sahil_01', 'pay_sahil_02');
+DELETE FROM monthly_reports WHERE student_id = 'stu_1780567429769_0ko7ck' OR teacher_id = 'tea_1780582504586_8bid82' OR batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR id IN ('report_sahil_001', 'report_sahil_002');
+DELETE FROM student_observations WHERE student_id = 'stu_1780567429769_0ko7ck' OR teacher_id = 'tea_1780582504586_8bid82' OR batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR id IN ('obs_sahil_01', 'obs_sahil_02');
+DELETE FROM assignment_submissions WHERE student_id = 'stu_1780567429769_0ko7ck' OR assignment_id IN (SELECT id FROM assignments WHERE batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation')) OR id IN ('sub_sahil_01', 'sub_sahil_02');
+DELETE FROM assignments WHERE batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR id IN ('asgn_sahil_01');
+DELETE FROM class_poll_responses WHERE student_id = 'stu_1780567429769_0ko7ck' OR poll_id IN (SELECT id FROM class_polls WHERE teacher_id = 'tea_1780582504586_8bid82' OR class_id IN (SELECT id FROM live_classes WHERE batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation')));
+DELETE FROM class_polls WHERE teacher_id = 'tea_1780582504586_8bid82' OR class_id IN (SELECT id FROM live_classes WHERE batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation')) OR id IN ('poll_sahil_01');
+DELETE FROM recordings WHERE batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR id IN ('rec_sahil_01');
+DELETE FROM attendance WHERE student_id = 'stu_1780567429769_0ko7ck' OR teacher_id = 'tea_1780582504586_8bid82' OR batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR id IN ('att_sahil_01', 'att_sahil_02');
+DELETE FROM class_participants WHERE user_id IN ('stu_1780567429769_0ko7ck', 'tea_1780582504586_8bid82') OR batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation');
+DELETE FROM live_classes WHERE batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR teacher_id = 'tea_1780582504586_8bid82' OR id IN ('live_sahil_01', 'live_sahil_02');
+DELETE FROM batch_students WHERE student_id = 'stu_1780567429769_0ko7ck' OR batch_id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation');
+DELETE FROM batches WHERE id IN ('batch_sahil_01', 'batch_001_evening', 'batch_sahil_01_foundation') OR teacher_id = 'tea_1780582504586_8bid82';
+DELETE FROM teacher_sop WHERE teacher_id = 'tea_1780582504586_8bid82' OR id = 'sop_sahil';
 DELETE FROM teacher_wallet WHERE teacher_id = 'tea_1780582504586_8bid82';
 DELETE FROM parent_student_links WHERE student_id = 'stu_1780567429769_0ko7ck';
 
@@ -90,8 +122,8 @@ INSERT INTO attendance (id, class_id, batch_id, student_id, teacher_id, join_tim
   ('att_sahil_02', 'live_001', 'batch_001', 'stu_1780567429769_0ko7ck', 'teacher_001', NOW() - INTERVAL '1 day 50 minutes', NOW() - INTERVAL '1 day', 50, 60, 'present', CURRENT_DATE - INTERVAL '1 day');
 
 -- 9. Recordings
-INSERT INTO recordings (id, class_id, batch_id, title, recording_url, duration_mins, file_size_mb, is_available) VALUES
-  ('rec_sahil_01', 'live_sahil_01', 'batch_sahil_01', 'Mathematics Intro to Functions Class Recording', 'https://res.cloudinary.com/demo/video/upload/dog.mp4', 60, 150.00, true);
+INSERT INTO recordings (id, class_id, batch_id, title, recording_url, duration_mins, file_size_mb, is_available, thumbnail_url) VALUES
+  ('rec_sahil_01', 'live_sahil_01', 'batch_sahil_01', 'Mathematics Intro to Functions Class Recording', 'https://res.cloudinary.com/demo/video/upload/dog.mp4', 60, 150.00, true, '/uploads/recordings/recording_math.png');
 
 -- 10. Class polls
 INSERT INTO class_polls (id, class_id, teacher_id, question, options, correct_option, is_active) VALUES

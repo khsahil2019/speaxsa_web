@@ -41,6 +41,9 @@ router.get('/settings/public', async (req, res) => {
       announcement: settings.announcement || 'Welcome to SPEAXSA!',
       ad_banners: settings.ad_banners || [],
       platform_name: settings.platform_name || 'SPEAXSA',
+      support_email: settings.support_email || 'support@speaxsa.com',
+      support_phone: settings.support_phone || '+91 9999 999 999',
+      support_hours: settings.support_hours || 'Mon–Sat: 8 AM – 8 PM IST',
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

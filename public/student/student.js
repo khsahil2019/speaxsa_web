@@ -308,7 +308,9 @@ function renderCoursesGrid(q = '') {
   document.getElementById('coursesGrid').innerHTML = courses.map(c => `
     <div class="col-sm-6 col-lg-4">
       <div class="course-card" onclick="showCourseDetails('${c.id}')">
-        <div class="course-thumb">${icons[c.subject]||'📖'}</div>
+        <div class="course-thumb" style="${c.thumbnail_url ? `background: url(${c.thumbnail_url}) center/cover no-repeat;` : ''}">
+          ${c.thumbnail_url ? '' : icons[c.subject]||'📖'}
+        </div>
         <div class="p-3">
           <div class="d-flex gap-2 mb-2">
             <span style="font-size:.7rem;background:rgba(60,189,176,.15);color:#3CBDB0;border-radius:6px;padding:2px 8px">${c.subject||'General'}</span>
@@ -674,7 +676,9 @@ async function renderRecordings() {
           <div class="col-lg-6">
             <div class="spx-card">
               <div class="d-flex align-items-center gap-3">
-                <div style="width:50px;height:50px;border-radius:12px;background:rgba(60,189,176,.2);display:flex;align-items:center;justify-content:center;color:#3CBDB0;font-size:20px"><i class="fas fa-play-circle"></i></div>
+                <div style="width:70px;height:45px;border-radius:8px;background:${r.thumbnail_url ? `url(${r.thumbnail_url}) center/cover no-repeat` : 'rgba(60,189,176,.2)'};display:flex;align-items:center;justify-content:center;color:#3CBDB0;font-size:18px;flex-shrink:0;border:1px solid var(--border)">
+                  ${r.thumbnail_url ? '' : '<i class="fas fa-play-circle"></i>'}
+                </div>
                 <div class="flex-grow-1">
                   <div class="fw-bold text-white">${r.title||r.class_title||'Recording'}</div>
                   <div class="text-muted small">${r.batch_name||'—'} • ${fmtDate(r.recorded_at||r.class_date)} • ${r.duration_mins||0} min</div>

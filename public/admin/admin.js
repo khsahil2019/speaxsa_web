@@ -1438,6 +1438,7 @@ async function renderSettings() {
                 {key:'logo_text', label:'Logo Text', type:'text'},
                 {key:'support_email', label:'Support Email', type:'email'},
                 {key:'support_phone', label:'Support Phone', type:'text'},
+                {key:'support_hours', label:'Support Hours', type:'text'},
                 {key:'announcement', label:'Announcement Banner', type:'text'},
                 {key:'otp_expiry_minutes', label:'OTP Expiry (minutes)', type:'number'},
                 {key:'max_batch_capacity', label:'Max Batch Capacity', type:'number'},
@@ -1480,7 +1481,7 @@ async function renderSettings() {
 
 async function saveSettings(e) {
   e.preventDefault();
-  const keys = ['platform_name','logo_text','support_email','support_phone','announcement','otp_expiry_minutes','max_batch_capacity'];
+  const keys = ['platform_name','logo_text','support_email','support_phone','support_hours','announcement','otp_expiry_minutes','max_batch_capacity'];
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
   try { const d = await apiPost('/admin/settings',body); showToast(d.message||'Settings saved'); }
