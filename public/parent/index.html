@@ -555,9 +555,16 @@
       margin: auto 0;
       z-index: 2;
     }
+    .text-gold {
+      background: linear-gradient(135deg, #FDE047, #F59E0B);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
     .parent-visual-panel .visual-badge {
-      background: rgba(255, 255, 255, 0.15);
-      color: white;
+      background: rgba(245, 158, 11, 0.1);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.25);
       backdrop-filter: blur(4px);
       padding: 6px 14px;
       border-radius: 30px;
@@ -595,15 +602,15 @@
     .parent-visual-panel .feature-icon {
       width: 44px;
       height: 44px;
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(245, 158, 11, 0.12);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.1rem;
       flex-shrink: 0;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: white;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      color: #F59E0B;
     }
     .parent-visual-panel .feature-title {
       font-family: 'Outfit', sans-serif;
@@ -838,7 +845,7 @@
       </div>
       <div class="visual-content">
         <span class="badge visual-badge">Parent Portal</span>
-        <h1 class="visual-title">Stay Connected to Your Child's Journey</h1>
+        <h1 class="visual-title">Stay Connected to <span class="text-gold">Your Child's Journey</span></h1>
         <p class="visual-subtitle">Track real-time progress, attendance logs, teacher communication, and direct feedback to support your child's learning.</p>
         
         <div class="visual-features">
