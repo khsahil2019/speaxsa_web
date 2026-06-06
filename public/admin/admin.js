@@ -203,6 +203,7 @@ function navigateTo(page) {
 function togglePlatformGuide() {
   const content = document.getElementById('platformGuideContent');
   const icon = document.getElementById('guideToggleIcon');
+  if (!content || !icon) return;
   if (content.classList.contains('d-none')) {
     content.classList.remove('d-none');
     icon.innerHTML = '<i class="fas fa-chevron-up"></i>';
@@ -839,8 +840,14 @@ async function impersonate(userId, role) {
     const data = await apiPost(`/admin/impersonate/${userId}`);
     if (data.token) {
       const portal = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : '/parent';
-      sessionStorage.setItem(`${role}_token`, data.token);
-      sessionStorage.setItem(`${role}_user`, JSON.stringify(data.user));
+      const tokenKey = role === 'parent' ? 'spx_parent_token' : `${role}_token`;
+      const userKey = role === 'parent' ? 'spx_parent_profile' : `${role}_user`;
+      
+      localStorage.setItem(tokenKey, data.token);
+      localStorage.setItem(userKey, JSON.stringify(data.user));
+      sessionStorage.setItem(tokenKey, data.token);
+      sessionStorage.setItem(userKey, JSON.stringify(data.user));
+      
       window.open(`${portal}?impersonate=1`, '_blank');
       showToast(`Opened as ${data.user?.name}`, 'info');
     }

@@ -91,6 +91,20 @@ router.get('/my-batches', async (req, res) => {
   }
 });
 
+// Fetch study materials/notes for batch
+router.get('/batches/:batchId/notes', async (req, res) => {
+  const { batchId } = req.params;
+  try {
+    const result = await db.query(
+      "SELECT * FROM study_materials WHERE batch_id = $1 ORDER BY uploaded_at DESC",
+      [batchId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Enroll in Batch (after payment) ──────────────────────────
 router.post('/batches/:batchId/enroll', async (req, res) => {
   const { batchId } = req.params;

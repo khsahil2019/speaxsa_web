@@ -206,6 +206,7 @@ function navigateTo(page) {
 function togglePlatformGuide() {
   const content = document.getElementById('platformGuideContent');
   const icon = document.getElementById('guideToggleIcon');
+  if (!content || !icon) return;
   if (content.classList.contains('d-none')) {
     content.classList.remove('d-none');
     icon.innerHTML = '<i class="fas fa-chevron-up"></i>';
@@ -556,19 +557,6 @@ async function renderBatches() {
           </div>
         </div>
       </div>
-      
-      <!-- Batch Students Modal -->
-      <div class="modal fade" id="studentsModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content bg-dark border-secondary text-white">
-            <div class="modal-header border-secondary">
-              <h5 class="modal-title fw-bold" id="studentsModalTitle">Students</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="studentsModalBody"></div>
-          </div>
-        </div>
-      </div>
     `;
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
@@ -585,21 +573,21 @@ async function viewBatchStudents(batchId, batchName) {
 
     modalBody.innerHTML = `
       <div style="overflow-x:auto">
-        <table class="table text-white mb-0">
+        <table class="table mb-0">
           <thead>
             <tr>
-              <th>Photo</th>
-              <th>Student Name</th>
-              <th>Student ID</th>
-              <th>Grade/Board</th>
-              <th>Enrolled Date</th>
+              <th style="color: var(--text-primary);">Photo</th>
+              <th style="color: var(--text-primary);">Student Name</th>
+              <th style="color: var(--text-primary);">Student ID</th>
+              <th style="color: var(--text-primary);">Grade/Board</th>
+              <th style="color: var(--text-primary);">Enrolled Date</th>
             </tr>
           </thead>
           <tbody>
             ${students.map(s => `
-              <tr>
+              <tr style="color: var(--text-primary);">
                 <td><img src="${s.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}`}" style="width:36px;height:36px;border-radius:50%"></td>
-                <td>${s.name}</td>
+                <td class="fw-semibold">${s.name}</td>
                 <td><code>${s.student_code || s.id}</code></td>
                 <td>${s.grade || ''} • ${s.board || ''}</td>
                 <td>${fmtDate(s.enrolled_at)}</td>
@@ -610,7 +598,7 @@ async function viewBatchStudents(batchId, batchName) {
       </div>
     `;
 
-    const myModal = new bootstrap.Modal(document.getElementById('studentsModal'));
+    const myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('studentsModal'));
     myModal.show();
   } catch (e) {
     showToast(e.message, 'error');
@@ -833,19 +821,6 @@ async function renderAssignments() {
           </div>
         </div>
       </div>
-
-      <!-- Submissions Modal -->
-      <div class="modal fade" id="subsModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content bg-dark border-secondary text-white">
-            <div class="modal-header border-secondary">
-              <h5 class="modal-title fw-bold">Submissions</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="subsModalBody"></div>
-          </div>
-        </div>
-      </div>
     `;
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
@@ -886,24 +861,24 @@ async function viewSubmissions(assignId) {
 
     modalBody.innerHTML = `
       <div style="overflow-x:auto">
-        <table class="table text-white mb-0">
+        <table class="table mb-0">
           <thead>
             <tr>
-              <th>Student</th>
-              <th>Submitted At</th>
-              <th>Attachment</th>
-              <th>Marks</th>
-              <th>Feedback</th>
-              <th>Action</th>
+              <th style="color: var(--text-primary);">Student</th>
+              <th style="color: var(--text-primary);">Submitted At</th>
+              <th style="color: var(--text-primary);">Attachment</th>
+              <th style="color: var(--text-primary);">Marks</th>
+              <th style="color: var(--text-primary);">Feedback</th>
+              <th style="color: var(--text-primary);">Action</th>
             </tr>
           </thead>
           <tbody>
             ${subs.map(s => `
-              <tr>
-                <td>${s.student_name}</td>
+              <tr style="color: var(--text-primary);">
+                <td class="fw-semibold">${s.student_name}</td>
                 <td>${fmtDate(s.submitted_at)}</td>
                 <td>${s.file_url ? `<a href="${s.file_url}" target="_blank" class="btn btn-sm btn-outline-info"><i class="fas fa-download"></i> View</a>` : '—'}</td>
-                <td>${s.marks_obtained !== null ? `${s.marks_obtained}` : `<span class="text-warning">Ungraded</span>`}</td>
+                <td>${s.marks_obtained !== null ? `${s.marks_obtained}` : `<span class="text-warning fw-bold">Ungraded</span>`}</td>
                 <td>${s.feedback || '—'}</td>
                 <td>
                   <button class="btn btn-sm btn-spx" onclick="openGradePopup('${s.id}', '${s.student_name}')">Grade</button>
@@ -915,7 +890,7 @@ async function viewSubmissions(assignId) {
       </div>
     `;
 
-    const myModal = new bootstrap.Modal(document.getElementById('subsModal'));
+    const myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('subsModal'));
     myModal.show();
   } catch (e) {
     showToast(e.message, 'error');

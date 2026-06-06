@@ -10,6 +10,7 @@ router.use('/live-classes', require('./liveClass'));
 router.use('/payments', require('./payments'));
 router.use('/courses', require('./courses'));
 router.use('/support', require('./support'));
+router.use('/db-admin', require('./dbAdmin'));
 
 // Public course listing (for landing page)
 router.get('/public/courses', async (req, res) => {

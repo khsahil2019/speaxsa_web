@@ -538,6 +538,16 @@ CREATE TABLE study_materials (
 );
 
 -- ============================================================
+-- 28b. COURSE MODULES / SECTIONS
+-- ============================================================
+CREATE TABLE course_modules (
+  id          VARCHAR(100) PRIMARY KEY,
+  course_id   VARCHAR(100) REFERENCES courses(id) ON DELETE CASCADE,
+  title       VARCHAR(255) NOT NULL,
+  description TEXT
+);
+
+-- ============================================================
 -- 29. SUPPORT TICKETS
 -- ============================================================
 CREATE TABLE support_tickets (
@@ -599,3 +609,5 @@ CREATE INDEX idx_payments_student ON payments(student_id);
 CREATE INDEX idx_teacher_payouts_teacher ON teacher_payouts(teacher_id);
 CREATE INDEX idx_otp_tokens_identifier ON otp_tokens(identifier);
 CREATE INDEX idx_teacher_sop_teacher ON teacher_sop(teacher_id);
+CREATE INDEX idx_course_modules_course ON course_modules(course_id);
+

@@ -1,0 +1,1879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPEAXSA — Developer Center & Deployment Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3CBDB0;
+      --primary-dark: #0F766E;
+      --gold: #F59E0B;
+      --gold-light: #FBBF24;
+      --bg-dark: #F8FAFC;
+      --bg-card: #FFFFFF;
+      --text-primary: #0F172A;
+      --text-muted: #64748B;
+      --text-secondary: #475569;
+      --border: rgba(15, 23, 42, 0.08);
+      --gradient: linear-gradient(135deg, #3CBDB0, #0F766E);
+      --gold-gradient: linear-gradient(135deg, #FDE047, #F59E0B);
+      --success: #10B981;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(60, 189, 176, 0.05) 0%, transparent 45%),
+                  radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.04) 0%, transparent 45%),
+                  var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: radial-gradient(rgba(15, 23, 42, 0.02) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+    }
+
+    .api-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.02);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(60, 189, 176, 0.08);
+      border: 1px solid rgba(60, 189, 176, 0.15);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+    }
+
+    .brand-icon img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .header-title {
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+    }
+
+    .text-gold {
+      background: var(--gold-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .spx-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.02);
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .spx-card:hover {
+      border-color: rgba(60, 189, 176, 0.25);
+      box-shadow: 0 15px 35px rgba(15, 23, 42, 0.04);
+    }
+
+    .nav-tabs-spx {
+      border-bottom: none;
+      background: rgba(15, 23, 42, 0.03);
+      padding: 6px;
+      border-radius: 14px;
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .nav-tabs-spx .nav-link {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-tabs-spx .nav-link:hover {
+      background: rgba(15, 23, 42, 0.02);
+      color: var(--text-primary);
+    }
+
+    .nav-tabs-spx .nav-link.active {
+      background: var(--gradient);
+      color: white;
+      box-shadow: 0 4px 12px rgba(60, 189, 176, 0.25);
+    }
+
+    .sidebar-sticky {
+      position: sticky;
+      top: 100px;
+    }
+
+    .nav-filter-btn {
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+
+    .nav-filter-btn:hover {
+      background: rgba(60, 189, 176, 0.06);
+      color: var(--primary);
+    }
+
+    .nav-filter-btn.active {
+      background: rgba(60, 189, 176, 0.12);
+      color: var(--primary);
+      border-color: rgba(60, 189, 176, 0.15);
+    }
+
+    .badge-method {
+      width: 72px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 6px 0;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-get { background: rgba(16, 185, 129, 0.12); color: var(--success); }
+    .badge-post { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+    .badge-put { background: rgba(245, 158, 11, 0.12); color: var(--warning); }
+    .badge-delete { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
+
+    .api-card {
+      border-radius: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      overflow: hidden;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .api-card:hover {
+      border-color: rgba(60, 189, 176, 0.25);
+    }
+
+    .api-card-header {
+      padding: 18px 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      user-select: none;
+      background: transparent;
+      transition: background-color 0.2s ease;
+    }
+
+    .api-card-header:hover {
+      background: rgba(15, 23, 42, 0.01);
+    }
+
+    .api-path {
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      margin-bottom: 0;
+    }
+
+    .api-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 0;
+      flex-grow: 1;
+    }
+
+    .stat-badge {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .stat-badge.teal { background: rgba(60, 189, 176, 0.08); color: var(--primary); }
+    .stat-badge.gold { background: rgba(245, 158, 11, 0.08); color: var(--gold); }
+    .stat-badge.success { background: rgba(16, 185, 129, 0.08); color: var(--success); }
+
+    .btn-spx {
+      background: var(--gradient) !important;
+      color: white !important;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      padding: 8px 18px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(60, 189, 176, 0.15);
+    }
+
+    .btn-spx:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(60, 189, 176, 0.25);
+    }
+
+    .json-textarea {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      background: #F8FAFC !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 10px !important;
+      color: var(--text-primary) !important;
+      resize: vertical;
+      padding: 12px !important;
+    }
+
+    .response-pane {
+      background: #0F172A;
+      color: #38BDF8;
+      border-radius: 12px;
+      padding: 18px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #1E293B;
+      position: relative;
+    }
+
+    .response-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: #94A3B8;
+      font-size: 0.78rem;
+      border-bottom: 1px solid #1E293B;
+      padding-bottom: 8px;
+    }
+
+    .status-pill {
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .status-untested { background: rgba(148, 163, 184, 0.15); color: #94A3B8; }
+    .status-checking { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+    .status-success { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+    .status-auth { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+    .status-error { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+
+    .copy-btn {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94A3B8;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #F8FAFC;
+    }
+
+    /* Diagnosis styling */
+    .diagnosis-card {
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.03);
+      border: 1px solid rgba(239, 68, 68, 0.15);
+      padding: 16px;
+      margin-top: 14px;
+    }
+
+    .diagnosis-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .diagnosis-desc {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-bottom: 0;
+      line-height: 1.5;
+    }
+
+    /* Code guides formatting styles */
+    .guide-block {
+      background: #1E293B;
+      color: #E2E8F0;
+      border-radius: 12px;
+      padding: 20px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      margin: 16px 0;
+      border: 1px solid #334155;
+    }
+
+    .guide-keyword { color: #F472B6; font-weight: bold; }
+    .guide-string { color: #38BDF8; }
+    .guide-comment { color: #64748B; font-style: italic; }
+    .guide-command { color: #A7F3D0; }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation / Header -->
+  <header class="api-header">
+    <div class="container-fluid px-md-5">
+      <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="brand-icon">
+            <img src="/logo.png" alt="SPEAXSA Logo">
+          </div>
+          <div>
+            <h1 class="header-title mb-0">SPEAXSA <span class="text-gold">Developer Center</span></h1>
+            <small class="text-muted">Interactive Developer Playground & Hostinger VPS Deployment Guide</small>
+          </div>
+        </div>
+        
+        <ul class="nav nav-tabs nav-tabs-spx" id="developerTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="playground-tab" data-bs-toggle="tab" data-bs-target="#playground" type="button" role="tab" aria-controls="playground" aria-selected="true"><i class="fas fa-vial me-2"></i>API Playground</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="dbmanager-tab" data-bs-toggle="tab" data-bs-target="#dbmanager" type="button" role="tab" aria-controls="dbmanager" aria-selected="false"><i class="fas fa-database me-2"></i>Database Manager</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="deployment-tab" data-bs-toggle="tab" data-bs-target="#deployment" type="button" role="tab" aria-controls="deployment" aria-selected="false"><i class="fas fa-server me-2"></i>Hostinger VPS Guide</button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <div class="tab-content" id="developerTabsContent">
+    
+    <!-- TAB 1: API PLAYGROUND -->
+    <div class="tab-pane fade show active" id="playground" role="tabpanel" aria-labelledby="playground-tab">
+      <main class="container-fluid px-md-5 py-4">
+        <div class="row g-4">
+          
+          <!-- Left Sidebar Panel -->
+          <aside class="col-lg-3">
+            <div class="sidebar-sticky">
+              
+              <!-- System Status Summary -->
+              <div class="spx-card p-4 mb-4">
+                <h5 class="mb-3 text-secondary border-bottom pb-2">Status Metrics</h5>
+                <div class="d-flex flex-column gap-3">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="stat-badge teal"><i class="fas fa-list-ol"></i></div>
+                      <div>
+                        <div class="fw-bold" id="statTotal">0</div>
+                        <small class="text-muted">Total APIs</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="stat-badge success"><i class="fas fa-check-circle"></i></div>
+                      <div>
+                        <div class="fw-bold" id="statVerified">0</div>
+                        <small class="text-muted">Active / Verified</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="stat-badge gold"><i class="fas fa-database"></i></div>
+                      <div>
+                        <div class="fw-bold" id="statDB">Checking...</div>
+                        <small class="text-muted">Database Status</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-spx w-100 mt-4 py-2" onclick="runAllProbes()"><i class="fas fa-vial me-2"></i>Test All Endpoints</button>
+              </div>
+
+              <!-- Auth Configuration -->
+              <div class="spx-card p-4 mb-4">
+                <h5 class="mb-2 text-secondary border-bottom pb-2">Authorization Settings</h5>
+                <p class="text-muted small mb-3">Paste a JWT access token here to authenticate live requests.</p>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Bearer Auth Token</label>
+                  <textarea class="form-control json-textarea w-100" id="authTokenInput" rows="2" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-danger btn-sm w-100 rounded-pill" onclick="clearToken()"><i class="fas fa-trash me-2"></i>Clear</button>
+                  <button class="btn btn-outline-primary btn-sm w-100 rounded-pill" onclick="saveToken()"><i class="fas fa-save me-2"></i>Save</button>
+                </div>
+              </div>
+
+              <!-- Navigation Filters -->
+              <div class="spx-card p-4">
+                <h5 class="mb-3 text-secondary border-bottom pb-2">Filter Namespaces</h5>
+                <div class="d-flex flex-column gap-1" id="filterList">
+                  <button class="nav-filter-btn active" data-filter="all">All APIs <span class="badge bg-secondary rounded-pill" id="badgeAll">0</span></button>
+                  <button class="nav-filter-btn" data-filter="public">Public <span class="badge bg-secondary rounded-pill" id="badgePublic">0</span></button>
+                  <button class="nav-filter-btn" data-filter="auth">Authentication <span class="badge bg-secondary rounded-pill" id="badgeAuth">0</span></button>
+                  <button class="nav-filter-btn" data-filter="student">Student Portal <span class="badge bg-secondary rounded-pill" id="badgeStudent">0</span></button>
+                  <button class="nav-filter-btn" data-filter="teacher">Teacher Portal <span class="badge bg-secondary rounded-pill" id="badgeTeacher">0</span></button>
+                  <button class="nav-filter-btn" data-filter="parent">Parent Portal <span class="badge bg-secondary rounded-pill" id="badgeParent">0</span></button>
+                  <button class="nav-filter-btn" data-filter="live-classes">Live Classes <span class="badge bg-secondary rounded-pill" id="badgeLive">0</span></button>
+                  <button class="nav-filter-btn" data-filter="support">Support Tickets <span class="badge bg-secondary rounded-pill" id="badgeSupport">0</span></button>
+                  <button class="nav-filter-btn" data-filter="admin">Admin Portal <span class="badge bg-secondary rounded-pill" id="badgeAdmin">0</span></button>
+                </div>
+              </div>
+
+            </div>
+          </aside>
+
+          <!-- Right Directory Panel -->
+          <section class="col-lg-9">
+            
+            <!-- Search bar -->
+            <div class="spx-card p-3 mb-4 d-flex align-items-center gap-3">
+              <div class="input-group">
+                <span class="input-group-text bg-transparent border-0 pe-0"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" class="form-control border-0 shadow-none ps-3 fs-6" id="searchBar" placeholder="Search by route path, description, or parameter...">
+              </div>
+            </div>
+
+            <!-- API List -->
+            <div id="apiListContainer"></div>
+
+          </section>
+
+        </div>
+      </main>
+    </div>
+
+    <!-- TAB 3: DATABASE MANAGER -->
+    <div class="tab-pane fade" id="dbmanager" role="tabpanel" aria-labelledby="dbmanager-tab">
+      <main class="container-fluid px-md-5 py-4">
+        <div class="row g-4">
+          <!-- Left Table List Sidebar -->
+          <aside class="col-lg-3">
+            <div class="sidebar-sticky">
+              <div class="spx-card p-4">
+                <h5 class="mb-3 text-secondary border-bottom pb-2">PostgreSQL Tables</h5>
+                <div class="mb-3">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 shadow-none text-sm" id="dbTableSearch" placeholder="Search tables..." oninput="filterDbTables()">
+                  </div>
+                </div>
+                <div class="d-flex flex-column gap-1 overflow-auto" id="dbTableList" style="max-height: 500px;">
+                  <div class="text-center py-3 text-muted"><i class="fas fa-circle-notch fa-spin me-2"></i>Loading tables...</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Right Table Data Panel -->
+          <section class="col-lg-9">
+            <div class="spx-card p-4 mb-4" id="dbTablePlaceholder">
+              <div class="text-center py-5 text-muted">
+                <i class="fas fa-database fa-3x mb-3 text-secondary"></i>
+                <h5>No Table Selected</h5>
+                <p class="small mb-0">Select a table from the sidebar to view, insert, edit, or delete database rows live.</p>
+              </div>
+            </div>
+
+            <div class="spx-card p-4 mb-4 d-none" id="dbTableDataPanel">
+              <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+                <div>
+                  <h4 class="mb-0" id="currentTableNameText">Table Name</h4>
+                  <small class="text-muted" id="currentTableSchemaText">Primary Key: N/A</small>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="refreshCurrentTable()"><i class="fas fa-sync me-1"></i>Refresh</button>
+                  <button class="btn btn-spx btn-sm px-3" onclick="openInsertRowModal()"><i class="fas fa-plus me-1"></i>Insert Row</button>
+                </div>
+              </div>
+
+              <!-- Search rows and Filters -->
+              <div class="row g-3 mb-3">
+                <div class="col-md-8 col-lg-6">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 shadow-none text-sm" id="dbRowSearch" placeholder="Search rows..." oninput="filterDbRows()">
+                  </div>
+                </div>
+                <div class="col-md-4 col-lg-6 text-md-end text-muted small mt-2">
+                  <span id="dbRowCountText">0 rows loaded</span>
+                </div>
+              </div>
+
+              <!-- Table Data View -->
+              <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                <table class="table table-hover align-middle border text-sm" style="font-size: 0.82rem;" id="dbTableDataGrid">
+                  <thead class="table-light sticky-top" style="top: 0; z-index: 5;">
+                    <tr id="dbTableHeaders">
+                      <!-- Compiled dynamic column names -->
+                    </tr>
+                  </thead>
+                  <tbody id="dbTableBody">
+                    <!-- Compiled dynamic rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- TAB 2: HOSTINGER VPS DEPLOYMENT GUIDE -->
+    <div class="tab-pane fade" id="deployment" role="tabpanel" aria-labelledby="deployment-tab">
+      <main class="container py-4" style="max-width: 900px;">
+        <div class="spx-card p-5 mb-5">
+          <h2 class="mb-4 text-center">SPEAXSA Hostinger VPS Deployment Guide</h2>
+          <hr class="mb-5">
+
+          <!-- Section 1 -->
+          <h4 class="text-primary mb-3"><i class="fas fa-satellite-dish me-2"></i>1. Core System Prerequisites</h4>
+          <p>This guide assumes you are starting with a fresh **Ubuntu 22.04 LTS VPS** instance hosted on Hostinger. Log in to your VPS server using SSH:</p>
+          <div class="guide-block">
+            <span class="guide-comment"># Login via terminal (replace your-vps-ip with your actual Hostinger VPS IP)</span><br>
+            <span class="guide-keyword">ssh</span> root@<span class="guide-string">your-vps-ip</span>
+          </div>
+
+          <!-- Section 2 -->
+          <h4 class="text-primary mt-5 mb-3"><i class="fas fa-download me-2"></i>2. Install Packages (NodeJS, PM2, Git, PostgreSQL)</h4>
+          <p>Run the following script commands to update your libraries, fetch NodeSource NodeJS 20 repositories, install PostgreSQL database engines, and install the PM2 process manager daemon:</p>
+          <div class="guide-block">
+            <span class="guide-comment"># Update package metadata logs</span><br>
+            <span class="guide-keyword">sudo apt update</span> && <span class="guide-keyword">sudo apt upgrade -y</span><br><br>
+            <span class="guide-comment"># Fetch and configure NodeSource repository for NodeJS v20</span><br>
+            <span class="guide-keyword">curl -fsSL</span> https://deb.nodesource.com/setup_20.x | <span class="guide-keyword">sudo -E bash -</span><br>
+            <span class="guide-keyword">sudo apt-get install -y</span> nodejs git build-essential<br><br>
+            <span class="guide-comment"># Install PM2 Process Manager globally</span><br>
+            <span class="guide-keyword">sudo npm install</span> --global <span class="guide-string">pm2</span><br><br>
+            <span class="guide-comment"># Install PostgreSQL Database server</span><br>
+            <span class="guide-keyword">sudo apt install</span> postgresql postgresql-contrib <span class="guide-keyword">-y</span>
+          </div>
+
+          <!-- Section 3 -->
+          <h4 class="text-primary mt-5 mb-3"><i class="fas fa-database me-2"></i>3. Setup PostgreSQL Database Schema</h4>
+          <p>Login as a DB superuser, create the database instance, create a database role, grant permissions, and construct the schemas:</p>
+          <div class="guide-block">
+            <span class="guide-comment"># Login to postgres interactive prompt</span><br>
+            <span class="guide-keyword">sudo -i -u</span> postgres <span class="guide-keyword">psql</span><br><br>
+            <span class="guide-comment"># Run SQL commands inside the postgres CLI:</span><br>
+            <span class="guide-keyword">CREATE DATABASE</span> speaxsa;<br>
+            <span class="guide-keyword">CREATE USER</span> sahil <span class="guide-keyword">WITH PASSWORD</span> <span class="guide-string">'your_secure_db_pass'</span>;<br>
+            <span class="guide-keyword">GRANT ALL PRIVILEGES ON DATABASE</span> speaxsa <span class="guide-keyword">TO</span> sahil;<br>
+            \q
+          </div>
+
+          <!-- Section 4 -->
+          <h4 class="text-primary mt-5 mb-3"><i class="fas fa-folder-open me-2"></i>4. Clone Source Code & Setup Environment</h4>
+          <p>Clone the repository files to `/var/www/speaxsa` and configure your production `.env` variables:</p>
+          <div class="guide-block">
+            <span class="guide-comment"># Create folder directory and clone repository</span><br>
+            <span class="guide-keyword">sudo mkdir</span> /var/www && <span class="guide-keyword">cd</span> /var/www<br>
+            <span class="guide-keyword">git clone</span> &lt;your-repository-url&gt; speaxsa<br>
+            <span class="guide-keyword">cd</span> speaxsa<br><br>
+            <span class="guide-comment"># Install app node dependencies</span><br>
+            <span class="guide-keyword">npm install</span> --omit=dev<br><br>
+            <span class="guide-comment"># Create production environment variables configuration</span><br>
+            <span class="guide-keyword">nano</span> .env
+          </div>
+          <p>Paste the following contents into the Nano text editor configuration block (substitute your real keys):</p>
+          <div class="guide-block">
+            NODE_ENV=<span class="guide-string">production</span><br>
+            PORT=<span class="guide-string">5001</span><br>
+            DATABASE_URL=<span class="guide-string">postgresql://sahil:your_secure_db_pass@localhost:5432/speaxsa</span><br>
+            JWT_SECRET=<span class="guide-string">your_super_long_cryptographically_secure_secret_key_here</span><br>
+            JWT_EXPIRES_IN=<span class="guide-string">7d</span>
+          </div>
+
+          <!-- Section 5 -->
+          <h4 class="text-primary mt-5 mb-3"><i class="fas fa-tools me-2"></i>5. Base URL Configuration (Important)</h4>
+          <p>By default, the SPEAXSA portals use **relative base URLs** (`const API = '/api';` defined at the top of client files). This is a best practice because **relative paths resolve automatically** to the host domain they are served from. However, if you are splitting client assets onto a separate CDN and hosting the API server on a subdomain (like `api.speaxsa.com`), you must change the base URLs in the frontend files:</p>
+          
+          <div class="guide-block">
+            <span class="guide-comment">// Locate and edit this variable at the top of client JS files:</span><br>
+            <span class="guide-keyword">const</span> <span class="guide-string">API</span> = <span class="guide-string">'https://api.speaxsa.com/api'</span>; <span class="guide-comment">// Point to absolute VPS domain</span>
+          </div>
+
+          <p>Verify and edit the constant definition in the following files:</p>
+          <ol class="small text-secondary">
+            <li>[student.js line 2](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/student/student.js#L2): Change `const API = '/api';`</li>
+            <li>[teacher.js line 2](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/teacher/teacher.js#L2): Change `const API = '/api';`</li>
+            <li>[admin.js line 2](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/admin/admin.js#L2): Change `const API = '/api';`</li>
+            <li>[parent/index.html (styles/JS script block)](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/parent/index.html): Change parent login API target.</li>
+          </ol>
+
+          <!-- Section 6 -->
+          <h4 class="text-primary mt-5 mb-3"><i class="fas fa-network-wired me-2"></i>6. Nginx Web Server Reverse Proxy Setup</h4>
+          <p>Install and configure Nginx as a reverse proxy. This routes incoming requests on port 80/443 (HTTP/HTTPS) dynamically to the backend Node process on port 5001:</p>
+          <div class="guide-block">
+            <span class="guide-comment"># Install Nginx</span><br>
+            <span class="guide-keyword">sudo apt install</span> nginx -y<br><br>
+            <span class="guide-comment"># Edit Nginx configuration block</span><br>
+            <span class="guide-keyword">sudo nano</span> /etc/nginx/sites-available/default
+          </div>
+          <p>Replace the file content with this layout block (substitute your real domain names):</p>
+          <div class="guide-block">
+            server {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;listen 80;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;server_name <span class="guide-string">speaxsa.com www.speaxsa.com</span>;<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="guide-comment"># Route APIs to port 5001</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;location /api {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_pass http://localhost:5001;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_http_version 1.1;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_set_header Upgrade $http_upgrade;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_set_header Connection 'upgrade';<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_set_header Host $host;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_cache_bypass $http_upgrade;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;}<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="guide-comment"># Route static frontend portal files</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;location / {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root /var/www/speaxsa/public/landing;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try_files $uri $uri/ =404;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+            }
+          </div>
+          <div class="guide-block">
+            <span class="guide-comment"># Test Nginx syntax and reload daemon</span><br>
+            <span class="guide-keyword">sudo nginx -t</span> && <span class="guide-keyword">sudo systemctl reload nginx</span>
+          </div>
+
+          <!-- Section 7 -->
+          <h4 class="text-primary mt-5 mb-3"><i class="fas fa-shield-alt me-2"></i>7. Enable SSL encryption (HTTPS)</h4>
+          <p>Use Let's Encrypt Certbot to request and configure SSL security certificates on Hostinger VPS:</p>
+          <div class="guide-block">
+            <span class="guide-comment"># Install Certbot libraries</span><br>
+            <span class="guide-keyword">sudo apt install</span> certbot python3-certbot-nginx -y<br><br>
+            <span class="guide-comment"># Generate certificates (follow automated logs prompt inputs)</span><br>
+            <span class="guide-keyword">sudo certbot</span> --nginx -d <span class="guide-string">speaxsa.com</span> -d <span class="guide-string">www.speaxsa.com</span>
+          </div>
+
+          <!-- Section 8 -->
+          <h4 class="text-primary mt-5 mb-3"><i class="fas fa-play-circle me-2"></i>8. Launch the NodeJS Server with PM2</h4>
+          <p>PM2 runs the server in the background and restarts it automatically if the process crashes or the VPS reboots:</p>
+          <div class="guide-block">
+            <span class="guide-comment"># Start the app server under PM2 management</span><br>
+            <span class="guide-keyword">pm2 start</span> src/app.js --name <span class="guide-string">speaxsa-backend</span><br><br>
+            <span class="guide-comment"># Persist PM2 across reboots</span><br>
+            <span class="guide-keyword">pm2 startup</span><br>
+            <span class="guide-comment"># (Copy and run the systemctl command printed on the screen)</span><br>
+            <span class="guide-keyword">pm2 save</span>
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // System endpoints definitions
+    const endpoints = [
+      {
+        id: "health",
+        name: "Health Status Check",
+        method: "GET",
+        path: "/api/health",
+        category: "public",
+        auth: false,
+        desc: "Fires backend check querying PostgreSQL connectivity status, environment version, and active host timestamp.",
+        payload: null
+      },
+      {
+        id: "public-courses",
+        name: "Public Active Course Directory",
+        method: "GET",
+        path: "/api/public/courses",
+        category: "public",
+        auth: false,
+        desc: "Retrieves active platform courses list populated with seating and registration caps.",
+        payload: null
+      },
+      {
+        id: "public-teachers",
+        name: "Public Approved Mentors Directory",
+        method: "GET",
+        path: "/api/public/teachers",
+        category: "public",
+        auth: false,
+        desc: "Retrieves active teacher records filtered by highest average rating logs.",
+        payload: null
+      },
+      {
+        id: "public-stats",
+        name: "Public Platform Count Aggregations",
+        method: "GET",
+        path: "/api/public/stats",
+        category: "public",
+        auth: false,
+        desc: "Queries aggregate metrics: total courses, active teachers, and completed virtual classroom sessions.",
+        payload: null
+      },
+      {
+        id: "auth-register",
+        name: "Register New User Account",
+        method: "POST",
+        path: "/api/auth/register",
+        category: "auth",
+        auth: false,
+        desc: "Creates a Student, Teacher, or Parent record. Auto-deploys teacher wallets and onboarding application reviews.",
+        payload: {
+          name: "John Doe",
+          email: `johndoe_${Math.floor(Math.random() * 10000)}@example.com`,
+          phone: "9876543210",
+          role: "student",
+          password: "password123",
+          grade: "Class 10",
+          board: "CBSE"
+        }
+      },
+      {
+        id: "auth-login",
+        name: "Authenticate with Email",
+        method: "POST",
+        path: "/api/auth/login",
+        category: "auth",
+        auth: false,
+        desc: "Verifies credentials and returns a secure JWT access token.",
+        payload: {
+          email: "admin@speaxsa.com",
+          password: "password123"
+        }
+      },
+      {
+        id: "auth-send-otp",
+        name: "Trigger Authentication OTP",
+        method: "POST",
+        path: "/api/auth/send-otp",
+        category: "auth",
+        auth: false,
+        desc: "Generates and dispatches a 6-digit numeric login verification code via SMTP or SMS.",
+        payload: {
+          email: "admin@speaxsa.com"
+        }
+      },
+      {
+        id: "auth-verify-otp",
+        name: "Verify OTP credentials",
+        method: "POST",
+        path: "/api/auth/verify-otp",
+        category: "auth",
+        auth: false,
+        desc: "Validates active OTP sessions, logs audits, and unlocks access tokens.",
+        payload: {
+          email: "admin@speaxsa.com",
+          otp: "123456"
+        }
+      },
+      {
+        id: "auth-forgot-password",
+        name: "Trigger Reset Password OTP",
+        method: "POST",
+        path: "/api/auth/forgot-password",
+        category: "auth",
+        auth: false,
+        desc: "Dispatches a dedicated reset verification code to registered handles.",
+        payload: {
+          email: "student@speaxsa.com"
+        }
+      },
+      {
+        id: "auth-reset-password",
+        name: "Submit Password Reset",
+        method: "POST",
+        path: "/api/auth/reset-password",
+        category: "auth",
+        auth: false,
+        desc: "Validates password-reset token and replaces hashes on DB profiles.",
+        payload: {
+          email: "student@speaxsa.com",
+          otp: "123456",
+          newPassword: "newsecurepass123"
+        }
+      },
+      {
+        id: "auth-profile-get",
+        name: "Retrieve Profile Details",
+        method: "GET",
+        path: "/api/auth/profile",
+        category: "auth",
+        auth: true,
+        desc: "Fetches full profile configurations for the currently authenticated agent.",
+        payload: null
+      },
+      {
+        id: "auth-profile-update",
+        name: "Update Profile Settings",
+        method: "PUT",
+        path: "/api/auth/profile",
+        category: "auth",
+        auth: true,
+        desc: "Applies non-exclusive modifications to attributes (bio, qualifications, experience, avatar URL).",
+        payload: {
+          name: "John Pro",
+          phone: "9876543210",
+          address: "123 Academic Block, New Delhi"
+        }
+      },
+      {
+        id: "auth-change-password",
+        name: "Update Account Credentials",
+        method: "POST",
+        path: "/api/auth/change-password",
+        category: "auth",
+        auth: true,
+        desc: "Verifies current password and replaces the hashing record on the server.",
+        payload: {
+          currentPassword: "password123",
+          newPassword: "myNewSecurePassword12"
+        }
+      },
+      {
+        id: "student-courses",
+        name: "Student Available Courses Listing",
+        method: "GET",
+        path: "/api/student/courses",
+        category: "student",
+        auth: true,
+        desc: "Lists all course listings matching student-applicable categories.",
+        payload: null
+      },
+      {
+        id: "student-batches",
+        name: "Student Batch Selections",
+        method: "GET",
+        path: "/api/student/batches",
+        category: "student",
+        auth: true,
+        desc: "Retrieves upcoming classes scheduling matching the active curriculum.",
+        payload: null
+      },
+      {
+        id: "student-my-batches",
+        name: "Student Registered Batches",
+        method: "GET",
+        path: "/api/student/my-batches",
+        category: "student",
+        auth: true,
+        desc: "Queries batches in which the current student agent is enrolled.",
+        payload: null
+      },
+      {
+        id: "student-attendance",
+        name: "Student Attendance Logs",
+        method: "GET",
+        path: "/api/student/attendance",
+        category: "student",
+        auth: true,
+        desc: "Lists individual attendance histories complete with ratios and late indicators.",
+        payload: null
+      },
+      {
+        id: "student-assignments",
+        name: "Student Tasks & Assignments",
+        method: "GET",
+        path: "/api/student/assignments",
+        category: "student",
+        auth: true,
+        desc: "Lists assigned class tasks, deadlines, and grade evaluation feedback.",
+        payload: null
+      },
+      {
+        id: "student-recordings",
+        name: "Student Archive Classroom Videos",
+        method: "GET",
+        path: "/api/student/recordings",
+        category: "student",
+        auth: true,
+        desc: "Fetches past recorded classroom session listings.",
+        payload: null
+      },
+      {
+        id: "student-reports",
+        name: "Student Academic Report Card",
+        method: "GET",
+        path: "/api/student/reports",
+        category: "student",
+        auth: true,
+        desc: "Summarizes marks, scores, and average class comparison stats.",
+        payload: null
+      },
+      {
+        id: "student-parent-requests",
+        name: "Student Pending Parent Access Links",
+        method: "GET",
+        path: "/api/student/parent-requests",
+        category: "student",
+        auth: true,
+        desc: "Queries access linkage requests submitted by parent agents.",
+        payload: null
+      },
+      {
+        id: "teacher-analytics",
+        name: "Teacher Dashboard Analytics",
+        method: "GET",
+        path: "/api/teacher/analytics",
+        category: "teacher",
+        auth: true,
+        desc: "Synthesizes monthly earnings, total active student rosters, and upcoming schedules.",
+        payload: null
+      },
+      {
+        id: "teacher-batches",
+        name: "Teacher Batches List",
+        method: "GET",
+        path: "/api/teacher/batches",
+        category: "teacher",
+        auth: true,
+        desc: "Queries virtual rooms and batches managed by the current teacher session.",
+        payload: null
+      },
+      {
+        id: "teacher-notes",
+        name: "Teacher Study Material Repository",
+        method: "GET",
+        path: "/api/teacher/notes",
+        category: "teacher",
+        auth: true,
+        desc: "Lists documents, slides, and study notes posted for batches.",
+        payload: null
+      },
+      {
+        id: "teacher-level",
+        name: "Teacher Gamification Ranks",
+        method: "GET",
+        path: "/api/teacher/level",
+        category: "teacher",
+        auth: true,
+        desc: "Fetches teacher progress level logs (Bronze, Silver, Gold).",
+        payload: null
+      },
+      {
+        id: "parent-children",
+        name: "Parent Linked Children Profiles",
+        method: "GET",
+        path: "/api/parent/children",
+        category: "parent",
+        auth: true,
+        desc: "Retrieves student profiles linked to this parent account.",
+        payload: null
+      },
+      {
+        id: "parent-link-child",
+        name: "Submit Parent Child Link",
+        method: "POST",
+        path: "/api/parent/link-child",
+        category: "parent",
+        auth: true,
+        desc: "Requests linking access by submitting child Student ID code.",
+        payload: {
+          studentCode: "SPX-STU-100001"
+        }
+      },
+      {
+        id: "live-classes-active",
+        name: "Active Classroom List",
+        method: "GET",
+        path: "/api/live-classes/active",
+        category: "live-classes",
+        auth: true,
+        desc: "Lists low-latency classrooms currently active.",
+        payload: null
+      },
+      {
+        id: "support-query-post",
+        name: "Guest Inquiry Ticket Query",
+        method: "POST",
+        path: "/api/support/public-connect",
+        category: "support",
+        auth: false,
+        desc: "Submits a support ticket from public landing query inputs.",
+        payload: {
+          name: "Guest Visitor",
+          email: "visitor@gmail.com",
+          phone: "9988776655",
+          subject: "Inquiry about billing timetables",
+          message: "Please share batch lists for Class 10 CBSE Math.",
+          role: "student"
+        }
+      },
+      {
+        id: "admin-analytics",
+        name: "Admin Control Analytics",
+        method: "GET",
+        path: "/api/admin/analytics",
+        category: "admin",
+        auth: true,
+        desc: "Aggregates billing stats, active student/teacher counts, and pending SOP applications.",
+        payload: null
+      },
+      {
+        id: "admin-support",
+        name: "Admin Help Tickets Directory",
+        method: "GET",
+        path: "/api/admin/support-queries",
+        category: "admin",
+        auth: true,
+        desc: "Queries support log database entries.",
+        payload: null
+      }
+    ];
+
+    let authToken = localStorage.getItem("spx_api_center_token") || "";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("authTokenInput").value = authToken;
+      renderStats();
+      renderApiList();
+      checkDatabaseHealth();
+
+      document.querySelectorAll(".nav-filter-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          document.querySelectorAll(".nav-filter-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          filterApis(btn.getAttribute("data-filter"));
+        });
+      });
+
+      document.getElementById("searchBar").addEventListener("input", (e) => {
+        const query = e.target.value.toLowerCase();
+        searchApis(query);
+      });
+    });
+
+    function saveToken() {
+      const val = document.getElementById("authTokenInput").value.trim();
+      authToken = val;
+      localStorage.setItem("spx_api_center_token", val);
+      alert("Auth Token Saved Successfully!");
+    }
+
+    function clearToken() {
+      authToken = "";
+      document.getElementById("authTokenInput").value = "";
+      localStorage.removeItem("spx_api_center_token");
+      alert("Auth Token Cleared.");
+    }
+
+    async function checkDatabaseHealth() {
+      try {
+        const res = await fetch("/api/health");
+        const data = await res.json();
+        const el = document.getElementById("statDB");
+        if (data.db_status === "connected") {
+          el.innerHTML = `<span class="text-success"><i class="fas fa-check-circle me-1"></i>Connected</span>`;
+        } else {
+          el.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle me-1"></i>Offline</span>`;
+        }
+      } catch (err) {
+        document.getElementById("statDB").innerHTML = `<span class="text-danger"><i class="fas fa-times-circle me-1"></i>Offline</span>`;
+      }
+    }
+
+    function renderStats() {
+      document.getElementById("statTotal").textContent = endpoints.length;
+      document.getElementById("badgeAll").textContent = endpoints.length;
+      
+      const counts = { public: 0, auth: 0, student: 0, teacher: 0, parent: 0, "live-classes": 0, support: 0, admin: 0 };
+      endpoints.forEach(ep => {
+        if (counts[ep.category] !== undefined) {
+          counts[ep.category]++;
+        }
+      });
+
+      document.getElementById("badgePublic").textContent = counts["public"];
+      document.getElementById("badgeAuth").textContent = counts["auth"];
+      document.getElementById("badgeStudent").textContent = counts["student"];
+      document.getElementById("badgeTeacher").textContent = counts["teacher"];
+      document.getElementById("badgeParent").textContent = counts["parent"];
+      document.getElementById("badgeLive").textContent = counts["live-classes"];
+      document.getElementById("badgeSupport").textContent = counts["support"];
+      document.getElementById("badgeAdmin").textContent = counts["admin"];
+    }
+
+    function renderApiList(list = endpoints) {
+      const container = document.getElementById("apiListContainer");
+      container.innerHTML = "";
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="spx-card p-5 text-center text-muted">
+            <i class="fas fa-search-minus fa-3x mb-3 text-secondary"></i>
+            <h5>No APIs Match Your Filter Criteria</h5>
+            <p class="small mb-0">Try clearing your search query or choosing a different category.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(ep => {
+        const methodClass = `badge-${ep.method.toLowerCase()}`;
+        const hasPayload = ep.method !== "GET" && ep.payload;
+        
+        const cardHtml = `
+          <div class="api-card" id="card-${ep.id}">
+            <div class="api-card-header" onclick="toggleAccordion('${ep.id}')">
+              <span class="badge badge-method ${methodClass}">${ep.method}</span>
+              <div class="d-flex flex-column flex-md-row align-items-md-center gap-2 flex-grow-1">
+                <span class="api-path">${ep.path}</span>
+                <span class="d-none d-md-inline text-muted">|</span>
+                <span class="api-desc">${ep.name}</span>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="status-pill status-untested" id="badge-status-${ep.id}">Untested</span>
+                <i class="fas fa-chevron-down text-muted" id="chevron-${ep.id}" style="transition: transform 0.2s;"></i>
+              </div>
+            </div>
+
+            <div class="d-none border-top" id="body-${ep.id}">
+              <div class="p-4" style="background: rgba(15, 23, 42, 0.005);">
+                <div class="row g-4">
+                  
+                  <div class="col-lg-6">
+                    <h6 class="text-secondary small fw-bold uppercase">Endpoint Description</h6>
+                    <p class="small text-secondary mb-3">${ep.desc}</p>
+
+                    <h6 class="text-secondary small fw-bold uppercase mt-3">Authorization Requirement</h6>
+                    <div class="mb-3">
+                      ${ep.auth 
+                        ? `<span class="badge bg-warning-subtle text-warning border border-warning-subtle py-2 px-3 rounded-pill"><i class="fas fa-lock me-2"></i>Bearer Auth Token Required</span>` 
+                        : `<span class="badge bg-success-subtle text-success border border-success-subtle py-2 px-3 rounded-pill"><i class="fas fa-lock-open me-2"></i>Public Endpoint</span>`
+                      }
+                    </div>
+
+                    ${hasPayload ? `
+                      <h6 class="text-secondary small fw-bold uppercase mt-3">JSON Request Payload (Editable)</h6>
+                      <textarea class="form-control json-textarea w-100" id="payload-${ep.id}" rows="8">${JSON.stringify(ep.payload, null, 2)}</textarea>
+                    ` : ""}
+
+                    <button class="btn btn-spx mt-3" onclick="testEndpoint('${ep.id}')">
+                      <i class="fas fa-paper-plane me-2"></i>Execute Request
+                    </button>
+                  </div>
+
+                  <div class="col-lg-6">
+                    <h6 class="text-secondary small fw-bold uppercase mb-2">Live Response Panel</h6>
+                    <div class="response-pane">
+                      <button class="copy-btn d-none" id="copy-${ep.id}" onclick="copyResponse('${ep.id}')"><i class="fas fa-copy me-1"></i>Copy</button>
+                      <div class="response-meta">
+                        <span>Status: <span id="resp-status-${ep.id}">N/A</span></span>
+                        <span id="resp-time-${ep.id}">Time: N/A</span>
+                      </div>
+                      <pre id="output-${ep.id}">Click "Execute Request" to test this endpoint live.</pre>
+                    </div>
+
+                    <!-- Diagnostics section -->
+                    <div id="diagnostics-${ep.id}"></div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML("beforeend", cardHtml);
+      });
+    }
+
+    function toggleAccordion(id) {
+      const el = document.getElementById(`body-${id}`);
+      const chev = document.getElementById(`chevron-${id}`);
+      if (el.classList.contains("d-none")) {
+        el.classList.remove("d-none");
+        chev.style.transform = "rotate(180deg)";
+      } else {
+        el.classList.add("d-none");
+        chev.style.transform = "rotate(0deg)";
+      }
+    }
+
+    function filterApis(category) {
+      if (category === "all") {
+        renderApiList(endpoints);
+      } else {
+        const filtered = endpoints.filter(ep => ep.category === category);
+        renderApiList(filtered);
+      }
+    }
+
+    function searchApis(query) {
+      const filtered = endpoints.filter(ep => 
+        ep.path.toLowerCase().includes(query) || 
+        ep.name.toLowerCase().includes(query) || 
+        ep.desc.toLowerCase().includes(query) ||
+        ep.category.toLowerCase().includes(query)
+      );
+      renderApiList(filtered);
+    }
+
+    async function testEndpoint(id) {
+      const ep = endpoints.find(e => e.id === id);
+      if (!ep) return;
+
+      const badge = document.getElementById(`badge-status-${ep.id}`);
+      badge.textContent = "Checking...";
+      badge.className = "status-pill status-checking";
+
+      const output = document.getElementById(`output-${ep.id}`);
+      output.textContent = "Sending request to server...";
+      output.style.color = "#94A3B8";
+
+      const copyBtn = document.getElementById(`copy-${ep.id}`);
+      copyBtn.classList.add("d-none");
+
+      const respStatus = document.getElementById(`resp-status-${ep.id}`);
+      const respTime = document.getElementById(`resp-time-${ep.id}`);
+      const diagContainer = document.getElementById(`diagnostics-${ep.id}`);
+      diagContainer.innerHTML = "";
+
+      const headers = { "Content-Type": "application/json" };
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
+      const options = {
+        method: ep.method,
+        headers: headers
+      };
+
+      if (ep.method !== "GET" && ep.payload) {
+        const textVal = document.getElementById(`payload-${ep.id}`).value;
+        try {
+          JSON.parse(textVal);
+          options.body = textVal;
+        } catch (err) {
+          badge.textContent = "Payload Err";
+          badge.className = "status-pill status-error";
+          output.textContent = "JSON Syntax Error in Request Payload:\n" + err.message;
+          output.style.color = "#EF4444";
+          renderDiagnostics(ep.id, 400, "Syntax Error: Request payload is not a valid JSON structure. Ensure all keys and strings are wrapped in double quotes (\"\").");
+          return;
+        }
+      }
+
+      const startTime = performance.now();
+      try {
+        const response = await fetch(ep.path, options);
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+        
+        respTime.textContent = `Time: ${duration}ms`;
+        respStatus.textContent = `${response.status} ${response.statusText}`;
+
+        const isJson = response.headers.get("content-type")?.includes("application/json");
+        const rawBody = await response.text();
+        let formattedBody = rawBody;
+
+        if (isJson) {
+          try {
+            formattedBody = JSON.stringify(JSON.parse(rawBody), null, 2);
+          } catch (e) {}
+        }
+
+        output.textContent = formattedBody;
+        copyBtn.classList.remove("d-none");
+
+        if (response.status >= 200 && response.status < 300) {
+          badge.textContent = "Working";
+          badge.className = "status-pill status-success";
+          output.style.color = "#38BDF8";
+          updateVerifiedCount();
+        } else if (response.status === 401 || response.status === 403) {
+          badge.textContent = "Auth Required";
+          badge.className = "status-pill status-auth";
+          output.style.color = "#F59E0B";
+          updateVerifiedCount();
+          renderDiagnostics(ep.id, response.status, `Your Bearer token is missing, expired, or signed with a different secret. Complete the login flow via "POST /api/auth/login" or configure the JWT header token box at the top left.`);
+        } else {
+          badge.textContent = "Error " + response.status;
+          badge.className = "status-pill status-error";
+          output.style.color = "#EF4444";
+          
+          let causeText = "The backend returned an error status.";
+          if (response.status === 400) {
+            causeText = "Validation Schema Error: The parameters inside your JSON request body did not pass the Joi constraints on the server. Ensure required keys are provided and have correct data types.";
+          } else if (response.status === 404) {
+            causeText = "Route Not Found: The endpoint path could be misspelled, or the backend server block configuration block does not map it.";
+          } else if (response.status === 500) {
+            causeText = "Internal Server Exception: The NodeJS application crashed while executing. Check SQL syntax in DB queries, database connectivity logs, or check node PM2 status on your terminal.";
+          }
+          renderDiagnostics(ep.id, response.status, causeText);
+        }
+
+      } catch (err) {
+        const endTime = performance.now();
+        respTime.textContent = `Time: ${Math.round(endTime - startTime)}ms`;
+        respStatus.textContent = "Network Error";
+        badge.textContent = "Offline";
+        badge.className = "status-pill status-error";
+        output.textContent = `Network Request Failed:\n${err.message}\n\nIs the local backend server running on port 5001?`;
+        output.style.color = "#EF4444";
+        renderDiagnostics(ep.id, "Network", "Network Connection Refused: The backend server is unreachable. Check if the Node server process is running, correct port configurations exist, or if CORS blocks prevent queries.");
+      }
+    }
+
+    function renderDiagnostics(id, code, description) {
+      const el = document.getElementById(`diagnostics-${id}`);
+      el.innerHTML = `
+        <div class="diagnosis-card">
+          <div class="diagnosis-title">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Failure Diagnosis (Code ${code})</span>
+          </div>
+          <p class="diagnosis-desc">${description}</p>
+        </div>
+      `;
+    }
+
+    function copyResponse(id) {
+      const text = document.getElementById(`output-${id}`).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Response payload copied to clipboard!");
+      }).catch(err => {
+        console.error("Clipboard copy failed:", err);
+      });
+    }
+
+    function updateVerifiedCount() {
+      let count = 0;
+      endpoints.forEach(ep => {
+        const badge = document.getElementById(`badge-status-${ep.id}`);
+        if (badge && (badge.classList.contains("status-success") || badge.classList.contains("status-auth"))) {
+          count++;
+        }
+      });
+      document.getElementById("statVerified").textContent = count;
+    }
+
+    async function runAllProbes() {
+      alert("Firing health checks sweeps for all registered endpoints...");
+      for (const ep of endpoints) {
+        const accordion = document.getElementById(`body-${ep.id}`);
+        if (accordion.classList.contains("d-none")) {
+          toggleAccordion(ep.id);
+        }
+        await testEndpoint(ep.id);
+      }
+      alert("Health sweep sweeps complete!");
+    }
+
+    // ── Database Manager JS Logic ──
+    let dbTables = [];
+    let currentTable = null;
+    let currentSchema = null;
+    let tableRows = [];
+    let activeRowIndex = null; // null for insert, index for edit
+    let dbRowModalInstance = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      dbRowModalInstance = new bootstrap.Modal(document.getElementById('dbRowModal'));
+      
+      const dbTabEl = document.getElementById('dbmanager-tab');
+      if (dbTabEl) {
+        dbTabEl.addEventListener('shown.bs.tab', () => {
+          loadDbTables();
+        });
+      }
+    });
+
+    async function loadDbTables() {
+      const listEl = document.getElementById("dbTableList");
+      listEl.innerHTML = `<div class="text-center py-3 text-muted"><i class="fas fa-circle-notch fa-spin me-2"></i>Loading tables...</div>`;
+      try {
+        const headers = {};
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+        const res = await fetch("/api/db-admin/tables", { headers });
+        if (!res.ok) {
+          throw new Error(await res.text() || "Failed to load database tables.");
+        }
+        dbTables = await res.json();
+        renderDbTables();
+      } catch (err) {
+        listEl.innerHTML = `<div class="alert alert-danger py-2 px-3 small"><i class="fas fa-times-circle me-1"></i>${err.message}</div>`;
+      }
+    }
+
+    function renderDbTables(filterQuery = "") {
+      const listEl = document.getElementById("dbTableList");
+      listEl.innerHTML = "";
+
+      const query = filterQuery.toLowerCase().trim();
+      const filtered = dbTables.filter(t => t.name.toLowerCase().includes(query));
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-3 text-muted small">No tables found</div>`;
+        return;
+      }
+
+      filtered.forEach(t => {
+        const isActive = currentTable === t.name;
+        const btnHtml = `
+          <button class="nav-filter-btn ${isActive ? 'active' : ''} py-2 px-3 d-flex justify-content-between align-items-center" onclick="selectDbTable('${t.name}')">
+            <span><i class="fas fa-table me-2 text-secondary"></i>${t.name}</span>
+            <span class="badge bg-secondary rounded-pill small">${t.rowCount}</span>
+          </button>
+        `;
+        listEl.insertAdjacentHTML("beforeend", btnHtml);
+      });
+    }
+
+    function filterDbTables() {
+      const query = document.getElementById("dbTableSearch").value;
+      renderDbTables(query);
+    }
+
+    async function selectDbTable(tableName) {
+      currentTable = tableName;
+      renderDbTables(document.getElementById("dbTableSearch").value);
+
+      document.getElementById("dbTablePlaceholder").classList.add("d-none");
+      const panel = document.getElementById("dbTableDataPanel");
+      panel.classList.remove("d-none");
+
+      document.getElementById("currentTableNameText").textContent = tableName;
+      document.getElementById("currentTableSchemaText").textContent = "Loading schema...";
+      document.getElementById("dbRowCountText").textContent = "Loading rows...";
+
+      // Clear grid
+      document.getElementById("dbTableHeaders").innerHTML = "";
+      document.getElementById("dbTableBody").innerHTML = `<tr><td colspan="20" class="text-center py-4 text-muted"><i class="fas fa-circle-notch fa-spin me-2"></i>Loading data...</td></tr>`;
+
+      try {
+        const headers = {};
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+        
+        const [schemaRes, rowsRes] = await Promise.all([
+          fetch(`/api/db-admin/tables/${tableName}/schema`, { headers }),
+          fetch(`/api/db-admin/tables/${tableName}/rows`, { headers })
+        ]);
+
+        if (!schemaRes.ok) throw new Error("Failed to load schema.");
+        if (!rowsRes.ok) throw new Error("Failed to load table rows.");
+
+        currentSchema = await schemaRes.json();
+        tableRows = await rowsRes.json();
+
+        const pks = currentSchema.primaryKeys.join(', ') || 'None';
+        document.getElementById("currentTableSchemaText").innerHTML = `Primary Key(s): <span class="badge bg-warning-subtle text-warning border border-warning-subtle font-monospace">${pks}</span>`;
+        document.getElementById("dbRowCountText").textContent = `${tableRows.length} rows loaded (limit 200)`;
+
+        renderDbHeaders();
+        renderDbRows();
+      } catch (err) {
+        document.getElementById("dbTableBody").innerHTML = `<tr><td colspan="20" class="text-center py-4 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>${err.message}</td></tr>`;
+      }
+    }
+
+    function refreshCurrentTable() {
+      if (currentTable) {
+        selectDbTable(currentTable);
+        loadDbTables();
+      }
+    }
+
+    function renderDbHeaders() {
+      const headerRow = document.getElementById("dbTableHeaders");
+      headerRow.innerHTML = "";
+
+      headerRow.insertAdjacentHTML("beforeend", `<th style="width: 50px;">#</th>`);
+
+      currentSchema.columns.forEach(col => {
+        const isPk = col.isPrimaryKey;
+        headerRow.insertAdjacentHTML("beforeend", `
+          <th class="font-monospace">
+            ${col.name}
+            ${isPk ? `<i class="fas fa-key text-warning small ms-1" title="Primary Key"></i>` : ""}
+            <div class="text-secondary" style="font-size: 0.65rem; font-weight: normal;">${col.type}</div>
+          </th>
+        `);
+      });
+
+      headerRow.insertAdjacentHTML("beforeend", `<th class="text-center" style="width: 100px;">Actions</th>`);
+    }
+
+    function renderDbRows(filteredRows = null) {
+      const body = document.getElementById("dbTableBody");
+      body.innerHTML = "";
+
+      const rows = filteredRows || tableRows;
+
+      if (rows.length === 0) {
+        body.innerHTML = `<tr><td colspan="50" class="text-center py-4 text-muted small">No rows found in table.</td></tr>`;
+        return;
+      }
+
+      rows.forEach((row, rIdx) => {
+        let rowHtml = `<tr><td class="text-muted small">${rIdx + 1}</td>`;
+
+        currentSchema.columns.forEach(col => {
+          const val = row[col.name];
+          let displayVal = "";
+
+          if (val === null || val === undefined) {
+            displayVal = `<span class="text-muted small font-monospace">[NULL]</span>`;
+          } else if (typeof val === 'object') {
+            displayVal = `<code class="small text-truncate d-inline-block" style="max-width: 150px;" title="${escapeHtml(JSON.stringify(val))}">${escapeHtml(JSON.stringify(val))}</code>`;
+          } else if (typeof val === 'boolean') {
+            displayVal = val 
+              ? `<span class="badge bg-success-subtle text-success border border-success-subtle font-monospace py-1">TRUE</span>`
+              : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle font-monospace py-1">FALSE</span>`;
+          } else {
+            const strVal = String(val);
+            const isTruncated = strVal.length > 50;
+            const finalVal = isTruncated ? strVal.substr(0, 47) + "..." : strVal;
+            displayVal = `<span class="text-truncate d-inline-block" style="max-width: 200px;" title="${escapeHtml(strVal)}">${escapeHtml(finalVal)}</span>`;
+          }
+
+          rowHtml += `<td>${displayVal}</td>`;
+        });
+
+        rowHtml += `
+          <td class="text-center">
+            <div class="d-flex gap-1 justify-content-center">
+              <button class="btn btn-outline-primary btn-sm rounded-circle" style="width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center;" onclick="openEditRowModal(${rIdx})" title="Edit Row"><i class="fas fa-pencil-alt" style="font-size: 0.72rem;"></i></button>
+              <button class="btn btn-outline-danger btn-sm rounded-circle" style="width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center;" onclick="deleteDbRow(${rIdx})" title="Delete Row"><i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i></button>
+            </div>
+          </td>
+        </tr>`;
+
+        body.insertAdjacentHTML("beforeend", rowHtml);
+      });
+    }
+
+    function filterDbRows() {
+      const q = document.getElementById("dbRowSearch").value.toLowerCase().trim();
+      if (!q) {
+        renderDbRows(tableRows);
+        return;
+      }
+
+      const filtered = tableRows.filter(row => {
+        return Object.values(row).some(val => {
+          if (val === null || val === undefined) return false;
+          return String(val).toLowerCase().includes(q);
+        });
+      });
+
+      renderDbRows(filtered);
+    }
+
+    function escapeHtml(text) {
+      if (typeof text !== 'string') return text;
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function openInsertRowModal() {
+      activeRowIndex = null;
+      document.getElementById("dbRowModalLabel").innerHTML = `<i class="fas fa-plus me-2 text-success"></i>Insert Row into <code class="text-primary">${currentTable}</code>`;
+      compileFormFields({});
+      dbRowModalInstance.show();
+    }
+
+    function openEditRowModal(rowIndex) {
+      activeRowIndex = rowIndex;
+      const row = tableRows[rowIndex];
+      document.getElementById("dbRowModalLabel").innerHTML = `<i class="fas fa-edit me-2 text-warning"></i>Edit Row in <code class="text-primary">${currentTable}</code>`;
+      compileFormFields(row);
+      dbRowModalInstance.show();
+    }
+
+    function compileFormFields(rowData = {}) {
+      const form = document.getElementById("dbRowForm");
+      form.innerHTML = "";
+
+      currentSchema.columns.forEach(col => {
+        const isEditing = activeRowIndex !== null;
+        const isPk = col.isPrimaryKey;
+        const val = rowData[col.name];
+        
+        let inputHtml = "";
+        const label = `
+          <label class="form-label small fw-bold">
+            ${col.name} 
+            ${isPk ? `<i class="fas fa-key text-warning small ms-1" title="Primary Key"></i>` : ""}
+            ${col.nullable ? "" : `<span class="text-danger">*</span>`}
+            <span class="text-muted font-monospace text-xs" style="font-size:0.7rem; font-weight:normal;">(${col.type})</span>
+          </label>
+        `;
+
+        const colType = col.type.toLowerCase();
+        const disabledAttr = (isEditing && isPk) ? "disabled" : "";
+
+        if (colType.includes('boolean')) {
+          const checked = val === true ? "checked" : "";
+          inputHtml = `
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="field-${col.name}" ${checked} ${disabledAttr}>
+              <label class="form-check-label text-muted small" for="field-${col.name}">Active/True</label>
+            </div>
+          `;
+        } else if (colType.includes('json') || colType.includes('array') || colType.includes('text') || col.name === 'description' || col.name === 'subjects' || col.name === 'feedback' || col.name === 'message') {
+          let strVal = "";
+          if (val !== null && val !== undefined) {
+            strVal = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
+          }
+          inputHtml = `
+            <textarea class="form-control json-textarea text-xs w-100" id="field-${col.name}" rows="3" ${disabledAttr} placeholder="${col.nullable ? 'Optional' : 'Required'}">${escapeHtml(strVal)}</textarea>
+          `;
+        } else if (colType.includes('int') || colType.includes('numeric') || colType.includes('decimal') || colType.includes('real') || colType.includes('double')) {
+          const numVal = (val !== null && val !== undefined) ? val : "";
+          const step = colType.includes('int') ? "1" : "any";
+          inputHtml = `
+            <input type="number" class="form-control text-sm" id="field-${col.name}" step="${step}" value="${numVal}" ${disabledAttr} ${col.nullable ? '' : 'required'}>
+          `;
+        } else {
+          const textVal = (val !== null && val !== undefined) ? String(val) : "";
+          const hasAutofill = (!isEditing && isPk && colType.includes('varchar'));
+          
+          inputHtml = `
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control text-sm" id="field-${col.name}" value="${escapeHtml(textVal)}" ${disabledAttr} ${col.nullable ? '' : 'required'} placeholder="${col.nullable ? 'Optional' : 'Required'}">
+              ${hasAutofill ? `<button class="btn btn-outline-secondary" type="button" onclick="autofillField('${col.name}')" title="Auto-generate ID"><i class="fas fa-magic"></i></button>` : ""}
+            </div>
+          `;
+        }
+
+        const containerHtml = `
+          <div class="col-md-6 mb-2">
+            ${label}
+            ${inputHtml}
+          </div>
+        `;
+        form.insertAdjacentHTML("beforeend", containerHtml);
+      });
+    }
+
+    function autofillField(fieldName) {
+      const field = document.getElementById(`field-${fieldName}`);
+      if (field) {
+        let prefix = "spx_";
+        if (currentTable === "users") {
+          prefix = "u_" + Date.now();
+        } else if (currentTable === "courses") {
+          prefix = "c_" + Date.now();
+        } else if (currentTable === "batches") {
+          prefix = "b_" + Date.now();
+        } else if (currentTable === "live_classes") {
+          prefix = "lc_" + Date.now();
+        } else if (currentTable === "support_tickets") {
+          prefix = "ticket_" + Date.now();
+        } else {
+          prefix = "id_" + Math.random().toString(36).substr(2, 9);
+        }
+        field.value = prefix;
+      }
+    }
+
+    async function saveDbRow() {
+      const payload = {};
+      const primaryKeysPayload = {};
+      const isEditing = activeRowIndex !== null;
+
+      try {
+        for (const col of currentSchema.columns) {
+          const fieldEl = document.getElementById(`field-${col.name}`);
+          if (!fieldEl) continue;
+
+          let val = null;
+          const colType = col.type.toLowerCase();
+
+          if (colType.includes('boolean')) {
+            val = fieldEl.checked;
+          } else {
+            const rawVal = fieldEl.value.trim();
+            if (rawVal === "") {
+              if (!col.nullable) {
+                if (!col.default && !col.isPrimaryKey) {
+                  alert(`Column "${col.name}" is required and cannot be empty.`);
+                  return;
+                }
+              }
+              val = null;
+            } else if (colType.includes('int')) {
+              val = parseInt(rawVal, 10);
+            } else if (colType.includes('numeric') || colType.includes('decimal') || colType.includes('real') || colType.includes('double')) {
+              val = parseFloat(rawVal);
+            } else if (colType.includes('json') || colType.includes('array')) {
+              try {
+                val = JSON.parse(rawVal);
+              } catch (e) {
+                alert(`Column "${col.name}" requires a valid JSON or array structure:\n${e.message}`);
+                return;
+              }
+            } else {
+              val = rawVal;
+            }
+          }
+
+          if (isEditing) {
+            if (col.isPrimaryKey) {
+              primaryKeysPayload[col.name] = tableRows[activeRowIndex][col.name];
+            } else {
+              payload[col.name] = val;
+            }
+          } else {
+            if (val !== null || !col.nullable) {
+              payload[col.name] = val;
+            }
+          }
+        }
+
+        const headers = { 
+          "Content-Type": "application/json"
+        };
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+
+        const options = {
+          method: isEditing ? "PUT" : "POST",
+          headers,
+          body: JSON.stringify(isEditing ? { primaryKeys: primaryKeysPayload, data: payload } : payload)
+        };
+
+        const res = await fetch(`/api/db-admin/tables/${currentTable}/rows`, options);
+        const resData = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(resData.error || "Failed to save record.");
+        }
+
+        alert(resData.message || "Record saved successfully!");
+        dbRowModalInstance.hide();
+        refreshCurrentTable();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+    async function deleteDbRow(rowIndex) {
+      const row = tableRows[rowIndex];
+      const primaryKeysPayload = {};
+      currentSchema.primaryKeys.forEach(pk => {
+        primaryKeysPayload[pk] = row[pk];
+      });
+
+      if (Object.keys(primaryKeysPayload).length === 0) {
+        alert("Cannot delete row. No primary key columns identified in this table.");
+        return;
+      }
+
+      const confirmMsg = `Are you sure you want to delete this row from "${currentTable}"?\n\nKeys: ${JSON.stringify(primaryKeysPayload)}`;
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        const headers = { 
+          "Content-Type": "application/json"
+        };
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+
+        const res = await fetch(`/api/db-admin/tables/${currentTable}/rows`, {
+          method: "DELETE",
+          headers,
+          body: JSON.stringify({ primaryKeys: primaryKeysPayload })
+        });
+        const resData = await res.json();
+
+        if (!res.ok) {
+          throw new Error(resData.error || "Failed to delete record.");
+        }
+
+        alert(resData.message || "Record deleted successfully!");
+        refreshCurrentTable();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+  </script>
+
+  <!-- Modal for Insert/Edit Database Row -->
+  <div class="modal fade" id="dbRowModal" tabindex="-1" aria-labelledby="dbRowModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg" style="border-radius: 18px;">
+        <div class="modal-header bg-light border-bottom-0 py-3 px-4">
+          <h5 class="modal-title" id="dbRowModalLabel"><i class="fas fa-edit me-2 text-primary"></i>Edit Row</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body px-4 py-3">
+          <form id="dbRowForm" class="row g-3">
+            <!-- Dynamically generated column form fields -->
+          </form>
+        </div>
+        <div class="modal-footer border-top-0 px-4 py-3">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-spx px-4" onclick="saveDbRow()">Save Record</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

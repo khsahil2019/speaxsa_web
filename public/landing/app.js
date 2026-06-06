@@ -1,4 +1,5 @@
 // SPEAXSA Landing Page JavaScript
+const API = ''; // Set to absolute domain like 'https://speaxsa.com' if hosting client & API on separate servers
 
 // ── AOS Init ─────────────────────────────────────────────────
 AOS.init({ once: true, duration: 700, offset: 80 });
@@ -45,7 +46,7 @@ async function loadCourses() {
   const grid = document.getElementById('coursesGrid');
   if (!grid) return;
   try {
-    const res = await fetch('/api/public/courses');
+    const res = await fetch(`${API}/api/public/courses`);
     const courses = await res.json();
 
     const icons = { Physics: '⚛️', Mathematics: '📐', Chemistry: '🧪', Biology: '🌿', English: '📚', default: '📖' };
@@ -104,7 +105,7 @@ async function loadTeachers() {
   const grid = document.getElementById('teachersGrid');
   if (!grid) return;
   try {
-    const res = await fetch('/api/public/teachers');
+    const res = await fetch(`${API}/api/public/teachers`);
     const teachers = await res.json();
 
     if (!teachers.length) {
@@ -168,7 +169,7 @@ async function loadTeachers() {
 // ── Load Stats ────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const res = await fetch('/api/public/stats');
+    const res = await fetch(`${API}/api/public/stats`);
     const stats = await res.json();
 
     const statEls = [
@@ -210,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const message = document.getElementById('contactMessage').value;
 
       try {
-        const response = await fetch('/api/support/public-connect', {
+        const response = await fetch(`${API}/api/support/public-connect`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, email, phone, role, message })

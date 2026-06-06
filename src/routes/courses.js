@@ -12,6 +12,20 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get modules/sections for a course
+router.get('/:courseId/modules', async (req, res) => {
+  const { courseId } = req.params;
+  try {
+    const result = await db.query(
+      'SELECT * FROM course_modules WHERE course_id = $1 ORDER BY id ASC',
+      [courseId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Add course
 router.post('/add', async (req, res) => {
   const { id, title, description, grade, board, price } = req.body;

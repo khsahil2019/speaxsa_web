@@ -490,6 +490,7 @@
   <!-- Agora Web SDK -->
   <script src="https://download.agora.io/sdk/web/AgoraRTC_N-4.20.0.js"></script>
   <script>
+    const API = ''; // Set to absolute domain like 'https://speaxsa.com' if hosting client & API on separate servers
     const urlParams = new URLSearchParams(window.location.search);
     const classId = urlParams.get('classId');
 
@@ -767,7 +768,7 @@
 
     async function initClassroom() {
       // Connect to backend to join or start class
-      const endpoint = isTeacher ? `/api/live-classes/${classId}/start` : `/api/live-classes/${classId}/join`;
+      const endpoint = isTeacher ? `${API}/api/live-classes/${classId}/start` : `${API}/api/live-classes/${classId}/join`;
       try {
         const joinData = await fetch(endpoint, {
           method: 'POST',
@@ -986,7 +987,7 @@
       showConfirmOverlay(confirmMsg, async () => {
         try {
           const action = isTeacher || isAdmin ? 'end' : 'leave';
-          await fetch(`/api/live-classes/${classId}/${action}`, {
+          await fetch(`${API}/api/live-classes/${classId}/${action}`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -1133,7 +1134,7 @@
       };
 
       try {
-        const data = await fetch(`/api/live-classes/${classId}/polls`, {
+        const data = await fetch(`${API}/api/live-classes/${classId}/polls`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1164,7 +1165,7 @@
 
     async function loadActivePolls() {
       try {
-        const res = await fetch(`/api/live-classes/${classId}/polls`, {
+        const res = await fetch(`${API}/api/live-classes/${classId}/polls`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const polls = await res.json();
@@ -1197,7 +1198,7 @@
 
     async function respondToPoll(pollId, optIdx) {
       try {
-        const data = await fetch(`/api/live-classes/polls/${pollId}/respond`, {
+        const data = await fetch(`${API}/api/live-classes/polls/${pollId}/respond`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

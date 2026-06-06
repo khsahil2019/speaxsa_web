@@ -182,6 +182,20 @@ VALUES
   ('notif_002', 'SOP Reminder', 'Please complete your SOP video uploads to start teaching.', 'teacher', 'warning', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Demo course modules
+INSERT INTO course_modules (id, course_id, title, description) VALUES
+  ('mod_1', 'course_001', 'Chapter 1: Electric Charges and Fields', 'Introduction to electric charges, Coulomb\'s Law, and electric fields.'),
+  ('mod_2', 'course_001', 'Chapter 2: Electrostatic Potential and Capacitance', 'Electrostatic potential, work done, potential energy, and capacitors.'),
+  ('mod_3', 'course_001', 'Chapter 3: Current Electricity', 'Ohm\'s Law, electrical resistivity, conductivity, and Kirchhoff\'s rules.'),
+  ('mod_4', 'course_002', 'Chapter 1: Real Numbers', 'Fundamental Theorem of Arithmetic, irrational numbers, and rational representations.'),
+  ('mod_5', 'course_002', 'Chapter 2: Polynomials', 'Geometrical meaning of zeroes, relationship between coefficients and zeroes.'),
+  ('mod_6', 'course_002', 'Chapter 3: Pair of Linear Equations', 'Graphical and algebraic methods of solving linear systems.'),
+  ('mod_7', 'course_003', 'Chapter 1: Basic Concepts of Chemistry', 'General introduction, laws of chemical combination, and stoichiometry.'),
+  ('mod_8', 'course_003', 'Chapter 2: Structure of Atom', 'Bohr\'s model, dual nature of matter, Heisenberg uncertainty principle, and quantum numbers.'),
+  ('mod_9', 'course_004', 'Chapter 1: Sexual Reproduction in Flowering Plants', 'Flower structure, development of male and female gametophytes, pollination, and fertilization.'),
+  ('mod_10', 'course_004', 'Chapter 2: Human Reproduction', 'Male and female reproductive systems, microscopic anatomy, gametogenesis, and menstrual cycle.')
+ON CONFLICT (id) DO NOTHING;
+
 -- Demo audit log entry
 INSERT INTO audit_logs (actor_id, actor_name, actor_role, action, target_type, target_id, details)
 VALUES (

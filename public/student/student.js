@@ -155,6 +155,7 @@ function navigateTo(page) {
 function togglePlatformGuide() {
   const content = document.getElementById('platformGuideContent');
   const icon = document.getElementById('guideToggleIcon');
+  if (!content || !icon) return;
   if (content.classList.contains('d-none')) {
     content.classList.remove('d-none');
     icon.innerHTML = '<i class="fas fa-chevron-up"></i>';
@@ -340,9 +341,10 @@ async function showCourseDetails(courseId) {
       return;
     }
 
-    const [batches, myBatches] = await Promise.all([
+    const [batches, myBatches, modules] = await Promise.all([
       api(`/student/batches?courseId=${courseId}`),
-      api('/student/my-batches')
+      api('/student/my-batches'),
+      api(`/courses/${courseId}/modules`)
     ]);
 
     const myBatchIds = myBatches.map(mb => mb.id);
@@ -351,7 +353,7 @@ async function showCourseDetails(courseId) {
     bodyEl.innerHTML = `
       <div class="row g-4">
         <div class="col-md-5">
-          <div class="p-4 rounded-3 shadow-sm" style="background:var(--bg-dark); border:1px solid var(--border);">
+          <div class="p-4 rounded-3 shadow-sm" style="background:var(--bg-card); border:1px solid var(--border);">
             <span class="badge bg-primary mb-2 px-3 py-2 rounded-2" style="font-size:0.75rem; font-weight:600; letter-spacing:0.5px;">${course.subject}</span>
             <h4 class="fw-bold mb-3" style="color:var(--text-primary); font-family:'Outfit',sans-serif;">${course.title}</h4>
             <p class="text-muted small mb-4" style="line-height:1.6;">${course.description || 'No description provided.'}</p>
@@ -364,9 +366,19 @@ async function showCourseDetails(courseId) {
               <strong style="color:var(--text-primary);">${course.duration_weeks || 12} weeks</strong>
             </div>
             <hr style="border-color:var(--border); margin: 1.5rem 0;">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center mb-3">
               <span class="text-muted small">Course Fee:</span>
               <span class="fs-4 fw-bold text-success" style="font-family:'Outfit',sans-serif; font-weight:800;">₹${parseFloat(course.fees).toLocaleString('en-IN')}</span>
+            </div>
+            
+            <h6 class="fw-bold mb-2 text-primary" style="font-size: 0.85rem;"><i class="fas fa-book-open me-2"></i>Syllabus & Sections</h6>
+            <div class="d-flex flex-column gap-2" style="max-height: 150px; overflow-y: auto;">
+              ${modules.length ? modules.map((m, idx) => `
+                <div class="p-2 rounded" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                  <div class="fw-bold small text-white" style="font-size: 0.75rem;">${idx + 1}. ${m.title}</div>
+                  <div class="text-muted" style="font-size: 0.65rem;">${m.description || ''}</div>
+                </div>
+              `).join('') : '<p class="text-muted small">No chapters listed yet.</p>'}
             </div>
           </div>
         </div>
@@ -909,6 +921,85 @@ async function actionParentRequest(linkId, action) {
     showToast(data.message || `Request ${action}d successfully`);
     renderParents();
   } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ── Batch Details & Materials ──────────────────────────────────
+async function viewBatchDetails(batchId) {
+  try {
+    const myBatches = await api('/student/my-batches');
+    const batch = myBatches.find(b => b.id === batchId);
+    if (!batch) {
+      showToast('Batch details not found', 'error');
+      return;
+    }
+
+    const [notes, modules] = await Promise.all([
+      api(`/student/batches/${batchId}/notes`),
+      api(`/courses/${batch.course_id}/modules`)
+    ]);
+
+    const titleEl = document.getElementById('batchDetailsTitle');
+    const bodyEl = document.getElementById('batchDetailsBody');
+
+    titleEl.textContent = `${batch.course_title || batch.batch_name} — Details`;
+
+    bodyEl.innerHTML = `
+      <div class="row g-4">
+        <!-- Left: Batch Info & Sections -->
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 mb-3" style="background:var(--bg-card); border:1px solid var(--border);">
+            <h6 class="fw-bold text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Batch Information</h6>
+            <div class="d-flex flex-column gap-2 small text-muted">
+              <div>Mentor: <strong class="text-white">${batch.teacher_name || 'Expert Teacher'}</strong></div>
+              <div>Schedule: <strong class="text-white">${(batch.days_of_week || []).join(', ')}</strong></div>
+              <div>Time: <strong class="text-white">${batch.start_time ? batch.start_time.substr(0, 5) : ''} - ${batch.end_time ? batch.end_time.substr(0, 5) : ''}</strong></div>
+            </div>
+          </div>
+          
+          <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-book-open me-2 text-primary"></i>Course Syllabus & Sections</h6>
+          <div class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto; padding-right: 4px;">
+            ${modules.length ? modules.map((m, idx) => `
+              <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                <div class="fw-bold text-white small mb-1">${idx + 1}. ${m.title}</div>
+                <div class="text-muted" style="font-size:0.75rem;">${m.description || ''}</div>
+              </div>
+            `).join('') : '<p class="text-muted small text-center py-3">No sections/modules uploaded for this course yet.</p>'}
+          </div>
+        </div>
+
+        <!-- Right: Study Materials -->
+        <div class="col-md-6" style="border-left: 1px solid var(--border);">
+          <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-file-alt me-2 text-primary"></i>Study Materials & Notes</h6>
+          <div class="d-flex flex-column gap-3" style="max-height: 380px; overflow-y: auto; padding-right: 4px;">
+            ${notes.length ? notes.map(n => `
+              <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <h6 class="fw-bold text-white small mb-1">${n.title}</h6>
+                    <div class="text-muted" style="font-size: 0.7rem;">${n.description || ''}</div>
+                  </div>
+                  <span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">
+                    ${(n.file_type || 'link').toUpperCase()}
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                  <span class="text-muted" style="font-size: 0.65rem;">Uploaded: ${fmtDate(n.uploaded_at)}</span>
+                  <a href="${n.file_url}" target="_blank" class="btn btn-sm btn-spx py-1 px-3" style="font-size: 0.75rem;">
+                    <i class="fas fa-download me-1"></i> Access
+                  </a>
+                </div>
+              </div>
+            `).join('') : '<p class="text-muted small text-center py-4">No study materials shared for this batch yet.</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('batchDetailsModal'));
+    modal.show();
+  } catch(e) {
     showToast(e.message, 'error');
   }
 }

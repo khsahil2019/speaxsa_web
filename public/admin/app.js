@@ -1,10 +1,15 @@
 // Speaxsa Admin Portal Extended JavaScript Controller
+const API = ''; // Set to absolute domain like 'https://speaxsa.com' if hosting client & API on separate servers
 
 // Global Fetch Interceptor for Security Header Injection
 const originalFetch = window.fetch;
 window.fetch = async function(url, options = {}) {
+  let finalUrl = url;
+  if (typeof url === 'string' && url.startsWith('/api')) {
+    finalUrl = API + url;
+  }
   const token = localStorage.getItem('speaxsa_admin_token');
-  const urlString = typeof url === 'string' ? url : (url && url.url) ? url.url : '';
+  const urlString = typeof finalUrl === 'string' ? finalUrl : (finalUrl && finalUrl.url) ? finalUrl.url : '';
   
   if (token) {
     if (typeof url === 'object' && url.headers) {
@@ -20,7 +25,7 @@ window.fetch = async function(url, options = {}) {
     }
   }
   
-  const response = await originalFetch(url, options);
+  const response = await originalFetch(finalUrl, options);
   if (urlString && !urlString.includes('/api/admin/login')) {
     let shouldLogout = false;
     if (response.status === 401) {
@@ -116,7 +121,7 @@ function setupAdminLogin() {
     errorMsg.style.display = 'none';
     
     try {
-      const res = await originalFetch('/api/admin/login', {
+      const res = await originalFetch(API + '/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
