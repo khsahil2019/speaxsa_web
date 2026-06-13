@@ -240,26 +240,46 @@ h6 {
 .login-brand {
   text-align: center;
   margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.login-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 2px;
 }
 
 .login-brand .brand-icon {
-  width: 60px;
-  height: 60px;
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
-  background: rgba(60, 189, 176, 0.08);
-  border: 1px solid rgba(60, 189, 176, 0.15);
-  border-radius: 16px;
-  padding: 10px;
+  margin-bottom: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.login-brand .brand-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .login-brand h2 {
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   color: var(--text-primary) !important;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   letter-spacing: 0.5px;
+  line-height: 1;
 }
 
 .login-brand p {
