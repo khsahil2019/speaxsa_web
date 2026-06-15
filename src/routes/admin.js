@@ -148,10 +148,10 @@ router.get('/teachers/:id', async (req, res) => {
 router.post('/teachers/:id/approve', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1 AND role = 'teacher'", [id]);
+    await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1 AND role = 'teacher'", [id]);
     await db.query("UPDATE teacher_sop SET status = 'approved', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1", [id, req.user.id]);
     await logAudit(req.user.id, 'TEACHER_APPROVED', 'teacher', id, {});
-    res.json({ message: 'Teacher approved successfully' });
+    res.json({ message: 'Teacher SOP approved. Waiting for agreement signature.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -217,9 +217,9 @@ router.post('/sop/:teacherId/approve', async (req, res) => {
         JSON.stringify(audio_checklist), JSON.stringify(internet_checklist),
         JSON.stringify(teaching_checklist), req.user.id]);
 
-    await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1", [teacherId]);
+    await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1", [teacherId]);
     await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, {});
-    res.json({ message: 'SOP approved. Teacher can now start teaching.' });
+    res.json({ message: 'SOP approved. Waiting for teacher to sign agreement.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

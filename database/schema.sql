@@ -113,7 +113,12 @@ CREATE TABLE teacher_sop (
   reviewed_by           VARCHAR(100),
   reviewed_at           TIMESTAMPTZ,
   submitted_at          TIMESTAMPTZ DEFAULT NOW(),
-  updated_at            TIMESTAMPTZ DEFAULT NOW()
+  updated_at            TIMESTAMPTZ DEFAULT NOW(),
+  -- Teacher compliance checklists and digital signature agreement
+  teacher_checklist     JSONB DEFAULT '{}',
+  agreement_signed      BOOLEAN DEFAULT false,
+  agreement_signed_at   TIMESTAMPTZ,
+  digital_signature     VARCHAR(255)
 );
 
 -- ============================================================

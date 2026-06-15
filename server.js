@@ -42,6 +42,7 @@ cron.schedule('0 20 28-31 * *', async () => {
 cron.schedule('0 21 * * 6', async () => {
   console.log('[Cron] Recalculating teacher levels...');
   try {
+
     const levelService = require('./src/services/teacherLevel.service');
     await levelService.updateAllTeacherLevels();
     console.log('[Cron] Teacher levels updated');

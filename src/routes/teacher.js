@@ -100,6 +100,7 @@ sopFields.forEach(({ name, col }) => {
 
 // Submit SOP for review
 router.post('/sop/submit', async (req, res) => {
+  const { teacher_checklist } = req.body;
   try {
     const sop = await db.query('SELECT * FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
     if (!sop.rows[0]) return res.status(404).json({ error: 'SOP record not found' });
@@ -109,11 +110,46 @@ router.post('/sop/submit', async (req, res) => {
       return res.status(400).json({ error: 'All 5 SOP videos must be uploaded before submitting' });
     }
 
-    await db.query("UPDATE teacher_sop SET status = 'sop_pending', submitted_at = NOW() WHERE teacher_id = $1", [req.user.id]);
+    await db.query(
+      "UPDATE teacher_sop SET status = 'sop_pending', teacher_checklist = $2, submitted_at = NOW() WHERE teacher_id = $1",
+      [req.user.id, JSON.stringify(teacher_checklist || {})]
+    );
     await db.query("UPDATE users SET approval_status = 'sop_pending' WHERE id = $1", [req.user.id]);
     await logAudit(req.user.id, 'SOP_SUBMITTED', 'teacher', req.user.id, {});
 
     res.json({ message: 'SOP submitted for admin review' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sign agreement after SOP is approved
+router.post('/sop/sign-agreement', async (req, res) => {
+  const { digital_signature } = req.body;
+  try {
+    if (!digital_signature || !digital_signature.trim()) {
+      return res.status(400).json({ error: 'Digital signature is required (type your full name)' });
+    }
+
+    const sop = await db.query('SELECT status FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
+    if (!sop.rows.length) return res.status(404).json({ error: 'SOP record not found' });
+    if (sop.rows[0].status !== 'approved') {
+      return res.status(400).json({ error: 'SOP must be approved by admin before signing the agreement' });
+    }
+
+    await db.query(
+      `UPDATE teacher_sop 
+       SET agreement_signed = true, 
+           agreement_signed_at = NOW(), 
+           digital_signature = $2 
+       WHERE teacher_id = $1`,
+      [req.user.id, digital_signature.trim()]
+    );
+
+    await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1", [req.user.id]);
+    await logAudit(req.user.id, 'AGREEMENT_SIGNED', 'teacher', req.user.id, { signature: digital_signature });
+
+    res.json({ message: 'Agreement signed successfully. You can now start teaching!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -169,9 +205,9 @@ router.post('/batches', async (req, res) => {
   const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity } = req.body;
   try {
     // Check SOP approval
-    const sop = await db.query("SELECT status FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
-    if (!sop.rows.length || sop.rows[0].status !== 'approved') {
-      return res.status(403).json({ error: 'SOP must be approved before creating batches' });
+    const sop = await db.query("SELECT status, agreement_signed FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
+    if (!sop.rows.length || sop.rows[0].status !== 'approved' || !sop.rows[0].agreement_signed) {
+      return res.status(403).json({ error: 'SOP and Agreement must be approved and signed before creating batches' });
     }
 
     // Validate capacity
@@ -247,9 +283,9 @@ router.post('/live-classes', async (req, res) => {
   const { batchId, title, classDate, classTime } = req.body;
   try {
     // SOP check
-    const sop = await db.query("SELECT status FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
-    if (!sop.rows.length || sop.rows[0].status !== 'approved') {
-      return res.status(403).json({ error: 'SOP must be approved before starting live classes' });
+    const sop = await db.query("SELECT status, agreement_signed FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
+    if (!sop.rows.length || sop.rows[0].status !== 'approved' || !sop.rows[0].agreement_signed) {
+      return res.status(403).json({ error: 'SOP and Agreement must be approved and signed before scheduling live classes' });
     }
 
     // Check for simultaneous classes

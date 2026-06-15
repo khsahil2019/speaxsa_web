@@ -793,7 +793,7 @@ async function viewTeacher(id) {
           ${levelBadge(data.teacher?.teacher_level)}
           <div class="mt-2">${statusBadge(data.teacher?.approval_status)}</div>
         </div>
-        <div class="col-md-8">
+        <div class="col-md-8 text-start text-white">
           <div class="row g-2 text-muted small">
             <div class="col-6"><strong>Email:</strong> ${data.teacher?.email}</div>
             <div class="col-6"><strong>Phone:</strong> ${data.teacher?.phone||'—'}</div>
@@ -803,6 +803,11 @@ async function viewTeacher(id) {
             <div class="col-6"><strong>Joined:</strong> ${fmtDate(data.teacher?.created_at)}</div>
             <div class="col-6"><strong>Rating:</strong> ⭐ ${data.teacher?.rating||5}/5 (${data.teacher?.total_ratings||0} reviews)</div>
             <div class="col-6"><strong>Referral Code:</strong> ${data.teacher?.referral_code||'—'}</div>
+            <div class="col-6"><strong>Agreement Signed:</strong> ${data.sop?.agreement_signed ? `<span class="badge bg-success">Signed</span>` : `<span class="badge bg-warning">Pending</span>`}</div>
+            ${data.sop?.agreement_signed ? `
+              <div class="col-6"><strong>Signed At:</strong> ${fmtDate(data.sop?.agreement_signed_at)}</div>
+              <div class="col-12"><strong>Digital Signature:</strong> <code>${data.sop?.digital_signature || '—'}</code></div>
+            ` : ''}
           </div>
           <hr style="border-color:var(--border)">
           <div class="row g-2 text-muted small">
@@ -1263,7 +1268,7 @@ async function renderSOP() {
     const sops = await apiGet('/admin/sop');
     document.getElementById('pageContent').innerHTML = `
       <div class="spx-card">
-        <h6 class="mb-4">SOP Submissions (${sops.length})</h6>
+        <h6 class="mb-4 text-start">SOP Submissions (${sops.length})</h6>
         ${table(
           ['Teacher','Email','Status','Submitted','Videos','Actions'],
           sops.map(s => `
@@ -1273,12 +1278,17 @@ async function renderSOP() {
               <td>${statusBadge(s.status)}</td>
               <td>${fmtDate(s.submitted_at)}</td>
               <td>
-                ${s.camera_sop_url ? `<a href="${s.camera_sop_url}" target="_blank" class="btn btn-xs btn-outline-primary me-1" style="font-size:.7rem;padding:2px 8px">Camera</a>` : ''}
-                ${s.demo_teaching_url ? `<a href="${s.demo_teaching_url}" target="_blank" class="btn btn-xs btn-outline-success" style="font-size:.7rem;padding:2px 8px">Demo</a>` : ''}
+                <div class="d-flex gap-1 flex-wrap">
+                  ${s.camera_sop_url ? `<a href="${s.camera_sop_url}" target="_blank" class="btn btn-xs btn-outline-primary" style="font-size:.7rem;padding:2px 8px">Camera</a>` : ''}
+                  ${s.lighting_sop_url ? `<a href="${s.lighting_sop_url}" target="_blank" class="btn btn-xs btn-outline-warning" style="font-size:.7rem;padding:2px 8px">Light</a>` : ''}
+                  ${s.audio_sop_url ? `<a href="${s.audio_sop_url}" target="_blank" class="btn btn-xs btn-outline-info" style="font-size:.7rem;padding:2px 8px">Audio</a>` : ''}
+                  ${s.internet_proof_url ? `<a href="${s.internet_proof_url}" target="_blank" class="btn btn-xs btn-outline-secondary" style="font-size:.7rem;padding:2px 8px">Speed</a>` : ''}
+                  ${s.demo_teaching_url ? `<a href="${s.demo_teaching_url}" target="_blank" class="btn btn-xs btn-outline-success" style="font-size:.7rem;padding:2px 8px">Demo</a>` : ''}
+                </div>
               </td>
               <td>
                 ${s.status === 'sop_pending' ? `
-                  <button class="btn btn-sm btn-success me-1" onclick="reviewSOP('${s.teacher_id}','approve')">Approve</button>
+                  <button class="btn btn-sm btn-success me-1" onclick="showSOPApprovalModal('${s.teacher_id}')">Approve</button>
                   <button class="btn btn-sm btn-danger" onclick="reviewSOP('${s.teacher_id}','reject')">Reject</button>` : statusBadge(s.status)}
               </td>
             </tr>`).join(''),
@@ -1299,10 +1309,117 @@ async function reviewSOP(teacherId, action) {
     });
     return;
   }
-  // Approve with checklists (simplified - all pass)
-  const defaultChecklist = {camera_checklist:{face_visible:true,stable_camera:true,eye_level:true,proper_framing:true},lighting_checklist:{proper_lighting:true,no_backlight:true},audio_checklist:{clear_voice:true,no_noise:true},internet_checklist:{stable_connection:true},teaching_checklist:{communication:true,engagement:true}};
-  try { const d = await apiPost(`/admin/sop/${teacherId}/approve`,defaultChecklist); showToast(d.message); renderSOP(); }
-  catch (err) { showToast(err.message,'error'); }
+}
+
+async function showSOPApprovalModal(teacherId) {
+  try {
+    const sops = await apiGet('/admin/sop');
+    const s = sops.find(x => x.teacher_id === teacherId);
+    if (!s) return showToast('SOP record not found', 'error');
+
+    document.getElementById('formModalTitle').textContent = `Review & Approve SOP - ${s.teacher_name}`;
+    document.getElementById('formModalBody').innerHTML = `
+      <div class="row g-3 text-start">
+        <div class="col-12 mb-2">
+          <p class="text-secondary small">Verify that the teacher has met all standard requirements. Tick the checkboxes below to log compliance:</p>
+          <div class="sop-video-box p-3 mb-2">
+            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-file-alt me-1"></i>Uploaded Proofs:</h6>
+            <div class="d-flex gap-2 flex-wrap">
+              ${s.camera_sop_url ? `<a href="${s.camera_sop_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-video me-1"></i>Camera Video</a>` : ''}
+              ${s.lighting_sop_url ? `<a href="${s.lighting_sop_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-sun me-1"></i>Lighting Video</a>` : ''}
+              ${s.audio_sop_url ? `<a href="${s.audio_sop_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-microphone me-1"></i>Audio Clip</a>` : ''}
+              ${s.internet_proof_url ? `<a href="${s.internet_proof_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-wifi me-1"></i>Speed Proof</a>` : ''}
+              ${s.demo_teaching_url ? `<a href="${s.demo_teaching_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-chalkboard me-1"></i>Demo Lecture</a>` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
+            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-camera me-1"></i>Camera Setup Checklist</h6>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_face_visible" checked><label class="form-check-label text-secondary small" for="adm_face_visible" style="cursor: pointer;">Face clearly visible</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_stable_camera" checked><label class="form-check-label text-secondary small" for="adm_stable_camera">Camera feed stable (on tripod)</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_eye_level" checked><label class="form-check-label text-secondary small" for="adm_eye_level">Eye-level camera positioning</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_proper_framing" checked><label class="form-check-label text-secondary small" for="adm_proper_framing">Proper framing (face, upper body, hands)</label></div>
+          </div>
+
+          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
+            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-lightbulb me-1"></i>Lighting Setup Checklist</h6>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_proper_lighting" checked><label class="form-check-label text-secondary small" for="adm_proper_lighting" style="cursor: pointer;">Soft light falling on face</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_no_backlight" checked><label class="form-check-label text-secondary small" for="adm_no_backlight" style="cursor: pointer;">No backlight glare or dark shadows</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_clear_background" checked><label class="form-check-label text-secondary small" for="adm_clear_background" style="cursor: pointer;">Clean neutral background</label></div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
+            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-microphone-alt me-1"></i>Audio Checklist</h6>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_clear_voice" checked><label class="form-check-label text-secondary small" for="adm_clear_voice" style="cursor: pointer;">Clear voice projection & volume</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_no_noise" checked><label class="form-check-label text-secondary small" for="adm_no_noise" style="cursor: pointer;">No environmental / echo noise</label></div>
+          </div>
+
+          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
+            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-wifi me-1"></i>Internet Checklist</h6>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_stable_connection" checked><label class="form-check-label text-secondary small" for="adm_stable_connection" style="cursor: pointer;">Broadband connection stable</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_speed_proof" checked><label class="form-check-label text-secondary small" for="adm_speed_proof" style="cursor: pointer;">Speed test proof > 20 Mbps verified</label></div>
+          </div>
+
+          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
+            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-graduation-cap me-1"></i>Teaching Checklist</h6>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_communication" checked><label class="form-check-label text-secondary small" for="adm_communication" style="cursor: pointer;">Energetic communication tone</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_engagement" checked><label class="form-check-label text-secondary small" for="adm_engagement" style="cursor: pointer;">Proactive student engagement flow</label></div>
+            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_presentation" checked><label class="form-check-label text-secondary small" for="adm_presentation" style="cursor: pointer;">Clear whiteboard/slide presentability</label></div>
+          </div>
+        </div>
+
+        <div class="col-12 mt-3 d-flex justify-content-end gap-2">
+          <button class="btn btn-secondary btn-sm" onclick="formModal.hide()">Cancel</button>
+          <button class="btn btn-success btn-sm" onclick="submitSOPApproval('${teacherId}')">Submit Approval</button>
+        </div>
+      </div>
+    `;
+    formModal.show();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitSOPApproval(teacherId) {
+  const payload = {
+    camera_checklist: {
+      face_visible: document.getElementById('adm_face_visible').checked,
+      stable_camera: document.getElementById('adm_stable_camera').checked,
+      eye_level: document.getElementById('adm_eye_level').checked,
+      proper_framing: document.getElementById('adm_proper_framing').checked
+    },
+    lighting_checklist: {
+      proper_lighting: document.getElementById('adm_proper_lighting').checked,
+      no_backlight: document.getElementById('adm_no_backlight').checked,
+      clear_background: document.getElementById('adm_clear_background').checked
+    },
+    audio_checklist: {
+      clear_voice: document.getElementById('adm_clear_voice').checked,
+      no_noise: document.getElementById('adm_no_noise').checked
+    },
+    internet_checklist: {
+      stable_connection: document.getElementById('adm_stable_connection').checked,
+      speed_proof: document.getElementById('adm_speed_proof').checked
+    },
+    teaching_checklist: {
+      communication: document.getElementById('adm_communication').checked,
+      engagement: document.getElementById('adm_engagement').checked,
+      presentation: document.getElementById('adm_presentation').checked
+    }
+  };
+
+  try {
+    const d = await apiPost(`/admin/sop/${teacherId}/approve`, payload);
+    showToast(d.message);
+    formModal.hide();
+    renderSOP();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 // ── Coupons ───────────────────────────────────────────────────

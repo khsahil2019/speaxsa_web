@@ -170,7 +170,17 @@ async function checkSopStatus() {
     const sop = await api('/teacher/sop');
     const banner = document.getElementById('sopBanner');
     if (!sop || sop.status !== 'approved') {
-      banner?.classList.remove('d-none');
+      if (banner) {
+        banner.innerHTML = `<span style="color:#F59E0B;font-size:.875rem"><i class="fas fa-exclamation-triangle me-2"></i><strong>SOP Pending:</strong> Complete your SOP setup to start teaching</span>
+        <button class="btn btn-sm btn-warning" onclick="navigateTo('sop')">Complete SOP →</button>`;
+        banner.classList.remove('d-none');
+      }
+    } else if (!sop.agreement_signed) {
+      if (banner) {
+        banner.innerHTML = `<span style="color:#F59E0B;font-size:.875rem"><i class="fas fa-file-contract me-2"></i><strong>Agreement Pending:</strong> Review and sign the Teacher Agreement to start teaching</span>
+        <button class="btn btn-sm btn-warning" onclick="navigateTo('sop')">Sign Agreement →</button>`;
+        banner.classList.remove('d-none');
+      }
     } else {
       banner?.classList.add('d-none');
     }
@@ -320,16 +330,113 @@ async function renderHome() {
 }
 
 // ── SOP Setup ─────────────────────────────────────────────────
+// ── SOP Setup ─────────────────────────────────────────────────
 async function renderSop() {
   loading();
   try {
     const sop = await api('/teacher/sop');
     const documents = await api('/teacher/documents');
 
+    // 1. If SOP is approved but Agreement is not yet signed: Show Digital Agreement Form
+    if (sop && sop.status === 'approved' && !sop.agreement_signed) {
+      document.getElementById('pageContent').innerHTML = `
+        <div class="row justify-content-center">
+          <div class="col-lg-10">
+            <div class="spx-card shadow-lg p-5 border-top border-4 border-primary" style="background:#ffffff; border-radius:16px;">
+              <div class="text-center mb-4">
+                <div style="font-size: 3rem; color: var(--primary);"><i class="fas fa-file-contract"></i></div>
+                <h4 class="fw-bold mt-2" style="color:var(--text-primary);">SPEAXSA Educator Agreement</h4>
+                <p class="text-muted small">Please review and digitally sign your teaching agreement to activate your account</p>
+              </div>
+              
+              <div class="agreement-content border rounded p-4 mb-4" style="height: 350px; overflow-y: scroll; font-size: 0.9rem; line-height: 1.6; background: #F8FAFC; color: #334155; text-align: left;">
+                <h6 class="fw-bold mb-2 text-dark">1. Master Teacher SOP Structure & Professional Identity</h6>
+                <p>Every educator on the SPEAXSA platform commits to representing the highest standards of online pedagogy. As a registered teacher, you operate not merely as a tutor, but in a multi-faceted professional role as a <strong>Digital Educator, Classroom Presenter, Learning Mentor, Student Engagement Manager, Parent Accountability Contributor, Batch Performance Supervisor,</strong> and <strong>Platform Representative</strong>. This framework ensures standardization, professional trust, and consistent teaching quality.</p>
+
+                <h6 class="fw-bold mb-2 mt-4 text-dark">2. Digital Classroom Setup & Audio-Visual Standards</h6>
+                <p>To deliver an optimized learning experience, you agree to comply with the technical requirements verified during onboarding:</p>
+                <ul>
+                  <li><strong>Camera Standards:</strong> Minimum 1080p high-definition webcam or smartphone camera, positioned at eye-level on a stable tripod (no hand-held or shaky camera feeds). Face, upper body, and hand gestures must remain clearly visible.</li>
+                  <li><strong>Lighting Standards:</strong> Front-facing soft lighting (such as a ring light) must illuminate the presenter's face. No backlight or high contrast shadows behind the teacher are permitted. Clean neutral background is required.</li>
+                  <li><strong>Audio Standards:</strong> Collar/external mic is mandatory to eliminate echo, fan, or ambient environmental noise.</li>
+                  <li><strong>Internet Standards:</strong> Stable broadband connection with sufficient upload speeds (>20 Mbps) and a dedicated mobile hotspot backup at all times.</li>
+                </ul>
+
+                <h6 class="fw-bold mb-2 mt-4 text-dark">3. Classroom Presentation, Attendance & Early Join SOP</h6>
+                <ul>
+                  <li><strong>Timing Compliance:</strong> Teachers must join scheduled live sessions 10–15 minutes early to test equipment, open board/slides, and verify systems.</li>
+                  <li><strong>Engagement Mechanisms:</strong> Teachers must utilize platform engagement features (polls, quizzes, rapid questions, concept recap) every 3–5 minutes. Involve weak and quiet students proactively.</li>
+                  <li><strong>Teaching Style:</strong> Maintain an energetic, expressive tone. Avoid monotone delivery, look directly into the camera frequently, and maintain a professional neat attire.</li>
+                </ul>
+
+                <h6 class="fw-bold mb-2 mt-4 text-dark">4. Student Performance Mapping & Observational Metrics</h6>
+                <p>You agree to evaluate each student monthly across seven core metrics: <strong>Curiosity, Understanding, Consistency, Communication, Observation, Participation, and Discipline</strong>. These metrics feed into the parent reporting dashboard and are critical for learning quality governance.</p>
+
+                <h6 class="fw-bold mb-2 mt-4 text-dark">5. Professional Code of Conduct & Compliance Rules</h6>
+                <p>Teachers are strictly prohibited from promoting external coaching, soliciting or taking SPEAXSA students for private tuition, utilizing unprofessional or abusive language, repeatedly missing live classes, or violating recording policy. Failure to adhere to code of conduct rules will lead to immediate account suspension.</p>
+
+                <h6 class="fw-bold mb-2 mt-4 text-dark">6. Dynamic Revenue Commission Model & Payout Tranches</h6>
+                <p>Platform commissions are calculated dynamically based on student acquisition source (Subject to admin settings):</p>
+                <ul>
+                  <li>Platform-generated students: 50% Teacher / 50% Platform.</li>
+                  <li>Teacher-referred students (25% share): 60-65% Teacher Share.</li>
+                  <li>Teacher-referred students (50% share): 70-75% Teacher Share.</li>
+                  <li>Star / Elite Mentors: Negotiable commission structures.</li>
+                </ul>
+                <p>Payouts are paid in tranches: 50% advance at/before batch start, 25% mid-completion (upon 70-75% completion and compliance audits), and 25% final payment (upon module closure and report submissions).</p>
+
+                <h6 class="fw-bold mb-2 mt-4 text-dark">7. Legal Binding & Consent</h6>
+                <p>By signing this document, you acknowledge that you have read, understood, and agreed to adhere to all terms, policies, and standard operating procedures set forth by SPEAXSA. Any breach may result in immediate platform action, including termination of payouts and permanent suspension.</p>
+              </div>
+
+              <div class="mb-4 text-start">
+                <div class="form-check mb-3">
+                  <input class="form-check-input" type="checkbox" id="agreementConsentCheckbox" style="cursor:pointer">
+                  <label class="form-check-label text-secondary small fw-semibold" for="agreementConsentCheckbox" style="cursor:pointer; user-select:none">
+                    I read and accept all the terms, platform commissions, payout tranches, and standard operating procedures of SPEAXSA.
+                  </label>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="spx-label font-bold text-dark mb-1">Digital Signature (Type your Full Name)</label>
+                  <input type="text" class="form-control border p-3 spx-input" id="agreementSigInput" placeholder="Type your registered name here" style="background:#ffffff; color:#000000; border-color:#cbd5e1 !important">
+                </div>
+              </div>
+
+              <button class="btn btn-spx w-100 py-3" onclick="submitDigitalAgreement()">Sign & Activate Account</button>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // 2. If SOP is approved and Agreement is signed: Show Verification Complete Screen
+    if (sop && sop.status === 'approved' && sop.agreement_signed) {
+      document.getElementById('pageContent').innerHTML = `
+        <div class="spx-card text-center py-5">
+          <div class="display-4 text-success mb-3"><i class="fas fa-check-circle"></i></div>
+          <h4 class="fw-bold text-white">Verification Complete!</h4>
+          <p class="text-muted small max-width-500 mx-auto">Your Video SOPs are approved and your Digital Agreement is signed. Your account is fully active and visible to students.</p>
+          <div class="d-flex justify-content-center gap-3 mt-4">
+            <button class="btn btn-spx" onclick="navigateTo('batches')">Go to Batches</button>
+            <button class="btn btn-outline-primary" onclick="navigateTo('home')">Dashboard</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // 3. Otherwise: Show SOP uploads and Checklists form
     const statusBadge = (status) => {
       const cls = { approved:'bg-success', pending:'bg-warning', sop_pending:'bg-warning', rejected:'bg-danger', suspended:'bg-danger', draft:'bg-secondary' };
       return `<span class="badge ${cls[status] || 'bg-info'}">${status ? status.toUpperCase().replace('_',' ') : 'NOT UPLOADED'}</span>`;
     };
+
+    const isSubmitted = sop && (sop.status === 'sop_pending' || sop.status === 'approved' || sop.status === 'suspended');
+    const tc = sop?.teacher_checklist || {};
+    const chk = (key) => tc[key] ? 'checked' : '';
+    const dis = isSubmitted ? 'disabled' : '';
 
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
@@ -355,45 +462,113 @@ async function renderSop() {
                   </div>
                   ${item.url ? `<a href="${item.url}" target="_blank" class="btn btn-sm btn-outline-info" style="font-size:.7rem"><i class="fas fa-play"></i> View</a>` : `<span class="text-muted small">Missing</span>`}
                 </div>
-                <div class="d-flex align-items-center gap-2 mt-2">
-                  <input type="file" class="form-control form-control-sm spx-input" id="file_${item.id}" style="max-width:300px;">
-                  <button class="btn btn-sm btn-spx" onclick="uploadSopVideo('${item.id}')">Upload</button>
-                </div>
+                ${isSubmitted ? '' : `
+                  <div class="d-flex align-items-center gap-2 mt-2">
+                    <input type="file" class="form-control form-control-sm spx-input" id="file_${item.id}" style="max-width:300px;">
+                    <button class="btn btn-sm btn-spx" onclick="uploadSopVideo('${item.id}')">Upload</button>
+                  </div>
+                `}
               </div>
             `).join('')}
 
-            ${sop && sop.camera_sop_url && sop.lighting_sop_url && sop.audio_sop_url && sop.internet_proof_url && sop.demo_teaching_url ? `
-              <button class="btn btn-spx w-100 mt-3" onclick="submitSopForReview()">Submit SOP For Admin Verification</button>
+            <div class="mt-4 pt-3 border-top border-secondary text-start">
+              <h6 class="fw-bold text-white mb-2">SOP Compliance Declaration Checklist</h6>
+              <p class="text-muted small mb-3">Please read and tick each item to declare your setup compliance before submitting for review:</p>
+              
+              <div class="sop-checklist-container mb-3" style="max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.1); padding: 12px; border-radius: 8px;">
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_stable" data-key="camera_stable" ${chk('camera_stable')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_camera_stable">I use a stable eye-level camera tripod (absolutely no shaky/hand-held feed).</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_1080p" data-key="camera_1080p" ${chk('camera_1080p')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_camera_1080p">My camera supports minimum 1080p resolution and shows my face, upper body, and hands clearly.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_soft" data-key="lighting_soft" ${chk('lighting_soft')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_lighting_soft">I use a front soft/ring light falling on my face, with no backlight or glare behind me.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_bg" data-key="lighting_bg" ${chk('lighting_bg')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_lighting_bg">I have a white or clean neutral background with no messy details visible.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_mic" data-key="audio_mic" ${chk('audio_mic')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_audio_mic">I use a collar mic / external mic (built-in webcam mic is not permitted).</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_noise" data-key="audio_noise" ${chk('audio_noise')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_audio_noise">My teaching environment is free of echo, fan noise, or background chatter.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_internet_speed" data-key="internet_speed" ${chk('internet_speed')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_internet_speed">My upload speed is above 20 Mbps, and I have mobile hotspot backup ready.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_presentation_style" data-key="presentation_style" ${chk('presentation_style')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_presentation_style">I will maintain an energetic tone, direct eye contact with the camera, and use gestures naturally.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_dress_code" data-key="dress_code" ${chk('dress_code')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_dress_code">I will wear solid colored shirts/tops and maintain a clean professional appearance.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_class_flow" data-key="class_flow" ${chk('class_flow')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_class_flow">I will join sessions 10–15 mins early, test media, greet students by name, and run engagement polls/quizzes every 3–5 mins.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_board_materials" data-key="board_materials" ${chk('board_materials')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_board_materials">I will write in large legible characters with structured spacing and use annotations / highlighting.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_content_delivery" data-key="content_delivery" ${chk('content_delivery')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_content_delivery">I will follow modular delivery: Concept -> Examples -> Practice -> Recap -> Doubt section.</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_discipline_rules" data-key="discipline_rules" ${chk('discipline_rules')} ${dis} onchange="toggleSopSubmitBtn()">
+                  <label class="form-check-label text-muted small" for="check_discipline_rules">I will not solicit students privately, promote external coaching, or use unprofessional language.</label>
+                </div>
+              </div>
+            </div>
+
+            ${isSubmitted ? `
+              <div class="alert alert-info text-center mt-3 py-2 small">SOP details submitted and locked for admin review.</div>
+            ` : (sop && sop.camera_sop_url && sop.lighting_sop_url && sop.audio_sop_url && sop.internet_proof_url && sop.demo_teaching_url ? `
+              <button class="btn btn-secondary w-100 mt-3" id="sopSubmitButton" onclick="submitSopForReview()" disabled>Submit SOP For Admin Verification</button>
             ` : `
-              <button class="btn btn-secondary w-100 mt-3" disabled>Submit SOP For Admin Verification (Upload all files first)</button>
-            `}
+              <button class="btn btn-secondary w-100 mt-3" disabled>Submit SOP For Admin Verification (Upload all files first & tick all checklists)</button>
+            `)}
           </div>
         </div>
 
         <div class="col-lg-5">
           <div class="spx-card">
             <h6 class="mb-4 fw-bold">KYC Documents Upload</h6>
-            <form onsubmit="uploadKYCDocument(event)" class="mb-4">
-              <div class="mb-3">
-                <label class="spx-label">Document Type</label>
-                <select class="form-select spx-input" id="docType" required>
-                  <option value="aadhaar">Aadhaar Card</option>
-                  <option value="pan">PAN Card</option>
-                  <option value="resume">Resume / CV</option>
-                  <option value="qualification">Degree Certificate</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="spx-label">File</label>
-                <input type="file" class="form-control spx-input" id="docFile" required>
-              </div>
-              <button type="submit" class="btn btn-spx w-100">Upload Document</button>
-            </form>
+            ${isSubmitted ? `
+              <div class="alert alert-secondary text-center small py-2">Documents locked during review</div>
+            ` : `
+              <form onsubmit="uploadKYCDocument(event)" class="mb-4">
+                <div class="mb-3 text-start">
+                  <label class="spx-label">Document Type</label>
+                  <select class="form-select spx-input" id="docType" required>
+                    <option value="aadhaar">Aadhaar Card</option>
+                    <option value="pan">PAN Card</option>
+                    <option value="resume">Resume / CV</option>
+                    <option value="qualification">Degree Certificate</option>
+                  </select>
+                </div>
+                <div class="mb-3 text-start">
+                  <label class="spx-label">File</label>
+                  <input type="file" class="form-control spx-input" id="docFile" required>
+                </div>
+                <button type="submit" class="btn btn-spx w-100">Upload Document</button>
+              </form>
+            `}
 
             <h6 class="mb-3 fw-bold">Uploaded Documents</h6>
             ${documents.length ? documents.map(d => `
               <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded" style="background:rgba(255,255,255,.02);border:1px solid var(--border)">
-                <div>
+                <div class="text-start">
                   <div class="small fw-semibold text-white">${d.doc_type.toUpperCase()}</div>
                   <div class="text-muted" style="font-size:.7rem">${fmtDate(d.uploaded_at)}</div>
                 </div>
@@ -404,8 +579,31 @@ async function renderSop() {
         </div>
       </div>
     `;
+    // Initialize submit button state
+    if (!isSubmitted) toggleSopSubmitBtn();
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function toggleSopSubmitBtn() {
+  const checkboxes = document.querySelectorAll('.sop-checklist-item-checkbox');
+  const submitBtn = document.getElementById('sopSubmitButton');
+  if (!submitBtn) return;
+  
+  let allChecked = true;
+  checkboxes.forEach(cb => {
+    if (!cb.checked) allChecked = false;
+  });
+  
+  if (allChecked) {
+    submitBtn.removeAttribute('disabled');
+    submitBtn.classList.remove('btn-secondary');
+    submitBtn.classList.add('btn-spx');
+  } else {
+    submitBtn.setAttribute('disabled', 'true');
+    submitBtn.classList.remove('btn-spx');
+    submitBtn.classList.add('btn-secondary');
   }
 }
 
@@ -433,11 +631,51 @@ async function uploadSopVideo(fieldId) {
 }
 
 async function submitSopForReview() {
+  const checklist = {};
+  const checkboxes = document.querySelectorAll('.sop-checklist-item-checkbox');
+  checkboxes.forEach(cb => {
+    checklist[cb.dataset.key] = cb.checked;
+  });
+
   try {
-    const data = await api('/teacher/sop/submit', { method: 'POST' });
+    const data = await api('/teacher/sop/submit', {
+      method: 'POST',
+      body: JSON.stringify({ teacher_checklist: checklist })
+    });
     showToast(data.message || 'SOP submitted successfully!');
     checkSopStatus();
     renderSop();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function submitDigitalAgreement() {
+  const signatureInput = document.getElementById('agreementSigInput');
+  const signature = signatureInput ? signatureInput.value.trim() : '';
+  const consentCb = document.getElementById('agreementConsentCheckbox');
+  
+  if (!consentCb || !consentCb.checked) {
+    return showToast('You must consent to the agreement terms', 'error');
+  }
+  if (!signature) {
+    return showToast('Please type your full name to digitally sign', 'error');
+  }
+
+  try {
+    const data = await api('/teacher/sop/sign-agreement', {
+      method: 'POST',
+      body: JSON.stringify({ digital_signature: signature })
+    });
+    showToast(data.message || 'Agreement signed successfully!');
+    
+    // Update local user object's approval status
+    user.approval_status = 'approved';
+    localStorage.setItem('teacher_user', JSON.stringify(user));
+    sessionStorage.setItem('teacher_user', JSON.stringify(user));
+    
+    showApp();
+    navigateTo('home');
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -473,6 +711,21 @@ async function uploadKYCDocument(e) {
 async function renderBatches() {
   loading();
   try {
+    const sop = await api('/teacher/sop');
+    const isApprovedAndSigned = sop && sop.status === 'approved' && sop.agreement_signed;
+
+    if (!isApprovedAndSigned) {
+      document.getElementById('pageContent').innerHTML = `
+        <div class="spx-card text-center py-5 border-start border-4 border-warning" style="background: rgba(245,158,11,0.02)">
+          <div class="display-4 text-warning mb-3"><i class="fas fa-lock"></i></div>
+          <h4 class="fw-bold text-white">Batch Creation Locked</h4>
+          <p class="text-muted small max-width-500 mx-auto">You must complete your Video SOP Setup and sign the Digital Teacher Agreement before you can create study batches.</p>
+          <button class="btn btn-warning mt-3 btn-sm" onclick="navigateTo('sop')">Go to SOP Setup</button>
+        </div>
+      `;
+      return;
+    }
+
     const [batches, courses] = await Promise.all([
       api('/teacher/batches'),
       api('/courses'),
@@ -638,6 +891,21 @@ async function createBatch(e) {
 async function renderLiveClasses() {
   loading();
   try {
+    const sop = await api('/teacher/sop');
+    const isApprovedAndSigned = sop && sop.status === 'approved' && sop.agreement_signed;
+
+    if (!isApprovedAndSigned) {
+      document.getElementById('pageContent').innerHTML = `
+        <div class="spx-card text-center py-5 border-start border-4 border-warning" style="background: rgba(245,158,11,0.02)">
+          <div class="display-4 text-warning mb-3"><i class="fas fa-lock"></i></div>
+          <h4 class="fw-bold text-white">Live Classes Locked</h4>
+          <p class="text-muted small max-width-500 mx-auto">You must complete your Video SOP Setup and sign the Digital Teacher Agreement before you can schedule or start live classes.</p>
+          <button class="btn btn-warning mt-3 btn-sm" onclick="navigateTo('sop')">Go to SOP Setup</button>
+        </div>
+      `;
+      return;
+    }
+
     const [classes, batches] = await Promise.all([
       api('/teacher/live-classes'),
       api('/teacher/batches'),

@@ -38,9 +38,9 @@ router.post('/:classId/start', async (req, res) => {
   try {
     // Verify teacher SOP
     if (req.user.role === 'teacher') {
-      const sop = await db.query("SELECT status FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
-      if (!sop.rows.length || sop.rows[0].status !== 'approved') {
-        return res.status(403).json({ error: 'SOP not approved. Cannot start live class.' });
+      const sop = await db.query("SELECT status, agreement_signed FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
+      if (!sop.rows.length || sop.rows[0].status !== 'approved' || !sop.rows[0].agreement_signed) {
+        return res.status(403).json({ error: 'SOP not approved or Digital Agreement not signed. Cannot start live class.' });
       }
 
       // Check no simultaneous classes
