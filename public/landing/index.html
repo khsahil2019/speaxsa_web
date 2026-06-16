@@ -47,8 +47,8 @@
         <li class="nav-item"><a class="nav-link" href="/contact.html">Contact</a></li>
       </ul>
       <div class="d-flex gap-2 align-items-center">
-        <a href="/student" class="btn btn-outline-light btn-sm px-4">Login</a>
-        <a href="/student" class="btn btn-spx-primary btn-sm px-4">Get Started</a>
+        <a href="/student" class="btn btn-outline-light btn-sm px-3"><i class="fas fa-graduation-cap me-1"></i>Student</a>
+        <a href="/teacher" class="btn btn-spx-primary btn-sm px-3"><i class="fas fa-chalkboard-teacher me-1"></i>Teacher</a>
       </div>
     </div>
   </div>
@@ -487,6 +487,99 @@
     </div>
   </div>
 </footer>
+
+<!-- Course Details & Checkout Modal -->
+<div class="modal fade" id="courseDetailsModal" tabindex="-1" aria-labelledby="courseDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content bg-dark text-white border-secondary">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title fw-bold text-white" id="courseDetailsModalLabel">Course Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-4">
+          <!-- Course Details Column -->
+          <div class="col-lg-6 border-end border-secondary pe-lg-4 d-flex flex-column">
+            <h3 id="modalCourseTitle" class="gradient-text fw-bold mb-3">Course Title</h3>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <span class="badge bg-secondary" id="modalCourseGrade">Grade</span>
+              <span class="badge bg-secondary" id="modalCourseBoard">Board</span>
+              <span class="badge bg-secondary" id="modalCourseSubject">Subject</span>
+              <span class="badge bg-secondary" id="modalCourseDuration">Duration</span>
+            </div>
+            <h6 class="text-white fw-bold mb-2">Description</h6>
+            <p id="modalCourseDesc" class="text-muted small mb-4">Course description goes here...</p>
+            <div class="mt-auto pt-3">
+              <h5 class="fw-bold mb-0">Course Fee: <span class="text-primary" id="modalCourseFees">₹0</span></h5>
+            </div>
+          </div>
+          <!-- Batches and Checkout Column -->
+          <div class="col-lg-6 ps-lg-4">
+            <!-- Step 1: Select Batch -->
+            <div id="modalStepBatch">
+              <h5 class="text-white fw-bold mb-3"><i class="fas fa-calendar-alt text-primary me-2"></i>Available Batches</h5>
+              <div id="modalBatchesList" class="d-flex flex-column gap-3">
+                <!-- Loaded dynamically -->
+              </div>
+            </div>
+            <!-- Step 2: Create Account / Checkout Form -->
+            <div id="modalStepCheckout" style="display:none;">
+              <button class="btn btn-sm btn-outline-secondary mb-3" onclick="goBackToBatches()"><i class="fas fa-arrow-left me-1"></i>Back to Batches</button>
+              <h5 class="text-white fw-bold mb-3"><i class="fas fa-user-plus text-primary me-2"></i>Checkout Details</h5>
+              
+              <div class="alert alert-info py-2 px-3 small border-0" style="background: rgba(60,189,176,0.1); color: var(--primary);">
+                <i class="fas fa-info-circle me-1"></i>First time visiting? An account will be automatically created for you.
+              </div>
+              
+              <form id="modalCheckoutForm">
+                <div class="mb-3">
+                  <label class="form-label text-muted small mb-1">Full Name</label>
+                  <input type="text" class="form-control spx-input" id="checkoutName" placeholder="Your Name" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label text-muted small mb-1">Email Address</label>
+                  <input type="email" class="form-control spx-input" id="checkoutEmail" placeholder="email@example.com" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label text-muted small mb-1">Phone Number</label>
+                  <input type="tel" class="form-control spx-input" id="checkoutPhone" placeholder="9999999999" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label text-muted small mb-1">Account Password</label>
+                  <input type="text" class="form-control spx-input" id="checkoutPassword" value="Speaxa@123" required>
+                  <div class="form-text text-muted small mt-1">Change this if you want, or use the auto-generated password.</div>
+                </div>
+                <button type="submit" class="btn btn-spx-primary w-100 py-3 mt-2 fw-semibold" id="checkoutSubmitBtn">
+                  <i class="fas fa-shield-alt me-2"></i>Register & Proceed to Payment
+                </button>
+              </form>
+            </div>
+            
+            <!-- Step 3: Payment Status -->
+            <div id="modalStepPayment" class="text-center py-4" style="display:none;">
+              <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+              <h5 class="text-white fw-bold">Processing Secure Payment...</h5>
+              <p class="text-muted small">Please do not refresh or close this window.</p>
+            </div>
+            
+            <!-- Step 4: Success Screen -->
+            <div id="modalStepSuccess" class="text-center py-4" style="display:none;">
+              <div class="text-success mb-3"><i class="fas fa-check-circle" style="font-size:4rem;"></i></div>
+              <h4 class="text-white fw-bold">Payment Successful!</h4>
+              <p class="text-muted mb-4">You have successfully registered & enrolled in the course batch.</p>
+              <div class="alert alert-secondary py-2 px-3 playbook-alert small text-start mb-4" style="background:#1e293b; border: 1px solid var(--border);">
+                <strong>Login Details:</strong><br>
+                Email: <span id="successEmail"></span><br>
+                Password: <span id="successPassword"></span>
+              </div>
+              <p class="text-muted small">Redirecting you to your dashboard in <span id="successCountdown">3</span> seconds...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

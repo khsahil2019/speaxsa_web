@@ -74,7 +74,7 @@ async function loadCourses() {
           </div>
           <div class="course-footer">
             <div class="course-price">₹${parseFloat(c.fees || 0).toLocaleString('en-IN')}</div>
-            <a href="/student" class="btn btn-spx-primary btn-sm px-4">Enroll</a>
+            <button class="btn btn-spx-primary btn-sm px-4" onclick="showCourseDetails('${c.id}')">Explore</button>
           </div>
         </div>
       </div>
@@ -93,7 +93,7 @@ async function loadCourses() {
         </div>
         <div class="course-footer">
           <div class="course-price">₹1,999</div>
-          <a href="/student" class="btn btn-spx-primary btn-sm px-4">Enroll</a>
+          <button class="btn btn-spx-primary btn-sm px-4" onclick="showCourseDetails('course_001')">Explore</button>
         </div>
       </div>
     </div>`.repeat(4);
@@ -307,6 +307,208 @@ async function loadSettings() {
     console.error('Failed to load settings:', err);
   }
 }
+
+// ── Course Details & Guest Checkout Logic ─────────────────────
+let activeCourseId = null;
+let activeBatchId = null;
+let selectedCourseFees = 0;
+
+async function showCourseDetails(courseId) {
+  activeCourseId = courseId;
+  activeBatchId = null;
+  
+  // Show Step 1 (Batches) and hide other steps
+  document.getElementById('modalStepBatch').style.display = 'block';
+  document.getElementById('modalStepCheckout').style.display = 'none';
+  document.getElementById('modalStepPayment').style.display = 'none';
+  document.getElementById('modalStepSuccess').style.display = 'none';
+  
+  // Open Modal (Bootstrap)
+  const modalEl = document.getElementById('courseDetailsModal');
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+  
+  // Show Loading placeholder
+  document.getElementById('modalCourseTitle').textContent = 'Loading...';
+  document.getElementById('modalCourseDesc').textContent = '';
+  document.getElementById('modalBatchesList').innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div></div>';
+  
+  try {
+    const resCourses = await fetch('/api/public/courses');
+    const courses = await resCourses.json();
+    const course = courses.find(c => c.id === courseId);
+    
+    if (!course) {
+      document.getElementById('modalCourseTitle').textContent = 'Course not found';
+      return;
+    }
+    
+    selectedCourseFees = course.fees;
+    document.getElementById('modalCourseTitle').textContent = course.title;
+    document.getElementById('modalCourseGrade').textContent = course.grade || 'General';
+    document.getElementById('modalCourseBoard').textContent = course.board || 'CBSE';
+    document.getElementById('modalCourseSubject').textContent = course.subject || 'Physics';
+    document.getElementById('modalCourseDuration').textContent = `${course.duration_weeks || 12} Weeks`;
+    document.getElementById('modalCourseDesc').textContent = course.description || 'No description available.';
+    document.getElementById('modalCourseFees').textContent = `₹${parseFloat(course.fees).toLocaleString('en-IN')}`;
+    
+    // Fetch Batches
+    const resBatches = await fetch(`/api/public/courses/${courseId}/batches`);
+    const batches = await resBatches.json();
+    
+    const batchesList = document.getElementById('modalBatchesList');
+    if (!batches || !batches.length) {
+      batchesList.innerHTML = '<div class="alert alert-warning border-0 py-2 small">No active batches available at the moment.</div>';
+      return;
+    }
+    
+    batchesList.innerHTML = batches.map(b => {
+      const days = Array.isArray(b.days_of_week) ? b.days_of_week.join(', ') : b.days_of_week || 'Mon, Wed, Fri';
+      return `
+        <div class="card bg-dark-alt p-3" style="background: #f8fafc !important; border: 1px solid rgba(60, 189, 176, 0.25) !important;">
+          <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <div>
+              <h6 class="fw-bold mb-1" style="color: #0F766E !important; font-size: 1.05rem;">${b.batch_name}</h6>
+              <div class="small mb-2" style="color: #334155 !important;">
+                <i class="fas fa-chalkboard-teacher me-1" style="color: #3CBDB0 !important;"></i>Mentor: <strong style="color: #0F172A !important;">${b.teacher_name || 'Expert'}</strong> (${b.teacher_level || 'Gold'} • <i class="fas fa-star text-warning"></i> ${parseFloat(b.teacher_rating || 5).toFixed(1)})
+              </div>
+              <div class="small mb-1" style="color: #475569 !important;">
+                <i class="fas fa-calendar-alt me-1" style="color: #3CBDB0 !important;"></i>Days: <strong style="color: #1e293b !important;">${days}</strong>
+              </div>
+              <div class="small" style="color: #475569 !important;">
+                <i class="fas fa-clock me-1" style="color: #3CBDB0 !important;"></i>Time: <strong style="color: #1e293b !important;">${b.start_time} - ${b.end_time}</strong>
+              </div>
+            </div>
+            <div class="text-end d-flex flex-column align-items-end">
+              <span class="badge mb-2" style="background: rgba(15, 118, 110, 0.1) !important; color: #0F766E !important; border: 1px solid rgba(15, 118, 110, 0.15) !important; font-weight: 600; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem;">${b.available_seats} seats left</span>
+              <button class="btn btn-spx-primary btn-sm px-4" style="border-radius: 8px;" onclick="checkoutBatch('${b.id}')">Enroll</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+  } catch (err) {
+    console.error('Error displaying course details:', err);
+    document.getElementById('modalCourseTitle').textContent = 'Error loading course details';
+  }
+}
+
+function goBackToBatches() {
+  document.getElementById('modalStepBatch').style.display = 'block';
+  document.getElementById('modalStepCheckout').style.display = 'none';
+}
+
+function checkoutBatch(batchId) {
+  activeBatchId = batchId;
+  const token = localStorage.getItem('student_token') || localStorage.getItem('token');
+  if (token) {
+    startPaymentFlow(token);
+  } else {
+    document.getElementById('modalStepBatch').style.display = 'none';
+    document.getElementById('modalStepCheckout').style.display = 'block';
+  }
+}
+
+async function startPaymentFlow(token) {
+  document.getElementById('modalStepBatch').style.display = 'none';
+  document.getElementById('modalStepCheckout').style.display = 'none';
+  document.getElementById('modalStepPayment').style.display = 'block';
+  
+  try {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const paymentId = `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const res = await fetch(`/api/student/batches/${activeBatchId}/enroll`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ paymentId })
+    });
+    
+    const enrollData = await res.json();
+    if (!res.ok) {
+      throw new Error(enrollData.error || 'Enrollment failed');
+    }
+    
+    document.getElementById('modalStepPayment').style.display = 'none';
+    document.getElementById('modalStepSuccess').style.display = 'block';
+    
+    let secs = 3;
+    const countdownEl = document.getElementById('successCountdown');
+    const timer = setInterval(() => {
+      secs--;
+      if (countdownEl) countdownEl.textContent = secs;
+      if (secs <= 0) {
+        clearInterval(timer);
+        window.location.href = '/student';
+      }
+    }, 1000);
+    
+  } catch (err) {
+    alert(`Payment / Enrollment failed: ${err.message}`);
+    document.getElementById('modalStepPayment').style.display = 'none';
+    document.getElementById('modalStepBatch').style.display = 'block';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('modalCheckoutForm');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById('checkoutSubmitBtn');
+      const originalHtml = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
+      submitBtn.disabled = true;
+      
+      const name = document.getElementById('checkoutName').value;
+      const email = document.getElementById('checkoutEmail').value;
+      const phone = document.getElementById('checkoutPhone').value;
+      const password = document.getElementById('checkoutPassword').value;
+      
+      try {
+        const regRes = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            email,
+            phone,
+            password,
+            role: 'student',
+            board: document.getElementById('modalCourseBoard').textContent,
+            grade: document.getElementById('modalCourseGrade').textContent
+          })
+        });
+        
+        const regData = await regRes.json();
+        if (!regRes.ok) {
+          throw new Error(regData.error || 'Registration failed');
+        }
+        
+        localStorage.setItem('student_token', regData.token);
+        localStorage.setItem('student_user', JSON.stringify(regData.user));
+        
+        document.getElementById('successEmail').textContent = email;
+        document.getElementById('successPassword').textContent = password;
+        
+        submitBtn.innerHTML = originalHtml;
+        submitBtn.disabled = false;
+        
+        await startPaymentFlow(regData.token);
+        
+      } catch (err) {
+        alert(err.message);
+        submitBtn.innerHTML = originalHtml;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+});
 
 // ── Init ──────────────────────────────────────────────────────
 createParticles();

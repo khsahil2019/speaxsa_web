@@ -69,4 +69,25 @@ router.get('/public/stats', async (req, res) => {
   }
 });
 
+// Public batches listing for a specific course
+router.get('/public/courses/:courseId/batches', async (req, res) => {
+  const { courseId } = req.params;
+  try {
+    const db = require('../db');
+    const result = await db.query(`
+      SELECT b.*, c.title as course_title, c.fees, u.name as teacher_name, u.photo_url as teacher_photo,
+             u.teacher_level, u.rating as teacher_rating,
+             (b.capacity - b.seats_filled) as available_seats
+      FROM batches b
+      LEFT JOIN courses c ON c.id = b.course_id
+      LEFT JOIN users u ON u.id = b.teacher_id
+      WHERE b.status = 'active' AND b.seats_filled < b.capacity AND b.course_id = $1
+      ORDER BY b.created_at DESC
+    `, [courseId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
