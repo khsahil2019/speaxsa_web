@@ -230,7 +230,7 @@ router.post('/batches', async (req, res) => {
     }
 
     const id = generateUID('batch');
-    const channel = `speaxsa_${id}`.replace(/[^a-zA-Z0-9_]/g, '_');
+    const channel = `speaxa_${id}`.replace(/[^a-zA-Z0-9_]/g, '_');
 
     await db.query(`
       INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date,
@@ -298,7 +298,7 @@ router.post('/live-classes', async (req, res) => {
     if (!batch.rows.length) return res.status(404).json({ error: 'Batch not found' });
 
     const id = generateUID('live');
-    const channel = batch.rows[0].agora_channel || `speaxsa_${batchId}`;
+    const channel = batch.rows[0].agora_channel || `speaxa_${batchId}`;
 
     await db.query(`
       INSERT INTO live_classes (id, batch_id, teacher_id, title, class_date, class_time, agora_channel, status)

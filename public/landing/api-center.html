@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPEAXSA — Developer Center & Deployment Guide</title>
+  <title>SPEAXA — Developer Center & Deployment Guide</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -380,10 +380,10 @@
       <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-3">
           <div class="brand-icon">
-            <img src="/logo.png" alt="SPEAXSA Logo">
+            <img src="/logo.png" alt="SPEAXA Logo">
           </div>
           <div>
-            <h1 class="header-title mb-0">SPEAXSA <span class="text-gold">Developer Center</span></h1>
+            <h1 class="header-title mb-0">SPEAXA <span class="text-gold">Developer Center</span></h1>
             <small class="text-muted">Interactive Developer Playground & Hostinger VPS Deployment Guide</small>
           </div>
         </div>
@@ -582,7 +582,7 @@
     <div class="tab-pane fade" id="deployment" role="tabpanel" aria-labelledby="deployment-tab">
       <main class="container py-4" style="max-width: 900px;">
         <div class="spx-card p-5 mb-5">
-          <h2 class="mb-4 text-center">SPEAXSA Hostinger VPS Deployment Guide</h2>
+          <h2 class="mb-4 text-center">SPEAXA Hostinger VPS Deployment Guide</h2>
           <hr class="mb-5">
 
           <!-- Section 1 -->
@@ -615,20 +615,20 @@
             <span class="guide-comment"># Login to postgres interactive prompt</span><br>
             <span class="guide-keyword">sudo -i -u</span> postgres <span class="guide-keyword">psql</span><br><br>
             <span class="guide-comment"># Run SQL commands inside the postgres CLI:</span><br>
-            <span class="guide-keyword">CREATE DATABASE</span> speaxsa;<br>
+            <span class="guide-keyword">CREATE DATABASE</span> speaxa;<br>
             <span class="guide-keyword">CREATE USER</span> sahil <span class="guide-keyword">WITH PASSWORD</span> <span class="guide-string">'your_secure_db_pass'</span>;<br>
-            <span class="guide-keyword">GRANT ALL PRIVILEGES ON DATABASE</span> speaxsa <span class="guide-keyword">TO</span> sahil;<br>
+            <span class="guide-keyword">GRANT ALL PRIVILEGES ON DATABASE</span> speaxa <span class="guide-keyword">TO</span> sahil;<br>
             \q
           </div>
 
           <!-- Section 4 -->
           <h4 class="text-primary mt-5 mb-3"><i class="fas fa-folder-open me-2"></i>4. Clone Source Code & Setup Environment</h4>
-          <p>Clone the repository files to `/var/www/speaxsa` and configure your production `.env` variables:</p>
+          <p>Clone the repository files to `/var/www/speaxa` and configure your production `.env` variables:</p>
           <div class="guide-block">
             <span class="guide-comment"># Create folder directory and clone repository</span><br>
             <span class="guide-keyword">sudo mkdir</span> /var/www && <span class="guide-keyword">cd</span> /var/www<br>
-            <span class="guide-keyword">git clone</span> &lt;your-repository-url&gt; speaxsa<br>
-            <span class="guide-keyword">cd</span> speaxsa<br><br>
+            <span class="guide-keyword">git clone</span> &lt;your-repository-url&gt; speaxa<br>
+            <span class="guide-keyword">cd</span> speaxa<br><br>
             <span class="guide-comment"># Install app node dependencies</span><br>
             <span class="guide-keyword">npm install</span> --omit=dev<br><br>
             <span class="guide-comment"># Create production environment variables configuration</span><br>
@@ -638,26 +638,26 @@
           <div class="guide-block">
             NODE_ENV=<span class="guide-string">production</span><br>
             PORT=<span class="guide-string">5001</span><br>
-            DATABASE_URL=<span class="guide-string">postgresql://sahil:your_secure_db_pass@localhost:5432/speaxsa</span><br>
+            DATABASE_URL=<span class="guide-string">postgresql://sahil:your_secure_db_pass@localhost:5432/speaxa</span><br>
             JWT_SECRET=<span class="guide-string">your_super_long_cryptographically_secure_secret_key_here</span><br>
             JWT_EXPIRES_IN=<span class="guide-string">7d</span>
           </div>
 
           <!-- Section 5 -->
           <h4 class="text-primary mt-5 mb-3"><i class="fas fa-tools me-2"></i>5. Base URL Configuration (Important)</h4>
-          <p>By default, the SPEAXSA portals use **relative base URLs** (`const API = '/api';` defined at the top of client files). This is a best practice because **relative paths resolve automatically** to the host domain they are served from. However, if you are splitting client assets onto a separate CDN and hosting the API server on a subdomain (like `api.speaxsa.com`), you must change the base URLs in the frontend files:</p>
+          <p>By default, the SPEAXA portals use **relative base URLs** (`const API = '/api';` defined at the top of client files). This is a best practice because **relative paths resolve automatically** to the host domain they are served from. However, if you are splitting client assets onto a separate CDN and hosting the API server on a subdomain (like `api.speaxa.com`), you must change the base URLs in the frontend files:</p>
           
           <div class="guide-block">
             <span class="guide-comment">// Locate and edit this variable at the top of client JS files:</span><br>
-            <span class="guide-keyword">const</span> <span class="guide-string">API</span> = <span class="guide-string">'https://api.speaxsa.com/api'</span>; <span class="guide-comment">// Point to absolute VPS domain</span>
+            <span class="guide-keyword">const</span> <span class="guide-string">API</span> = <span class="guide-string">'https://api.speaxa.com/api'</span>; <span class="guide-comment">// Point to absolute VPS domain</span>
           </div>
 
           <p>Verify and edit the constant definition in the following files:</p>
           <ol class="small text-secondary">
-            <li>[student.js line 2](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/student/student.js#L2): Change `const API = '/api';`</li>
-            <li>[teacher.js line 2](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/teacher/teacher.js#L2): Change `const API = '/api';`</li>
-            <li>[admin.js line 2](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/admin/admin.js#L2): Change `const API = '/api';`</li>
-            <li>[parent/index.html (styles/JS script block)](file:///Users/sahilkhan/FlutterDev/speaxsa_web/public/parent/index.html): Change parent login API target.</li>
+            <li>[student.js line 2](file:///Users/sahilkhan/FlutterDev/speaxa_web/public/student/student.js#L2): Change `const API = '/api';`</li>
+            <li>[teacher.js line 2](file:///Users/sahilkhan/FlutterDev/speaxa_web/public/teacher/teacher.js#L2): Change `const API = '/api';`</li>
+            <li>[admin.js line 2](file:///Users/sahilkhan/FlutterDev/speaxa_web/public/admin/admin.js#L2): Change `const API = '/api';`</li>
+            <li>[parent/index.html (styles/JS script block)](file:///Users/sahilkhan/FlutterDev/speaxa_web/public/parent/index.html): Change parent login API target.</li>
           </ol>
 
           <!-- Section 6 -->
@@ -673,7 +673,7 @@
           <div class="guide-block">
             server {<br>
             &nbsp;&nbsp;&nbsp;&nbsp;listen 80;<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;server_name <span class="guide-string">speaxsa.com www.speaxsa.com</span>;<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;server_name <span class="guide-string">speaxa.com www.speaxa.com</span>;<br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;<span class="guide-comment"># Route APIs to port 5001</span><br>
             &nbsp;&nbsp;&nbsp;&nbsp;location /api {<br>
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_pass http://localhost:5001;<br>
@@ -685,7 +685,7 @@
             &nbsp;&nbsp;&nbsp;&nbsp;}<br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;<span class="guide-comment"># Route static frontend portal files</span><br>
             &nbsp;&nbsp;&nbsp;&nbsp;location / {<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root /var/www/speaxsa/public/landing;<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;root /var/www/speaxa/public/landing;<br>
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try_files $uri $uri/ =404;<br>
             &nbsp;&nbsp;&nbsp;&nbsp;}<br>
             }
@@ -702,7 +702,7 @@
             <span class="guide-comment"># Install Certbot libraries</span><br>
             <span class="guide-keyword">sudo apt install</span> certbot python3-certbot-nginx -y<br><br>
             <span class="guide-comment"># Generate certificates (follow automated logs prompt inputs)</span><br>
-            <span class="guide-keyword">sudo certbot</span> --nginx -d <span class="guide-string">speaxsa.com</span> -d <span class="guide-string">www.speaxsa.com</span>
+            <span class="guide-keyword">sudo certbot</span> --nginx -d <span class="guide-string">speaxa.com</span> -d <span class="guide-string">www.speaxa.com</span>
           </div>
 
           <!-- Section 8 -->
@@ -710,7 +710,7 @@
           <p>PM2 runs the server in the background and restarts it automatically if the process crashes or the VPS reboots:</p>
           <div class="guide-block">
             <span class="guide-comment"># Start the app server under PM2 management</span><br>
-            <span class="guide-keyword">pm2 start</span> src/app.js --name <span class="guide-string">speaxsa-backend</span><br><br>
+            <span class="guide-keyword">pm2 start</span> src/app.js --name <span class="guide-string">speaxa-backend</span><br><br>
             <span class="guide-comment"># Persist PM2 across reboots</span><br>
             <span class="guide-keyword">pm2 startup</span><br>
             <span class="guide-comment"># (Copy and run the systemctl command printed on the screen)</span><br>
@@ -794,7 +794,7 @@
         auth: false,
         desc: "Verifies credentials and returns a secure JWT access token.",
         payload: {
-          email: "admin@speaxsa.com",
+          email: "admin@speaxa.com",
           password: "password123"
         }
       },
@@ -807,7 +807,7 @@
         auth: false,
         desc: "Generates and dispatches a 6-digit numeric login verification code via SMTP or SMS.",
         payload: {
-          email: "admin@speaxsa.com"
+          email: "admin@speaxa.com"
         }
       },
       {
@@ -819,7 +819,7 @@
         auth: false,
         desc: "Validates active OTP sessions, logs audits, and unlocks access tokens.",
         payload: {
-          email: "admin@speaxsa.com",
+          email: "admin@speaxa.com",
           otp: "123456"
         }
       },
@@ -832,7 +832,7 @@
         auth: false,
         desc: "Dispatches a dedicated reset verification code to registered handles.",
         payload: {
-          email: "student@speaxsa.com"
+          email: "student@speaxa.com"
         }
       },
       {
@@ -844,7 +844,7 @@
         auth: false,
         desc: "Validates password-reset token and replaces hashes on DB profiles.",
         payload: {
-          email: "student@speaxsa.com",
+          email: "student@speaxa.com",
           otp: "123456",
           newPassword: "newsecurepass123"
         }

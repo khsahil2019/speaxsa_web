@@ -88,7 +88,7 @@ async function generateRTMToken(userId) {
  * Generate a unique Agora channel name for a batch.
  */
 function generateChannelName(batchId) {
-  return `speaxsa_${batchId}_${Date.now()}`.replace(/[^a-zA-Z0-9_]/g, '_');
+  return `speaxa_${batchId}_${Date.now()}`.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
 module.exports = { generateRTCToken, generateRTMToken, generateChannelName };

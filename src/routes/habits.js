@@ -37,7 +37,7 @@ router.get('/student/:studentId', async (req, res) => {
       return res.status(404).json({ error: "No behavioral evaluations found for this student" });
     }
 
-    // Generate Dynamic AI Insight Summary based on scores (Speaxsa cognitive model)
+    // Generate Dynamic AI Insight Summary based on scores (Speaxa cognitive model)
     let aiInsight = "";
     const avgScore = (
       parseFloat(rating.curiosity) +

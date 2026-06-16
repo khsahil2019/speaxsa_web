@@ -37,9 +37,9 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:5001',
-    'https://speaxsa.com',
-    'https://admin.speaxsa.com',
-    'https://app.speaxsa.com',
+    'https://speaxa.com',
+    'https://admin.speaxa.com',
+    'https://app.speaxa.com',
   ],
   credentials: true,
 }));

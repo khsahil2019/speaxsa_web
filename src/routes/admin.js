@@ -36,12 +36,12 @@ router.get('/settings/public', async (req, res) => {
   try {
     const settings = await configService.getConfig();
     return res.json({
-      logo_text: settings.logo_text || 'SPEAXSA',
+      logo_text: settings.logo_text || 'SPEAXA',
       logo_url: settings.logo_url || '/admin/logo.png',
-      announcement: settings.announcement || 'Welcome to SPEAXSA!',
+      announcement: settings.announcement || 'Welcome to SPEAXA!',
       ad_banners: settings.ad_banners || [],
-      platform_name: settings.platform_name || 'SPEAXSA',
-      support_email: settings.support_email || 'support@speaxsa.com',
+      platform_name: settings.platform_name || 'SPEAXA',
+      support_email: settings.support_email || 'support@speaxa.com',
       support_phone: settings.support_phone || '+91 9999 999 999',
       support_hours: settings.support_hours || 'Mon–Sat: 8 AM – 8 PM IST',
     });
@@ -496,7 +496,7 @@ router.post('/live-classes', async (req, res) => {
     const id = `live_${Date.now()}`;
     const batch = await db.query('SELECT * FROM batches WHERE id = $1', [batchId]);
     if (!batch.rows.length) return res.status(404).json({ error: 'Batch not found' });
-    const channel = batch.rows[0].agora_channel || `speaxsa_${batchId}`;
+    const channel = batch.rows[0].agora_channel || `speaxa_${batchId}`;
 
     await db.query(`
       INSERT INTO live_classes (id, batch_id, teacher_id, title, class_date, class_time, agora_channel, status)

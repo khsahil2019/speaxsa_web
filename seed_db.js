@@ -3,7 +3,7 @@ const path = require('path');
 const db = require('./src/db');
 
 async function seed() {
-  console.log('Starting Speaxsa database seeding using SQL files...');
+  console.log('Starting Speaxa database seeding using SQL files...');
   try {
     // 1. Truncate all tables cascadingly to start fresh
     console.log('Truncating tables...');

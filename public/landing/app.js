@@ -1,5 +1,5 @@
-// SPEAXSA Landing Page JavaScript
-const API = ''; // Set to absolute domain like 'https://speaxsa.com' if hosting client & API on separate servers
+// SPEAXA Landing Page JavaScript
+const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
 
 // ── AOS Init ─────────────────────────────────────────────────
 AOS.init({ once: true, duration: 700, offset: 80 });
@@ -300,7 +300,7 @@ async function loadSettings() {
     // Update Platform Brand Logo Text
     const brandEls = document.querySelectorAll('.spx-brand span, .footer-brand span');
     brandEls.forEach(el => {
-      el.textContent = settings.logo_text || 'SPEAXSA';
+      el.textContent = settings.logo_text || 'SPEAXA';
     });
 
   } catch (err) {

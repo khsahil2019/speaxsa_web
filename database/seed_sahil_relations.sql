@@ -1,5 +1,5 @@
 -- ============================================================
--- SPEAXSA EDTECH PLATFORM — SEED DATA FOR CUSTOM SAHIL KHAN ACCOUNTS
+-- SPEAXA EDTECH PLATFORM — SEED DATA FOR CUSTOM SAHIL KHAN ACCOUNTS
 -- Clean, repeatable database insertions
 -- ============================================================
 
@@ -93,9 +93,9 @@ INSERT INTO parent_student_links (parent_id, student_id) VALUES
 
 -- 4. Batch under teacher Sahil Khan (Mathematics Batch) & extra course batches
 INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, seats_filled, status, agora_channel) VALUES
-  ('batch_sahil_01', 'course_002', 'tea_1780582504586_8bid82', 'Class 10 Math — Calculus & Algebra Spec', 'Mathematics', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 months', '14:00:00', '15:00:00', ARRAY['Monday', 'Wednesday', 'Friday'], 30, 2, 'active', 'speaxsa_batch_sahil_01'),
-  ('batch_001_evening', 'course_001', 'tea_1780582504586_8bid82', 'Physics B - Evening Batch', 'Physics', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 months', '18:00:00', '19:00:00', ARRAY['Tuesday', 'Thursday', 'Saturday'], 30, 0, 'active', 'speaxsa_batch_001_evening'),
-  ('batch_sahil_01_foundation', 'course_002', 'teacher_001', 'Class 10 Math — Foundation Batch', 'Mathematics', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 months', '16:00:00', '17:00:00', ARRAY['Monday', 'Wednesday', 'Friday'], 30, 0, 'active', 'speaxsa_batch_sahil_01_foundation');
+  ('batch_sahil_01', 'course_002', 'tea_1780582504586_8bid82', 'Class 10 Math — Calculus & Algebra Spec', 'Mathematics', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 months', '14:00:00', '15:00:00', ARRAY['Monday', 'Wednesday', 'Friday'], 30, 2, 'active', 'speaxa_batch_sahil_01'),
+  ('batch_001_evening', 'course_001', 'tea_1780582504586_8bid82', 'Physics B - Evening Batch', 'Physics', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 months', '18:00:00', '19:00:00', ARRAY['Tuesday', 'Thursday', 'Saturday'], 30, 0, 'active', 'speaxa_batch_001_evening'),
+  ('batch_sahil_01_foundation', 'course_002', 'teacher_001', 'Class 10 Math — Foundation Batch', 'Mathematics', CURRENT_DATE, CURRENT_DATE + INTERVAL '6 months', '16:00:00', '17:00:00', ARRAY['Monday', 'Wednesday', 'Friday'], 30, 0, 'active', 'speaxa_batch_sahil_01_foundation');
 
 -- 5. Enroll students in Mathematics Batch (student_001 AND stu_1780567429769_0ko7ck)
 INSERT INTO batch_students (batch_id, student_id, status) VALUES
@@ -108,8 +108,8 @@ INSERT INTO batch_students (batch_id, student_id, status) VALUES
 
 -- 6. Live classes for Maths batch
 INSERT INTO live_classes (id, batch_id, teacher_id, title, class_date, class_time, agora_channel, status, started_at, ended_at, duration_mins, recording_url) VALUES
-  ('live_sahil_01', 'batch_sahil_01', 'tea_1780582504586_8bid82', 'Intro to Functions and Graphs', CURRENT_DATE - INTERVAL '1 day', '14:00:00', 'speaxsa_batch_sahil_01', 'ended', NOW() - INTERVAL '1 day 1 hour', NOW() - INTERVAL '1 day', 60, 'https://res.cloudinary.com/demo/video/upload/dog.mp4'),
-  ('live_sahil_02', 'batch_sahil_01', 'tea_1780582504586_8bid82', 'Composite Functions & Limits Practice', CURRENT_DATE + INTERVAL '1 day', '14:00:00', 'speaxsa_batch_sahil_01', 'scheduled', NULL, NULL, 0, NULL);
+  ('live_sahil_01', 'batch_sahil_01', 'tea_1780582504586_8bid82', 'Intro to Functions and Graphs', CURRENT_DATE - INTERVAL '1 day', '14:00:00', 'speaxa_batch_sahil_01', 'ended', NOW() - INTERVAL '1 day 1 hour', NOW() - INTERVAL '1 day', 60, 'https://res.cloudinary.com/demo/video/upload/dog.mp4'),
+  ('live_sahil_02', 'batch_sahil_01', 'tea_1780582504586_8bid82', 'Composite Functions & Limits Practice', CURRENT_DATE + INTERVAL '1 day', '14:00:00', 'speaxa_batch_sahil_01', 'scheduled', NULL, NULL, 0, NULL);
 
 -- 7. Class participants
 INSERT INTO class_participants (class_id, batch_id, user_id, role, join_time, exit_time, duration_mins) VALUES

@@ -1,4 +1,4 @@
-/* SPEAXSA Admin Portal — Complete SPA JavaScript */
+/* SPEAXA Admin Portal — Complete SPA JavaScript */
 
 const API = '/api';
 let token = localStorage.getItem('admin_token');
@@ -1460,7 +1460,7 @@ function showCreateCoupon() {
   document.getElementById('formModalBody').innerHTML = `
     <form onsubmit="createCoupon(event)">
       <div class="row g-3">
-        <div class="col-6"><label class="spx-label">Coupon Code *</label><input class="form-control spx-input" id="cpCode" required placeholder="SPEAXSA20"></div>
+        <div class="col-6"><label class="spx-label">Coupon Code *</label><input class="form-control spx-input" id="cpCode" required placeholder="SPEAXA20"></div>
         <div class="col-6"><label class="spx-label">Discount % *</label><input class="form-control spx-input" id="cpDiscount" type="number" min="1" max="100" required></div>
         <div class="col-6"><label class="spx-label">Max Uses</label><input class="form-control spx-input" id="cpMaxUses" type="number" value="100"></div>
         <div class="col-6"><label class="spx-label">Valid Until</label><input class="form-control spx-input" id="cpValidity" type="date"></div>

@@ -1,7 +1,7 @@
 -- ============================================================
--- SPEAXSA EDTECH PLATFORM — COMPLETE DATABASE SCHEMA
+-- SPEAXA EDTECH PLATFORM — COMPLETE DATABASE SCHEMA
 -- Matches the REST API SQL queries exactly
--- Direct import: psql -U postgres -d speaxsa -f schema.sql
+-- Direct import: psql -U postgres -d speaxa -f schema.sql
 -- PostgreSQL 14+
 -- ============================================================
 

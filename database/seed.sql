@@ -1,5 +1,5 @@
 -- ============================================================
--- SPEAXSA PLATFORM — SEED DATA
+-- SPEAXA PLATFORM — SEED DATA
 -- Run AFTER schema.sql
 -- ============================================================
 
@@ -12,11 +12,11 @@ ON CONFLICT (commission_type) DO NOTHING;
 
 -- Platform settings defaults
 INSERT INTO platform_settings (key, value) VALUES
-  ('logo_text', 'SPEAXSA'),
+  ('logo_text', 'SPEAXA'),
   ('logo_url', '/admin/logo.png'),
-  ('announcement', 'Welcome to SPEAXSA — Empowering Education Through Technology'),
-  ('platform_name', 'SPEAXSA EdTech'),
-  ('support_email', 'support@speaxsa.com'),
+  ('announcement', 'Welcome to SPEAXA — Empowering Education Through Technology'),
+  ('platform_name', 'SPEAXA EdTech'),
+  ('support_email', 'support@speaxa.com'),
   ('support_phone', '+91 9999999999'),
   ('razorpay_key_id', ''),
   ('razorpay_key_secret', ''),
@@ -36,7 +36,7 @@ ON CONFLICT (key) DO NOTHING;
 
 -- Demo coupon
 INSERT INTO coupons (code, discount_percent, max_uses, valid_until, is_active) VALUES
-  ('SPEAXSA10', 10.00, 500, NOW() + INTERVAL '1 year', true),
+  ('SPEAXA10', 10.00, 500, NOW() + INTERVAL '1 year', true),
   ('LAUNCH50', 50.00, 100, NOW() + INTERVAL '30 days', true)
 ON CONFLICT (code) DO NOTHING;
 
@@ -45,7 +45,7 @@ ON CONFLICT (code) DO NOTHING;
 INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status, is_disabled)
 VALUES (
   'admin_001',
-  'admin@speaxsa.com',
+  'admin@speaxa.com',
   '9000000000',
   'Super Admin',
   'admin',
@@ -60,7 +60,7 @@ VALUES (
 INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status, qualification, experience_years, subject_expertise, languages, teacher_level)
 VALUES (
   'teacher_001',
-  'teacher@speaxsa.com',
+  'teacher@speaxa.com',
   '9111111111',
   'Dr. Priya Sharma',
   'teacher',
@@ -97,7 +97,7 @@ ON CONFLICT (teacher_id) DO NOTHING;
 INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status, student_code, board, grade, learning_streak)
 VALUES (
   'student_001',
-  'student@speaxsa.com',
+  'student@speaxa.com',
   '9222222222',
   'Rahul Verma',
   'student',
@@ -115,7 +115,7 @@ VALUES (
 INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status)
 VALUES (
   'parent_001',
-  'parent@speaxsa.com',
+  'parent@speaxa.com',
   '9333333333',
   'Suresh Verma',
   'parent',
@@ -155,7 +155,7 @@ VALUES (
   30,
   1,
   'active',
-  'speaxsa_batch_001'
+  'speaxa_batch_001'
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Enroll demo student
@@ -178,20 +178,20 @@ VALUES (
 -- Demo notification
 INSERT INTO notifications (id, title, message, target_role, type, is_active)
 VALUES
-  ('notif_001', 'Welcome to SPEAXSA!', 'Your learning journey starts here. Explore courses and join your first live class today.', 'student', 'info', true),
+  ('notif_001', 'Welcome to SPEAXA!', 'Your learning journey starts here. Explore courses and join your first live class today.', 'student', 'info', true),
   ('notif_002', 'SOP Reminder', 'Please complete your SOP video uploads to start teaching.', 'teacher', 'warning', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Demo course modules
 INSERT INTO course_modules (id, course_id, title, description) VALUES
-  ('mod_1', 'course_001', 'Chapter 1: Electric Charges and Fields', 'Introduction to electric charges, Coulomb\'s Law, and electric fields.'),
+  ('mod_1', 'course_001', 'Chapter 1: Electric Charges and Fields', 'Introduction to electric charges, Coulomb''s Law, and electric fields.'),
   ('mod_2', 'course_001', 'Chapter 2: Electrostatic Potential and Capacitance', 'Electrostatic potential, work done, potential energy, and capacitors.'),
-  ('mod_3', 'course_001', 'Chapter 3: Current Electricity', 'Ohm\'s Law, electrical resistivity, conductivity, and Kirchhoff\'s rules.'),
+  ('mod_3', 'course_001', 'Chapter 3: Current Electricity', 'Ohm''s Law, electrical resistivity, conductivity, and Kirchhoff''s rules.'),
   ('mod_4', 'course_002', 'Chapter 1: Real Numbers', 'Fundamental Theorem of Arithmetic, irrational numbers, and rational representations.'),
   ('mod_5', 'course_002', 'Chapter 2: Polynomials', 'Geometrical meaning of zeroes, relationship between coefficients and zeroes.'),
   ('mod_6', 'course_002', 'Chapter 3: Pair of Linear Equations', 'Graphical and algebraic methods of solving linear systems.'),
   ('mod_7', 'course_003', 'Chapter 1: Basic Concepts of Chemistry', 'General introduction, laws of chemical combination, and stoichiometry.'),
-  ('mod_8', 'course_003', 'Chapter 2: Structure of Atom', 'Bohr\'s model, dual nature of matter, Heisenberg uncertainty principle, and quantum numbers.'),
+  ('mod_8', 'course_003', 'Chapter 2: Structure of Atom', 'Bohr''s model, dual nature of matter, Heisenberg uncertainty principle, and quantum numbers.'),
   ('mod_9', 'course_004', 'Chapter 1: Sexual Reproduction in Flowering Plants', 'Flower structure, development of male and female gametophytes, pollination, and fertilization.'),
   ('mod_10', 'course_004', 'Chapter 2: Human Reproduction', 'Male and female reproductive systems, microscopic anatomy, gametogenesis, and menstrual cycle.')
 ON CONFLICT (id) DO NOTHING;
@@ -204,6 +204,6 @@ VALUES (
   'admin',
   'PLATFORM_INITIALIZED',
   'platform',
-  'speaxsa_001',
+  'speaxa_001',
   '{"version": "1.0.0", "note": "Platform seed data loaded successfully"}'
 );

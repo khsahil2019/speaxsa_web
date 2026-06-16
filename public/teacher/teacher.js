@@ -1,4 +1,4 @@
-// SPEAXSA Teacher Portal JS
+// SPEAXA Teacher Portal JS
 const API = '/api';
 let token = localStorage.getItem('teacher_token') || sessionStorage.getItem('teacher_token');
 let user = JSON.parse(localStorage.getItem('teacher_user') || sessionStorage.getItem('teacher_user') || 'null');
@@ -345,13 +345,13 @@ async function renderSop() {
             <div class="spx-card shadow-lg p-5 border-top border-4 border-primary" style="background:#ffffff; border-radius:16px;">
               <div class="text-center mb-4">
                 <div style="font-size: 3rem; color: var(--primary);"><i class="fas fa-file-contract"></i></div>
-                <h4 class="fw-bold mt-2" style="color:var(--text-primary);">SPEAXSA Educator Agreement</h4>
+                <h4 class="fw-bold mt-2" style="color:var(--text-primary);">SPEAXA Educator Agreement</h4>
                 <p class="text-muted small">Please review and digitally sign your teaching agreement to activate your account</p>
               </div>
               
               <div class="agreement-content border rounded p-4 mb-4" style="height: 350px; overflow-y: scroll; font-size: 0.9rem; line-height: 1.6; background: #F8FAFC; color: #334155; text-align: left;">
                 <h6 class="fw-bold mb-2 text-dark">1. Master Teacher SOP Structure & Professional Identity</h6>
-                <p>Every educator on the SPEAXSA platform commits to representing the highest standards of online pedagogy. As a registered teacher, you operate not merely as a tutor, but in a multi-faceted professional role as a <strong>Digital Educator, Classroom Presenter, Learning Mentor, Student Engagement Manager, Parent Accountability Contributor, Batch Performance Supervisor,</strong> and <strong>Platform Representative</strong>. This framework ensures standardization, professional trust, and consistent teaching quality.</p>
+                <p>Every educator on the SPEAXA platform commits to representing the highest standards of online pedagogy. As a registered teacher, you operate not merely as a tutor, but in a multi-faceted professional role as a <strong>Digital Educator, Classroom Presenter, Learning Mentor, Student Engagement Manager, Parent Accountability Contributor, Batch Performance Supervisor,</strong> and <strong>Platform Representative</strong>. This framework ensures standardization, professional trust, and consistent teaching quality.</p>
 
                 <h6 class="fw-bold mb-2 mt-4 text-dark">2. Digital Classroom Setup & Audio-Visual Standards</h6>
                 <p>To deliver an optimized learning experience, you agree to comply with the technical requirements verified during onboarding:</p>
@@ -373,7 +373,7 @@ async function renderSop() {
                 <p>You agree to evaluate each student monthly across seven core metrics: <strong>Curiosity, Understanding, Consistency, Communication, Observation, Participation, and Discipline</strong>. These metrics feed into the parent reporting dashboard and are critical for learning quality governance.</p>
 
                 <h6 class="fw-bold mb-2 mt-4 text-dark">5. Professional Code of Conduct & Compliance Rules</h6>
-                <p>Teachers are strictly prohibited from promoting external coaching, soliciting or taking SPEAXSA students for private tuition, utilizing unprofessional or abusive language, repeatedly missing live classes, or violating recording policy. Failure to adhere to code of conduct rules will lead to immediate account suspension.</p>
+                <p>Teachers are strictly prohibited from promoting external coaching, soliciting or taking SPEAXA students for private tuition, utilizing unprofessional or abusive language, repeatedly missing live classes, or violating recording policy. Failure to adhere to code of conduct rules will lead to immediate account suspension.</p>
 
                 <h6 class="fw-bold mb-2 mt-4 text-dark">6. Dynamic Revenue Commission Model & Payout Tranches</h6>
                 <p>Platform commissions are calculated dynamically based on student acquisition source (Subject to admin settings):</p>
@@ -386,14 +386,14 @@ async function renderSop() {
                 <p>Payouts are paid in tranches: 50% advance at/before batch start, 25% mid-completion (upon 70-75% completion and compliance audits), and 25% final payment (upon module closure and report submissions).</p>
 
                 <h6 class="fw-bold mb-2 mt-4 text-dark">7. Legal Binding & Consent</h6>
-                <p>By signing this document, you acknowledge that you have read, understood, and agreed to adhere to all terms, policies, and standard operating procedures set forth by SPEAXSA. Any breach may result in immediate platform action, including termination of payouts and permanent suspension.</p>
+                <p>By signing this document, you acknowledge that you have read, understood, and agreed to adhere to all terms, policies, and standard operating procedures set forth by SPEAXA. Any breach may result in immediate platform action, including termination of payouts and permanent suspension.</p>
               </div>
 
               <div class="mb-4 text-start">
                 <div class="form-check mb-3">
                   <input class="form-check-input" type="checkbox" id="agreementConsentCheckbox" style="cursor:pointer">
                   <label class="form-check-label text-secondary small fw-semibold" for="agreementConsentCheckbox" style="cursor:pointer; user-select:none">
-                    I read and accept all the terms, platform commissions, payout tranches, and standard operating procedures of SPEAXSA.
+                    I read and accept all the terms, platform commissions, payout tranches, and standard operating procedures of SPEAXA.
                   </label>
                 </div>
                 

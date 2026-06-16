@@ -1,5 +1,5 @@
-// Speaxsa Admin Portal Extended JavaScript Controller
-const API = ''; // Set to absolute domain like 'https://speaxsa.com' if hosting client & API on separate servers
+// Speaxa Admin Portal Extended JavaScript Controller
+const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
 
 // Global Fetch Interceptor for Security Header Injection
 const originalFetch = window.fetch;
@@ -8,7 +8,7 @@ window.fetch = async function(url, options = {}) {
   if (typeof url === 'string' && url.startsWith('/api')) {
     finalUrl = API + url;
   }
-  const token = localStorage.getItem('speaxsa_admin_token');
+  const token = localStorage.getItem('speaxa_admin_token');
   const urlString = typeof finalUrl === 'string' ? finalUrl : (finalUrl && finalUrl.url) ? finalUrl.url : '';
   
   if (token) {
@@ -43,7 +43,7 @@ window.fetch = async function(url, options = {}) {
     }
     
     if (shouldLogout) {
-      localStorage.removeItem('speaxsa_admin_token');
+      localStorage.removeItem('speaxa_admin_token');
       showAdminLoginOverlay();
     }
   }
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusEl.innerText = `Server Host: Port ${port}`;
   }
   
-  const token = localStorage.getItem('speaxsa_admin_token');
+  const token = localStorage.getItem('speaxa_admin_token');
   if (!token) {
     showAdminLoginOverlay();
   } else {
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error('Invalid admin session');
       }
     } catch (e) {
-      localStorage.removeItem('speaxsa_admin_token');
+      localStorage.removeItem('speaxa_admin_token');
       showAdminLoginOverlay();
     }
   }
@@ -129,7 +129,7 @@ function setupAdminLogin() {
       
       if (res.ok) {
         const data = await res.json();
-        localStorage.setItem('speaxsa_admin_token', data.token);
+        localStorage.setItem('speaxa_admin_token', data.token);
         hideAdminLoginOverlay();
         loadAllData();
       } else {
@@ -253,7 +253,7 @@ async function fetchPayments() {
 
 // Apply Branding configuration
 function updateBranding() {
-  const logoText = state.settings.logo_text || 'Speaxsa';
+  const logoText = state.settings.logo_text || 'Speaxa';
   let logoUrl = state.settings.logo_url;
   
   // Resolve local logo path correctly in static dashboard
@@ -263,7 +263,7 @@ function updateBranding() {
   
   document.getElementById('brandNameText').innerText = logoText;
   
-  const announcementText = state.settings.announcement || 'Welcome to the Speaxsa Administrator Portal!';
+  const announcementText = state.settings.announcement || 'Welcome to the Speaxa Administrator Portal!';
   document.getElementById('announcementText').innerText = announcementText;
   
   const logoIcon = document.getElementById('brandLogoIcon');
@@ -778,7 +778,7 @@ function openUserDetailsModal(id) {
       </div>
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Plain Password</span>
-        <strong style="font-size:13px; color:#E11D48;"><i class="fa-solid fa-key" style="margin-right:4px;"></i>${user.password_plain || 'speaxsa123'}</strong>
+        <strong style="font-size:13px; color:#E11D48;"><i class="fa-solid fa-key" style="margin-right:4px;"></i>${user.password_plain || 'speaxa123'}</strong>
       </div>
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Account Created</span>
@@ -1101,7 +1101,7 @@ function renderDirectory(searchQuery = '') {
           <div style="display:flex; flex-direction:column;">
             <span>${user.email}</span>
             <span class="text-secondary" style="font-size:11px;">${user.phone || 'No phone'}</span>
-            <span style="font-size:11px; color:#E11D48; margin-top:3px; font-weight:600;"><i class="fa-solid fa-key" style="margin-right:3px;"></i>Pass: ${user.password_plain || 'speaxsa123'}</span>
+            <span style="font-size:11px; color:#E11D48; margin-top:3px; font-weight:600;"><i class="fa-solid fa-key" style="margin-right:3px;"></i>Pass: ${user.password_plain || 'speaxa123'}</span>
           </div>
         </td>
         <td>${idCol}</td>
@@ -1256,7 +1256,7 @@ function renderPayments() {
 
 // Render Global Settings (Unpacks category objects)
 function renderSettings() {
-  document.getElementById('settingLogoText').value = state.settings.logo_text || 'Speaxsa';
+  document.getElementById('settingLogoText').value = state.settings.logo_text || 'Speaxa';
   document.getElementById('settingLogoUrl').value = state.settings.logo_url || '';
   document.getElementById('settingAnnouncement').value = state.settings.announcement || '';
   document.getElementById('settingAdBanners').value = JSON.stringify(state.settings.ad_banners || [], null, 2);

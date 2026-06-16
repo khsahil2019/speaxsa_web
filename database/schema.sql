@@ -1,7 +1,7 @@
 -- ============================================================
--- SPEAXSA EDTECH PLATFORM — COMPLETE PRODUCTION DATABASE SCHEMA
+-- SPEAXA EDTECH PLATFORM — COMPLETE PRODUCTION DATABASE SCHEMA
 -- PostgreSQL 14+
--- Run: psql -U postgres -d speaxsa -f schema.sql
+-- Run: psql -U postgres -d speaxa -f schema.sql
 -- ============================================================
 
 -- Drop all tables in reverse dependency order

@@ -127,7 +127,7 @@ router.post('/:id/reply', authenticateToken, async (req, res) => {
               auth: { user: settings.smtp_user, pass: settings.smtp_pass },
             });
 
-            const platformName = settings.platform_name || 'SPEAXSA';
+            const platformName = settings.platform_name || 'SPEAXA';
             await transporter.sendMail({
               from: `"${platformName} Support" <${settings.smtp_user}>`,
               to: recipientEmail,

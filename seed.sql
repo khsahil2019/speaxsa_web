@@ -1,6 +1,6 @@
 -- ============================================================
--- SPEAXSA DATABASE SEED DATA (Matches API expectations)
--- Import: PGPASSWORD="YOUR_PASSWORD" psql -U speaxsa_user -h localhost -d speaxsa -f seed.sql
+-- SPEAXA DATABASE SEED DATA (Matches API expectations)
+-- Import: PGPASSWORD="YOUR_PASSWORD" psql -U speaxa_user -h localhost -d speaxa -f seed.sql
 -- ============================================================
 
 -- Clean up any existing records
@@ -21,13 +21,13 @@ TRUNCATE TABLE batches CASCADE;
 TRUNCATE TABLE courses CASCADE;
 TRUNCATE TABLE users CASCADE;
 
--- 1. Insert Users (Password is 'speaxsa123' hashed with Speaxsa salt)
+-- 1. Insert Users (Password is 'speaxa123' hashed with Speaxa salt)
 INSERT INTO users (id, email, name, phone, role, qualification, experience_years, photo_url, rating, approval_status, password_hash) VALUES
-  ('teach_1', 'ananya@Speaxsa.com', 'Dr. Ananya Sharma', '+91 99999 88888', 'teacher', 'PhD in Physics', 12, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ananya', 4.90, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
-  ('teach_pending', 'sanjay@Speaxsa.com', 'Sanjay Dutta', '+91 91111 22222', 'teacher', 'M.Sc. Mathematics, B.Ed.', 6, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sanjay', 0.00, 'pending', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
+  ('teach_1', 'ananya@Speaxa.com', 'Dr. Ananya Sharma', '+91 99999 88888', 'teacher', 'PhD in Physics', 12, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ananya', 4.90, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
+  ('teach_pending', 'sanjay@Speaxa.com', 'Sanjay Dutta', '+91 91111 22222', 'teacher', 'M.Sc. Mathematics, B.Ed.', 6, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sanjay', 0.00, 'pending', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
   ('stud_1', 'rahul@gmail.com', 'Rahul Kumar', '+91 98765 43210', 'student', 'Class 10 Student', 0, 'https://api.dicebear.com/7.x/adventurer/svg?seed=Rahul', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
   ('parent_1', 'anil@gmail.com', 'Anil Kumar (Rahul''s Father)', '+91 88888 77777', 'parent', 'Guardian', 0, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anil', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
-  ('admin_1', 'admin@Speaxsa.com', 'Platform Admin', '+91 77777 66666', 'admin', 'System Engineer', 5, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3');
+  ('admin_1', 'admin@Speaxa.com', 'Platform Admin', '+91 77777 66666', 'admin', 'System Engineer', 5, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3');
 
 -- 2. Insert Courses
 INSERT INTO courses (id, title, description, grade, board, price) VALUES
@@ -60,9 +60,9 @@ INSERT INTO payouts (id, teacher_id, amount, status, created_at) VALUES
 
 -- 8. Insert Platform Settings
 INSERT INTO platform_settings (key, value) VALUES
-  ('logo_text', 'Speaxsa'),
+  ('logo_text', 'Speaxa'),
   ('logo_url', '/admin/logo.png'),
-  ('announcement', 'Welcome to the Speaxsa Administrator Portal!'),
+  ('announcement', 'Welcome to the Speaxa Administrator Portal!'),
   ('razorpay_key_id', 'demo_key_id'),
   ('razorpay_key_secret', 'demo_key_secret'),
   ('agora_app_id', 'demo_agora_app_id'),
@@ -71,7 +71,7 @@ INSERT INTO platform_settings (key, value) VALUES
 
 -- 9. Insert Coupons
 INSERT INTO coupons (code, discount_percent, valid_until, is_active) VALUES
-  ('SPEAXSA50', 50.00, '2026-12-31', true),
+  ('SPEAXA50', 50.00, '2026-12-31', true),
   ('WELCOME10', 10.00, '2026-06-30', true);
 
 -- 10. Insert Live Classes

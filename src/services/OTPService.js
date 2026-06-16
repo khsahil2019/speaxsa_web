@@ -76,7 +76,7 @@ async function sendOTPEmail(email, otp, purpose = 'login') {
       auth: { user: settings.smtp_user, pass: settings.smtp_pass },
     });
 
-    const platformName = settings.platform_name || 'SPEAXSA';
+    const platformName = settings.platform_name || 'SPEAXA';
     const subject = purpose === 'forgot_password' ? `${platformName} — Password Reset OTP` : `${platformName} — Your Login OTP`;
 
     await transporter.sendMail({

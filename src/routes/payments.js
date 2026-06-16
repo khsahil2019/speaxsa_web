@@ -69,7 +69,7 @@ router.post('/create-order', async (req, res) => {
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100), // paise
       currency: 'INR',
-      receipt: `speaxsa_${Date.now()}`,
+      receipt: `speaxa_${Date.now()}`,
     });
 
     // Create pending payment record

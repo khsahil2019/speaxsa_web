@@ -1,4 +1,4 @@
-// SPEAXSA Student Portal JS
+// SPEAXA Student Portal JS
 const API = '/api';
 let token = localStorage.getItem('student_token') || sessionStorage.getItem('student_token');
 let user = JSON.parse(localStorage.getItem('student_user') || sessionStorage.getItem('student_user') || 'null');

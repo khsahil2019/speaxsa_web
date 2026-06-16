@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 5001;
 const server = app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║       SPEAXSA EdTech Platform — API Server v2.0.0       ║
+║       SPEAXA EdTech Platform — API Server v2.0.0       ║
 ╠══════════════════════════════════════════════════════════╣
 ║  Status:    Running                                      ║
 ║  Port:      ${String(PORT).padEnd(44)}║

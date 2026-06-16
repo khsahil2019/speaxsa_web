@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Speaxsa – Parent Portal</title>
-  <meta name="description" content="Speaxsa Parent Portal – Monitor your child's academic progress, attendance, and performance in real time.">
+  <title>Speaxa – Parent Portal</title>
+  <meta name="description" content="Speaxa Parent Portal – Monitor your child's academic progress, attendance, and performance in real time.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -19,8 +19,8 @@
     <!-- Left Visual Panel -->
     <div class="parent-visual-panel">
       <div class="visual-brand">
-        <img src="/logo.png" alt="Speaxsa" class="visual-logo">
-        <span class="visual-brand-text">Speaxsa</span>
+        <img src="/logo.png" alt="Speaxa" class="visual-logo">
+        <span class="visual-brand-text">Speaxa</span>
       </div>
       <div class="visual-content">
         <span class="badge visual-badge">Parent Portal</span>
@@ -59,7 +59,7 @@
     <!-- Right Form Panel -->
     <div class="parent-form-panel">
       <div class="login-card">
-        <img src="/logo.png" alt="Speaxsa" class="login-logo">
+        <img src="/logo.png" alt="Speaxa" class="login-logo">
         <h2>Parent Portal</h2>
         <p class="subtitle">Track your child's academic journey in real time</p>
         <form id="loginForm" onsubmit="handleLogin(event)">
@@ -67,7 +67,7 @@
             <label for="loginEmail">Email Address</label>
             <div class="input-group">
               <span class="spx-input-prefix"><i class="fa-solid fa-envelope"></i></span>
-              <input type="email" id="loginEmail" class="form-control" placeholder="parent@speaxsa.com" required>
+              <input type="email" id="loginEmail" class="form-control" placeholder="parent@speaxa.com" required>
             </div>
           </div>
           <div class="form-group">
@@ -98,7 +98,7 @@
           <label>Student Code, ID, or Email</label>
           <input type="text" id="modalStudentInput" class="form-control" placeholder="e.g. SPX-STU-100001 or student@email.com" required>
         </div>
-        <p style="font-size:0.78rem;color:var(--text-3);margin:0;">Enter the student details provided by Speaxsa. Your child will receive an approval request in their portal.</p>
+        <p style="font-size:0.78rem;color:var(--text-3);margin:0;">Enter the student details provided by Speaxa. Your child will receive an approval request in their portal.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('linkModal')">Cancel</button>
@@ -117,9 +117,9 @@
   <!-- Sidebar -->
   <nav class="sidebar">
     <div class="sidebar-brand">
-      <img src="/logo.png" alt="Speaxsa" class="brand-logo">
+      <img src="/logo.png" alt="Speaxa" class="brand-logo">
       <div>
-        <div class="brand-name">Speaxsa</div>
+        <div class="brand-name">Speaxa</div>
         <div class="brand-tag">Parent Portal</div>
       </div>
     </div>
@@ -194,7 +194,7 @@
           <h2>Link Your Child's Account</h2>
           <p>To monitor attendance records, view academic performance, and stay connected with teachers, please link your child's student account.</p>
           <form class="link-form-inline" onsubmit="handleInlineLink(event)">
-            <input type="text" id="inlineLinkInput" placeholder="Student ID or email (e.g. student@speaxsa.com)" required>
+            <input type="text" id="inlineLinkInput" placeholder="Student ID or email (e.g. student@speaxa.com)" required>
             <button type="submit">Link Child</button>
           </form>
 
@@ -204,7 +204,7 @@
               <div class="guide-step">
                 <div class="guide-step-num">1</div>
                 <h4>Enter Student Details</h4>
-                <p>Input your child's Speaxsa student code or email to initiate the link.</p>
+                <p>Input your child's Speaxa student code or email to initiate the link.</p>
               </div>
               <div class="guide-step">
                 <div class="guide-step-num">2</div>
@@ -459,7 +459,7 @@
 
 <script>
 // ── Fetch interceptor (auth token injection + 401 auto-logout) ─────────────
-const API = ''; // Set to absolute domain like 'https://speaxsa.com' if hosting client & API on separate servers
+const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
 const _fetch = window.fetch;
 window.fetch = async (url, opts = {}) => {
   const token = localStorage.getItem('spx_parent_token');
