@@ -6,6 +6,9 @@ const { authenticateToken } = require('../middleware/auth');
 const { hashPassword, sanitizeUser } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
 const configService = require('../services/SystemConfigService');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../middleware/auth');
 
@@ -379,6 +382,28 @@ router.post('/impersonate/:userId', async (req, res) => {
 });
 
 // ── Course Management ─────────────────────────────────────────
+const courseThumbnailStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '../../public/uploads/courses');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `course_${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+const courseThumbnailUpload = multer({ storage: courseThumbnailStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+router.post('/courses/upload-thumbnail', courseThumbnailUpload.single('thumbnail'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const thumbnailUrl = `/uploads/courses/${req.file.filename}`;
+    res.json({ message: 'Thumbnail uploaded', thumbnailUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/courses', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM courses ORDER BY created_at DESC');

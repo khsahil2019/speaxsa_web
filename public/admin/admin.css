@@ -1372,3 +1372,21 @@ select.spx-input option {
 .btn .text-white {
   color: #ffffff !important;
 }
+
+/* ── Course Banner Upload Premium Styling ── */
+.course-upload-box {
+  border: 2px dashed var(--border) !important;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  background: var(--bg-input);
+}
+.course-upload-box:hover {
+  background: var(--bg-hover) !important;
+  border-color: var(--primary) !important;
+}
+.course-upload-box i {
+  transition: var(--transition);
+}
+.course-upload-box:hover i {
+  transform: translateY(-3px) scale(1.05);
+}

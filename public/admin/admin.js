@@ -936,6 +936,7 @@ async function renderCourses() {
   loading();
   try {
     const courses = await apiGet('/admin/courses');
+    window._courses = courses;
     document.getElementById('pageContent').innerHTML = `
       <div class="spx-card">
         <div class="d-flex align-items-center justify-content-between mb-4">
@@ -966,6 +967,7 @@ async function renderCourses() {
 }
 
 function showCreateCourse() {
+  window._currentThumbnailUrl = '';
   document.getElementById('formModalTitle').textContent = 'Create New Course';
   document.getElementById('formModalBody').innerHTML = `
     <form id="courseForm">
@@ -986,6 +988,29 @@ function showCreateCourse() {
         </div>
         <div class="col-md-2"><label class="spx-label">Duration (weeks)</label><input class="form-control spx-input" id="courseDuration" type="number" value="24"></div>
         <div class="col-md-2"><label class="spx-label">Fees (₹) *</label><input class="form-control spx-input" id="courseFees" type="number" required></div>
+        
+        <!-- Course Banner Image Upload -->
+        <div class="col-12">
+          <label class="spx-label">Course Banner / Thumbnail</label>
+          <div class="course-upload-box position-relative d-flex flex-column align-items-center justify-content-center p-4 border border-dashed rounded text-center" style="min-height: 150px; cursor: pointer;" onclick="document.getElementById('courseFileInput').click()">
+            <input type="file" id="courseFileInput" accept="image/*" class="d-none" onchange="handleCourseFileSelect(this)">
+            <div id="courseUploadPlaceholder">
+              <i class="fas fa-cloud-upload-alt text-primary mb-2" style="font-size: 2rem;"></i>
+              <p class="mb-0 text-secondary small fw-semibold">Click to upload course banner</p>
+              <small class="text-muted" style="font-size: 0.75rem;">JPG, PNG or WebP (Max 5MB)</small>
+            </div>
+            <div id="courseUploadPreviewContainer" class="position-relative d-none" style="max-height: 160px; width: 100%;">
+              <img id="courseUploadPreview" src="" style="max-height: 150px; width: 100%; object-fit: cover; border-radius: var(--radius-sm);" />
+              <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" style="padding: 4px 8px; font-size: 0.75rem;" onclick="removeCourseThumbnail(event)">
+                <i class="fas fa-trash-alt"></i> Remove
+              </button>
+            </div>
+            <div id="courseUploadSpinner" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center d-none" style="background: rgba(255,255,255,0.8); z-index: 10; border-radius: var(--radius-md);">
+              <div class="spinner-border text-primary" role="status"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="col-12"><label class="spx-label">Description</label><textarea class="form-control spx-input" id="courseDesc" rows="3"></textarea></div>
         <div class="col-12"><button type="submit" class="btn btn-spx w-100">Create Course</button></div>
       </div>
@@ -1002,14 +1027,147 @@ async function createCourse(e) {
       subject: document.getElementById('courseSubject').value,
       grade: document.getElementById('courseGrade').value,
       board: document.getElementById('courseBoard').value,
-      duration_weeks: parseInt(document.getElementById('courseDuration').value),
+      duration_weeks: parseInt(document.getElementById('courseDuration').value) || 12,
       fees: parseFloat(document.getElementById('courseFees').value),
       description: document.getElementById('courseDesc').value,
+      thumbnail_url: window._currentThumbnailUrl || null
     });
     showToast(data.message || 'Course created');
     formModal.hide();
     renderCourses();
   } catch (err) { showToast(err.message, 'error'); }
+}
+
+function editCourse(id) {
+  const course = (window._courses || []).find(c => c.id === id);
+  if (!course) {
+    showToast('Course not found', 'error');
+    return;
+  }
+  
+  window._currentThumbnailUrl = course.thumbnail_url || '';
+
+  document.getElementById('formModalTitle').textContent = 'Edit Course';
+  document.getElementById('formModalBody').innerHTML = `
+    <form id="courseForm">
+      <div class="row g-3">
+        <div class="col-md-8"><label class="spx-label">Course Title *</label><input class="form-control spx-input" id="courseTitle" required value="${course.title || ''}"></div>
+        <div class="col-md-4"><label class="spx-label">Subject</label><input class="form-control spx-input" id="courseSubject" value="${course.subject || ''}"></div>
+        <div class="col-md-4"><label class="spx-label">Grade</label>
+          <select class="form-select spx-input" id="courseGrade">
+            <option value="">Any</option>
+            ${['Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'].map(g => `<option ${course.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-4"><label class="spx-label">Board</label>
+          <select class="form-select spx-input" id="courseBoard">
+            <option value="">Any</option>
+            <option ${course.board === 'CBSE' ? 'selected' : ''}>CBSE</option>
+            <option ${course.board === 'ICSE' ? 'selected' : ''}>ICSE</option>
+            <option ${course.board === 'State Board' ? 'selected' : ''}>State Board</option>
+          </select>
+        </div>
+        <div class="col-md-2"><label class="spx-label">Duration (weeks)</label><input class="form-control spx-input" id="courseDuration" type="number" value="${course.duration_weeks || 24}"></div>
+        <div class="col-md-2"><label class="spx-label">Fees (₹) *</label><input class="form-control spx-input" id="courseFees" type="number" required value="${course.fees || ''}"></div>
+        
+        <!-- Course Banner Image Upload -->
+        <div class="col-12">
+          <label class="spx-label">Course Banner / Thumbnail</label>
+          <div class="course-upload-box position-relative d-flex flex-column align-items-center justify-content-center p-4 border border-dashed rounded text-center" style="min-height: 150px; cursor: pointer;" onclick="document.getElementById('courseFileInput').click()">
+            <input type="file" id="courseFileInput" accept="image/*" class="d-none" onchange="handleCourseFileSelect(this)">
+            <div id="courseUploadPlaceholder" class="${window._currentThumbnailUrl ? 'd-none' : ''}">
+              <i class="fas fa-cloud-upload-alt text-primary mb-2" style="font-size: 2rem;"></i>
+              <p class="mb-0 text-secondary small fw-semibold">Click to upload course banner</p>
+              <small class="text-muted" style="font-size: 0.75rem;">JPG, PNG or WebP (Max 5MB)</small>
+            </div>
+            <div id="courseUploadPreviewContainer" class="position-relative ${window._currentThumbnailUrl ? '' : 'd-none'}" style="max-height: 160px; width: 100%;">
+              <img id="courseUploadPreview" src="${window._currentThumbnailUrl || ''}" style="max-height: 150px; width: 100%; object-fit: cover; border-radius: var(--radius-sm);" />
+              <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" style="padding: 4px 8px; font-size: 0.75rem;" onclick="removeCourseThumbnail(event)">
+                <i class="fas fa-trash-alt"></i> Remove
+              </button>
+            </div>
+            <div id="courseUploadSpinner" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center d-none" style="background: rgba(255,255,255,0.8); z-index: 10; border-radius: var(--radius-md);">
+              <div class="spinner-border text-primary" role="status"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12"><label class="spx-label">Description</label><textarea class="form-control spx-input" id="courseDesc" rows="3">${course.description || ''}</textarea></div>
+        <div class="col-12"><button type="submit" class="btn btn-spx w-100">Update Course</button></div>
+      </div>
+    </form>`;
+  document.getElementById('courseForm').onsubmit = (e) => updateCourse(e, id);
+  formModal.show();
+}
+
+async function updateCourse(e, id) {
+  e.preventDefault();
+  try {
+    const data = await apiPut(`/admin/courses/${id}`, {
+      title: document.getElementById('courseTitle').value,
+      subject: document.getElementById('courseSubject').value,
+      grade: document.getElementById('courseGrade').value,
+      board: document.getElementById('courseBoard').value,
+      duration_weeks: parseInt(document.getElementById('courseDuration').value) || 12,
+      fees: parseFloat(document.getElementById('courseFees').value),
+      description: document.getElementById('courseDesc').value,
+      thumbnail_url: window._currentThumbnailUrl || null
+    });
+    showToast(data.message || 'Course updated');
+    formModal.hide();
+    renderCourses();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function uploadCourseThumbnail(file) {
+  const formData = new FormData();
+  formData.append('thumbnail', file);
+  
+  const res = await fetch(`${API}/admin/courses/upload-thumbnail`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData
+  });
+  if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to upload thumbnail');
+  }
+  return res.json();
+}
+
+async function handleCourseFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const spinner = document.getElementById('courseUploadSpinner');
+  const placeholder = document.getElementById('courseUploadPlaceholder');
+  const previewContainer = document.getElementById('courseUploadPreviewContainer');
+  const preview = document.getElementById('courseUploadPreview');
+
+  spinner.classList.remove('d-none');
+  
+  try {
+    const data = await uploadCourseThumbnail(file);
+    window._currentThumbnailUrl = data.thumbnailUrl;
+    preview.src = data.thumbnailUrl;
+    previewContainer.classList.remove('d-none');
+    placeholder.classList.add('d-none');
+    showToast('Banner uploaded successfully!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    spinner.classList.add('d-none');
+    input.value = '';
+  }
+}
+
+function removeCourseThumbnail(event) {
+  event.stopPropagation();
+  window._currentThumbnailUrl = '';
+  document.getElementById('courseUploadPreviewContainer').classList.add('d-none');
+  document.getElementById('courseUploadPlaceholder').classList.remove('d-none');
+  document.getElementById('courseUploadPreview').src = '';
 }
 
 async function archiveCourse(id) {
