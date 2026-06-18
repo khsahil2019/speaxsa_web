@@ -364,22 +364,26 @@ async function showCourseDetails(courseId) {
     
     batchesList.innerHTML = batches.map(b => {
       const days = Array.isArray(b.days_of_week) ? b.days_of_week.join(', ') : b.days_of_week || 'Mon, Wed, Fri';
+      const teacherPhoto = b.teacher_photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(b.teacher_name || 'Expert')}`;
       return `
         <div class="card bg-dark-alt p-3" style="background: #f8fafc !important; border: 1px solid rgba(60, 189, 176, 0.25) !important;">
-          <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-            <div>
-              <h6 class="fw-bold mb-1" style="color: #0F766E !important; font-size: 1.05rem;">${b.batch_name}</h6>
-              <div class="small mb-2" style="color: #334155 !important;">
-                <i class="fas fa-chalkboard-teacher me-1" style="color: #3CBDB0 !important;"></i>Mentor: <strong style="color: #0F172A !important;">${b.teacher_name || 'Expert'}</strong> (${b.teacher_level || 'Gold'} • <i class="fas fa-star text-warning"></i> ${parseFloat(b.teacher_rating || 5).toFixed(1)})
-              </div>
-              <div class="small mb-1" style="color: #475569 !important;">
-                <i class="fas fa-calendar-alt me-1" style="color: #3CBDB0 !important;"></i>Days: <strong style="color: #1e293b !important;">${days}</strong>
-              </div>
-              <div class="small" style="color: #475569 !important;">
-                <i class="fas fa-clock me-1" style="color: #3CBDB0 !important;"></i>Time: <strong style="color: #1e293b !important;">${b.start_time} - ${b.end_time}</strong>
+          <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div class="d-flex align-items-center gap-3">
+              <img src="${teacherPhoto}" alt="${b.teacher_name}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; flex-shrink: 0;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(b.teacher_name || 'Expert')}'">
+              <div>
+                <h6 class="fw-bold mb-1" style="color: #0F766E !important; font-size: 1.05rem;">${b.batch_name}</h6>
+                <div class="small mb-2" style="color: #334155 !important;">
+                  <i class="fas fa-chalkboard-teacher me-1" style="color: #3CBDB0 !important;"></i>Mentor: <strong style="color: #0F172A !important;">${b.teacher_name || 'Expert'}</strong> (${b.teacher_level || 'Gold'} • <i class="fas fa-star text-warning"></i> ${parseFloat(b.teacher_rating || 5).toFixed(1)})
+                </div>
+                <div class="small mb-1" style="color: #475569 !important;">
+                  <i class="fas fa-calendar-alt me-1" style="color: #3CBDB0 !important;"></i>Days: <strong style="color: #1e293b !important;">${days}</strong>
+                </div>
+                <div class="small" style="color: #475569 !important;">
+                  <i class="fas fa-clock me-1" style="color: #3CBDB0 !important;"></i>Time: <strong style="color: #1e293b !important;">${b.start_time} - ${b.end_time}</strong>
+                </div>
               </div>
             </div>
-            <div class="text-end d-flex flex-column align-items-end">
+            <div class="text-end d-flex flex-column align-items-end ms-auto">
               <span class="badge mb-2" style="background: rgba(15, 118, 110, 0.1) !important; color: #0F766E !important; border: 1px solid rgba(15, 118, 110, 0.15) !important; font-weight: 600; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem;">${b.available_seats} seats left</span>
               <button class="btn btn-spx-primary btn-sm px-4" style="border-radius: 8px;" onclick="checkoutBatch('${b.id}')">Enroll</button>
             </div>

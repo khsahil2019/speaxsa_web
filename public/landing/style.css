@@ -877,8 +877,22 @@ body .text-white-50 {
   color: var(--primary-dark) !important;
   border: 1px solid rgba(60, 189, 176, 0.15) !important;
 }
-#courseDetailsModal .btn-close-white {
+#courseDetailsModal .btn-close,
+.modal-content .btn-close {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  border-radius: 50% !important;
+  opacity: 0.85 !important;
+  padding: 10px !important;
+  transition: all 0.25s ease !important;
+  filter: none !important;
+}
+#courseDetailsModal .btn-close:hover,
+.modal-content .btn-close:hover {
+  background-color: #EF4444 !important;
   filter: invert(1) !important;
+  opacity: 1 !important;
+  transform: rotate(90deg);
 }
 #courseDetailsModal .badge {
   background: rgba(60, 189, 176, 0.1) !important;
