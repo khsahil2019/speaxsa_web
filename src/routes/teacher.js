@@ -90,12 +90,67 @@ sopFields.forEach(({ name, col }) => {
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
       const fileUrl = `/uploads/sop/${req.file.filename}`;
       await db.query(`UPDATE teacher_sop SET ${col} = $1, updated_at = NOW() WHERE teacher_id = $2`, [fileUrl, req.user.id]);
-      await db.query("UPDATE teacher_sop SET status = 'sop_pending' WHERE teacher_id = $1 AND status = 'pending'", [req.user.id]);
       res.json({ message: `${name} uploaded`, fileUrl });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
+
+  router.post(`/sop/link/${name}`, async (req, res) => {
+    const { link } = req.body;
+    try {
+      if (!link || !link.trim()) return res.status(400).json({ error: 'Link is required' });
+      await db.query(`UPDATE teacher_sop SET ${col} = $1, updated_at = NOW() WHERE teacher_id = $2`, [link.trim(), req.user.id]);
+      res.json({ message: `${name} link saved`, fileUrl: link.trim() });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+});
+
+// Update availability calendar in SOP
+router.post('/sop/availability', async (req, res) => {
+  const { availability } = req.body;
+  try {
+    let slots = availability;
+    if (typeof slots === 'string') {
+      try {
+        slots = JSON.parse(slots);
+      } catch (e) {
+        // legacy plain text string
+      }
+    }
+
+    if (typeof slots === 'string' && slots.trim()) {
+      await db.query(
+        'UPDATE teacher_sop SET availability = $1, updated_at = NOW() WHERE teacher_id = $2',
+        [slots.trim(), req.user.id]
+      );
+      return res.json({ message: 'Availability calendar updated successfully', availability: slots.trim() });
+    }
+
+    if (!Array.isArray(slots) || slots.length === 0) {
+      return res.status(400).json({ error: 'Availability must be a list of one or more time slots' });
+    }
+
+    for (const slot of slots) {
+      if (!slot.days || !Array.isArray(slot.days) || slot.days.length === 0) {
+        return res.status(400).json({ error: 'Each slot must specify at least one day' });
+      }
+      if (!slot.startTime || !slot.endTime) {
+        return res.status(400).json({ error: 'Each slot must specify a start and end time' });
+      }
+    }
+
+    const savedStr = JSON.stringify(slots);
+    await db.query(
+      'UPDATE teacher_sop SET availability = $1, updated_at = NOW() WHERE teacher_id = $2',
+      [savedStr, req.user.id]
+    );
+    res.json({ message: 'Availability calendar updated successfully', availability: slots });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Submit SOP for review
@@ -105,9 +160,52 @@ router.post('/sop/submit', async (req, res) => {
     const sop = await db.query('SELECT * FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
     if (!sop.rows[0]) return res.status(404).json({ error: 'SOP record not found' });
 
-    const { camera_sop_url, lighting_sop_url, audio_sop_url, internet_proof_url, demo_teaching_url } = sop.rows[0];
+    const { camera_sop_url, lighting_sop_url, audio_sop_url, internet_proof_url, demo_teaching_url, availability } = sop.rows[0];
+    
+    // 1. Validate Technical SOP uploads/links
     if (!camera_sop_url || !lighting_sop_url || !audio_sop_url || !internet_proof_url || !demo_teaching_url) {
-      return res.status(400).json({ error: 'All 5 SOP videos must be uploaded before submitting' });
+      return res.status(400).json({ error: 'All 5 technical SOP proofs (Camera, Lighting, Audio, Internet speed, Demo lecture) must be submitted before final submission.' });
+    }
+
+    // 2. Validate Availability Calendar
+    if (!availability || !availability.trim()) {
+      return res.status(400).json({ error: 'Your weekly teaching availability calendar description must be submitted before final submission.' });
+    }
+
+    // 3. Validate KYC Document & Profile Evidence Uploads
+    const docs = await db.query('SELECT doc_type FROM teacher_documents WHERE teacher_id = $1', [req.user.id]);
+    const uploadedTypes = docs.rows.map(d => d.doc_type);
+    
+    // KYC
+    const requiredKyc = ['aadhaar', 'pan', 'resume', 'qualification'];
+    const missingKyc = requiredKyc.filter(type => !uploadedTypes.includes(type));
+    if (missingKyc.length > 0) {
+      return res.status(400).json({ error: `Missing required KYC documents: ${missingKyc.map(m => m === 'qualification' ? 'Degree Certificate' : m.toUpperCase()).join(', ')}. All documents are mandatory.` });
+    }
+
+    // Profile Evidence
+    const requiredProfileProofs = ['expertise_proof', 'language_proof', 'experience_proof'];
+    const missingProfileProofs = requiredProfileProofs.filter(type => !uploadedTypes.includes(type));
+    if (missingProfileProofs.length > 0) {
+      const labels = {
+        expertise_proof: 'Subject Expertise Proof',
+        language_proof: 'Language Preference Proof',
+        experience_proof: 'Experience Letter'
+      };
+      return res.status(400).json({ error: `Missing profile verification documents: ${missingProfileProofs.map(m => labels[m]).join(', ')}.` });
+    }
+
+    // 4. Validate Profile fields
+    const userResult = await db.query('SELECT subject_expertise, languages, experience_years FROM users WHERE id = $1', [req.user.id]);
+    const u = userResult.rows[0];
+    if (!u.subject_expertise || !u.subject_expertise.trim()) {
+      return res.status(400).json({ error: 'Please update your Subject Expertise under the Profile & Experience section.' });
+    }
+    if (!u.languages || !u.languages.trim()) {
+      return res.status(400).json({ error: 'Please specify your Teaching Language Preference.' });
+    }
+    if (u.experience_years === undefined || u.experience_years === null) {
+      return res.status(400).json({ error: 'Please enter your Previous Teaching Experience years.' });
     }
 
     await db.query(
@@ -116,8 +214,7 @@ router.post('/sop/submit', async (req, res) => {
     );
     await db.query("UPDATE users SET approval_status = 'sop_pending' WHERE id = $1", [req.user.id]);
     await logAudit(req.user.id, 'SOP_SUBMITTED', 'teacher', req.user.id, {});
-
-    res.json({ message: 'SOP submitted for admin review' });
+    res.json({ message: 'SOP submitted successfully for admin review', status: 'sop_pending' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -168,6 +265,26 @@ router.post('/documents/upload', docUpload.single('document'), async (req, res) 
       [id, req.user.id, doc_type, fileUrl, req.file.originalname]
     );
     res.json({ message: 'Document uploaded', fileUrl, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/documents/link', async (req, res) => {
+  const { doc_type, link } = req.body;
+  try {
+    if (!doc_type) return res.status(400).json({ error: 'doc_type is required' });
+    if (!link || !link.trim()) return res.status(400).json({ error: 'link is required' });
+
+    const id = generateUID('doc');
+    // Delete any existing document of the same type for this teacher to prevent duplicates
+    await db.query('DELETE FROM teacher_documents WHERE teacher_id = $1 AND doc_type = $2', [req.user.id, doc_type]);
+    
+    await db.query(
+      'INSERT INTO teacher_documents (id, teacher_id, doc_type, file_url, original_name) VALUES ($1,$2,$3,$4,$5)',
+      [id, req.user.id, doc_type, link.trim(), 'External Link']
+    );
+    res.json({ message: 'Document link saved', fileUrl: link.trim(), id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

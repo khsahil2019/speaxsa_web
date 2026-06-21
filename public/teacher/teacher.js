@@ -400,107 +400,78 @@ async function renderHome() {
 }
 
 // ── SOP Setup ─────────────────────────────────────────────────
-// ── SOP Setup ─────────────────────────────────────────────────
 async function renderSop() {
   loading();
   try {
     const sop = await api('/teacher/sop');
-    const documents = await api('/teacher/documents');
+    const documents = await api('/teacher/documents') || [];
+    const profile = await api('/auth/profile');
 
-    // 1. If SOP is approved but Agreement is not yet signed: Show Digital Agreement Form
-    if (sop && sop.status === 'approved' && !sop.agreement_signed) {
-      document.getElementById('pageContent').innerHTML = `
-        <div class="row justify-content-center">
-          <div class="col-lg-10">
-            <div class="spx-card shadow-lg p-5 border-top border-4 border-primary" style="background:#ffffff; border-radius:16px;">
-              <div class="text-center mb-4">
-                <div style="font-size: 3rem; color: var(--primary);"><i class="fas fa-file-contract"></i></div>
-                <h4 class="fw-bold mt-2" style="color:var(--text-primary);">SPEAXA Educator Agreement</h4>
-                <p class="text-muted small">Please review and digitally sign your teaching agreement to activate your account</p>
-              </div>
-              
-              <div class="agreement-content border rounded p-4 mb-4" style="height: 350px; overflow-y: scroll; font-size: 0.9rem; line-height: 1.6; background: #F8FAFC; color: #334155; text-align: left;">
-                <h6 class="fw-bold mb-2 text-dark">1. Master Teacher SOP Structure & Professional Identity</h6>
-                <p>Every educator on the SPEAXA platform commits to representing the highest standards of online pedagogy. As a registered teacher, you operate not merely as a tutor, but in a multi-faceted professional role as a <strong>Digital Educator, Classroom Presenter, Learning Mentor, Student Engagement Manager, Parent Accountability Contributor, Batch Performance Supervisor,</strong> and <strong>Platform Representative</strong>. This framework ensures standardization, professional trust, and consistent teaching quality.</p>
+    // Separate documents by type
+    const docAadhaar = documents.find(d => d.doc_type === 'aadhaar');
+    const docPan = documents.find(d => d.doc_type === 'pan');
+    const docResume = documents.find(d => d.doc_type === 'resume');
+    const docDegree = documents.find(d => d.doc_type === 'qualification');
+    const docExpertise = documents.find(d => d.doc_type === 'expertise_proof');
+    const docLanguage = documents.find(d => d.doc_type === 'language_proof');
+    const docExperience = documents.find(d => d.doc_type === 'experience_proof');
 
-                <h6 class="fw-bold mb-2 mt-4 text-dark">2. Digital Classroom Setup & Audio-Visual Standards</h6>
-                <p>To deliver an optimized learning experience, you agree to comply with the technical requirements verified during onboarding:</p>
-                <ul>
-                  <li><strong>Camera Standards:</strong> Minimum 1080p high-definition webcam or smartphone camera, positioned at eye-level on a stable tripod (no hand-held or shaky camera feeds). Face, upper body, and hand gestures must remain clearly visible.</li>
-                  <li><strong>Lighting Standards:</strong> Front-facing soft lighting (such as a ring light) must illuminate the presenter's face. No backlight or high contrast shadows behind the teacher are permitted. Clean neutral background is required.</li>
-                  <li><strong>Audio Standards:</strong> Collar/external mic is mandatory to eliminate echo, fan, or ambient environmental noise.</li>
-                  <li><strong>Internet Standards:</strong> Stable broadband connection with sufficient upload speeds (>20 Mbps) and a dedicated mobile hotspot backup at all times.</li>
-                </ul>
+    const allKycUploaded = docAadhaar && docPan && docResume && docDegree;
+    const allSopUploaded = sop && sop.camera_sop_url && sop.lighting_sop_url && sop.audio_sop_url && sop.internet_proof_url && sop.demo_teaching_url;
+    
+    // Validate Profile and Availability fields
+    const allProfileFilled = profile.subject_expertise && profile.languages && 
+                             (profile.experience_years !== null && profile.experience_years !== undefined) &&
+                             docExpertise && docLanguage && docExperience;
 
-                <h6 class="fw-bold mb-2 mt-4 text-dark">3. Classroom Presentation, Attendance & Early Join SOP</h6>
-                <ul>
-                  <li><strong>Timing Compliance:</strong> Teachers must join scheduled live sessions 10–15 minutes early to test equipment, open board/slides, and verify systems.</li>
-                  <li><strong>Engagement Mechanisms:</strong> Teachers must utilize platform engagement features (polls, quizzes, rapid questions, concept recap) every 3–5 minutes. Involve weak and quiet students proactively.</li>
-                  <li><strong>Teaching Style:</strong> Maintain an energetic, expressive tone. Avoid monotone delivery, look directly into the camera frequently, and maintain a professional neat attire.</li>
-                </ul>
-
-                <h6 class="fw-bold mb-2 mt-4 text-dark">4. Student Performance Mapping & Observational Metrics</h6>
-                <p>You agree to evaluate each student monthly across seven core metrics: <strong>Curiosity, Understanding, Consistency, Communication, Observation, Participation, and Discipline</strong>. These metrics feed into the parent reporting dashboard and are critical for learning quality governance.</p>
-
-                <h6 class="fw-bold mb-2 mt-4 text-dark">5. Professional Code of Conduct & Compliance Rules</h6>
-                <p>Teachers are strictly prohibited from promoting external coaching, soliciting or taking SPEAXA students for private tuition, utilizing unprofessional or abusive language, repeatedly missing live classes, or violating recording policy. Failure to adhere to code of conduct rules will lead to immediate account suspension.</p>
-
-                <h6 class="fw-bold mb-2 mt-4 text-dark">6. Dynamic Revenue Commission Model & Payout Tranches</h6>
-                <p>Platform commissions are calculated dynamically based on student acquisition source (Subject to admin settings):</p>
-                <ul>
-                  <li>Platform-generated students: 50% Teacher / 50% Platform.</li>
-                  <li>Teacher-referred students (25% share): 60-65% Teacher Share.</li>
-                  <li>Teacher-referred students (50% share): 70-75% Teacher Share.</li>
-                  <li>Star / Elite Mentors: Negotiable commission structures.</li>
-                </ul>
-                <p>Payouts are paid in tranches: 50% advance at/before batch start, 25% mid-completion (upon 70-75% completion and compliance audits), and 25% final payment (upon module closure and report submissions).</p>
-
-                <h6 class="fw-bold mb-2 mt-4 text-dark">7. Legal Binding & Consent</h6>
-                <p>By signing this document, you acknowledge that you have read, understood, and agreed to adhere to all terms, policies, and standard operating procedures set forth by SPEAXA. Any breach may result in immediate platform action, including termination of payouts and permanent suspension.</p>
-              </div>
-
-              <div class="mb-4 text-start">
-                <div class="form-check mb-3">
-                  <input class="form-check-input" type="checkbox" id="agreementConsentCheckbox" style="cursor:pointer">
-                  <label class="form-check-label text-secondary small fw-semibold" for="agreementConsentCheckbox" style="cursor:pointer; user-select:none">
-                    I read and accept all the terms, platform commissions, payout tranches, and standard operating procedures of SPEAXA.
-                  </label>
-                </div>
-                
-                <div class="mb-3">
-                  <label class="spx-label font-bold text-dark mb-1">Digital Signature (Type your Full Name)</label>
-                  <input type="text" class="form-control border p-3 spx-input" id="agreementSigInput" placeholder="Type your registered name here" style="background:#ffffff; color:#000000; border-color:#cbd5e1 !important">
-                </div>
-              </div>
-
-              <button class="btn btn-spx w-100 py-3" onclick="submitDigitalAgreement()">Sign & Activate Account</button>
-            </div>
-          </div>
-        </div>
-      `;
-      return;
+    let parsedAvail = [];
+    try {
+      if (sop && sop.availability) {
+        parsedAvail = JSON.parse(sop.availability);
+      }
+    } catch (e) {
+      // legacy raw string
+      if (sop && sop.availability && sop.availability.trim()) {
+        parsedAvail = [{ days: ['Legacy Days'], startTime: '00:00', endTime: '00:00', timezone: 'IST', rawText: sop.availability }];
+      }
+    }
+    
+    // Initialize temporary slot builder list if not already done
+    if (!window._tempAvailabilitySlots && !window._sopTabSetExplicitly) {
+      window._tempAvailabilitySlots = Array.isArray(parsedAvail) ? JSON.parse(JSON.stringify(parsedAvail)) : [];
     }
 
-    // 2. If SOP is approved and Agreement is signed: Show Verification Complete Screen
-    if (sop && sop.status === 'approved' && sop.agreement_signed) {
-      document.getElementById('pageContent').innerHTML = `
-        <div class="spx-card text-center py-5">
-          <div class="display-4 text-success mb-3"><i class="fas fa-check-circle"></i></div>
-          <h4 class="fw-bold text-white">Verification Complete!</h4>
-          <p class="text-muted small max-width-500 mx-auto">Your Video SOPs are approved and your Digital Agreement is signed. Your account is fully active and visible to students.</p>
-          <div class="d-flex justify-content-center gap-3 mt-4">
-            <button class="btn btn-spx" onclick="navigateTo('batches')">Go to Batches</button>
-            <button class="btn btn-outline-primary" onclick="navigateTo('home')">Dashboard</button>
-          </div>
-        </div>
-      `;
-      return;
+    const allAvailFilled = Array.isArray(window._tempAvailabilitySlots) && window._tempAvailabilitySlots.length > 0;
+    const canSubmitSop = allKycUploaded && allSopUploaded && allProfileFilled && allAvailFilled;
+
+    // Define defaults for active tab
+    window._sopActiveTab = window._sopActiveTab || 'guidelines';
+
+    // Auto-navigate to Agreement tab if approved
+    if (sop && sop.status === 'approved' && !window._sopTabSetExplicitly) {
+      window._sopActiveTab = 'agreement';
     }
 
-    // 3. Otherwise: Show SOP uploads and Checklists form
     const statusBadge = (status) => {
       const cls = { approved:'bg-success', pending:'bg-warning', sop_pending:'bg-warning', rejected:'bg-danger', suspended:'bg-danger', draft:'bg-secondary' };
       return `<span class="badge ${cls[status] || 'bg-info'}">${status ? status.toUpperCase().replace('_',' ') : 'NOT UPLOADED'}</span>`;
+    };
+
+    const approvals = sop?.item_approvals || {};
+    const getGranularStatusHtml = (key, hasItem) => {
+      if (!hasItem) return '<span class="badge bg-secondary-subtle text-secondary py-1 px-2" style="font-size:0.72rem"><i class="fas fa-exclamation-circle me-1"></i>Missing</span>';
+      const app = approvals[key];
+      if (!app) return '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.72rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
+      if (app.status === 'approved') return '<span class="badge bg-success-subtle text-success py-1 px-2" style="font-size:0.72rem"><i class="fas fa-check-circle me-1"></i>Approved</span>';
+      if (app.status === 'rejected') {
+        return `
+          <div class="d-flex flex-column align-items-end">
+            <span class="badge bg-danger-subtle text-danger py-1 px-2" style="font-size:0.72rem"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+            ${app.notes ? `<span class="text-danger mt-1 text-end" style="font-size:0.68rem; font-weight:500; display:block; max-width:200px; white-space:normal; line-height:1.2;">Note: ${app.notes}</span>` : ''}
+          </div>
+        `;
+      }
+      return '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.72rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
     };
 
     const isSubmitted = sop && (sop.status === 'sop_pending' || sop.status === 'approved' || sop.status === 'suspended');
@@ -508,151 +479,732 @@ async function renderSop() {
     const chk = (key) => tc[key] ? 'checked' : '';
     const dis = isSubmitted ? 'disabled' : '';
 
-    document.getElementById('pageContent').innerHTML = `
-      <div class="row g-4">
-        <div class="col-lg-7">
-          <div class="spx-card">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-              <h6 class="mb-0 fw-bold">SOP Video Uploads (All 5 Required)</h6>
-              <div>Status: ${statusBadge(sop?.status)}</div>
-            </div>
-            
-            ${[
-              { id: 'camera_sop', label: '1. Camera SOP', desc: 'Face clearly visible, stable eye-level landscape camera framing.', url: sop?.camera_sop_url },
-              { id: 'lighting_sop', label: '2. Lighting SOP', desc: 'No background light glare, high contrast presenter illumination.', url: sop?.lighting_sop_url },
-              { id: 'audio_sop', label: '3. Audio SOP', desc: 'Clear voice recording with minimal ambient sound or echo.', url: sop?.audio_sop_url },
-              { id: 'internet_proof', label: '4. Internet Proof', desc: 'Screen recording of running speedtest showing > 20 Mbps.', url: sop?.internet_proof_url },
-              { id: 'demo_teaching', label: '5. Demo Teaching', desc: 'A short 2-minute snippet showcasing your tutoring style.', url: sop?.demo_teaching_url }
-            ].map(item => `
-              <div class="p-3 mb-3 rounded-3" style="background:rgba(255,255,255,.01);border:1px solid var(--border)">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <div class="fw-semibold text-white small">${item.label}</div>
-                    <div class="text-muted" style="font-size:.75rem">${item.desc}</div>
-                  </div>
-                  ${item.url ? `<a href="${item.url}" target="_blank" class="btn btn-sm btn-outline-info" style="font-size:.7rem"><i class="fas fa-play"></i> View</a>` : `<span class="text-muted small">Missing</span>`}
-                </div>
-                ${isSubmitted ? '' : `
-                  <div class="d-flex align-items-center gap-2 mt-2">
-                    <input type="file" class="form-control form-control-sm spx-input" id="file_${item.id}" style="max-width:300px;">
-                    <button class="btn btn-sm btn-spx" onclick="uploadSopVideo('${item.id}')">Upload</button>
-                  </div>
-                `}
-              </div>
-            `).join('')}
+    // Render step indicators / tab bar
+    let tabContentHtml = '';
 
-            <div class="mt-4 pt-3 border-top border-secondary text-start">
-              <h6 class="fw-bold text-white mb-2">SOP Compliance Declaration Checklist</h6>
-              <p class="text-muted small mb-3">Please read and tick each item to declare your setup compliance before submitting for review:</p>
+    if (window._sopActiveTab === 'guidelines') {
+      tabContentHtml = `
+        <div class="spx-card text-start p-4">
+          <h5 class="fw-bold text-dark mb-3"><i class="fas fa-chalkboard-teacher me-2 text-primary"></i>Educator Onboarding Guidelines</h5>
+          <p class="text-secondary small">To maintain high-quality pedagogy and trust, all educators must complete our onboarding verification stages before teaching batches.</p>
+          
+          <div class="row g-3 mt-2">
+            <div class="col-md-6">
+              <div class="p-3 rounded-3 h-100" style="background: rgba(15,23,42,0.02); border: 1px solid var(--border);">
+                <h6 class="fw-bold text-dark" style="font-size:0.875rem"><i class="fas fa-id-card text-primary me-2"></i>Stage 1: KYC Document Uploads</h6>
+                <p class="text-muted mb-0" style="font-size:0.78rem">Upload scan-quality proofs of Identity (Aadhaar), Tax ID (PAN), professional Resume, and highest Degree Certificate.</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-3 rounded-3 h-100" style="background: rgba(15,23,42,0.02); border: 1px solid var(--border);">
+                <h6 class="fw-bold text-dark" style="font-size:0.875rem"><i class="fas fa-user-edit text-primary me-2"></i>Stage 2: Profile & Experience</h6>
+                <p class="text-muted mb-0" style="font-size:0.78rem">Configure your subject expertise, teaching language preferences, and teaching experience details.</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-3 rounded-3 h-100" style="background: rgba(15,23,42,0.02); border: 1px solid var(--border);">
+                <h6 class="fw-bold text-dark" style="font-size:0.875rem"><i class="fas fa-calendar-alt text-primary me-2"></i>Stage 3: Availability Calendar</h6>
+                <p class="text-muted mb-0" style="font-size:0.78rem">Outline your detailed weekly teaching slot availability calendar for admin and student scheduling.</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-3 rounded-3 h-100" style="background: rgba(15,23,42,0.02); border: 1px solid var(--border);">
+                <h6 class="fw-bold text-dark" style="font-size:0.875rem"><i class="fas fa-camera text-primary me-2"></i>Stage 4: Technical SOP Evidence</h6>
+                <p class="text-muted mb-0" style="font-size:0.78rem">Provide video/photo proofs or paste shareable links (YouTube/Drive/Loom) verifying your camera framing, soft lighting, mic clarity, and internet speeds (>20 Mbps upload).</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-3 rounded-3 h-100" style="background: rgba(15,23,42,0.02); border: 1px solid var(--border);">
+                <h6 class="fw-bold text-dark" style="font-size:0.875rem"><i class="fas fa-video text-primary me-2"></i>Stage 5: Onboarding Call & Deed Sign</h6>
+                <p class="text-muted mb-0" style="font-size:0.78rem">Admin will review your details, schedule a live onboarding verification call, and prompt you to sign the legally-binding Deed of Affidavit under oath.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-info d-flex align-items-center mt-4 mb-0 py-3" style="border-radius:12px">
+            <i class="fas fa-info-circle me-3" style="font-size: 1.5rem;"></i>
+            <div style="font-size:0.8rem">
+              <strong>Need Help?</strong> Ensure files uploaded are under 20MB for documents and 200MB for video proofs. If you encounter upload issues, paste shareable Google Drive links in Stage 4.
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (window._sopActiveTab === 'kyc') {
+      const kycSlots = [
+        { id: 'aadhaar', label: '1. Aadhaar Card Scan', desc: 'Front and Back merged in one PDF/Photo for Identity Verification.', doc: docAadhaar },
+        { id: 'pan', label: '2. PAN Card Scan', desc: 'Clear color photo of PAN card for Tax and Payout validation.', doc: docPan },
+        { id: 'resume', label: '3. Professional Resume', desc: 'Updated CV listing educational credentials and experience.', doc: docResume },
+        { id: 'qualification', label: '4. Degree Certificate', desc: 'Highest educational certificate/diploma in PDF/Image format.', doc: docDegree }
+      ];
+
+      tabContentHtml = `
+        <div class="spx-card text-start p-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h5 class="fw-bold text-dark mb-1"><i class="fas fa-id-card me-2 text-primary"></i>KYC Documents Verification</h5>
+              <p class="text-muted small mb-0">Upload individual documents. Uploading happens automatically when a file is selected.</p>
+            </div>
+            ${allKycUploaded ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>All Documents Uploaded</span>' : '<span class="badge bg-secondary">Upload Pending</span>'}
+          </div>
+
+          <div class="row g-4">
+            ${kycSlots.map(slot => {
+              const hasDoc = !!slot.doc;
+              return `
+                <div class="col-md-6">
+                  <div class="sop-upload-slot ${hasDoc ? 'uploaded' : ''} h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0 text-dark" style="font-size:0.875rem">${slot.label}</h6>
+                        ${getGranularStatusHtml(slot.id, hasDoc)}
+                      </div>
+                      <p class="text-muted small mb-3" style="font-size:0.75rem">${slot.desc}</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-auto pt-2 flex-wrap border-top border-light mt-3">
+                      ${isSubmitted ? '' : `
+                        <div class="w-100 d-flex flex-column gap-2 mb-2">
+                          <div class="d-flex align-items-center gap-1">
+                            <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">File Upload:</label>
+                            <input type="file" class="form-control form-control-sm spx-input" id="kyc_file_${slot.id}" onchange="autoUploadDoc(this, '${slot.id}')" style="max-width:180px">
+                            <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_${slot.id}" role="status"></div>
+                          </div>
+                          <div class="d-flex align-items-center gap-1">
+                            <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">Or Paste Link:</label>
+                            <input type="text" class="form-control form-control-sm spx-input" id="link_doc_${slot.id}" placeholder="e.g. Google Drive Link" value="${hasDoc && !slot.doc.file_url.startsWith('/uploads/') ? slot.doc.file_url : ''}" style="max-width:150px">
+                            <button class="btn btn-sm btn-spx py-1" onclick="saveDocLink('${slot.id}')" style="font-size: 0.7rem;">Save</button>
+                          </div>
+                        </div>
+                      `}
+                      ${hasDoc ? `<a href="${slot.doc.file_url}" target="_blank" class="btn btn-sm btn-outline-primary ms-auto" style="font-size:0.75rem; padding: 4px 8px;"><i class="fas fa-eye"></i> View</a>` : ''}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (window._sopActiveTab === 'profile') {
+      tabContentHtml = `
+        <div class="spx-card text-start p-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h5 class="fw-bold text-dark mb-1"><i class="fas fa-user-edit me-2 text-primary"></i>Profile & Experience Details</h5>
+              <p class="text-muted small mb-0">Configure your subject expertise, teaching language preferences, and previous experience details along with verification evidence.</p>
+            </div>
+            ${allProfileFilled ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Profile Saved</span>' : '<span class="badge bg-secondary">Pending Profile Configuration</span>'}
+          </div>
+
+          <form onsubmit="saveProfileOnboarding(event)">
+            <div class="row g-4">
+              <!-- Subject Expertise -->
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Subject Expertise *</label>
+                  ${getGranularStatusHtml('subject_expertise', !!profile.subject_expertise)}
+                </div>
+                <input class="form-control spx-input" id="onboardSubjects" value="${profile.subject_expertise || ''}" placeholder="e.g. Physics, Chemistry, Maths" required ${isSubmitted ? 'disabled' : ''}>
+                <div class="text-muted small mt-1" style="font-size:0.7rem">Enter subjects you specialize in, separated by commas.</div>
+              </div>
+              <div class="col-md-6">
+                <div class="sop-upload-slot ${docExpertise ? 'uploaded' : ''} p-3 rounded" style="background: rgba(15,23,42,0.01); border: 1px dashed var(--border);">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-bold text-dark"><i class="fas fa-file-invoice text-primary me-1"></i>Subject Expertise Proof *</span>
+                    ${getGranularStatusHtml('expertise_proof', !!docExpertise)}
+                  </div>
+                  <div class="text-muted mb-2" style="font-size:0.7rem">Upload syllabus, credentials, or certifications validating your expertise.</div>
+                  ${isSubmitted ? '' : `
+                    <div class="d-flex flex-column gap-2">
+                      <div class="d-flex align-items-center gap-1">
+                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
+                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadDoc(this, 'expertise_proof')" style="max-width:180px">
+                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_expertise_proof" role="status"></div>
+                      </div>
+                      <div class="d-flex align-items-center gap-1">
+                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_expertise_proof" placeholder="e.g. Cert Link" value="${docExpertise && !docExpertise.file_url.startsWith('/uploads/') ? docExpertise.file_url : ''}" style="max-width:130px">
+                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('expertise_proof')" style="font-size: 0.68rem;">Save</button>
+                      </div>
+                    </div>
+                  `}
+                  ${docExpertise ? `<a href="${docExpertise.file_url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-eye"></i> View Proof</a>` : ''}
+                </div>
+              </div>
+
+              <!-- Teaching Language Preference -->
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Teaching Language Preference *</label>
+                  ${getGranularStatusHtml('languages', !!profile.languages)}
+                </div>
+                <input class="form-control spx-input" id="onboardLanguages" value="${profile.languages || ''}" placeholder="e.g. English, Hindi" required ${isSubmitted ? 'disabled' : ''}>
+                <div class="text-muted small mt-1" style="font-size:0.7rem">Specify languages in which you can teach.</div>
+              </div>
+              <div class="col-md-6">
+                <div class="sop-upload-slot ${docLanguage ? 'uploaded' : ''} p-3 rounded" style="background: rgba(15,23,42,0.01); border: 1px dashed var(--border);">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-bold text-dark"><i class="fas fa-microphone text-primary me-1"></i>Language Preferred Proof *</span>
+                    ${getGranularStatusHtml('language_proof', !!docLanguage)}
+                  </div>
+                  <div class="text-muted mb-2" style="font-size:0.7rem">Upload language certificates or a short video/audio clip speaking in this language.</div>
+                  ${isSubmitted ? '' : `
+                    <div class="d-flex flex-column gap-2">
+                      <div class="d-flex align-items-center gap-1">
+                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
+                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadDoc(this, 'language_proof')" style="max-width:180px">
+                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_language_proof" role="status"></div>
+                      </div>
+                      <div class="d-flex align-items-center gap-1">
+                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_language_proof" placeholder="e.g. Clip Link" value="${docLanguage && !docLanguage.file_url.startsWith('/uploads/') ? docLanguage.file_url : ''}" style="max-width:130px">
+                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('language_proof')" style="font-size: 0.68rem;">Save</button>
+                      </div>
+                    </div>
+                  `}
+                  ${docLanguage ? `<a href="${docLanguage.file_url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-eye"></i> View Proof</a>` : ''}
+                </div>
+              </div>
+
+              <!-- Previous Teaching Experience -->
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Previous Teaching Experience (Years) *</label>
+                  ${getGranularStatusHtml('experience_years', (profile.experience_years !== null && profile.experience_years !== undefined))}
+                </div>
+                <input type="number" class="form-control spx-input" id="onboardExp" value="${profile.experience_years || 0}" required ${isSubmitted ? 'disabled' : ''}>
+                <div class="text-muted small mt-1" style="font-size:0.7rem">Enter your total years of teaching experience.</div>
+              </div>
+              <div class="col-md-6">
+                <div class="sop-upload-slot ${docExperience ? 'uploaded' : ''} p-3 rounded" style="background: rgba(15,23,42,0.01); border: 1px dashed var(--border);">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-bold text-dark"><i class="fas fa-briefcase text-primary me-1"></i>Experience Letter Proof *</span>
+                    ${getGranularStatusHtml('experience_proof', !!docExperience)}
+                  </div>
+                  <div class="text-muted mb-2" style="font-size:0.7rem">Upload experience letters or proofs of previous online/offline teaching.</div>
+                  ${isSubmitted ? '' : `
+                    <div class="d-flex flex-column gap-2">
+                      <div class="d-flex align-items-center gap-1">
+                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
+                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadDoc(this, 'experience_proof')" style="max-width:180px">
+                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_experience_proof" role="status"></div>
+                      </div>
+                      <div class="d-flex align-items-center gap-1">
+                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_experience_proof" placeholder="e.g. Doc Link" value="${docExperience && !docExperience.file_url.startsWith('/uploads/') ? docExperience.file_url : ''}" style="max-width:130px">
+                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('experience_proof')" style="font-size: 0.68rem;">Save</button>
+                      </div>
+                    </div>
+                  `}
+                  ${docExperience ? `<a href="${docExperience.file_url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-eye"></i> View Proof</a>` : ''}
+                </div>
+              </div>
+
+              <!-- Highest Academic Qualification -->
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Highest Academic Qualification</label>
+                  ${getGranularStatusHtml('qualification', !!profile.qualification)}
+                </div>
+                <input class="form-control spx-input" id="onboardQual" value="${profile.qualification || ''}" placeholder="e.g. M.Sc. Physics, B.Ed." ${isSubmitted ? 'disabled' : ''}>
+                <div class="text-muted small mt-1" style="font-size:0.7rem">Degree title will be shown publicly in your profile page.</div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Professional Bio / Introduction</label>
+                </div>
+                <textarea class="form-control spx-input" id="onboardBio" rows="3" placeholder="Share a brief introduction or teaching philosophy..." ${isSubmitted ? 'disabled' : ''}>${profile.bio || ''}</textarea>
+              </div>
+
+              ${isSubmitted ? '' : `
+                <div class="col-12 mt-3 text-start">
+                  <button type="submit" class="btn btn-spx py-2 px-4"><i class="fas fa-save me-1"></i> Save Profile Details</button>
+                </div>
+              `}
+            </div>
+          </form>
+        </div>
+      `;
+    } else if (window._sopActiveTab === 'availability') {
+      const formattedSlots = (window._tempAvailabilitySlots && window._tempAvailabilitySlots.length > 0) ? window._tempAvailabilitySlots.map((slot, index) => {
+        return `
+          <div class="d-flex align-items-center justify-content-between p-2 mb-2 rounded border border-light bg-light text-dark" style="font-size: 0.85rem;">
+            <div>
+              <i class="fas fa-check-circle text-success me-2"></i>
+              <strong>${slot.days.join(', ')}</strong>: ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)} (${slot.timezone})
+            </div>
+            ${isSubmitted ? '' : `<button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" onclick="deleteAvailabilitySlot(${index})" style="font-size: 0.72rem;"><i class="fas fa-trash-alt"></i></button>`}
+          </div>
+        `;
+      }).join('') : `<p class="text-muted small py-2">No weekly time slots added yet. Build your schedule below.</p>`;
+
+      const availStatusBadge = getGranularStatusHtml('availability', allAvailFilled);
+
+      tabContentHtml = `
+        <div class="spx-card text-start p-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h5 class="fw-bold text-dark mb-1"><i class="fas fa-calendar-alt me-2 text-primary"></i>Weekly Availability Calendar</h5>
+              <p class="text-muted small mb-0">Specify your detailed weekly availability calendar. Select days and time ranges to build your slots.</p>
+            </div>
+            ${availStatusBadge}
+          </div>
+
+          <div class="mb-4">
+            <h6 class="fw-bold text-dark mb-2" style="font-size: 0.85rem;">Active Availability Slots</h6>
+            <div id="availSlotsList" class="p-3 rounded mb-3" style="background: rgba(15,23,42,0.02); border: 1px solid var(--border); min-height: 80px;">
+              ${formattedSlots}
+            </div>
+          </div>
+
+          ${isSubmitted ? '' : `
+            <div class="card p-3 mb-4 border-0 text-start" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
+              <h6 class="fw-bold text-dark mb-3" style="font-size: 0.85rem;"><i class="fas fa-plus-circle text-primary me-2"></i>Build Availability Slot</h6>
               
-              <div class="sop-checklist-container mb-3" style="max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.1); padding: 12px; border-radius: 8px;">
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_stable" data-key="camera_stable" ${chk('camera_stable')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_camera_stable">I use a stable eye-level camera tripod (absolutely no shaky/hand-held feed).</label>
+              <div class="mb-3">
+                <label class="spx-label mb-2 d-block">Select Days for this Slot *</label>
+                <div class="d-flex flex-wrap gap-3">
+                  ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => `
+                    <div class="form-check">
+                      <input class="form-check-input avail-day-check" type="checkbox" value="${day}" id="day_${day}">
+                      <label class="form-check-label text-dark small" for="day_${day}">${day}</label>
+                    </div>
+                  `).join('')}
                 </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_1080p" data-key="camera_1080p" ${chk('camera_1080p')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_camera_1080p">My camera supports minimum 1080p resolution and shows my face, upper body, and hands clearly.</label>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="spx-label mb-1">Start Time *</label>
+                  <input type="time" class="form-control spx-input" id="slotStart" required>
                 </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_soft" data-key="lighting_soft" ${chk('lighting_soft')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_lighting_soft">I use a front soft/ring light falling on my face, with no backlight or glare behind me.</label>
+                <div class="col-md-4">
+                  <label class="spx-label mb-1">End Time *</label>
+                  <input type="time" class="form-control spx-input" id="slotEnd" required>
                 </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_bg" data-key="lighting_bg" ${chk('lighting_bg')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_lighting_bg">I have a white or clean neutral background with no messy details visible.</label>
+                <div class="col-md-4">
+                  <label class="spx-label mb-1">Time Zone</label>
+                  <select class="form-select spx-input" id="slotTimezone">
+                    <option value="IST" selected>IST (India Standard Time)</option>
+                    <option value="GMT">GMT (Greenwich Mean Time)</option>
+                    <option value="EST">EST (Eastern Standard Time)</option>
+                    <option value="PST">PST (Pacific Standard Time)</option>
+                  </select>
                 </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_mic" data-key="audio_mic" ${chk('audio_mic')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_audio_mic">I use a collar mic / external mic (built-in webcam mic is not permitted).</label>
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm mt-3 align-self-start" onclick="addAvailabilitySlot()"><i class="fas fa-plus me-1"></i> Add Slot to List</button>
+            </div>
+
+            <form onsubmit="saveAvailabilityOnboarding(event)">
+              <div class="mt-3">
+                <button type="submit" class="btn btn-spx py-2 px-4"><i class="fas fa-save me-1"></i> Save Availability Calendar</button>
+              </div>
+            </form>
+          `}
+        </div>
+      `;
+    } else if (window._sopActiveTab === 'video') {
+      const sopSlots = [
+        { 
+          id: 'camera_sop', 
+          label: '1. Camera Setup Verification', 
+          desc: 'Landscape eye-level tripod framing. Face, upper body, gestures visible.', 
+          hint: 'Place your webcam or phone horizontally at eye level. Check that the frame includes your chest and hands so gestures are clear. Absolutely no vertical/handheld recordings.',
+          url: sop?.camera_sop_url 
+        },
+        { 
+          id: 'lighting_sop', 
+          label: '2. Lighting Setup Verification', 
+          desc: 'Front-facing soft light. No backlight shadow or lens glare.', 
+          hint: 'Ensure soft light (e.g. from a ring light or window) directly illuminates your face. Turn off any light sources directly behind you to prevent shadows.',
+          url: sop?.lighting_sop_url 
+        },
+        { 
+          id: 'audio_sop', 
+          label: '3. Audio Setup Verification', 
+          desc: 'Clear voice recording with a collar mic. No ambient fan or room echo.', 
+          hint: 'Use a dedicated collar/lapel microphone or wired headset mic. Turn off noisy ceiling fans or AC. Prevent echo by choosing a room with soft furnishings.',
+          url: sop?.audio_sop_url 
+        },
+        { 
+          id: 'internet_proof', 
+          label: '4. Internet Speed Proof', 
+          desc: 'Speedtest screenshot / screen recording showing > 20 Mbps upload.', 
+          hint: 'Go to speedtest.net, run a test, and upload a screenshot showing your upload speed. Ensure it is at least 20 Mbps for high quality video feeds.',
+          url: sop?.internet_proof_url 
+        },
+        { 
+          id: 'demo_teaching', 
+          label: '5. Demo Lecture Snippet', 
+          desc: 'A 2-minute snippet showing your expressive teaching style.', 
+          hint: 'Record yourself explaining a simple concept in 2 minutes. Focus on direct camera eye-contact, standard professional language, and interactive whiteboard pacing.',
+          url: sop?.demo_teaching_url 
+        }
+      ];
+
+      const camDis = (!sop?.camera_sop_url || isSubmitted) ? 'disabled' : '';
+      const lightDis = (!sop?.lighting_sop_url || isSubmitted) ? 'disabled' : '';
+      const audioDis = (!sop?.audio_sop_url || isSubmitted) ? 'disabled' : '';
+      const internetDis = (!sop?.internet_proof_url || isSubmitted) ? 'disabled' : '';
+      const teachDis = (!sop?.demo_teaching_url || isSubmitted) ? 'disabled' : '';
+
+      tabContentHtml = `
+        <div class="spx-card text-start p-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h5 class="fw-bold text-dark mb-1"><i class="fas fa-video me-2 text-primary"></i>Technical & Pedagogical SOP Evidence</h5>
+              <p class="text-muted small mb-0">Provide video clips/photos or paste shareable links for each technical check.</p>
+            </div>
+            <div>Status: ${statusBadge(sop?.status)}</div>
+          </div>
+
+          <div class="sop-slots-container">
+            ${sopSlots.map(slot => {
+              const hasSop = !!slot.url;
+              return `
+                <div class="sop-upload-slot mb-3 ${hasSop ? 'uploaded' : ''}">
+                  <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                    <div>
+                      <div class="fw-semibold text-dark small">${slot.label}</div>
+                      <div class="text-muted mb-1" style="font-size:.75rem">${slot.desc}</div>
+                      <div class="text-muted p-2 rounded mb-2 bg-light border-start border-3 border-primary" style="font-size:.68rem; font-style: italic;">
+                        <strong>Guide:</strong> ${slot.hint}
+                      </div>
+                    </div>
+                    ${getGranularStatusHtml(slot.id, hasSop)}
+                  </div>
+                  ${isSubmitted ? '' : `
+                    <div class="row g-2 mt-2 align-items-center border-top pt-2">
+                      <div class="col-md-6 d-flex align-items-center gap-1 border-end border-light">
+                        <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">File Upload:</label>
+                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadSopVideo(this, '${slot.id}')" style="max-width:180px">
+                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_sop_${slot.id}" role="status"></div>
+                      </div>
+                      <div class="col-md-6 d-flex align-items-center gap-1">
+                        <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">Or Paste Link:</label>
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_${slot.id}" placeholder="e.g. YouTube / Drive URL" value="${hasSop && !slot.url.startsWith('/uploads/') ? slot.url : ''}">
+                        <button class="btn btn-sm btn-spx py-1" onclick="saveSopLink('${slot.id}')">Save Link</button>
+                      </div>
+                    </div>
+                  `}
+                  ${hasSop ? `<a href="${slot.url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-play"></i> View Evidence</a>` : ''}
                 </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_noise" data-key="audio_noise" ${chk('audio_noise')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_audio_noise">My teaching environment is free of echo, fan noise, or background chatter.</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_internet_speed" data-key="internet_speed" ${chk('internet_speed')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_internet_speed">My upload speed is above 20 Mbps, and I have mobile hotspot backup ready.</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_presentation_style" data-key="presentation_style" ${chk('presentation_style')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_presentation_style">I will maintain an energetic tone, direct eye contact with the camera, and use gestures naturally.</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_dress_code" data-key="dress_code" ${chk('dress_code')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_dress_code">I will wear solid colored shirts/tops and maintain a clean professional appearance.</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_class_flow" data-key="class_flow" ${chk('class_flow')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_class_flow">I will join sessions 10–15 mins early, test media, greet students by name, and run engagement polls/quizzes every 3–5 mins.</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_board_materials" data-key="board_materials" ${chk('board_materials')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_board_materials">I will write in large legible characters with structured spacing and use annotations / highlighting.</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_content_delivery" data-key="content_delivery" ${chk('content_delivery')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_content_delivery">I will follow modular delivery: Concept -> Examples -> Practice -> Recap -> Doubt section.</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_discipline_rules" data-key="discipline_rules" ${chk('discipline_rules')} ${dis} onchange="toggleSopSubmitBtn()">
-                  <label class="form-check-label text-muted small" for="check_discipline_rules">I will not solicit students privately, promote external coaching, or use unprofessional language.</label>
-                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="mt-4 pt-3 border-top text-start">
+            <h6 class="fw-bold text-dark mb-2">Compliance Declaration Checklist</h6>
+            <p class="text-muted small mb-3">Check each box to certify you understand and have configured these setup requirements. <em>Note: Checkboxes are locked until the corresponding evidence document is uploaded.</em></p>
+            
+            <div class="sop-checklist-container mb-3" style="max-height: 250px; overflow-y: auto; background: rgba(15,23,42,0.02); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_stable" data-key="camera_stable" ${chk('camera_stable')} ${camDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_camera_stable">I use a stable eye-level camera tripod (absolutely no shaky/hand-held feed). ${!sop?.camera_sop_url ? '<span class="text-danger small ms-1">(Upload Camera Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_1080p" data-key="camera_1080p" ${chk('camera_1080p')} ${camDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_camera_1080p">My camera supports minimum 1080p resolution and shows my face, upper body, and hands clearly. ${!sop?.camera_sop_url ? '<span class="text-danger small ms-1">(Upload Camera Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_soft" data-key="lighting_soft" ${chk('lighting_soft')} ${lightDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_lighting_soft">I use a front soft/ring light falling on my face, with no backlight or glare behind me. ${!sop?.lighting_sop_url ? '<span class="text-danger small ms-1">(Upload Lighting Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_bg" data-key="lighting_bg" ${chk('lighting_bg')} ${lightDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_lighting_bg">I have a white or clean neutral background with no messy details visible. ${!sop?.lighting_sop_url ? '<span class="text-danger small ms-1">(Upload Lighting Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_mic" data-key="audio_mic" ${chk('audio_mic')} ${audioDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_audio_mic">I use a collar mic / external mic (built-in webcam mic is not permitted). ${!sop?.audio_sop_url ? '<span class="text-danger small ms-1">(Upload Audio Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_noise" data-key="audio_noise" ${chk('audio_noise')} ${audioDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_audio_noise">My teaching environment is free of echo, fan noise, or background chatter. ${!sop?.audio_sop_url ? '<span class="text-danger small ms-1">(Upload Audio Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_internet_speed" data-key="internet_speed" ${chk('internet_speed')} ${internetDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_internet_speed">My upload speed is above 20 Mbps, and I have mobile hotspot backup ready. ${!sop?.internet_proof_url ? '<span class="text-danger small ms-1">(Upload Internet Speed Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_presentation_style" data-key="presentation_style" ${chk('presentation_style')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_presentation_style">I will maintain an energetic tone, direct eye contact with the camera, and use gestures naturally. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_dress_code" data-key="dress_code" ${chk('dress_code')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_dress_code">I will wear solid colored shirts/tops and maintain a clean professional appearance. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_class_flow" data-key="class_flow" ${chk('class_flow')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_class_flow">I will join sessions 10–15 mins early, test media, greet students by name, and run engagement polls/quizzes every 3–5 mins. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_board_materials" data-key="board_materials" ${chk('board_materials')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_board_materials">I will write in large legible characters with structured spacing and use annotations / highlighting. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_content_delivery" data-key="content_delivery" ${chk('content_delivery')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_content_delivery">I will follow modular delivery: Concept -> Examples -> Practice -> Recap -> Doubt section. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_discipline_rules" data-key="discipline_rules" ${chk('discipline_rules')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <label class="form-check-label text-secondary small" for="check_discipline_rules">I will not solicit students privately, promote external coaching, or use unprofessional language. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
               </div>
             </div>
 
             ${isSubmitted ? `
               <div class="alert alert-info text-center mt-3 py-2 small">SOP details submitted and locked for admin review.</div>
-            ` : (sop && sop.camera_sop_url && sop.lighting_sop_url && sop.audio_sop_url && sop.internet_proof_url && sop.demo_teaching_url ? `
+            ` : (canSubmitSop ? `
               <button class="btn btn-secondary w-100 mt-3" id="sopSubmitButton" onclick="submitSopForReview()" disabled>Submit SOP For Admin Verification</button>
             ` : `
-              <button class="btn btn-secondary w-100 mt-3" disabled>Submit SOP For Admin Verification (Upload all files first & tick all checklists)</button>
+              <button class="btn btn-secondary w-100 mt-3" disabled>Submit SOP For Admin Verification (Fill KYC Docs, Onboarding Profile, Availability Calendar, Technical SOPs & check all checkboxes)</button>
             `)}
           </div>
         </div>
+      `;
+    } else if (window._sopActiveTab === 'agreement') {
+      if (sop && sop.status === 'approved' && !sop.agreement_signed) {
+        tabContentHtml = `
+          <div class="row justify-content-center text-start">
+            <div class="col-lg-12">
+              <div class="legal-affidavit p-5">
+                <div class="stamp-header text-center">
+                  Deed of Oath & Legal Affidavit of Undertaking
+                </div>
+                
+                <div class="text-center mb-4">
+                  <h5 class="fw-bold mb-1" style="text-transform: uppercase;">BEFORE THE SPEAXA EDUCATION COMPLIANCE COMMITTEE</h5>
+                  <div style="font-size: 0.78rem; text-transform: uppercase; color: #64748B; font-family: 'Inter', sans-serif;" class="mb-2">Onboarding & Professional Pedagogy Undertaking</div>
+                  <div class="stamp-label mt-2">STAMP DUTY EXEMPT - EDTECH ONBOARDING SYSTEM</div>
+                </div>
 
-        <div class="col-lg-5">
-          <div class="spx-card">
-            <h6 class="mb-4 fw-bold">KYC Documents Upload</h6>
-            ${isSubmitted ? `
-              <div class="alert alert-secondary text-center small py-2">Documents locked during review</div>
-            ` : `
-              <form onsubmit="uploadKYCDocument(event)" class="mb-4">
-                <div class="mb-3 text-start">
-                  <label class="spx-label">Document Type</label>
-                  <select class="form-select spx-input" id="docType" required>
-                    <option value="aadhaar">Aadhaar Card</option>
-                    <option value="pan">PAN Card</option>
-                    <option value="resume">Resume / CV</option>
-                    <option value="qualification">Degree Certificate</option>
-                  </select>
+                <div class="seal-wrapper">
+                  <div class="seal-text">SPEAXA<br>COMPLIANCE<br>BOARD</div>
                 </div>
-                <div class="mb-3 text-start">
-                  <label class="spx-label">File</label>
-                  <input type="file" class="form-control spx-input" id="docFile" required>
-                </div>
-                <button type="submit" class="btn btn-spx w-100">Upload Document</button>
-              </form>
-            `}
 
-            <h6 class="mb-3 fw-bold">Uploaded Documents</h6>
-            ${documents.length ? documents.map(d => `
-              <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded" style="background:rgba(255,255,255,.02);border:1px solid var(--border)">
-                <div class="text-start">
-                  <div class="small fw-semibold text-white">${d.doc_type.toUpperCase()}</div>
-                  <div class="text-muted" style="font-size:.7rem">${fmtDate(d.uploaded_at)}</div>
+                <p>I, <strong>${user.name}</strong>, having been approved as an educator on the SPEAXA Edtech Platform, do hereby solemnly declare, depose, and state on oath as follows:</p>
+                
+                <ol class="mt-3" style="padding-left: 20px;">
+                  <li class="mb-3">
+                    <strong>SOLE DECLARATION OF PEDAGOGY:</strong> I undertake to maintain the highest standard of online lecturing. I understand that I operate as a Digital Mentor and represent the SPEAXA educational identity before students and parents.
+                  </li>
+                  <li class="mb-3">
+                    <strong>TECHNICAL COMPLIANCE STANDARDS:</strong> I declare that my hardware setup conforms to the minimum platform standards, including a stable landscape 1080p camera feed, frontal soft light illumination, a dedicated noise-canceling collar microphone, and stable broadband connectivity (>20 Mbps upload) with active mobile backup hotspots.
+                  </li>
+                  <li class="mb-3">
+                    <strong>CLASSROOM PROTOCOL & TIMING:</strong> I agree to join all scheduled classes 10-15 minutes prior to start time to test media feeds, and commit to running interactive checks, student polls, and concept recaps every 3-5 minutes.
+                  </li>
+                  <li class="mb-3">
+                    <strong>INTEGRITY & NON-SOLICITATION AGREEMENT:</strong> I solemnly undertake that I will not solicit, encourage, or direct any SPEAXA student to join private coaching, personal batches, or external platforms. I will keep all student interactions strictly limited to the official platform channels.
+                  </li>
+                  <li class="mb-3">
+                    <strong>REVENUE COMMISSION & PAYMENT SPLITS:</strong> I explicitly consent to the dynamic revenue commission framework (standard 50/50 platform-student share or custom mentor structures) and agree that payouts are processed in tranches upon validation of modules, attendance logs, and monthly grade mapping uploads.
+                  </li>
+                </ol>
+
+                <div class="mt-4 pt-3 border-top text-secondary small">
+                  <div>IN WITNESS WHEREOF, I set my digital signature and verify this deed under penalties of perjury under applicable laws.</div>
                 </div>
-                <a href="${d.file_url}" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:.7rem"><i class="fas fa-eye"></i> View</a>
+
+                <div class="mt-4 text-start">
+                  <div class="form-check mb-3">
+                    <input class="form-check-input spx-checkbox" type="checkbox" id="agreementConsentCheckbox" style="cursor:pointer">
+                    <label class="form-check-label text-secondary small fw-semibold" for="agreementConsentCheckbox" style="cursor:pointer; user-select:none">
+                      I solemnly read and accept all the terms, platform commissions, payout tranches, and standard operating procedures of SPEAXA.
+                    </label>
+                  </div>
+                  
+                  <div class="mb-3">
+                    <label class="spx-label font-bold text-dark mb-1">Digital Signature (Type your Full Name to Sign)</label>
+                    <input type="text" class="form-control border p-3 spx-input" id="agreementSigInput" placeholder="Type your registered name here" style="background:#ffffff; color:#000000; border-color:#cbd5e1 !important">
+                  </div>
+                </div>
+
+                <button class="btn btn-spx w-100 py-3" onclick="submitDigitalAgreement()">Sign & Activate Account</button>
               </div>
-            `).join('') : '<p class="text-muted small text-center">No documents uploaded.</p>'}
+            </div>
           </div>
-        </div>
+        `;
+      } else if (sop && sop.status === 'approved' && sop.agreement_signed) {
+        tabContentHtml = `
+          <div class="row justify-content-center text-start">
+            <div class="col-lg-12">
+              <div class="legal-affidavit p-5">
+                <div class="stamp-header text-center" style="background: var(--success)">
+                  SIGNED AFFIDAVIT OF UNDERTAKING
+                </div>
+                <div class="text-center mb-4">
+                  <h5 class="fw-bold mb-1" style="text-transform: uppercase;">DEED SIGNED AND COMPLETED</h5>
+                  <div class="badge bg-success-subtle text-success py-1 px-3 mt-1"><i class="fas fa-check-circle me-1"></i>Active Account</div>
+                </div>
+
+                <p>Digital Agreement Signed on <strong>${fmtDate(sop.agreement_signed_at)}</strong> by educator <strong>${sop.digital_signature}</strong>.</p>
+                <p class="text-muted small">Your credentials are now validated. Your account is fully active and visible in the public courses directory.</p>
+                
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                  <button class="btn btn-spx" onclick="navigateTo('batches')">Go to Batches</button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('home')">Dashboard</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        tabContentHtml = `
+          <div class="spx-card text-center py-5 border-start border-4 border-warning" style="background: rgba(245,158,11,0.02)">
+            <div class="display-4 text-warning mb-3"><i class="fas fa-lock"></i></div>
+            <h4 class="fw-bold text-dark">Agreement Signature Locked</h4>
+            <p class="text-muted small max-width-500 mx-auto">Your Video SOP and KYC Documents must be verified and approved by the Admin before you can review and sign the legal educator affidavit.</p>
+            <button class="btn btn-warning mt-3 btn-sm" onclick="setSopTab('kyc')">Upload Documents</button>
+          </div>
+        `;
+      }
+    }
+
+    document.getElementById('pageContent').innerHTML = `
+      <div class="sop-wizard-tabs">
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'guidelines' ? 'active' : ''}" onclick="setSopTab('guidelines')">
+          <i class="fas fa-book-open"></i> 1. Onboarding Guide
+        </button>
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'kyc' ? 'active' : ''} ${allKycUploaded ? 'completed' : ''}" onclick="setSopTab('kyc')">
+          <i class="fas fa-id-card"></i> 2. KYC Documents ${allKycUploaded ? '✓' : ''}
+        </button>
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'profile' ? 'active' : ''} ${allProfileFilled ? 'completed' : ''}" onclick="setSopTab('profile')">
+          <i class="fas fa-user-edit"></i> 3. Profile & Experience ${allProfileFilled ? '✓' : ''}
+        </button>
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'availability' ? 'active' : ''} ${allAvailFilled ? 'completed' : ''}" onclick="setSopTab('availability')">
+          <i class="fas fa-calendar-alt"></i> 4. Availability Calendar ${allAvailFilled ? '✓' : ''}
+        </button>
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'video' ? 'active' : ''} ${allSopUploaded ? 'completed' : ''}" onclick="setSopTab('video')">
+          <i class="fas fa-video"></i> 5. Technical SOPs ${allSopUploaded ? '✓' : ''}
+        </button>
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'agreement' ? 'active' : ''} ${sop?.agreement_signed ? 'completed' : ''}" onclick="setSopTab('agreement')">
+          <i class="fas fa-file-contract"></i> 6. Deed of Affidavit ${sop?.agreement_signed ? '✓' : ''}
+        </button>
+      </div>
+
+      <div id="sopTabBody">
+        ${tabContentHtml}
       </div>
     `;
-    // Initialize submit button state
-    if (!isSubmitted) toggleSopSubmitBtn();
+
+    // Initialize submit button state in Video SOP tab
+    if (window._sopActiveTab === 'video' && !isSubmitted) {
+      toggleSopSubmitBtn();
+    }
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function setSopTab(tabName) {
+  window._sopActiveTab = tabName;
+  window._sopTabSetExplicitly = true;
+  renderSop();
+}
+
+async function autoUploadDoc(input, docType) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const spinner = document.getElementById(`spinner_kyc_${docType}`);
+  if (spinner) spinner.classList.remove('d-none');
+
+  const formData = new FormData();
+  formData.append('doc_type', docType);
+  formData.append('document', file);
+
+  try {
+    showToast(`Uploading ${docType.toUpperCase()} document...`, 'info');
+    const res = await fetch(`${API}/teacher/documents/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(`${docType.toUpperCase()} uploaded successfully!`);
+    renderSop();
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    if (spinner) spinner.classList.add('d-none');
+  }
+}
+
+async function saveDocLink(docType) {
+  const linkInput = document.getElementById(`link_doc_${docType}`);
+  const link = linkInput ? linkInput.value.trim() : '';
+  if (!link) return showToast('Please enter a valid link URL', 'error');
+
+  try {
+    showToast(`Saving link for ${docType.toUpperCase()}...`, 'info');
+    const res = await fetch(`${API}/teacher/documents/link`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ doc_type: docType, link }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(`${docType.toUpperCase()} link saved successfully!`);
+    renderSop();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function autoUploadSopVideo(input, fieldId) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const spinner = document.getElementById(`spinner_sop_${fieldId}`);
+  if (spinner) spinner.classList.remove('d-none');
+
+  const formData = new FormData();
+  formData.append(fieldId, file);
+
+  try {
+    showToast(`Uploading ${fieldId.replace('_',' ')}... Please wait.`, 'info');
+    const res = await fetch(`${API}/teacher/sop/upload/${fieldId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(`${fieldId.replace('_',' ')} uploaded successfully!`);
+    renderSop();
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    if (spinner) spinner.classList.add('d-none');
+  }
+}
+
+async function saveSopLink(fieldId) {
+  const linkInput = document.getElementById(`link_${fieldId}`);
+  const link = linkInput ? linkInput.value.trim() : '';
+  if (!link) return showToast('Please enter a valid link URL', 'error');
+
+  try {
+    showToast(`Saving link for ${fieldId.replace('_',' ')}...`, 'info');
+    const res = await fetch(`${API}/teacher/sop/link/${fieldId}`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ link }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast(`${fieldId.replace('_',' ')} link saved successfully!`);
+    renderSop();
+  } catch (e) {
+    showToast(e.message, 'error');
   }
 }
 
@@ -674,29 +1226,6 @@ function toggleSopSubmitBtn() {
     submitBtn.setAttribute('disabled', 'true');
     submitBtn.classList.remove('btn-spx');
     submitBtn.classList.add('btn-secondary');
-  }
-}
-
-async function uploadSopVideo(fieldId) {
-  const fileInput = document.getElementById(`file_${fieldId}`);
-  if (!fileInput || !fileInput.files[0]) return showToast('Please select a video file first', 'error');
-
-  const formData = new FormData();
-  formData.append(fieldId, fileInput.files[0]);
-
-  try {
-    showToast(`Uploading ${fieldId}... Please wait.`, 'info');
-    const res = await fetch(`${API}/teacher/sop/upload/${fieldId}`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData,
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    showToast('Video uploaded successfully!');
-    renderSop();
-  } catch (e) {
-    showToast(e.message, 'error');
   }
 }
 
@@ -776,6 +1305,107 @@ async function uploadKYCDocument(e) {
     showToast(e.message, 'error');
   }
 }
+
+async function saveProfileOnboarding(e) {
+  e.preventDefault();
+  const subject_expertise = document.getElementById('onboardSubjects').value.trim();
+  const languages = document.getElementById('onboardLanguages').value.trim();
+  const experience_years = parseInt(document.getElementById('onboardExp').value) || 0;
+  const qualification = document.getElementById('onboardQual').value.trim();
+  const bio = document.getElementById('onboardBio').value.trim();
+
+  try {
+    showToast('Saving profile details...', 'info');
+    const data = await api('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        subject_expertise,
+        languages,
+        experience_years,
+        qualification,
+        bio
+      })
+    });
+    showToast(data.message || 'Profile details saved successfully!');
+    renderSop();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function saveAvailabilityOnboarding(e) {
+  if (e) e.preventDefault();
+  const slots = window._tempAvailabilitySlots || [];
+  if (slots.length === 0) {
+    return showToast('Please add at least one weekly availability slot.', 'error');
+  }
+
+  try {
+    showToast('Saving availability calendar...', 'info');
+    const data = await api('/teacher/sop/availability', {
+      method: 'POST',
+      body: JSON.stringify({ availability: slots })
+    });
+    showToast(data.message || 'Availability calendar saved successfully!');
+    renderSop();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  const hrs = parseInt(hours);
+  const ampm = hrs >= 12 ? 'PM' : 'AM';
+  const displayHrs = hrs % 12 || 12;
+  return `${displayHrs}:${minutes} ${ampm}`;
+}
+
+function addAvailabilitySlot() {
+  const checkboxes = document.querySelectorAll('.avail-day-check');
+  const selectedDays = [];
+  checkboxes.forEach(cb => {
+    if (cb.checked) selectedDays.push(cb.value);
+  });
+
+  if (selectedDays.length === 0) {
+    return showToast('Please select at least one day.', 'error');
+  }
+
+  const startTime = document.getElementById('slotStart').value;
+  const endTime = document.getElementById('slotEnd').value;
+  const timezone = document.getElementById('slotTimezone').value;
+
+  if (!startTime || !endTime) {
+    return showToast('Please specify start and end times.', 'error');
+  }
+
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  if (startH > endH || (startH === endH && startM >= endM)) {
+    return showToast('End time must be after start time.', 'error');
+  }
+
+  window._tempAvailabilitySlots = window._tempAvailabilitySlots || [];
+  window._tempAvailabilitySlots.push({
+    days: selectedDays,
+    startTime,
+    endTime,
+    timezone
+  });
+
+  renderSop();
+  showToast('Time slot added to calendar!');
+}
+
+function deleteAvailabilitySlot(index) {
+  if (!window._tempAvailabilitySlots) return;
+  window._tempAvailabilitySlots.splice(index, 1);
+  renderSop();
+  showToast('Time slot removed.');
+}
+
 
 // ── Batches ───────────────────────────────────────────────────
 async function renderBatches() {

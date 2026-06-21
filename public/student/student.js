@@ -494,18 +494,25 @@ async function showCourseDetails(courseId) {
                   </div>
                   
                   <!-- Expandable Teacher Info Section -->
-                  <div id="teacher-profile-${b.id}" class="mt-2 pt-2 border-top" style="display: none; border-color: rgba(60, 189, 176, 0.15) !important;">
+                  <div id="teacher-profile-${b.id}" class="mt-3 pt-3 border-top" style="display: none; border-color: rgba(255, 255, 255, 0.08) !important;">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <img src="${b.teacher_photo || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + b.teacher_name}" class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover; border-color: rgba(60, 189, 176, 0.25) !important;" alt="${b.teacher_name}">
+                      <div>
+                        <div class="fw-bold text-white" style="font-size: 0.78rem;">${b.teacher_name}</div>
+                        <div style="font-size: 0.68rem; color: var(--text-secondary);"><span class="badge bg-primary-subtle text-primary py-0 px-2" style="font-size: 0.6rem; font-weight: 600;">${b.teacher_level || 'Gold'} Mentor</span></div>
+                      </div>
+                    </div>
                     <p class="mb-2 text-secondary" style="font-size: 0.78rem; line-height: 1.5;">
                       <strong style="color: var(--text-primary) !important;">Bio:</strong> ${b.teacher_bio || 'A verified expert educator committed to helping students achieve conceptual clarity and academic excellence.'}
                     </p>
                     <div class="d-flex flex-wrap gap-2 mt-2">
-                      <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                      <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
                         <i class="fas fa-graduation-cap text-primary me-1"></i>${b.teacher_qualification || 'Verified Mentor'}
                       </span>
-                      <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                      <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
                         <i class="fas fa-briefcase text-primary me-1"></i>${b.teacher_experience || 5}+ Yrs Exp
                       </span>
-                      <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                      <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
                         <i class="fas fa-book text-primary me-1"></i>${b.teacher_expertise || 'General'} Expert
                       </span>
                     </div>

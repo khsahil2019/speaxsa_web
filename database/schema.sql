@@ -118,7 +118,9 @@ CREATE TABLE teacher_sop (
   teacher_checklist     JSONB DEFAULT '{}',
   agreement_signed      BOOLEAN DEFAULT false,
   agreement_signed_at   TIMESTAMPTZ,
-  digital_signature     VARCHAR(255)
+  digital_signature     VARCHAR(255),
+  availability          TEXT,
+  item_approvals        JSONB DEFAULT '{}'
 );
 
 -- ============================================================

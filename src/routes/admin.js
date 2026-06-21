@@ -207,27 +207,125 @@ router.get('/sop', async (req, res) => {
 
 router.post('/sop/:teacherId/approve', async (req, res) => {
   const { teacherId } = req.params;
-  const { camera_checklist, lighting_checklist, audio_checklist, internet_checklist, teaching_checklist } = req.body;
+  const { camera_checklist, lighting_checklist, audio_checklist, internet_checklist, teaching_checklist } = req.body || {};
   try {
+    const allItems = [
+      'aadhaar', 'pan', 'resume', 'qualification',
+      'experience_proof', 'expertise_proof', 'language_proof',
+      'subject_expertise', 'languages', 'experience_years', 'availability',
+      'camera_sop', 'lighting_sop', 'audio_sop', 'internet_proof', 'demo_teaching'
+    ];
+    let approvals = {};
+    const nowStr = new Date().toISOString();
+    for (const itemKey of allItems) {
+      approvals[itemKey] = { status: 'approved', notes: '', updatedAt: nowStr };
+    }
+
+    const defaultCamera = camera_checklist || {"face_visible":true,"stable_camera":true,"eye_level":true,"proper_framing":true};
+    const defaultLighting = lighting_checklist || {"proper_lighting":true,"no_backlight":true,"clear_background":true};
+    const defaultAudio = audio_checklist || {"clear_voice":true,"no_noise":true};
+    const defaultInternet = internet_checklist || {"stable_connection":true,"speed_proof":true};
+    const defaultTeaching = teaching_checklist || {"communication":true,"engagement":true,"presentation":true};
+
     await db.query(`
       UPDATE teacher_sop SET 
         status = 'approved',
-        camera_checklist = $2,
-        lighting_checklist = $3,
-        audio_checklist = $4,
-        internet_checklist = $5,
-        teaching_checklist = $6,
-        reviewed_by = $7,
+        item_approvals = $2,
+        camera_checklist = $3,
+        lighting_checklist = $4,
+        audio_checklist = $5,
+        internet_checklist = $6,
+        teaching_checklist = $7,
+        reviewed_by = $8,
         reviewed_at = NOW()
       WHERE teacher_id = $1
     `, [teacherId, 
-        JSON.stringify(camera_checklist), JSON.stringify(lighting_checklist),
-        JSON.stringify(audio_checklist), JSON.stringify(internet_checklist),
-        JSON.stringify(teaching_checklist), req.user.id]);
+        JSON.stringify(approvals),
+        JSON.stringify(defaultCamera),
+        JSON.stringify(defaultLighting),
+        JSON.stringify(defaultAudio),
+        JSON.stringify(defaultInternet),
+        JSON.stringify(defaultTeaching),
+        req.user.id]);
 
     await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1", [teacherId]);
-    await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, {});
+    await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, { note: 'Auto Approved Full' });
     res.json({ message: 'SOP approved. Waiting for teacher to sign agreement.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/sop/:teacherId/item-approval', async (req, res) => {
+  const { teacherId } = req.params;
+  const { item, status, notes } = req.body;
+  try {
+    if (!item || !status) return res.status(400).json({ error: 'item and status are required' });
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    // Get existing item approvals
+    const result = await db.query('SELECT item_approvals FROM teacher_sop WHERE teacher_id = $1', [teacherId]);
+    if (!result.rows.length) return res.status(404).json({ error: 'SOP record not found' });
+
+    let approvals = result.rows[0].item_approvals || {};
+    approvals[item] = { status, notes: notes || '', updatedAt: new Date().toISOString() };
+
+    // Update item_approvals JSONB
+    await db.query(
+      'UPDATE teacher_sop SET item_approvals = $2, updated_at = NOW() WHERE teacher_id = $1',
+      [teacherId, JSON.stringify(approvals)]
+    );
+
+    // Check if everything is approved to auto-advance the teacher status
+    const allItems = [
+      'aadhaar', 'pan', 'resume', 'qualification',
+      'experience_proof', 'expertise_proof', 'language_proof',
+      'subject_expertise', 'languages', 'experience_years', 'availability',
+      'camera_sop', 'lighting_sop', 'audio_sop', 'internet_proof', 'demo_teaching'
+    ];
+
+    let allApproved = true;
+    for (const itemKey of allItems) {
+      if (!approvals[itemKey] || approvals[itemKey].status !== 'approved') {
+        allApproved = false;
+        break;
+      }
+    }
+
+    let hasAnyRejected = false;
+    for (const itemKey of allItems) {
+      if (approvals[itemKey] && approvals[itemKey].status === 'rejected') {
+        hasAnyRejected = true;
+        break;
+      }
+    }
+
+    if (allApproved) {
+      await db.query(
+        "UPDATE teacher_sop SET status = 'approved', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1",
+        [teacherId, req.user.id]
+      );
+      await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1", [teacherId]);
+      await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, { note: 'All items granularly approved' });
+      return res.json({ message: 'Item updated. All items are now approved. Teacher account status set to agreement pending.', itemStatus: status, overallStatus: 'approved' });
+    } else if (hasAnyRejected) {
+      await db.query(
+        "UPDATE teacher_sop SET status = 'rejected', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1",
+        [teacherId, req.user.id]
+      );
+      await db.query("UPDATE users SET approval_status = 'rejected' WHERE id = $1", [teacherId]);
+      await logAudit(req.user.id, 'SOP_REJECTED', 'teacher', teacherId, { note: `Item ${item} rejected` });
+      return res.json({ message: `Item ${item} marked as rejected. Overall status set to rejected.`, itemStatus: status, overallStatus: 'rejected' });
+    } else {
+      await db.query(
+        "UPDATE teacher_sop SET status = 'sop_pending', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1",
+        [teacherId, req.user.id]
+      );
+      await db.query("UPDATE users SET approval_status = 'sop_pending' WHERE id = $1", [teacherId]);
+      return res.json({ message: `Item ${item} updated to ${status}.`, itemStatus: status, overallStatus: 'sop_pending' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -243,6 +341,30 @@ router.post('/sop/:teacherId/reject', async (req, res) => {
     `, [teacherId, admin_notes, req.user.id]);
     await logAudit(req.user.id, 'SOP_REJECTED', 'teacher', teacherId, { admin_notes });
     res.json({ message: 'SOP rejected. Teacher notified.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/sop/:teacherId/deapprove', async (req, res) => {
+  const { teacherId } = req.params;
+  const { notes } = req.body;
+  try {
+    await db.query(`
+      UPDATE teacher_sop 
+      SET status = 'sop_pending', 
+          admin_notes = $2, 
+          reviewed_by = $3, 
+          reviewed_at = NOW(),
+          agreement_signed = false,
+          agreement_signed_at = NULL,
+          digital_signature = NULL
+      WHERE teacher_id = $1
+    `, [teacherId, notes || 'deApproved by admin', req.user.id]);
+    
+    await db.query("UPDATE users SET approval_status = 'sop_pending' WHERE id = $1", [teacherId]);
+    await logAudit(req.user.id, 'SOP_DEAPPROVED', 'teacher', teacherId, { notes });
+    res.json({ message: 'Teacher deApproved successfully. Onboarding status set back to pending review.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

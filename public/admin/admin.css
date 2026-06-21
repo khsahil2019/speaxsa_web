@@ -1389,3 +1389,63 @@ select.spx-input option {
 .course-upload-box:hover i {
   transform: translateY(-3px) scale(1.05);
 }
+
+/* ── Admin Document & Proof Reviews ── */
+.admin-doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.admin-doc-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+}
+.admin-doc-title {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.admin-doc-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.admin-doc-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.admin-affidavit-preview {
+  border: 2px double #0F766E !important;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 4px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #1E293B !important;
+}
+.admin-affidavit-preview h6 {
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: 700;
+  color: #0F172A !important;
+}
+.admin-affidavit-preview .stamp-label {
+  border-bottom: 1px solid #1E293B;
+  border-top: 1px solid #1E293B;
+  padding: 2px 0;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-align: center;
+  color: #0F766E !important;
+}

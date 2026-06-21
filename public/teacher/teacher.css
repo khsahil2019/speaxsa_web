@@ -1111,3 +1111,120 @@ h1, h2, h3, h4, h5, h6 {
     padding: 12px 16px;
   }
 }
+
+/* ── SOP Wizard & Onboarding Overhaul Styles ─────────────────────── */
+.sop-wizard-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.sop-wizard-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.925rem;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sop-wizard-tab-btn:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+.sop-wizard-tab-btn.active {
+  background: rgba(60, 189, 176, 0.1);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px rgba(60, 189, 176, 0.2);
+}
+.sop-wizard-tab-btn.completed {
+  color: var(--success);
+}
+
+.sop-upload-slot {
+  background: #ffffff;
+  border: 1px dashed rgba(15, 23, 42, 0.12);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: var(--transition);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+.sop-upload-slot:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+.sop-upload-slot.uploaded {
+  border-style: solid;
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.01);
+}
+
+.legal-affidavit {
+  border: 4px double #0F766E !important;
+  background: #ffffff;
+  color: #1E293B !important;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 0.975rem;
+  line-height: 1.6;
+  box-shadow: var(--shadow-lg) !important;
+  position: relative;
+  border-radius: 4px;
+}
+.legal-affidavit h4, .legal-affidavit h5, .legal-affidavit h6 {
+  font-family: 'Times New Roman', Times, serif;
+  color: #0F172A !important;
+}
+.legal-affidavit p, .legal-affidavit li {
+  color: #334155 !important;
+}
+.legal-affidavit .stamp-header {
+  background: linear-gradient(135deg, #0F766E 0%, #115E59 100%);
+  color: white;
+  padding: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  border-radius: 2px;
+  margin-bottom: 24px;
+}
+.legal-affidavit .seal-wrapper {
+  position: absolute;
+  bottom: 40px;
+  right: 40px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 2px dashed rgba(15, 118, 110, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  pointer-events: none;
+  transform: rotate(-15deg);
+}
+.legal-affidavit .seal-text {
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: #0F766E;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+}
+
+.spinner-upload {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+

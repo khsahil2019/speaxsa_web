@@ -823,6 +823,60 @@ async function viewTeacher(id) {
             <button class="btn btn-sm btn-outline-secondary" onclick="impersonate('${data.teacher?.id}', 'teacher')">Login As</button>
           </div>
         </div>
+
+        <div class="col-12 text-start mt-3 pt-3 border-top" style="border-color:var(--border) !important">
+          <h6 class="fw-bold mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-id-card me-1"></i>Uploaded KYC Documents</h6>
+          <div class="admin-doc-grid">
+            ${['aadhaar','pan','resume','qualification'].map(type => {
+              const doc = (data.documents || []).find(d => d.doc_type === type);
+              const labels = { aadhaar: 'Aadhaar Card', pan: 'PAN Card', resume: 'Resume / CV', qualification: 'Degree Certificate' };
+              return `
+                <div class="admin-doc-card">
+                  <div>
+                    <div class="admin-doc-title text-dark">${labels[type]}</div>
+                    <div class="admin-doc-meta">${doc ? fmtDate(doc.uploaded_at) : 'Not Uploaded'}</div>
+                  </div>
+                  <div class="admin-doc-actions mt-2">
+                    ${doc ? `<a href="${doc.file_url}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size:0.75rem"><i class="fas fa-eye"></i> View</a>` : `<span class="text-muted small">Missing</span>`}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <h6 class="fw-bold mt-4 mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-video me-1"></i>SOP Video & Link Evidence</h6>
+          <div class="admin-doc-grid">
+            ${[
+              { label: 'Camera', url: data.sop?.camera_sop_url },
+              { label: 'Lighting', url: data.sop?.lighting_sop_url },
+              { label: 'Audio', url: data.sop?.audio_sop_url },
+              { label: 'Internet', url: data.sop?.internet_proof_url },
+              { label: 'Demo', url: data.sop?.demo_teaching_url }
+            ].map(item => `
+              <div class="admin-doc-card">
+                <div>
+                  <div class="admin-doc-title text-dark">${item.label} Proof</div>
+                  <div class="admin-doc-meta">${item.url ? 'Submitted' : 'Not Uploaded'}</div>
+                </div>
+                <div class="admin-doc-actions mt-2">
+                  ${item.url ? `<a href="${item.url}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size:0.75rem"><i class="fas fa-play"></i> View</a>` : `<span class="text-muted small">Missing</span>`}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          ${data.sop?.agreement_signed ? `
+            <h6 class="fw-bold mt-4 mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-file-contract me-1"></i>Affidavit of Undertaking</h6>
+            <div class="admin-affidavit-preview p-3">
+              <div class="stamp-label mb-2">SIGNED UNDER OATH - SPEAXA COMPLIANCE</div>
+              <p class="mb-1" style="font-size:0.85rem">I, <strong>${data.teacher?.name}</strong>, do hereby solemnly declare, depose, and state on oath that I comply with all standard operating procedures, technical lighting, noise levels, and non-solicitation code of conduct rules set by SPEAXA.</p>
+              <div class="d-flex justify-content-between mt-2 pt-2 border-top" style="font-size:0.75rem;">
+                <div>Signed Name: <code>${data.sop.digital_signature}</code></div>
+                <div>Timestamp: ${fmtDate(data.sop.agreement_signed_at)}</div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
       </div>`;
     formModal.show();
   } catch (err) { showToast(err.message, 'error'); }
@@ -1445,9 +1499,16 @@ async function renderSOP() {
                 </div>
               </td>
               <td>
-                ${s.status === 'sop_pending' ? `
-                  <button class="btn btn-sm btn-success me-1" onclick="showSOPApprovalModal('${s.teacher_id}')">Approve</button>
-                  <button class="btn btn-sm btn-danger" onclick="reviewSOP('${s.teacher_id}','reject')">Reject</button>` : statusBadge(s.status)}
+                <div class="d-flex align-items-center gap-2">
+                  <button class="btn btn-sm btn-spx py-1 px-3" onclick="showSOPApprovalModal('${s.teacher_id}')">
+                    <i class="fas fa-search-plus me-1"></i>Review / Details
+                  </button>
+                  ${s.status === 'approved' ? `
+                    <button class="btn btn-sm btn-outline-danger py-1 px-2" onclick="deApproveTeacher('${s.teacher_id}')" title="deApprove & Revert to Pending">
+                      <i class="fas fa-undo me-1"></i>deApprove
+                    </button>
+                  ` : ''}
+                </div>
               </td>
             </tr>`).join(''),
           true
@@ -1469,116 +1530,291 @@ async function reviewSOP(teacherId, action) {
   }
 }
 
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  const hrs = parseInt(hours);
+  const ampm = hrs >= 12 ? 'PM' : 'AM';
+  const displayHrs = hrs % 12 || 12;
+  return `${displayHrs}:${minutes} ${ampm}`;
+}
+
 async function showSOPApprovalModal(teacherId) {
+  document.getElementById('formModalTitle').textContent = `Granular Onboarding Review`;
+  document.getElementById('formModalBody').innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>`;
+  formModal.show();
+  await refreshSOPModal(teacherId);
+}
+
+async function refreshSOPModal(teacherId) {
   try {
-    const sops = await apiGet('/admin/sop');
-    const s = sops.find(x => x.teacher_id === teacherId);
-    if (!s) return showToast('SOP record not found', 'error');
+    const data = await apiGet(`/admin/teachers/${teacherId}`);
+    if (!data || !data.teacher) return showToast('Teacher profile not found', 'error');
 
-    document.getElementById('formModalTitle').textContent = `Review & Approve SOP - ${s.teacher_name}`;
-    document.getElementById('formModalBody').innerHTML = `
-      <div class="row g-3 text-start">
-        <div class="col-12 mb-2">
-          <p class="text-secondary small">Verify that the teacher has met all standard requirements. Tick the checkboxes below to log compliance:</p>
-          <div class="sop-video-box p-3 mb-2">
-            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-file-alt me-1"></i>Uploaded Proofs:</h6>
-            <div class="d-flex gap-2 flex-wrap">
-              ${s.camera_sop_url ? `<a href="${s.camera_sop_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-video me-1"></i>Camera Video</a>` : ''}
-              ${s.lighting_sop_url ? `<a href="${s.lighting_sop_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-sun me-1"></i>Lighting Video</a>` : ''}
-              ${s.audio_sop_url ? `<a href="${s.audio_sop_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-microphone me-1"></i>Audio Clip</a>` : ''}
-              ${s.internet_proof_url ? `<a href="${s.internet_proof_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-wifi me-1"></i>Speed Proof</a>` : ''}
-              ${s.demo_teaching_url ? `<a href="${s.demo_teaching_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-chalkboard me-1"></i>Demo Lecture</a>` : ''}
-            </div>
+    const t = data.teacher;
+    const s = data.sop || {};
+    const docs = data.documents || [];
+    const approvals = s.item_approvals || {};
+
+    let availabilityHtml = '—';
+    if (s.availability) {
+      try {
+        const slots = JSON.parse(s.availability);
+        if (Array.isArray(slots)) {
+          availabilityHtml = slots.map(slot => {
+            const timeRange = `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`;
+            return `<div class="badge bg-light text-dark border p-1 me-1 mb-1" style="font-size:0.75rem;">${slot.days.join(', ')}: ${timeRange} (${slot.timezone})</div>`;
+          }).join('');
+        } else {
+          availabilityHtml = `<span class="text-secondary small">${s.availability}</span>`;
+        }
+      } catch (e) {
+        availabilityHtml = `<span class="text-secondary small">${s.availability}</span>`;
+      }
+    }
+
+    const items = [
+      { key: 'aadhaar', label: 'Aadhaar Card (KYC Document)', type: 'file', val: docs.find(d => d.doc_type === 'aadhaar')?.file_url },
+      { key: 'pan', label: 'PAN Card (KYC Document)', type: 'file', val: docs.find(d => d.doc_type === 'pan')?.file_url },
+      { key: 'resume', label: 'Professional Resume (KYC Document)', type: 'file', val: docs.find(d => d.doc_type === 'resume')?.file_url },
+      { key: 'qualification', label: 'Degree Certificate (KYC Document)', type: 'file', val: docs.find(d => d.doc_type === 'qualification')?.file_url },
+      
+      { key: 'subject_expertise', label: 'Subject Expertise (Profile Text)', type: 'text', val: t.subject_expertise },
+      { key: 'expertise_proof', label: 'Subject Expertise Proof (Doc)', type: 'file', val: docs.find(d => d.doc_type === 'expertise_proof')?.file_url },
+      
+      { key: 'languages', label: 'Language Preference (Profile Text)', type: 'text', val: t.languages },
+      { key: 'language_proof', label: 'Language Preference Proof (Doc)', type: 'file', val: docs.find(d => d.doc_type === 'language_proof')?.file_url },
+      
+      { key: 'experience_years', label: 'Teaching Experience Years', type: 'text', val: (t.experience_years !== null && t.experience_years !== undefined) ? `${t.experience_years} Years` : null },
+      { key: 'experience_proof', label: 'Experience Letter Proof (Doc)', type: 'file', val: docs.find(d => d.doc_type === 'experience_proof')?.file_url },
+      
+      { key: 'availability', label: 'Weekly Availability Slots', type: 'html', val: availabilityHtml },
+      
+      { key: 'camera_sop', label: 'Camera Setup SOP (Technical Proof)', type: 'file', val: s.camera_sop_url },
+      { key: 'lighting_sop', label: 'Lighting Setup SOP (Technical Proof)', type: 'file', val: s.lighting_sop_url },
+      { key: 'audio_sop', label: 'Audio Setup SOP (Technical Proof)', type: 'file', val: s.audio_sop_url },
+      { key: 'internet_proof', label: 'Internet Speed Proof (Technical)', type: 'file', val: s.internet_proof_url },
+      { key: 'demo_teaching', label: 'Demo Lecture Snippet (Technical)', type: 'file', val: s.demo_teaching_url }
+    ];
+
+    const getGranularStatusBadge = (key, hasItem) => {
+      if (!hasItem) return '<span class="badge bg-secondary-subtle text-secondary py-1 px-2" style="font-size:0.75rem"><i class="fas fa-exclamation-circle me-1"></i>Missing</span>';
+      const app = approvals[key];
+      if (!app) return '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.75rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
+      if (app.status === 'approved') return '<span class="badge bg-success-subtle text-success py-1 px-2" style="font-size:0.75rem"><i class="fas fa-check-circle me-1"></i>Approved</span>';
+      if (app.status === 'rejected') {
+        return `
+          <div class="d-flex flex-column align-items-center">
+            <span class="badge bg-danger-subtle text-danger py-1 px-2" style="font-size:0.75rem"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+            ${app.notes ? `<div class="text-danger small mt-1 text-center" style="font-size:0.68rem; font-weight:500; max-width: 150px; white-space: normal; line-height: 1.2;">Note: ${app.notes}</div>` : ''}
           </div>
-        </div>
+        `;
+      }
+      return '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.75rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
+    };
 
-        <div class="col-md-6">
-          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
-            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-camera me-1"></i>Camera Setup Checklist</h6>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_face_visible" checked><label class="form-check-label text-secondary small" for="adm_face_visible" style="cursor: pointer;">Face clearly visible</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_stable_camera" checked><label class="form-check-label text-secondary small" for="adm_stable_camera">Camera feed stable (on tripod)</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_eye_level" checked><label class="form-check-label text-secondary small" for="adm_eye_level">Eye-level camera positioning</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_proper_framing" checked><label class="form-check-label text-secondary small" for="adm_proper_framing">Proper framing (face, upper body, hands)</label></div>
-          </div>
+    const checklist = s.teacher_checklist || {};
+    const checklistItems = [
+      { key: 'camera_stable', label: 'Camera Stable & Eye-Level' },
+      { key: 'camera_1080p', label: 'Landscape 1080p HD Feed' },
+      { key: 'lighting_soft', label: 'Front Soft Light Source' },
+      { key: 'lighting_bg', label: 'Clutter-Free Background' },
+      { key: 'audio_mic', label: 'Collar/Headset Mic Used' },
+      { key: 'audio_noise', label: 'Zero Ambient Noise' },
+      { key: 'internet_speed', label: '>20 Mbps Upload Speed' },
+      { key: 'presentation_style', label: 'Engaging Delivery' },
+      { key: 'dress_code', label: 'Formal/Smart Attire' },
+      { key: 'class_flow', label: 'Interactive Class Recap' },
+      { key: 'board_materials', label: 'Interactive Digital Board' },
+      { key: 'content_delivery', label: 'Clear & Preference-based' },
+      { key: 'discipline_rules', label: 'Strict Class Discipline' }
+    ];
 
-          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
-            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-lightbulb me-1"></i>Lighting Setup Checklist</h6>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_proper_lighting" checked><label class="form-check-label text-secondary small" for="adm_proper_lighting" style="cursor: pointer;">Soft light falling on face</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_no_backlight" checked><label class="form-check-label text-secondary small" for="adm_no_backlight" style="cursor: pointer;">No backlight glare or dark shadows</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_clear_background" checked><label class="form-check-label text-secondary small" for="adm_clear_background" style="cursor: pointer;">Clean neutral background</label></div>
-          </div>
-        </div>
-
-        <div class="col-md-6">
-          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
-            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-microphone-alt me-1"></i>Audio Checklist</h6>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_clear_voice" checked><label class="form-check-label text-secondary small" for="adm_clear_voice" style="cursor: pointer;">Clear voice projection & volume</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_no_noise" checked><label class="form-check-label text-secondary small" for="adm_no_noise" style="cursor: pointer;">No environmental / echo noise</label></div>
-          </div>
-
-          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
-            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-wifi me-1"></i>Internet Checklist</h6>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_stable_connection" checked><label class="form-check-label text-secondary small" for="adm_stable_connection" style="cursor: pointer;">Broadband connection stable</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_speed_proof" checked><label class="form-check-label text-secondary small" for="adm_speed_proof" style="cursor: pointer;">Speed test proof > 20 Mbps verified</label></div>
-          </div>
-
-          <div class="card p-3 mb-3 border-0" style="background: #F8FAFC; border: 1px solid var(--border) !important; border-radius: var(--radius-md);">
-            <h6 class="fw-bold mb-3" style="font-size:0.85rem; color: var(--primary-dark); font-family: 'Outfit', sans-serif;"><i class="fas fa-graduation-cap me-1"></i>Teaching Checklist</h6>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_communication" checked><label class="form-check-label text-secondary small" for="adm_communication" style="cursor: pointer;">Energetic communication tone</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_engagement" checked><label class="form-check-label text-secondary small" for="adm_engagement" style="cursor: pointer;">Proactive student engagement flow</label></div>
-            <div class="form-check mb-2"><input class="form-check-input admin-sop-check" type="checkbox" id="adm_presentation" checked><label class="form-check-label text-secondary small" for="adm_presentation" style="cursor: pointer;">Clear whiteboard/slide presentability</label></div>
-          </div>
-        </div>
-
-        <div class="col-12 mt-3 d-flex justify-content-end gap-2">
-          <button class="btn btn-secondary btn-sm" onclick="formModal.hide()">Cancel</button>
-          <button class="btn btn-success btn-sm" onclick="submitSOPApproval('${teacherId}')">Submit Approval</button>
+    const checklistHtml = `
+      <div class="mt-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border);">
+        <h6 class="fw-bold mb-2 text-primary" style="font-family:'Outfit'; font-size:0.85rem;"><i class="fas fa-clipboard-check me-2"></i>Teacher Self-Declaration Checklist</h6>
+        <div class="row g-2">
+          ${checklistItems.map(item => {
+            const checked = !!checklist[item.key];
+            return `
+              <div class="col-md-4 col-sm-6">
+                <div class="d-flex align-items-center gap-2 py-1 px-2 rounded" style="background: rgba(255, 255, 255, 0.01); font-size: 0.72rem; border: 1px solid var(--border);">
+                  <i class="fas ${checked ? 'fa-check-circle text-success' : 'fa-times-circle text-muted'}"></i>
+                  <span class="${checked ? 'text-white' : 'text-muted'}">${item.label}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
     `;
-    formModal.show();
+
+    document.getElementById('formModalBody').innerHTML = `
+      <div class="p-1 text-start">
+        <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);">
+          ${avatar(t.photo_url, t.name, 60)}
+          <div>
+            <h5 class="fw-bold text-white mb-1" style="font-family: 'Outfit';">${t.name}</h5>
+            <div class="text-secondary small mb-1"><i class="far fa-envelope me-1"></i>${t.email} | <i class="fas fa-phone-alt me-1"></i>${t.phone || 'No Phone'}</div>
+            <div class="text-secondary small"><i class="fas fa-graduation-cap me-1"></i>Highest Qualification: <strong class="text-white">${t.qualification || 'Not provided'}</strong></div>
+          </div>
+        </div>
+
+        <p class="text-secondary small mb-3">Review all submitted documents, profile texts, availability slots, and technical SOP videos line-by-line. Approve or reject each item granularly, or click <strong>Auto Approve Full</strong> at the bottom to approve everything at once.</p>
+        
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+          <table class="table table-hover align-middle mb-0" style="font-size: 0.82rem;">
+            <thead class="table-light sticky-top" style="z-index: 10;">
+              <tr>
+                <th style="width: 250px; padding: 12px 16px;">Requirement</th>
+                <th style="padding: 12px 16px;">Data / Evidence</th>
+                <th style="width: 160px; text-align: center; padding: 12px 16px;">Verification Status</th>
+                <th style="width: 180px; text-align: right; padding: 12px 16px;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(item => {
+                const hasItem = !!item.val;
+                let dataHtml = '';
+                if (item.type === 'file') {
+                  dataHtml = hasItem ? 
+                    `<a href="${item.val}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size:0.72rem"><i class="fas fa-external-link-alt me-1"></i>View File / Link</a>` : 
+                    `<span class="text-muted small">No file/link uploaded</span>`;
+                } else if (item.type === 'text') {
+                  dataHtml = hasItem ? 
+                    `<span class="fw-semibold text-dark">${item.val}</span>` : 
+                    `<span class="text-muted small">Not provided</span>`;
+                } else if (item.type === 'html') {
+                  dataHtml = item.val;
+                }
+
+                return `
+                  <tr>
+                    <td style="padding: 12px 16px;">
+                      <div class="fw-bold text-dark">${item.label}</div>
+                      <div class="text-muted" style="font-size:0.7rem; text-transform: uppercase;">Key: ${item.key}</div>
+                    </td>
+                    <td style="padding: 12px 16px;">${dataHtml}</td>
+                    <td class="text-center" style="padding: 12px 16px;">${getGranularStatusBadge(item.key, hasItem)}</td>
+                    <td class="text-end" style="padding: 12px 16px;">
+                      <button class="btn btn-xs btn-success py-1 px-2" onclick="approveSOPItem('${t.id}', '${item.key}')" ${!hasItem ? 'disabled' : ''} style="font-size: 0.72rem;"><i class="fas fa-check"></i> Approve</button>
+                      <button class="btn btn-xs btn-outline-danger py-1 px-2" onclick="rejectSOPItem('${t.id}', '${item.key}')" ${!hasItem ? 'disabled' : ''} style="font-size: 0.72rem;"><i class="fas fa-times"></i> Reject</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        ${checklistHtml}
+
+        <div class="mt-4 pt-3 border-top d-flex align-items-center justify-content-between">
+          <div>
+            <span class="small text-muted">Overall Teacher Status:</span> 
+            <span class="badge ${t.approval_status === 'agreement_pending' || t.approval_status === 'approved' ? 'bg-success' : 'bg-warning'} text-uppercase ms-1">${t.approval_status.replace('_', ' ')}</span>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-secondary btn-sm px-3" onclick="formModal.hide()">Close</button>
+            ${t.approval_status === 'approved' || t.approval_status === 'agreement_pending' ? `
+              <button class="btn btn-outline-danger btn-sm px-3" onclick="deApproveTeacher('${t.id}')"><i class="fas fa-undo me-1"></i> deApprove</button>
+            ` : `
+              <button class="btn btn-outline-danger btn-sm px-3" onclick="rejectSopFromModal('${t.id}')">Reject entire SOP</button>
+              <button class="btn btn-success btn-sm px-3" onclick="submitSOPApproval('${t.id}')"><i class="fas fa-check-double me-1"></i> Auto Approve Full</button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
   } catch (err) {
     showToast(err.message, 'error');
   }
+}
+
+window.approveSOPItem = async function(teacherId, itemKey) {
+  try {
+    showToast(`Approving ${itemKey.replace('_', ' ')}...`, 'info');
+    const res = await apiPost(`/admin/sop/${teacherId}/item-approval`, {
+      item: itemKey,
+      status: 'approved'
+    });
+    showToast(res.message);
+    await refreshSOPModal(teacherId);
+    if (typeof renderSOP === 'function') renderSOP();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+};
+
+window.rejectSOPItem = async function(teacherId, itemKey) {
+  adminPrompt('Reject Onboarding Item', `Specify the reason for rejecting ${itemKey.replace('_', ' ')}:`, '', async (notes) => {
+    if (!notes) {
+      showToast('A rejection note is required to reject an onboarding item.', 'error');
+      return;
+    }
+    try {
+      showToast(`Rejecting ${itemKey.replace('_', ' ')}...`, 'info');
+      const res = await apiPost(`/admin/sop/${teacherId}/item-approval`, {
+        item: itemKey,
+        status: 'rejected',
+        notes
+      });
+      showToast(res.message);
+      await refreshSOPModal(teacherId);
+      if (typeof renderSOP === 'function') renderSOP();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  });
+};
+
+async function rejectSopFromModal(teacherId) {
+  adminPrompt('Reject Entire SOP', 'Specify the reason for rejecting the entire SOP submission:', '', async (notes) => {
+    if (!notes) {
+      showToast('Rejection reason is required.', 'error');
+      return;
+    }
+    try {
+      showToast('Rejecting entire SOP...', 'info');
+      const d = await apiPost(`/admin/sop/${teacherId}/reject`, { admin_notes: notes });
+      showToast(d.message);
+      formModal.hide();
+      if (typeof renderSOP === 'function') renderSOP();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
 }
 
 async function submitSOPApproval(teacherId) {
-  const payload = {
-    camera_checklist: {
-      face_visible: document.getElementById('adm_face_visible').checked,
-      stable_camera: document.getElementById('adm_stable_camera').checked,
-      eye_level: document.getElementById('adm_eye_level').checked,
-      proper_framing: document.getElementById('adm_proper_framing').checked
-    },
-    lighting_checklist: {
-      proper_lighting: document.getElementById('adm_proper_lighting').checked,
-      no_backlight: document.getElementById('adm_no_backlight').checked,
-      clear_background: document.getElementById('adm_clear_background').checked
-    },
-    audio_checklist: {
-      clear_voice: document.getElementById('adm_clear_voice').checked,
-      no_noise: document.getElementById('adm_no_noise').checked
-    },
-    internet_checklist: {
-      stable_connection: document.getElementById('adm_stable_connection').checked,
-      speed_proof: document.getElementById('adm_speed_proof').checked
-    },
-    teaching_checklist: {
-      communication: document.getElementById('adm_communication').checked,
-      engagement: document.getElementById('adm_engagement').checked,
-      presentation: document.getElementById('adm_presentation').checked
-    }
-  };
-
   try {
-    const d = await apiPost(`/admin/sop/${teacherId}/approve`, payload);
+    showToast('Auto approving all items...', 'info');
+    const d = await apiPost(`/admin/sop/${teacherId}/approve`, {});
     showToast(d.message);
     formModal.hide();
-    renderSOP();
+    if (typeof renderSOP === 'function') renderSOP();
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
+
+window.deApproveTeacher = async function(teacherId) {
+  adminPrompt('deApprove Teacher Account', 'Specify the reason for deApproving this teacher (will revert onboarding status to pending review):', '', async (notes) => {
+    if (!notes) {
+      showToast('A reason/note is required to deApprove.', 'error');
+      return;
+    }
+    try {
+      showToast('deApproving teacher...', 'info');
+      const d = await apiPost(`/admin/sop/${teacherId}/deapprove`, { notes });
+      showToast(d.message);
+      formModal.hide();
+      if (typeof renderSOP === 'function') renderSOP();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+};
 
 // ── Coupons ───────────────────────────────────────────────────
 async function renderCoupons() {

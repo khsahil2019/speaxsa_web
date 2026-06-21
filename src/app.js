@@ -29,6 +29,8 @@ db.query(`
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT false;
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMPTZ;
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS digital_signature VARCHAR(255);
+  ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS availability TEXT;
+  ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS item_approvals JSONB DEFAULT '{}';
 
   INSERT INTO platform_settings (key, value) VALUES
     ('home_hero_badge', 'Speaxa is Launching Soon – Stay Tuned!'),
@@ -80,7 +82,13 @@ app.use(cors({
 // ── Rate Limiting ─────────────────────────────────────────────
 const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'Too many auth requests', code: 'RATE_LIMITED' } });
-app.use('/api/auth', authLimiter);
+
+// Protect sensitive authentication endpoints from abuse
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+
 app.use('/api', globalLimiter);
 
 // ── Body Parsing ──────────────────────────────────────────────

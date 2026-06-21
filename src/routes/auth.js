@@ -298,13 +298,13 @@ router.get('/profile', authenticateToken, async (req, res) => {
 
 // ── PUT /api/auth/profile ─────────────────────────────────────
 router.put('/profile', authenticateToken, async (req, res) => {
-  const { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url } = req.body;
+  const { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years } = req.body;
   try {
     const updates = [];
     const values = [];
     let idx = 1;
 
-    const fields = { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url };
+    const fields = { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years };
     for (const [key, val] of Object.entries(fields)) {
       if (val !== undefined) {
         updates.push(`${key} = $${idx++}`);
