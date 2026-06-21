@@ -8,6 +8,8 @@ const { authenticateToken, requireTeacher } = require('../middleware/auth');
 const { sanitizeUser, generateUID } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
 const { updateTeacherLevel } = require('../services/teacherLevel.service');
+const configService = require('../services/SystemConfigService');
+
 
 // File upload for SOP and documents
 const makeStorage = (subdir) => multer.diskStorage({
@@ -328,8 +330,9 @@ router.post('/batches', async (req, res) => {
     }
 
     // Validate capacity
-    const cap = parseInt(capacity) || 30;
-    if (cap > 30) return res.status(400).json({ error: 'Maximum batch capacity is 30 students' });
+    const maxCapacity = await configService.getSetting('max_batch_capacity', 30);
+    const cap = parseInt(capacity) || maxCapacity;
+    if (cap > maxCapacity) return res.status(400).json({ error: `Maximum batch capacity is ${maxCapacity} students` });
 
     // Check for overlapping batches (same teacher, overlapping time on same days)
     if (start_time && end_time && days_of_week && start_date && end_date) {

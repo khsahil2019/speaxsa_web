@@ -46,6 +46,7 @@ router.get('/settings/public', async (req, res) => {
       support_email: settings.support_email || 'support@speaxa.com',
       support_phone: settings.support_phone || '+91 9999 999 999',
       support_hours: settings.support_hours || 'Mon–Sat: 8 AM – 8 PM IST',
+      max_batch_capacity: settings.max_batch_capacity || 30,
     };
     for (const [key, value] of Object.entries(settings)) {
       if (key.startsWith('home_')) {

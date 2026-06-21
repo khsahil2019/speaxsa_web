@@ -1502,8 +1502,8 @@ async function renderBatches() {
                 <input class="form-control spx-input" id="batchDays" placeholder="Monday, Wednesday, Friday" required>
               </div>
               <div class="mb-3">
-                <label class="spx-label">Max Capacity (Max 30)</label>
-                <input type="number" class="form-control spx-input" id="batchCapacity" value="30" max="30" required>
+                <label class="spx-label">Max Capacity (Max ${maxBatchCapacity})</label>
+                <input type="number" class="form-control spx-input" id="batchCapacity" value="${maxBatchCapacity}" max="${maxBatchCapacity}" required>
               </div>
               <button type="submit" class="btn btn-spx w-100">Create Batch</button>
             </form>
@@ -2469,8 +2469,14 @@ async function renderProfile() {
             <div style="position:absolute; top:0; left:0; right:0; height:6px; background:var(--gradient);"></div>
             
             <div class="position-relative d-inline-block mt-3">
-              <img src="${profile.photo_url||`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.name)}`}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.2);box-shadow: 0 8px 20px rgba(0,0,0,0.12); object-fit: cover;" alt="Teacher Photo">
-              <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 14px; height: 14px; border-width: 2px !important;" title="Verified Educator"></span>
+              <div class="profile-avatar-wrapper" onclick="document.getElementById('teacherAvatarInput').click()">
+                <img src="${profile.photo_url||`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.name)}`}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.2);box-shadow: 0 8px 20px rgba(0,0,0,0.12); object-fit: cover;" alt="Teacher Photo">
+                <div class="profile-avatar-overlay">
+                  <i class="fas fa-camera"></i>
+                </div>
+              </div>
+              <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 14px; height: 14px; border-width: 2px !important; z-index: 2;" title="Verified Educator"></span>
+              <input type="file" id="teacherAvatarInput" accept="image/*" style="display:none;" onchange="uploadTeacherAvatar(this)">
             </div>
             
             <h4 class="fw-bold mt-3 mb-1" style="font-family:'Outfit',sans-serif;color:var(--text-primary);">${profile.name}</h4>
@@ -2605,8 +2611,25 @@ async function changePassword(e) {
   } catch(e) { showToast(e.message, 'error'); }
 }
 
+let maxBatchCapacity = 30;
+
+async function fetchPublicSettings() {
+  try {
+    const res = await fetch('/api/admin/settings/public');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.max_batch_capacity) {
+        maxBatchCapacity = parseInt(data.max_batch_capacity) || 30;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load public settings', err);
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────
 async function initApp() {
+  await fetchPublicSettings();
   if (token) {
     try {
       const profile = await api('/auth/profile');
@@ -2628,4 +2651,33 @@ async function initApp() {
   }
 }
 
+async function uploadTeacherAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  try {
+    showToast('Uploading profile photo...', 'info');
+    const res = await fetch(`${API}/auth/upload-avatar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast('Profile photo updated successfully!');
+    
+    // Update local cached user info
+    updateCachedUser(data.user);
+    // Refresh sidebar & header and profile cards
+    showApp();
+    renderProfile();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
 initApp();
+

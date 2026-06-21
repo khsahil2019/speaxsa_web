@@ -125,7 +125,7 @@
     </div>
 
     <div class="sidebar-user-card">
-      <div class="user-avatar" id="sidebarAvatar">PR</div>
+      <img class="user-avatar" id="sidebarAvatar" src="" style="object-fit: cover;" alt="Parent Avatar">
       <div>
         <div class="user-info-name" id="sidebarName">Parent</div>
         <div class="user-info-role"><i class="fa-solid fa-shield-halved" style="font-size:0.65rem;"></i> Guardian Account</div>
@@ -183,7 +183,7 @@
         <button class="btn-link-child" onclick="openModal('linkModal')">
           <i class="fa-solid fa-plus"></i> Link Child
         </button>
-        <div class="header-avatar" id="headerAvatar" title="Logged in as Parent">PR</div>
+        <img class="header-avatar" id="headerAvatar" src="" style="object-fit: cover;" title="Logged in as Parent" alt="Parent Avatar">
       </div>
     </header>
 
@@ -468,7 +468,15 @@
         <div class="row g-4">
           <div class="col-lg-4 col-md-5">
             <div class="card text-center" style="padding:28px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-md);">
-              <img id="parentProfileAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Parent" style="width:95px;height:95px;border-radius:50%;border:3px solid var(--primary);box-shadow:var(--shadow-md);margin: 0 auto 15px auto;" alt="Parent Avatar">
+              <div class="position-relative d-inline-block" style="margin: 0 auto 15px auto;">
+                <div class="profile-avatar-wrapper" onclick="document.getElementById('parentAvatarInput').click()">
+                  <img id="parentProfileAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Parent" style="width:95px;height:95px;border-radius:50%;border:3px solid var(--primary);box-shadow:var(--shadow-md);object-fit: cover;" alt="Parent Avatar">
+                  <div class="profile-avatar-overlay">
+                    <i class="fas fa-camera"></i>
+                  </div>
+                </div>
+                <input type="file" id="parentAvatarInput" accept="image/*" style="display:none;" onchange="uploadParentAvatar(this)">
+              </div>
               <h5 class="fw-bold mt-2 mb-1" id="parentProfileName" style="font-family:'Outfit',sans-serif;color:var(--text-primary);">Parent Name</h5>
               <div class="badge px-3 py-1 mt-1" style="font-size:0.72rem; font-weight:600; border-radius:8px; background: rgba(60, 189, 176, 0.08); color: var(--primary-dark); border: 1px solid rgba(60, 189, 176, 0.15);">
                 <i class="fa-solid fa-shield-halved me-1"></i>Guardian Account
@@ -1036,13 +1044,42 @@ async function loadStudentData(studentId) {
 async function initDashboard() {
   const profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
   const name = profile.name || 'Parent';
-  const initials = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() || 'PR';
-  document.getElementById('sidebarAvatar').textContent = initials;
-  document.getElementById('headerAvatar').textContent  = initials;
+  const avatarUrl = profile.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+  document.getElementById('sidebarAvatar').src = avatarUrl;
+  document.getElementById('headerAvatar').src  = avatarUrl;
   document.getElementById('sidebarName').textContent   = name;
 
   await reloadChildren();
   renderChildDropdown();
+}
+
+async function uploadParentAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const token = localStorage.getItem('spx_parent_token');
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  try {
+    showToast('Uploading profile photo...', 'info');
+    const res = await fetch('/api/auth/upload-avatar', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast('Profile photo updated successfully!', 'success');
+    
+    // Save updated user to local storage
+    localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
+    // Refresh UI
+    initDashboard();
+    loadParentProfileData();
+  } catch (e) {
+    showToast(e.message, 'danger');
+  }
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
