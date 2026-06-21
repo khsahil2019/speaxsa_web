@@ -1431,89 +1431,276 @@ async function renderBatches() {
       api('/courses'),
     ]);
 
-    document.getElementById('pageContent').innerHTML = `
-      <div class="row g-4">
-        <div class="col-lg-8">
-          <div class="spx-card">
-            <h6 class="mb-4 fw-bold">My Batches</h6>
-            ${batches.length ? batches.map(b => `
-              <div class="p-3 mb-3 rounded-3" style="background:rgba(255,255,255,.01);border:1px solid var(--border)">
-                <div class="d-flex align-items-start gap-3">
-                  <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📚</div>
-                  <div class="flex-grow-1">
-                    <h6 class="text-white fw-bold mb-1">${b.batch_name}</h6>
-                    <div class="text-muted small">${b.course_title || 'Course'}</div>
-                    <div class="d-flex flex-wrap gap-3 mt-2 text-muted small">
-                      <span><i class="fas fa-users me-1"></i>${b.enrolled_count || 0} / ${b.capacity} Students</span>
-                      <span><i class="fas fa-calendar me-1"></i>${(b.days_of_week || []).join(', ')}</span>
-                      <span><i class="fas fa-clock me-1"></i>${b.start_time} - ${b.end_time}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <button class="btn btn-sm btn-spx" onclick="viewBatchStudents('${b.id}', '${b.batch_name}')">Students</button>
-                  </div>
-                </div>
-              </div>
-            `).join('') : '<p class="text-muted text-center">No batches created yet.</p>'}
-          </div>
-        </div>
+    // Cache courses for live details
+    window._coursesCache = courses;
+    window._batchActiveTab = window._batchActiveTab || 'list';
 
-        <div class="col-lg-4">
-          <div class="spx-card">
-            <h6 class="mb-4 fw-bold">Create New Batch</h6>
-            <form onsubmit="createBatch(event)">
-              <div class="mb-3">
-                <label class="spx-label">Course</label>
-                <select class="form-select spx-input" id="batchCourse" required>
-                  <option value="">Select Course</option>
-                  ${courses.map(c => `<option value="${c.id}">${c.title} (${c.grade})</option>`).join('')}
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="spx-label">Batch Name</label>
-                <input class="form-control spx-input" id="batchName" placeholder="e.g. Physics Core Morning" required>
-              </div>
-              <div class="mb-3">
-                <label class="spx-label">Subject</label>
-                <input class="form-control spx-input" id="batchSubject" placeholder="e.g. Physics" required>
-              </div>
-              <div class="row g-2 mb-3">
-                <div class="col-6">
-                  <label class="spx-label">Start Date</label>
-                  <input type="date" class="form-control spx-input" id="batchStartD" required>
-                </div>
-                <div class="col-6">
-                  <label class="spx-label">End Date</label>
-                  <input type="date" class="form-control spx-input" id="batchEndD" required>
-                </div>
-              </div>
-              <div class="row g-2 mb-3">
-                <div class="col-6">
-                  <label class="spx-label">Start Time</label>
-                  <input type="time" class="form-control spx-input" id="batchStartT" required>
-                </div>
-                <div class="col-6">
-                  <label class="spx-label">End Time</label>
-                  <input type="time" class="form-control spx-input" id="batchEndT" required>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="spx-label">Days of Week (Comma Separated)</label>
-                <input class="form-control spx-input" id="batchDays" placeholder="Monday, Wednesday, Friday" required>
-              </div>
-              <div class="mb-3">
-                <label class="spx-label">Max Capacity (Max ${maxBatchCapacity})</label>
-                <input type="number" class="form-control spx-input" id="batchCapacity" value="${maxBatchCapacity}" max="${maxBatchCapacity}" required>
-              </div>
-              <button type="submit" class="btn btn-spx w-100">Create Batch</button>
-            </form>
-          </div>
+    // Build the sub-tab bar
+    const tabHeaderHtml = `
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom" style="border-color: var(--border) !important;">
+        <h5 class="fw-bold text-white mb-0" style="font-family: 'Outfit', sans-serif;">Study Batches</h5>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm ${window._batchActiveTab === 'list' ? 'btn-spx' : 'btn-outline-secondary'}" onclick="switchBatchTab('list')">
+            <i class="fas fa-list me-1"></i> My Batches
+          </button>
+          <button class="btn btn-sm ${window._batchActiveTab === 'create' ? 'btn-spx' : 'btn-outline-secondary'}" onclick="switchBatchTab('create')">
+            <i class="fas fa-plus me-1"></i> Create Batch
+          </button>
         </div>
       </div>
     `;
+
+    if (window._batchActiveTab === 'list') {
+      document.getElementById('pageContent').innerHTML = `
+        ${tabHeaderHtml}
+        <div class="row g-4">
+          <div class="col-lg-12">
+            <div class="spx-card">
+              <h6 class="mb-4 fw-bold">My Batches</h6>
+              ${batches.length ? batches.map(b => `
+                <div class="p-3 mb-3 rounded-3" style="background:rgba(255,255,255,.01);border:1px solid var(--border)">
+                  <div class="d-flex align-items-start gap-3">
+                    <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📚</div>
+                    <div class="flex-grow-1">
+                      <h6 class="text-white fw-bold mb-1">${b.batch_name}</h6>
+                      <div class="text-muted small">${b.course_title || 'Course'}</div>
+                      <div class="d-flex flex-wrap gap-3 mt-2 text-muted small">
+                        <span><i class="fas fa-users me-1"></i>${b.enrolled_count || 0} / ${b.capacity} Students</span>
+                        <span><i class="fas fa-calendar me-1"></i>${(b.days_of_week || []).join(', ')}</span>
+                        <span><i class="fas fa-clock me-1"></i>${b.start_time} - ${b.end_time}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <button class="btn btn-sm btn-spx" onclick="viewBatchStudents('${b.id}', '${b.batch_name}')">Students</button>
+                    </div>
+                  </div>
+                </div>
+              `).join('') : '<p class="text-muted text-center py-4">No batches created yet.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      document.getElementById('pageContent').innerHTML = `
+        ${tabHeaderHtml}
+        <div class="row g-4">
+          <!-- Left Column: Live Course Details & Batch Preview Card -->
+          <div class="col-lg-6">
+            <div id="batchPreviewContainer">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+
+          <!-- Right Column: Create Form -->
+          <div class="col-lg-6">
+            <div class="spx-card">
+              <h6 class="mb-4 fw-bold">Create New Batch</h6>
+              <form onsubmit="createBatch(event)">
+                <div class="mb-3">
+                  <label class="spx-label">Course</label>
+                  <select class="form-select spx-input" id="batchCourse" onchange="handleCourseChange(this.value)" required>
+                    <option value="">Select Course</option>
+                    ${courses.map(c => `<option value="${c.id}">${c.title} (${c.grade})</option>`).join('')}
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Batch Name</label>
+                  <input class="form-control spx-input" id="batchName" placeholder="e.g. Physics Core Morning" oninput="updateBatchPreview()" required>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Subject</label>
+                  <input class="form-control spx-input" id="batchSubject" placeholder="e.g. Physics" oninput="updateBatchPreview()" required>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="spx-label">Start Date</label>
+                    <input type="date" class="form-control spx-input" id="batchStartD" onchange="updateBatchPreview()" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="spx-label">End Date</label>
+                    <input type="date" class="form-control spx-input" id="batchEndD" onchange="updateBatchPreview()" required>
+                  </div>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="spx-label">Start Time</label>
+                    <input type="time" class="form-control spx-input" id="batchStartT" onchange="updateBatchPreview()" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="spx-label">End Time</label>
+                    <input type="time" class="form-control spx-input" id="batchEndT" onchange="updateBatchPreview()" required>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Days of Week (Comma Separated)</label>
+                  <input class="form-control spx-input" id="batchDays" placeholder="Monday, Wednesday, Friday" oninput="updateBatchPreview()" required>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Max Capacity (Max ${maxBatchCapacity})</label>
+                  <input type="number" class="form-control spx-input" id="batchCapacity" value="${maxBatchCapacity}" max="${maxBatchCapacity}" oninput="updateBatchPreview()" required>
+                </div>
+                <button type="submit" class="btn btn-spx w-100">Create Batch</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+      updateBatchPreview();
+    }
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
+}
+
+function switchBatchTab(tab) {
+  window._batchActiveTab = tab;
+  renderBatches();
+}
+
+async function handleCourseChange(courseId) {
+  if (!courseId) {
+    window._selectedCourse = null;
+    window._selectedCourseModules = [];
+    updateBatchPreview();
+    return;
+  }
+
+  const course = (window._coursesCache || []).find(c => c.id === courseId);
+  window._selectedCourse = course;
+  window._selectedCourseModules = null; // indicates loading
+  updateBatchPreview();
+
+  try {
+    const modules = await api(`/courses/${courseId}/modules`);
+    window._selectedCourseModules = modules || [];
+  } catch (err) {
+    showToast('Failed to load course modules: ' + err.message, 'error');
+    window._selectedCourseModules = [];
+  }
+  updateBatchPreview();
+}
+
+function updateBatchPreview() {
+  const container = document.getElementById('batchPreviewContainer');
+  if (!container) return;
+
+  if (!window._selectedCourse) {
+    container.innerHTML = `
+      <div class="spx-card text-center py-5 border-dashed" style="border: 2px dashed var(--border) !important; background: transparent; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px;">
+        <div style="font-size: 40px; opacity: 0.5;" class="mb-3">👉</div>
+        <h6 class="text-white fw-bold">Select a Course</h6>
+        <p class="text-muted small mb-0 mx-auto" style="max-width: 320px;">
+          Please choose a course in the form to preview the syllabus modules, course information, and your live batch card mockup.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  const batchNameVal = document.getElementById('batchName')?.value || '';
+  const batchSubjectVal = document.getElementById('batchSubject')?.value || '';
+  const batchStartDVal = document.getElementById('batchStartD')?.value || '';
+  const batchEndDVal = document.getElementById('batchEndD')?.value || '';
+  const batchStartTVal = document.getElementById('batchStartT')?.value || '';
+  const batchEndTVal = document.getElementById('batchEndT')?.value || '';
+  const batchDaysVal = document.getElementById('batchDays')?.value || '';
+  const batchCapacityVal = document.getElementById('batchCapacity')?.value || '';
+
+  let timeStr = 'Not specified';
+  if (batchStartTVal && batchEndTVal) {
+    timeStr = `${formatTime(batchStartTVal)} - ${formatTime(batchEndTVal)}`;
+  } else if (batchStartTVal) {
+    timeStr = `Starts at ${formatTime(batchStartTVal)}`;
+  }
+
+  let dateStr = 'Not specified';
+  if (batchStartDVal && batchEndDVal) {
+    dateStr = `${fmtDate(batchStartDVal)} to ${fmtDate(batchEndDVal)}`;
+  } else if (batchStartDVal) {
+    dateStr = `Starts on ${fmtDate(batchStartDVal)}`;
+  }
+
+  const courseDetailsHtml = `
+    <div class="spx-card mb-4" style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.005) 100%);">
+      <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom" style="border-color: var(--border) !important;">
+        <img src="${window._selectedCourse.thumbnail_url || '/logo.png'}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);" onerror="this.src='/logo.png'">
+        <div>
+          <h6 class="text-white fw-bold mb-1">${window._selectedCourse.title}</h6>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 11px;">
+            ${window._selectedCourse.grade} • ${window._selectedCourse.board}
+          </span>
+        </div>
+      </div>
+      <p class="text-muted small mb-3">${window._selectedCourse.description || 'No description available for this course.'}</p>
+      
+      <div class="row mb-4 text-muted small g-3">
+        <div class="col-6">
+          <span class="d-block text-white-50 small" style="font-size: 9px; letter-spacing: 0.5px;">SUBJECT</span>
+          <span class="text-white fw-semibold"><i class="fas fa-book-open me-1 text-primary"></i> ${window._selectedCourse.subject}</span>
+        </div>
+        <div class="col-6">
+          <span class="d-block text-white-50 small" style="font-size: 9px; letter-spacing: 0.5px;">DURATION</span>
+          <span class="text-white fw-semibold"><i class="fas fa-calendar-alt me-1 text-primary"></i> ${window._selectedCourse.duration_weeks} Weeks</span>
+        </div>
+        <div class="col-12 mt-2">
+          <span class="d-block text-white-50 small" style="font-size: 9px; letter-spacing: 0.5px;">COURSE FEES</span>
+          <span class="text-white fw-semibold"><i class="fas fa-rupee-sign me-1 text-primary"></i> ₹${window._selectedCourse.fees}</span>
+        </div>
+      </div>
+      
+      <h6 class="text-white fw-bold mb-2 small" style="letter-spacing: 0.5px; font-size: 11px; text-transform: uppercase;">Syllabus / Course Modules</h6>
+      <div class="syllabus-list pe-1" style="max-height: 220px; overflow-y: auto;">
+        ${window._selectedCourseModules === null ? `
+          <div class="text-center py-3 text-muted">
+            <span class="spinner-border spinner-border-sm me-2 text-primary" role="status" aria-hidden="true"></span>
+            Loading modules...
+          </div>
+        ` : window._selectedCourseModules.length ? 
+          window._selectedCourseModules.map((m, idx) => `
+            <div class="p-2 mb-2 rounded border" style="background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.05) !important;">
+              <div class="small fw-bold text-white-50" style="font-size: 9px;">MODULE ${idx + 1}</div>
+              <div class="small text-white fw-semibold mb-1">${m.title}</div>
+              <div class="text-muted" style="font-size: 11px;">${m.description || ''}</div>
+            </div>
+          `).join('') : '<p class="text-muted small">No modules created for this course yet.</p>'
+        }
+      </div>
+    </div>
+  `;
+
+  const batchPreviewCardHtml = `
+    <div class="spx-card" style="background: linear-gradient(135deg, rgba(13, 110, 253, 0.03) 0%, rgba(0, 0, 0, 0) 100%); border-left: 4px solid var(--primary, #0d6efd) !important;">
+      <h6 class="text-white fw-bold mb-3 small" style="letter-spacing: 0.5px; font-size: 11px; text-transform: uppercase;">Live Batch Card Preview</h6>
+      
+      <div class="p-4 rounded-3 text-start" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.2);">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <span class="badge bg-success text-white mb-2" style="font-size: 10px; font-weight: 500; letter-spacing: 0.5px;">LIVE PREVIEW</span>
+            <h5 class="text-white fw-bold mb-1">${batchNameVal || 'Physics Core Morning'}</h5>
+            <p class="text-muted small mb-0">${batchSubjectVal || 'Physics'}</p>
+          </div>
+          <div style="font-size: 32px;">📚</div>
+        </div>
+        
+        <div class="d-flex flex-column gap-2 text-muted small border-top pt-3 mt-3" style="border-color: rgba(255, 255, 255, 0.05) !important;">
+          <div>
+            <i class="fas fa-calendar-day me-2 text-success" style="width: 16px;"></i>Days: <strong class="text-white">${batchDaysVal || 'Monday, Wednesday, Friday'}</strong>
+          </div>
+          <div>
+            <i class="fas fa-clock me-2 text-success" style="width: 16px;"></i>Time: <strong class="text-white">${timeStr}</strong>
+          </div>
+          <div>
+            <i class="fas fa-calendar-alt me-2 text-success" style="width: 16px;"></i>Duration: <strong class="text-white">${dateStr}</strong>
+          </div>
+          <div>
+            <i class="fas fa-users me-2 text-success" style="width: 16px;"></i>Max Capacity: <strong class="text-white">${batchCapacityVal || 30} students</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = courseDetailsHtml + batchPreviewCardHtml;
 }
 
 async function viewBatchStudents(batchId, batchName) {
@@ -1581,6 +1768,11 @@ async function createBatch(e) {
       body: JSON.stringify(payload)
     });
     showToast(data.message || 'Batch created successfully!');
+    // Switch tab to list
+    window._batchActiveTab = 'list';
+    // Clear dynamic states
+    window._selectedCourse = null;
+    window._selectedCourseModules = [];
     renderBatches();
   } catch (e) {
     showToast(e.message, 'error');
