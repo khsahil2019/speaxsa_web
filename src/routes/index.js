@@ -77,6 +77,8 @@ router.get('/public/courses/:courseId/batches', async (req, res) => {
     const result = await db.query(`
       SELECT b.*, c.title as course_title, c.fees, u.name as teacher_name, u.photo_url as teacher_photo,
              u.teacher_level, u.rating as teacher_rating,
+             u.qualification as teacher_qualification, u.experience_years as teacher_experience,
+             u.subject_expertise as teacher_expertise, u.bio as teacher_bio,
              (b.capacity - b.seats_filled) as available_seats
       FROM batches b
       LEFT JOIN courses c ON c.id = b.course_id

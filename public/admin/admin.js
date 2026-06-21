@@ -1711,7 +1711,7 @@ async function renderSettings() {
     const settings = await apiGet('/admin/settings');
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
-        <div class="col-lg-6">
+        <div class="col-lg-4">
           <div class="spx-card">
             <h6 class="mb-4">Platform Settings</h6>
             <form onsubmit="saveSettings(event)">
@@ -1733,7 +1733,7 @@ async function renderSettings() {
             </form>
           </div>
         </div>
-        <div class="col-lg-6">
+        <div class="col-lg-4">
           <div class="spx-card">
             <h6 class="mb-4">API Credentials</h6>
             <form onsubmit="saveAPICredentials(event)">
@@ -1752,6 +1752,47 @@ async function renderSettings() {
                   <input class="form-control spx-input" type="${f.hidden?'password':'text'}" id="cred_${f.key}" value="${settings[f.key]||''}" placeholder="${f.hidden?'••••••••':''}">
                 </div>`).join('')}
               <button type="submit" class="btn btn-spx w-100">Save Credentials</button>
+            </form>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="spx-card" style="max-height:80vh; overflow-y:auto; padding-right:10px;">
+            <h6 class="mb-4">Homepage Content CMS</h6>
+            <form onsubmit="saveHomepageSettings(event)">
+              ${[
+                {key:'home_hero_badge', label:'Hero Badge text'},
+                {key:'home_hero_title', label:'Hero Main Title'},
+                {key:'home_hero_desc', label:'Hero Description', type:'textarea'},
+                {key:'home_hero_cta_primary', label:'Primary CTA Button Text'},
+                {key:'home_hero_cta_secondary', label:'Secondary CTA Button Text'},
+                {key:'home_steps_title', label:'Steps Section Title'},
+                {key:'home_step1_title', label:'Step 1 Title'},
+                {key:'home_step1_desc', label:'Step 1 Description', type:'textarea'},
+                {key:'home_step2_title', label:'Step 2 Title'},
+                {key:'home_step2_desc', label:'Step 2 Description', type:'textarea'},
+                {key:'home_step3_title', label:'Step 3 Title'},
+                {key:'home_step3_desc', label:'Step 3 Description', type:'textarea'},
+                {key:'home_courses_badge', label:'Featured Courses Badge'},
+                {key:'home_courses_title', label:'Featured Courses Title'},
+                {key:'home_teachers_badge', label:'Top Teachers Badge'},
+                {key:'home_teachers_title', label:'Top Teachers Title'},
+                {key:'home_teachers_desc', label:'Top Teachers Description', type:'textarea'},
+                {key:'home_features_badge', label:'Features Section Badge'},
+                {key:'home_features_title', label:'Features Section Title'},
+                {key:'home_cta_title', label:'CTA Section Main Title'},
+                {key:'home_cta_desc', label:'CTA Section Subtitle', type:'textarea'},
+                {key:'home_cta_btn_student', label:'CTA Button Join Student'},
+                {key:'home_cta_btn_teacher', label:'CTA Button Join Teacher'},
+              ].map(f => `
+                <div class="mb-3">
+                  <label class="spx-label">${f.label}</label>
+                  ${f.type === 'textarea' ? `
+                    <textarea class="form-control spx-input" id="setting_${f.key}" rows="3">${settings[f.key]||''}</textarea>
+                  ` : `
+                    <input class="form-control spx-input" type="text" id="setting_${f.key}" value="${settings[f.key]||''}">
+                  `}
+                </div>`).join('')}
+              <button type="submit" class="btn btn-spx w-100">Save Homepage CMS</button>
             </form>
           </div>
         </div>
@@ -1776,6 +1817,20 @@ async function saveAPICredentials(e) {
   const body = {};
   keys.forEach(k => { const v = document.getElementById(`cred_${k}`)?.value; if (v) body[k] = v; });
   try { const d = await apiPost('/admin/settings',body); showToast(d.message||'API credentials saved'); }
+  catch (err) { showToast(err.message,'error'); }
+}
+
+async function saveHomepageSettings(e) {
+  e.preventDefault();
+  const keys = [
+    'home_hero_badge', 'home_hero_title', 'home_hero_desc', 'home_hero_cta_primary', 'home_hero_cta_secondary',
+    'home_steps_title', 'home_step1_title', 'home_step1_desc', 'home_step2_title', 'home_step2_desc', 'home_step3_title', 'home_step3_desc',
+    'home_courses_badge', 'home_courses_title', 'home_teachers_badge', 'home_teachers_title', 'home_teachers_desc',
+    'home_features_badge', 'home_features_title', 'home_cta_title', 'home_cta_desc', 'home_cta_btn_student', 'home_cta_btn_teacher'
+  ];
+  const body = {};
+  keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
+  try { const d = await apiPost('/admin/settings',body); showToast(d.message||'Homepage content saved'); }
   catch (err) { showToast(err.message,'error'); }
 }
 

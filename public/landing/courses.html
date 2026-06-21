@@ -64,50 +64,92 @@
   </div>
 </section>
 
-<!-- Footer -->
-<footer class="spx-footer">
+<!-- ── Footer ─────────────────────────────────────────────────── -->
+<footer class="spx-footer border-top">
   <div class="container">
-    <div class="row g-5">
-      <div class="col-lg-4">
-        <div class="footer-brand mb-3 d-flex align-items-center">
-          <img src="/logo.png" alt="SPEAXA Logo" style="height:32px; width:32px; object-fit:contain; margin-right:8px; border-radius:6px; background:white; padding:2px;">
-          <span class="fw-bold fs-4 text-white">SPEAXA</span>
+    <div class="row g-4 text-start">
+      <!-- Column 1: Brand & Contact Info -->
+      <div class="col-lg-3 col-md-6 mb-4">
+        <div class="footer-brand d-flex align-items-center gap-2 mb-3">
+          <img src="/logo.png" alt="Speaxa Logo" style="width: 32px; height: 32px; object-fit: contain;">
+          <h4 class="mb-0 fw-bold text-white" style="font-family: 'Outfit', sans-serif;">Speaxa</h4>
         </div>
-        <p class="text-muted mb-4">Empowering students across India with live, interactive, and personalized education. Quality learning, guaranteed.</p>
-        <div class="social-links">
-          <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
-          <a href="#" class="social-btn"><i class="fab fa-youtube"></i></a>
-          <a href="#" class="social-btn"><i class="fab fa-facebook"></i></a>
+        <p class="small text-white-50 mb-4" style="line-height: 1.6;">
+          Speaxa is India's leading live interactive EdTech platform, empowering students with live classrooms, expert mentors, and performance reports.
+        </p>
+        <div class="footer-contact-details d-flex flex-column gap-2 small text-white-50">
+          <div><strong class="text-white">TOLL FREE:</strong> <a href="tel:1800120456456" class="text-decoration-none text-white fw-bold">1800-120-456-456</a></div>
+          <div><i class="fas fa-phone-alt me-2 text-primary"></i><a href="tel:+919999999999" class="text-decoration-none text-white-50">+91 9999 999 999</a> (9 AM - 9:30 PM)</div>
+          <div><i class="fas fa-envelope me-2 text-primary"></i><a href="mailto:support@speaxa.com" class="text-decoration-none text-white-50">support@speaxa.com</a></div>
         </div>
       </div>
-      <div class="col-6 col-lg-2">
-        <h6 class="footer-heading">Platform</h6>
-        <ul class="footer-links">
-          <li><a href="/courses.html">Courses</a></li>
-          <li><a href="/teachers.html">Teachers</a></li>
-          <li><a href="/blog.html">Blog</a></li>
-        </ul>
-      </div>
-      <div class="col-6 col-lg-2">
-        <h6 class="footer-heading">Company</h6>
-        <ul class="footer-links">
+
+      <!-- Column 2: Company -->
+      <div class="col-lg-2 col-md-6 col-6 mb-4">
+        <h6 class="footer-heading mb-3 text-white" style="font-family: 'Outfit', sans-serif;">Company</h6>
+        <ul class="footer-links list-unstyled">
           <li><a href="/about.html">About Us</a></li>
-          <li><a href="/success-stories.html">Success Stories</a></li>
-          <li><a href="/faq.html">FAQ</a></li>
-          <li><a href="/contact.html">Contact</a></li>
+          <li><a href="/contact.html">Contact Us</a></li>
+          <li><a href="/blog.html">Speaxa Blog</a></li>
+          <li><a href="/success-stories.html">Our Results</a></li>
+          <li><a href="/privacy.html">Child Safety</a></li>
         </ul>
       </div>
-      <div class="col-lg-4">
-        <h6 class="footer-heading">Legal & Trust</h6>
-        <ul class="footer-links">
-          <li><a href="/privacy.html">Privacy Policy</a></li>
+
+      <!-- Column 3: Student & Teacher Links -->
+      <div class="col-lg-3 col-md-6 col-6 mb-4">
+        <h6 class="footer-heading mb-3 text-white" style="font-family: 'Outfit', sans-serif;">Quick Portals</h6>
+        <ul class="footer-links list-unstyled">
+          <li><a href="/student">Student Portal Login</a></li>
+          <li><a href="/teacher">Teacher Portal Login</a></li>
+          <li><a href="/teachers.html">Teach with Speaxa</a></li>
+          <li><a href="/courses.html">Browse Courses</a></li>
+          <li><a href="/faq.html">FAQs & Benefits</a></li>
           <li><a href="/terms.html">Terms of Service</a></li>
-          <li><a href="/faq.html">FAQ</a></li>
         </ul>
+      </div>
+
+      <!-- Column 4: App Download & Counselling -->
+      <div class="col-lg-4 col-md-6 mb-4">
+        <h6 class="footer-heading mb-3 text-white" style="font-family: 'Outfit', sans-serif;">App & Support</h6>
+        
+        <!-- SMS Link Form -->
+        <div class="footer-sms-box mb-4">
+          <label class="small text-white-50 mb-2">Get download link via SMS</label>
+          <form id="smsLinkForm" class="d-flex gap-2">
+            <div class="input-group">
+              <span class="input-group-text bg-dark-subtle border-0 text-white-50" style="border-radius: 12px 0 0 12px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1); border-right: none;">+91</span>
+              <input type="tel" id="smsPhone" class="form-control bg-dark border-0 text-white spx-input-sms" placeholder="Mobile number" required style="border-radius: 0 12px 12px 0; border: 1px solid rgba(255,255,255,0.1); border-left: none; font-size: 0.85rem;">
+            </div>
+            <button type="submit" class="btn btn-spx-primary px-3" style="border-radius: 12px; font-size: 0.85rem; white-space: nowrap;">Send Link</button>
+          </form>
+          <div id="smsFeedback" class="small text-success mt-2" style="display:none; font-size: 0.75rem;"></div>
+        </div>
+
+        <!-- Counselling Link -->
+        <div class="counselling-card p-3 d-flex align-items-center gap-3">
+          <div class="counselling-avatar" style="flex-shrink:0;">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=counsellor" alt="Counsellor" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.05); padding: 2px;">
+          </div>
+          <div class="flex-grow-1">
+            <p class="mb-1 text-white-50 small" style="line-height: 1.4; font-size: 0.75rem;">Need help choosing a course? Book a session.</p>
+            <a href="/contact.html" class="btn btn-spx-primary btn-sm px-3 py-1" style="font-size:0.75rem; border-radius:8px;">Speak to Expert</a>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="footer-bottom text-center">
-      <p class="mb-0">&copy; 2026 SPEAXA. All rights reserved.</p>
+
+    <!-- Bottom Bar -->
+    <div class="footer-bottom-bar mt-5 pt-4 border-top d-flex justify-content-between align-items-center flex-wrap gap-3" style="border-top-color: rgba(255,255,255,0.08) !important;">
+      <p class="mb-0 text-white-50 small">&copy; 2026 SPEAXA EdTech Pvt. Ltd. All rights reserved.</p>
+      
+      <!-- Social Media Buttons -->
+      <div class="social-icons d-flex gap-2">
+        <a href="https://instagram.com/speaxa" target="_blank" class="social-btn"><i class="fab fa-instagram"></i></a>
+        <a href="https://youtube.com/speaxa" target="_blank" class="social-btn"><i class="fab fa-youtube"></i></a>
+        <a href="https://facebook.com/speaxa" target="_blank" class="social-btn"><i class="fab fa-facebook-f"></i></a>
+        <a href="https://twitter.com/speaxa" target="_blank" class="social-btn"><i class="fab fa-twitter"></i></a>
+      </div>
     </div>
   </div>
 </footer>

@@ -1009,7 +1009,6 @@ html, body {
 .parent-visual-panel .visual-logo {
   width: 40px;
   height: 40px;
-  filter: brightness(0) invert(1);
 }
 
 .parent-visual-panel .visual-brand-text {

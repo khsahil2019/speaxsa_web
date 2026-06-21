@@ -151,6 +151,11 @@
         <span class="nav-icon"><i class="fa-solid fa-chalkboard-user"></i></span>
         Teacher Connect
       </div>
+      <div class="nav-section-label">Settings</div>
+      <div class="nav-item" id="nav-profile" onclick="switchTab('profile', this)">
+        <span class="nav-icon"><i class="fa-solid fa-user-gear"></i></span>
+        My Profile
+      </div>
     </nav>
 
     <div class="sidebar-bottom">
@@ -453,6 +458,71 @@
         </div>
       </div>
 
+      <!-- ── My Profile Tab ─────────────────────────── -->
+      <div id="tab-profile" class="tab-section">
+        <div style="margin-bottom:25px;">
+          <h2 style="font-family:'Outfit',sans-serif;font-size:1.35rem;margin-bottom:4px;"><i class="fa-solid fa-user-gear text-primary me-2"></i>Account Profile</h2>
+          <p style="font-size:0.85rem;color:var(--text-muted);">Manage your personal details, parent portal phone number, and security credentials.</p>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-lg-4 col-md-5">
+            <div class="card text-center" style="padding:28px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-md);">
+              <img id="parentProfileAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Parent" style="width:95px;height:95px;border-radius:50%;border:3px solid var(--primary);box-shadow:var(--shadow-md);margin: 0 auto 15px auto;" alt="Parent Avatar">
+              <h5 class="fw-bold mt-2 mb-1" id="parentProfileName" style="font-family:'Outfit',sans-serif;color:var(--text-primary);">Parent Name</h5>
+              <div class="badge px-3 py-1 mt-1" style="font-size:0.72rem; font-weight:600; border-radius:8px; background: rgba(60, 189, 176, 0.08); color: var(--primary-dark); border: 1px solid rgba(60, 189, 176, 0.15);">
+                <i class="fa-solid fa-shield-halved me-1"></i>Guardian Account
+              </div>
+              
+              <div class="mt-4 text-start" style="font-size:0.85rem;border-top:1px solid var(--border);padding-top:20px;">
+                <div class="mb-2 text-secondary d-flex align-items-center"><i class="fa-regular fa-envelope me-2 text-primary" style="width: 16px;"></i>Email: &nbsp;<strong id="parentProfileEmail" style="color:var(--text-primary);">parent@email.com</strong></div>
+                <div class="text-secondary d-flex align-items-center"><i class="fa-solid fa-phone me-2 text-primary" style="width: 16px;"></i>Phone: &nbsp;<strong id="parentProfilePhone" style="color:var(--text-primary);">+91 99999 99999</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8 col-md-7">
+            <div class="card" style="padding:28px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-md);">
+              <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-user-pen text-primary me-2"></i>Update Personal Details</h5>
+              <form id="parentProfileForm" onsubmit="updateParentProfile(event)">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Full Name</label>
+                    <input type="text" class="form-control" id="parentInputName" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Phone Number</label>
+                    <input type="text" class="form-control" id="parentInputPhone" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
+                  </div>
+                  <div class="col-12 mt-4">
+                    <button type="submit" class="btn btn-spx-primary" style="border:none;background:var(--gradient);color:white;padding:12px 24px;border-radius:10px;font-weight:600;cursor:pointer;box-shadow: 0 4px 12px rgba(60,189,176,0.25);"><i class="fa-regular fa-floppy-disk me-1"></i> Save Changes</button>
+                  </div>
+                </div>
+              </form>
+
+              <hr style="border-color:var(--border);margin:30px 0;">
+
+              <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-key text-primary me-2"></i>Change Portal Password</h5>
+              <form id="parentPasswordForm" onsubmit="changeParentPassword(event)">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Current Password</label>
+                    <input type="password" class="form-control" id="parentCurrPass" placeholder="••••••••" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">New Password</label>
+                    <input type="password" class="form-control" id="parentNewPass" placeholder="••••••••" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
+                  </div>
+                  <div class="col-12 mt-4">
+                    <button type="submit" class="btn btn-outline-primary" style="border:1px solid var(--primary);background:transparent;color:var(--primary-dark);padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;transition:var(--transition);"><i class="fa-solid fa-arrows-rotate me-1"></i> Update Password</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -508,7 +578,7 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ── Tab switching ──────────────────────────────────────────────────────────
-const tabLabels = { overview:'Overview', performance:'Performance', attendance:'Attendance', connect:'Teacher Connect' };
+const tabLabels = { overview:'Overview', performance:'Performance', attendance:'Attendance', connect:'Teacher Connect', profile:'My Profile' };
 let currentTab = 'overview';
 
 function switchTab(id, el) {
@@ -518,6 +588,69 @@ function switchTab(id, el) {
   document.getElementById(`nav-${id}`).classList.add('active');
   document.getElementById('headerTitle').textContent = tabLabels[id] || id;
   currentTab = id;
+  if (id === 'profile') {
+    loadParentProfileData();
+  }
+}
+
+function loadParentProfileData() {
+  const profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
+  document.getElementById('parentProfileName').textContent = profile.name || 'Parent';
+  document.getElementById('parentProfileEmail').textContent = profile.email || '—';
+  document.getElementById('parentProfilePhone').textContent = profile.phone || '—';
+  document.getElementById('parentInputName').value = profile.name || '';
+  document.getElementById('parentInputPhone').value = profile.phone || '';
+  
+  const avatarUrl = profile.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.name || 'Parent')}`;
+  document.getElementById('parentProfileAvatar').src = avatarUrl;
+}
+
+async function updateParentProfile(e) {
+  e.preventDefault();
+  const name = document.getElementById('parentInputName').value.trim();
+  const phone = document.getElementById('parentInputPhone').value.trim();
+  try {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
+      showToast('Profile updated successfully!', 'success');
+      initDashboard();
+      loadParentProfileData();
+    } else {
+      const err = await res.json();
+      showToast(err.error || 'Failed to update profile.', 'danger');
+    }
+  } catch {
+    showToast('Server connection error.', 'danger');
+  }
+}
+
+async function changeParentPassword(e) {
+  e.preventDefault();
+  const currentPassword = document.getElementById('parentCurrPass').value;
+  const newPassword = document.getElementById('parentNewPass').value;
+  try {
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    if (res.ok) {
+      showToast('Password updated successfully!', 'success');
+      document.getElementById('parentCurrPass').value = '';
+      document.getElementById('parentNewPass').value = '';
+    } else {
+      const err = await res.json();
+      showToast(err.error || 'Failed to change password.', 'danger');
+    }
+  } catch {
+    showToast('Server connection error.', 'danger');
+  }
 }
 
 // ── Login handler ──────────────────────────────────────────────────────────

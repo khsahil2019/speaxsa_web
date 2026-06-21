@@ -103,18 +103,89 @@ async function doReset() {
 }
 
 function saveAuth(tok, usr) {
-  token = tok; user = usr;
-  localStorage.setItem('student_token', tok);
-  localStorage.setItem('student_user', JSON.stringify(usr));
+  token = tok;
+  user = usr;
+
+  if (usr.role !== 'student') {
+    handleCrossRoleRedirect(tok, usr);
+    return;
+  }
+
+  const remember = document.getElementById('rememberMe')?.checked;
+  if (remember) {
+    localStorage.setItem('student_token', tok);
+    localStorage.setItem('student_user', JSON.stringify(usr));
+    sessionStorage.removeItem('student_token');
+    sessionStorage.removeItem('student_user');
+  } else {
+    sessionStorage.setItem('student_token', tok);
+    sessionStorage.setItem('student_user', JSON.stringify(usr));
+    localStorage.removeItem('student_token');
+    localStorage.removeItem('student_user');
+  }
   showApp();
   navigateTo('home');
 }
 
+function updateCachedUser(usr) {
+  user = usr;
+  if (localStorage.getItem('student_token')) {
+    localStorage.setItem('student_user', JSON.stringify(usr));
+  } else {
+    sessionStorage.setItem('student_user', JSON.stringify(usr));
+  }
+}
+
 function logout() {
-  localStorage.removeItem('student_token'); localStorage.removeItem('student_user');
-  token = null; user = null;
+  localStorage.removeItem('student_token');
+  localStorage.removeItem('student_user');
+  sessionStorage.removeItem('student_token');
+  sessionStorage.removeItem('student_user');
+  token = null;
+  user = null;
   document.getElementById('authScreen').classList.remove('d-none');
   document.getElementById('studentApp').classList.add('d-none');
+}
+
+function handleCrossRoleRedirect(tok, usr) {
+  // Clear student credentials
+  localStorage.removeItem('student_token');
+  localStorage.removeItem('student_user');
+  sessionStorage.removeItem('student_token');
+  sessionStorage.removeItem('student_user');
+
+  const role = usr.role;
+  const remember = document.getElementById('rememberMe')?.checked;
+
+  if (role === 'teacher') {
+    if (remember) {
+      localStorage.setItem('teacher_token', tok);
+      localStorage.setItem('teacher_user', JSON.stringify(usr));
+    } else {
+      sessionStorage.setItem('teacher_token', tok);
+      sessionStorage.setItem('teacher_user', JSON.stringify(usr));
+    }
+    showToast('Redirecting to Teacher Portal...', 'info');
+    setTimeout(() => { window.location.href = '/teacher/'; }, 1000);
+  } else if (role === 'parent') {
+    if (remember) {
+      localStorage.setItem('spx_parent_token', tok);
+      localStorage.setItem('spx_parent_profile', JSON.stringify(usr));
+    } else {
+      sessionStorage.setItem('spx_parent_token', tok);
+      sessionStorage.setItem('spx_parent_profile', JSON.stringify(usr));
+    }
+    showToast('Redirecting to Parent Portal...', 'info');
+    setTimeout(() => { window.location.href = '/parent/'; }, 1000);
+  } else if (role === 'admin') {
+    localStorage.setItem('admin_token', tok);
+    localStorage.setItem('admin_user', JSON.stringify(usr));
+    showToast('Redirecting to Admin Portal...', 'info');
+    setTimeout(() => { window.location.href = '/admin/'; }, 1000);
+  } else {
+    showToast('Invalid portal access for your role', 'error');
+    logout();
+  }
 }
 
 function showApp() {
@@ -401,13 +472,16 @@ async function showCourseDetails(courseId) {
               }
 
               return `
-                <div class="batch-card">
+                <div class="batch-card p-3 mb-3" style="background: var(--bg-dark-alt); border: 1px solid var(--border); border-radius: 14px;">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
                       <h6 class="fw-bold mb-1" style="color:var(--text-primary);">${b.batch_name}</h6>
-                      <div class="text-muted" style="font-size: 0.75rem;">
-                        <i class="fas fa-user-tie me-1 text-primary"></i> Mentor: <strong style="color:var(--text-secondary);">${b.teacher_name || 'Expert'}</strong>
+                      <div class="text-muted" style="font-size: 0.75rem; margin-bottom: 2px;">
+                        <i class="fas fa-user-tie me-1 text-primary"></i> Mentor: <strong style="color:var(--text-secondary);">${b.teacher_name || 'Expert'}</strong> (${b.teacher_level || 'Gold'} • <i class="fas fa-star text-warning"></i> ${parseFloat(b.teacher_rating || 5).toFixed(1)})
                       </div>
+                      <button class="btn btn-link p-0 text-primary text-decoration-none fw-semibold mb-2" onclick="toggleTeacherProfile(event, '${b.id}')" style="font-size: 0.72rem; border: none; background: transparent; outline: none; box-shadow: none;">
+                        <i class="fas fa-info-circle me-1"></i>View Mentor Bio & Qualifications
+                      </button>
                     </div>
                     <span class="badge ${seatsLeft <= 5 ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'} px-2 py-1" style="font-size:0.7rem; font-weight:600; border: 1px solid currentColor;">
                       ${seatsLeft} Seats Left
@@ -419,7 +493,25 @@ async function showCourseDetails(courseId) {
                     <div><i class="far fa-calendar-alt me-1 text-primary"></i> ${b.days_of_week.join(', ')}</div>
                   </div>
                   
-                  ${btnHtml}
+                  <!-- Expandable Teacher Info Section -->
+                  <div id="teacher-profile-${b.id}" class="mt-2 pt-2 border-top" style="display: none; border-color: rgba(60, 189, 176, 0.15) !important;">
+                    <p class="mb-2 text-secondary" style="font-size: 0.78rem; line-height: 1.5;">
+                      <strong style="color: var(--text-primary) !important;">Bio:</strong> ${b.teacher_bio || 'A verified expert educator committed to helping students achieve conceptual clarity and academic excellence.'}
+                    </p>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                      <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                        <i class="fas fa-graduation-cap text-primary me-1"></i>${b.teacher_qualification || 'Verified Mentor'}
+                      </span>
+                      <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                        <i class="fas fa-briefcase text-primary me-1"></i>${b.teacher_experience || 5}+ Yrs Exp
+                      </span>
+                      <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500;">
+                        <i class="fas fa-book text-primary me-1"></i>${b.teacher_expertise || 'General'} Expert
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-2">${btnHtml}</div>
                 </div>
               `;
             }).join('') : '<p class="text-muted text-center py-4">No active batches available for this course yet.</p>'}
@@ -776,48 +868,98 @@ async function renderProfile() {
     const profile = await api('/auth/profile');
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
+        <!-- Student Info Sidebar Card -->
         <div class="col-lg-4">
-          <div class="spx-card text-center">
-            <img src="${profile.photo_url||`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`}" style="width:90px;height:90px;border-radius:50%;border:3px solid var(--primary)" alt="">
-            <h5 class="fw-bold mt-3 mb-1">${profile.name}</h5>
-            <div class="text-muted small">${profile.role}</div>
-            <div class="mt-2" style="background:rgba(60,189,176,.1);border-radius:8px;padding:6px 12px;display:inline-block">
-              <code style="color:#3CBDB0">${profile.student_code||'—'}</code>
+          <div class="spx-card text-center position-relative overflow-hidden" style="border:1px solid rgba(60,189,176,0.2); background: radial-gradient(circle at top left, var(--bg-card), var(--bg-dark-alt));">
+            <!-- Top Gradient Accent -->
+            <div style="position:absolute; top:0; left:0; right:0; height:6px; background:var(--gradient);"></div>
+            
+            <div class="position-relative d-inline-block mt-3">
+              <img src="${profile.photo_url||`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.25);box-shadow: 0 8px 20px rgba(0,0,0,0.15);" alt="Student Avatar">
+              <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 14px; height: 14px; border-width: 2px !important;" title="Active"></span>
             </div>
-            <div class="mt-3 text-muted small">
-              <div>${profile.grade||''} ${profile.board||''}</div>
-              <div>${profile.email}</div>
-              <div>${profile.phone||''}</div>
+            
+            <h4 class="fw-bold mt-3 mb-1" style="font-family:'Outfit',sans-serif;color:var(--text-primary);">${profile.name}</h4>
+            <div class="badge px-3 py-1 mb-3" style="background:rgba(60,189,176,0.1); color:#0F766E; font-size:0.72rem; font-weight:600; border-radius:8px;">
+              <i class="fas fa-graduation-cap me-1"></i>Student Portal
+            </div>
+            
+            <!-- Learning Streak Dashboard Feature -->
+            <div class="p-3 mb-3 mx-2 text-center rounded-3" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 1.4rem;">🔥</span>
+              <div class="text-start">
+                <div class="fw-bold text-warning" style="font-size: 0.95rem; line-height: 1.2;">${profile.learning_streak || 0} Day Streak</div>
+                <div class="text-muted" style="font-size: 0.68rem;">Keep learning to build your streak!</div>
+              </div>
+            </div>
+
+            <!-- Student Code with Copy Button -->
+            <div class="mt-2 mb-3">
+              <span class="small text-muted d-block mb-1">Student Unique Code</span>
+              <div class="d-inline-flex align-items-center bg-dark-alt px-3 py-2 rounded-3 border" style="background:rgba(255,255,255,0.03);">
+                <code style="color:#3CBDB0; font-size:0.9rem; font-weight:600; font-family:monospace; letter-spacing:0.5px;">${profile.student_code||'—'}</code>
+                <button class="btn btn-link text-primary p-0 ms-2 lh-1" onclick="navigator.clipboard.writeText('${profile.student_code}'); showToast('Student Code copied to clipboard!')" title="Copy Code" style="border:none;background:transparent;box-shadow:none;">
+                  <i class="far fa-copy" style="font-size: 0.85rem;"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="mt-4 text-start border-top pt-3 mx-2" style="font-size:0.85rem; border-color: rgba(255,255,255,0.08) !important;">
+              <div class="mb-2 text-secondary"><i class="fas fa-layer-group text-primary me-2" style="width:16px;"></i>Academic Level: <strong style="color:var(--text-primary);">${profile.grade||'—'} (${profile.board||'—'})</strong></div>
+              <div class="mb-2 text-secondary"><i class="far fa-envelope text-primary me-2" style="width:16px;"></i>Email Address: <strong style="color:var(--text-primary);">${profile.email}</strong></div>
+              <div class="text-secondary"><i class="fas fa-phone-alt text-primary me-2" style="width:16px;"></i>Phone Number: <strong style="color:var(--text-primary);">${profile.phone||'—'}</strong></div>
             </div>
           </div>
         </div>
+        
+        <!-- Forms Card -->
         <div class="col-lg-8">
-          <div class="spx-card">
-            <h6 class="mb-4">Edit Profile</h6>
+          <div class="spx-card" style="border:1px solid rgba(60,189,176,0.15);">
+            <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;color:var(--text-primary);"><i class="fas fa-user-edit text-primary me-2"></i>Edit Student Profile</h5>
             <form onsubmit="updateProfile(event)">
               <div class="row g-3">
-                <div class="col-6"><label class="spx-label">Full Name</label><input class="form-control spx-input" id="profName" value="${profile.name||''}"></div>
-                <div class="col-6"><label class="spx-label">Phone</label><input class="form-control spx-input" id="profPhone" value="${profile.phone||''}"></div>
-                <div class="col-6"><label class="spx-label">Grade</label>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Full Name</label>
+                  <input class="form-control spx-input" id="profName" value="${profile.name||''}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Phone</label>
+                  <input class="form-control spx-input" id="profPhone" value="${profile.phone||''}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Grade / Class</label>
                   <select class="form-select spx-input" id="profGrade">
                     ${['Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'].map(g=>`<option ${profile.grade===g?'selected':''}>${g}</option>`).join('')}
                   </select>
                 </div>
-                <div class="col-6"><label class="spx-label">Board</label>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Syllabus Board</label>
                   <select class="form-select spx-input" id="profBoard">
                     ${['CBSE','ICSE','State Board'].map(b=>`<option ${profile.board===b?'selected':''}>${b}</option>`).join('')}
                   </select>
                 </div>
-                <div class="col-12"><button type="submit" class="btn btn-spx">Save Changes</button></div>
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-spx px-4 py-2 fw-semibold"><i class="fas fa-save me-1"></i> Save Changes</button>
+                </div>
               </div>
             </form>
-            <hr style="border-color:var(--border);margin:20px 0">
-            <h6 class="mb-3">Change Password</h6>
+            
+            <hr style="border-color:rgba(60,189,176,0.15); margin:30px 0;">
+            
+            <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;color:var(--text-primary);"><i class="fas fa-shield-alt text-primary me-2"></i>Change Security Password</h5>
             <form onsubmit="changePassword(event)">
               <div class="row g-3">
-                <div class="col-6"><input class="form-control spx-input" id="currPass" type="password" placeholder="Current Password"></div>
-                <div class="col-6"><input class="form-control spx-input" id="newPass" type="password" placeholder="New Password"></div>
-                <div class="col-12"><button type="submit" class="btn btn-outline-primary">Update Password</button></div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Current Password</label>
+                  <input class="form-control spx-input" id="currPass" type="password" placeholder="••••••••" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">New Password</label>
+                  <input class="form-control spx-input" id="newPass" type="password" placeholder="••••••••" required>
+                </div>
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-outline-primary px-4 py-2 fw-semibold"><i class="fas fa-key me-1"></i> Update Password</button>
+                </div>
               </div>
             </form>
           </div>
@@ -837,8 +979,13 @@ async function updateProfile(e) {
     }) });
     if (data.error) throw new Error(data.error);
     showToast('Profile updated');
-    user = data.user;
-    localStorage.setItem('student_user', JSON.stringify(user));
+    updateCachedUser(data.user);
+    if (user) {
+      document.getElementById('nameSidebar').textContent = user.name;
+      const av = user.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`;
+      document.getElementById('avatarSidebar').src = av;
+      document.getElementById('avatarHeader').src = av;
+    }
   } catch(e) { showToast(e.message, 'error'); }
 }
 
@@ -1005,7 +1152,43 @@ async function viewBatchDetails(batchId) {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-if (token && user && user.role === 'student') {
-  showApp();
-  navigateTo('home');
+async function initApp() {
+  if (token) {
+    try {
+      const profile = await api('/auth/profile');
+      if (profile.role === 'student') {
+        updateCachedUser(profile);
+        showApp();
+        const page = window.location.hash ? window.location.hash.substring(1) : 'home';
+        navigateTo(page);
+      } else {
+        handleCrossRoleRedirect(token, profile);
+      }
+    } catch (e) {
+      console.error('Failed to sync profile', e);
+      logout();
+    }
+  } else {
+    document.getElementById('authScreen').classList.remove('d-none');
+    document.getElementById('studentApp').classList.add('d-none');
+    if (window.location.hash === '#register') {
+      switchTab('register');
+    }
+  }
+}
+
+initApp();
+
+function toggleTeacherProfile(event, id) {
+  if (event) event.preventDefault();
+  const el = document.getElementById(`teacher-profile-${id}`);
+  if (el) {
+    if (el.style.display === 'none') {
+      el.style.display = 'block';
+      event.target.innerHTML = '<i class="fas fa-times-circle me-1"></i>Hide Mentor Info';
+    } else {
+      el.style.display = 'none';
+      event.target.innerHTML = '<i class="fas fa-info-circle me-1"></i>View Mentor Bio & Qualifications';
+    }
+  }
 }

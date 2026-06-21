@@ -34,11 +34,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ── Public Settings ────────────────────────────────────────────
 router.get('/settings/public', async (req, res) => {
   try {
     const settings = await configService.getConfig();
-    return res.json({
+    const publicSettings = {
       logo_text: settings.logo_text || 'SPEAXA',
       logo_url: settings.logo_url || '/admin/logo.png',
       announcement: settings.announcement || 'Welcome to SPEAXA!',
@@ -47,7 +46,13 @@ router.get('/settings/public', async (req, res) => {
       support_email: settings.support_email || 'support@speaxa.com',
       support_phone: settings.support_phone || '+91 9999 999 999',
       support_hours: settings.support_hours || 'Mon–Sat: 8 AM – 8 PM IST',
-    });
+    };
+    for (const [key, value] of Object.entries(settings)) {
+      if (key.startsWith('home_')) {
+        publicSettings[key] = value;
+      }
+    }
+    return res.json(publicSettings);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

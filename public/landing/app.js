@@ -57,8 +57,8 @@ async function loadCourses() {
       return;
     }
 
-    grid.innerHTML = courses.map(c => `
-      <div class="col-sm-6 col-lg-3" data-aos="fade-up">
+    grid.innerHTML = courses.slice(0, 6).map(c => `
+      <div class="col-sm-6 col-md-6 col-lg-4" data-aos="fade-up">
         <div class="course-card">
           <div class="course-thumbnail" style="${c.thumbnail_url ? `background: url(${c.thumbnail_url}) center/cover no-repeat;` : `background:linear-gradient(135deg,${randomGradient()})`}">
             ${c.thumbnail_url ? '' : `<span style="font-size:3rem">${icons[c.subject] || icons.default}</span>`}
@@ -80,7 +80,7 @@ async function loadCourses() {
       </div>
     `).join('');
   } catch {
-    grid.innerHTML = `<div class="col-sm-6 col-lg-3" data-aos="fade-up">
+    grid.innerHTML = `<div class="col-sm-6 col-md-6 col-lg-4" data-aos="fade-up">
       <div class="course-card">
         <div class="course-thumbnail" style="background:linear-gradient(135deg,#3CBDB0,#0F766E)">
           <span style="font-size:3rem">⚛️</span>
@@ -96,7 +96,7 @@ async function loadCourses() {
           <button class="btn btn-spx-primary btn-sm px-4" onclick="showCourseDetails('course_001')">Explore</button>
         </div>
       </div>
-    </div>`.repeat(4);
+    </div>`.repeat(6);
   }
 }
 
@@ -104,13 +104,19 @@ async function loadCourses() {
 async function loadTeachers() {
   const grid = document.getElementById('teachersGrid');
   if (!grid) return;
+  const meetBtn = document.getElementById('meetAllTeachersContainer');
   try {
     const res = await fetch(`${API}/api/public/teachers`);
     const teachers = await res.json();
 
     if (!teachers.length) {
       grid.innerHTML = `<div class="col-12 text-center py-5 text-muted">No teachers available yet</div>`;
+      if (meetBtn) meetBtn.style.display = 'none';
       return;
+    }
+
+    if (meetBtn) {
+      meetBtn.style.display = teachers.length >= 4 ? 'block' : 'none';
     }
 
     grid.innerHTML = teachers.map(t => `
@@ -143,6 +149,9 @@ async function loadTeachers() {
       { name: 'Sahil Khan', subject: 'Mathematics', level: 'Elite', rating: 5.0, exp: 12, photo: '/uploads/profiles/teacher_sahil.png' },
       { name: 'Rahul Joshi', subject: 'Chemistry', level: 'Silver', rating: 4.7, exp: 5, photo: '/uploads/profiles/teacher_sahil.png' },
     ];
+    if (meetBtn) {
+      meetBtn.style.display = demos.length >= 4 ? 'block' : 'none';
+    }
     grid.innerHTML = demos.map(t => `
       <div class="col-sm-6 col-md-4 col-lg-4" data-aos="fade-up">
         <div class="teacher-card">
@@ -303,6 +312,67 @@ async function loadSettings() {
       el.textContent = settings.logo_text || 'SPEAXA';
     });
 
+    // Helpers to safely set DOM elements
+    const setHtml = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val) el.innerHTML = val;
+    };
+    const setText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val) el.textContent = val;
+    };
+
+    // Hero Section Bindings
+    setText('heroBadge', settings.home_hero_badge);
+    setHtml('heroTitle', settings.home_hero_title);
+    setText('heroDesc', settings.home_hero_desc);
+
+    const heroCtaPrimary = document.getElementById('heroCtaPrimary');
+    if (heroCtaPrimary && settings.home_hero_cta_primary) {
+      heroCtaPrimary.innerHTML = `<i class="fas fa-search me-2"></i>${settings.home_hero_cta_primary}`;
+    }
+
+    const heroCtaSecondary = document.getElementById('heroCtaSecondary');
+    if (heroCtaSecondary && settings.home_hero_cta_secondary) {
+      heroCtaSecondary.innerHTML = `<i class="fas fa-info-circle me-2"></i>${settings.home_hero_cta_secondary}`;
+    }
+
+    // How It Works Steps Section Bindings
+    setHtml('stepsTitle', settings.home_steps_title);
+    setText('step1Title', settings.home_step1_title);
+    setText('step1Desc', settings.home_step1_desc);
+    setText('step2Title', settings.home_step2_title);
+    setText('step2Desc', settings.home_step2_desc);
+    setText('step3Title', settings.home_step3_title);
+    setText('step3Desc', settings.home_step3_desc);
+
+    // Featured Courses Section Bindings
+    setText('coursesBadge', settings.home_courses_badge);
+    setHtml('coursesTitle', settings.home_courses_title);
+
+    // Top Teachers Section Bindings
+    setText('teachersBadge', settings.home_teachers_badge);
+    setHtml('teachersTitle', settings.home_teachers_title);
+    setText('teachersDesc', settings.home_teachers_desc);
+
+    // Why SPEAXA Section Bindings
+    setText('featuresBadge', settings.home_features_badge);
+    setHtml('featuresTitle', settings.home_features_title);
+
+    // Bottom CTA Section Bindings
+    setHtml('ctaTitle', settings.home_cta_title);
+    setText('ctaDesc', settings.home_cta_desc);
+
+    const ctaBtnStudent = document.getElementById('ctaBtnStudent');
+    if (ctaBtnStudent && settings.home_cta_btn_student) {
+      ctaBtnStudent.innerHTML = `<i class="fas fa-graduation-cap me-2"></i>${settings.home_cta_btn_student}`;
+    }
+
+    const ctaBtnTeacher = document.getElementById('ctaBtnTeacher');
+    if (ctaBtnTeacher && settings.home_cta_btn_teacher) {
+      ctaBtnTeacher.innerHTML = `<i class="fas fa-chalkboard-teacher me-2"></i>${settings.home_cta_btn_teacher}`;
+    }
+
   } catch (err) {
     console.error('Failed to load settings:', err);
   }
@@ -372,20 +442,41 @@ async function showCourseDetails(courseId) {
               <img src="${teacherPhoto}" alt="${b.teacher_name}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; flex-shrink: 0;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(b.teacher_name || 'Expert')}'">
               <div>
                 <h6 class="fw-bold mb-1" style="color: #0F766E !important; font-size: 1.05rem;">${b.batch_name}</h6>
-                <div class="small mb-2" style="color: #334155 !important;">
+                <div class="small mb-1" style="color: #334155 !important;">
                   <i class="fas fa-chalkboard-teacher me-1" style="color: #3CBDB0 !important;"></i>Mentor: <strong style="color: #0F172A !important;">${b.teacher_name || 'Expert'}</strong> (${b.teacher_level || 'Gold'} • <i class="fas fa-star text-warning"></i> ${parseFloat(b.teacher_rating || 5).toFixed(1)})
                 </div>
                 <div class="small mb-1" style="color: #475569 !important;">
                   <i class="fas fa-calendar-alt me-1" style="color: #3CBDB0 !important;"></i>Days: <strong style="color: #1e293b !important;">${days}</strong>
                 </div>
-                <div class="small" style="color: #475569 !important;">
+                <div class="small mb-1" style="color: #475569 !important;">
                   <i class="fas fa-clock me-1" style="color: #3CBDB0 !important;"></i>Time: <strong style="color: #1e293b !important;">${b.start_time} - ${b.end_time}</strong>
                 </div>
+                <button class="btn btn-link p-0 text-primary text-decoration-none fw-semibold" onclick="toggleTeacherProfile(event, '${b.id}')" style="font-size: 0.76rem; border: none; background: transparent; outline: none; box-shadow: none;">
+                  <i class="fas fa-info-circle me-1"></i>View Mentor Bio & Qualifications
+                </button>
               </div>
             </div>
             <div class="text-end d-flex flex-column align-items-end ms-auto">
               <span class="badge mb-2" style="background: rgba(15, 118, 110, 0.1) !important; color: #0F766E !important; border: 1px solid rgba(15, 118, 110, 0.15) !important; font-weight: 600; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem;">${b.available_seats} seats left</span>
               <button class="btn btn-spx-primary btn-sm px-4" style="border-radius: 8px;" onclick="checkoutBatch('${b.id}')">Enroll</button>
+            </div>
+          </div>
+          
+          <!-- Expandable Teacher Info Section -->
+          <div id="teacher-profile-${b.id}" class="mt-3 pt-3 border-top" style="display: none; border-color: rgba(60, 189, 176, 0.15) !important;">
+            <p class="mb-2 text-secondary" style="font-size: 0.82rem; line-height: 1.55;">
+              <strong style="color: #0F172A !important;">Mentor Bio:</strong> ${b.teacher_bio || 'A verified expert educator committed to helping students achieve conceptual clarity and academic excellence.'}
+            </p>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              <span class="badge px-2 py-1" style="background: rgba(60, 189, 176, 0.08) !important; color: #0F766E !important; border: 1px solid rgba(60, 189, 176, 0.15) !important; font-size: 0.72rem; font-weight: 500;">
+                <i class="fas fa-graduation-cap me-1"></i>${b.teacher_qualification || 'Verified Mentor'}
+              </span>
+              <span class="badge px-2 py-1" style="background: rgba(60, 189, 176, 0.08) !important; color: #0F766E !important; border: 1px solid rgba(60, 189, 176, 0.15) !important; font-size: 0.72rem; font-weight: 500;">
+                <i class="fas fa-briefcase me-1"></i>${b.teacher_experience || 5}+ Years Exp
+              </span>
+              <span class="badge px-2 py-1" style="background: rgba(60, 189, 176, 0.08) !important; color: #0F766E !important; border: 1px solid rgba(60, 189, 176, 0.15) !important; font-size: 0.72rem; font-weight: 500;">
+                <i class="fas fa-book-reader me-1"></i>${b.teacher_expertise || 'General'} Expert
+              </span>
             </div>
           </div>
         </div>
@@ -514,9 +605,90 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// ── Announcement Bar Logic ────────────────────────────────────
+function createAnnouncementBar() {
+  if (localStorage.getItem('speaxa_announcement_dismissed') === 'true') return;
+  
+  const bar = document.createElement('div');
+  bar.id = 'announcementBar';
+  bar.className = 'announcement-bar';
+  bar.innerHTML = `
+    <div class="announcement-content">
+      <span>📢 Speaxa is Launching Soon – Stay Tuned!</span>
+      <button class="btn-close-announcement" onclick="dismissAnnouncement()">&times;</button>
+    </div>
+  `;
+  document.body.prepend(bar);
+  document.body.classList.add('has-announcement');
+  const nav = document.getElementById('mainNav');
+  if (nav) nav.style.top = '40px';
+}
+
+function dismissAnnouncement() {
+  localStorage.setItem('speaxa_announcement_dismissed', 'true');
+  const bar = document.getElementById('announcementBar');
+  const nav = document.getElementById('mainNav');
+  if (bar) {
+    bar.style.transform = 'translateY(-100%)';
+    setTimeout(() => {
+      bar.remove();
+      document.body.classList.remove('has-announcement');
+      if (nav) nav.style.top = '0';
+    }, 300);
+  }
+}
+
+// ── Footer App Action Handlers ────────────────────────────────
+function showAppComingSoon(event) {
+  if (event) event.preventDefault();
+  alert("Speaxa Mobile Application is launching soon! Stay tuned for Google Play Store and iOS App Store releases.");
+}
+
+// Expose handlers to window scope
+window.dismissAnnouncement = dismissAnnouncement;
+window.showAppComingSoon = showAppComingSoon;
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Inject announcement
+  createAnnouncementBar();
+
+  // Bind SMS Form
+  const smsForm = document.getElementById('smsLinkForm');
+  if (smsForm) {
+    smsForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const phoneInput = document.getElementById('smsPhone');
+      const feedback = document.getElementById('smsFeedback');
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.textContent = `🚀 SMS Link request received! App download link will be sent to +91 ${phoneInput.value} once the app launches soon!`;
+        phoneInput.value = '';
+        setTimeout(() => {
+          feedback.style.display = 'none';
+        }, 6000);
+      }
+    });
+  }
+});
+
 // ── Init ──────────────────────────────────────────────────────
 createParticles();
 loadCourses();
 loadTeachers();
 loadStats();
 loadSettings();
+
+function toggleTeacherProfile(event, id) {
+  if (event) event.preventDefault();
+  const el = document.getElementById(`teacher-profile-${id}`);
+  if (el) {
+    if (el.style.display === 'none') {
+      el.style.display = 'block';
+      event.target.innerHTML = '<i class="fas fa-times-circle me-1"></i>Hide Mentor Info';
+    } else {
+      el.style.display = 'none';
+      event.target.innerHTML = '<i class="fas fa-info-circle me-1"></i>View Mentor Bio & Qualifications';
+    }
+  }
+}
+

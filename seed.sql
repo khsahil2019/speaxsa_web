@@ -22,12 +22,12 @@ TRUNCATE TABLE courses CASCADE;
 TRUNCATE TABLE users CASCADE;
 
 -- 1. Insert Users (Password is 'speaxa123' hashed with Speaxa salt)
-INSERT INTO users (id, email, name, phone, role, qualification, experience_years, photo_url, rating, approval_status, password_hash) VALUES
-  ('teach_1', 'ananya@Speaxa.com', 'Dr. Ananya Sharma', '+91 99999 88888', 'teacher', 'PhD in Physics', 12, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ananya', 4.90, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
-  ('teach_pending', 'sanjay@Speaxa.com', 'Sanjay Dutta', '+91 91111 22222', 'teacher', 'M.Sc. Mathematics, B.Ed.', 6, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sanjay', 0.00, 'pending', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
-  ('stud_1', 'rahul@gmail.com', 'Rahul Kumar', '+91 98765 43210', 'student', 'Class 10 Student', 0, 'https://api.dicebear.com/7.x/adventurer/svg?seed=Rahul', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
-  ('parent_1', 'anil@gmail.com', 'Anil Kumar (Rahul''s Father)', '+91 88888 77777', 'parent', 'Guardian', 0, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anil', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3'),
-  ('admin_1', 'admin@Speaxa.com', 'Platform Admin', '+91 77777 66666', 'admin', 'System Engineer', 5, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3');
+INSERT INTO users (id, email, name, phone, role, qualification, experience_years, photo_url, rating, approval_status, password_hash, subject_expertise, languages, bio) VALUES
+  ('teach_1', 'ananya@Speaxa.com', 'Dr. Ananya Sharma', '+91 99999 88888', 'teacher', 'PhD in Physics', 12, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ananya', 4.90, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3', 'Physics', 'English, Hindi', 'Dr. Ananya is a PhD in Physics with 12+ years of experience teaching electromagnetism, optics, and thermodynamics. She loves making science fun and visual.'),
+  ('teach_pending', 'sanjay@Speaxa.com', 'Sanjay Dutta', '+91 91111 22222', 'teacher', 'M.Sc. Mathematics, B.Ed.', 6, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sanjay', 0.00, 'pending', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3', 'Mathematics', 'English, Bengali', 'Sanjay is a passionate mathematics educator with 6 years of experience. He specializes in algebra and calculus prep.'),
+  ('stud_1', 'rahul@gmail.com', 'Rahul Kumar', '+91 98765 43210', 'student', 'Class 10 Student', 0, 'https://api.dicebear.com/7.x/adventurer/svg?seed=Rahul', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3', NULL, NULL, NULL),
+  ('parent_1', 'anil@gmail.com', 'Anil Kumar (Rahul''s Father)', '+91 88888 77777', 'parent', 'Guardian', 0, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anil', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3', NULL, NULL, NULL),
+  ('admin_1', 'admin@Speaxa.com', 'Platform Admin', '+91 77777 66666', 'admin', 'System Engineer', 5, 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin', 5.00, 'approved', '3bd546abbb1369e3d5e38db529c5f3000e7703ed3be72bc5979bc5a710c9eca3', NULL, NULL, NULL);
 
 -- 2. Insert Courses
 INSERT INTO courses (id, title, description, grade, board, price) VALUES

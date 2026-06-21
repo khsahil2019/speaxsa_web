@@ -56,7 +56,6 @@ async function doLogin() {
     })).json();
 
     if (data.error) throw new Error(data.error);
-    if (data.user.role !== 'teacher') throw new Error('Access denied. Teacher portal only.');
     saveAuth(data.token, data.user);
   } catch(e) {
     const errEl = document.getElementById('loginError');
@@ -138,18 +137,89 @@ async function doReset() {
 }
 
 function saveAuth(tok, usr) {
-  token = tok; user = usr;
-  localStorage.setItem('teacher_token', tok);
-  localStorage.setItem('teacher_user', JSON.stringify(usr));
+  token = tok;
+  user = usr;
+
+  if (usr.role !== 'teacher') {
+    handleCrossRoleRedirect(tok, usr);
+    return;
+  }
+
+  const remember = document.getElementById('rememberMe')?.checked;
+  if (remember) {
+    localStorage.setItem('teacher_token', tok);
+    localStorage.setItem('teacher_user', JSON.stringify(usr));
+    sessionStorage.removeItem('teacher_token');
+    sessionStorage.removeItem('teacher_user');
+  } else {
+    sessionStorage.setItem('teacher_token', tok);
+    sessionStorage.setItem('teacher_user', JSON.stringify(usr));
+    localStorage.removeItem('teacher_token');
+    localStorage.removeItem('teacher_user');
+  }
   showApp();
   navigateTo('home');
 }
 
+function updateCachedUser(usr) {
+  user = usr;
+  if (localStorage.getItem('teacher_token')) {
+    localStorage.setItem('teacher_user', JSON.stringify(usr));
+  } else {
+    sessionStorage.setItem('teacher_user', JSON.stringify(usr));
+  }
+}
+
 function logout() {
-  localStorage.removeItem('teacher_token'); localStorage.removeItem('teacher_user');
-  token = null; user = null;
+  localStorage.removeItem('teacher_token');
+  localStorage.removeItem('teacher_user');
+  sessionStorage.removeItem('teacher_token');
+  sessionStorage.removeItem('teacher_user');
+  token = null;
+  user = null;
   document.getElementById('authScreen').classList.remove('d-none');
   document.getElementById('teacherApp').classList.add('d-none');
+}
+
+function handleCrossRoleRedirect(tok, usr) {
+  // Clear teacher credentials
+  localStorage.removeItem('teacher_token');
+  localStorage.removeItem('teacher_user');
+  sessionStorage.removeItem('teacher_token');
+  sessionStorage.removeItem('teacher_user');
+
+  const role = usr.role;
+  const remember = document.getElementById('rememberMe')?.checked;
+
+  if (role === 'student') {
+    if (remember) {
+      localStorage.setItem('student_token', tok);
+      localStorage.setItem('student_user', JSON.stringify(usr));
+    } else {
+      sessionStorage.setItem('student_token', tok);
+      sessionStorage.setItem('student_user', JSON.stringify(usr));
+    }
+    showToast('Redirecting to Student Portal...', 'info');
+    setTimeout(() => { window.location.href = '/student/'; }, 1000);
+  } else if (role === 'parent') {
+    if (remember) {
+      localStorage.setItem('spx_parent_token', tok);
+      localStorage.setItem('spx_parent_profile', JSON.stringify(usr));
+    } else {
+      sessionStorage.setItem('spx_parent_token', tok);
+      sessionStorage.setItem('spx_parent_profile', JSON.stringify(usr));
+    }
+    showToast('Redirecting to Parent Portal...', 'info');
+    setTimeout(() => { window.location.href = '/parent/'; }, 1000);
+  } else if (role === 'admin') {
+    localStorage.setItem('admin_token', tok);
+    localStorage.setItem('admin_user', JSON.stringify(usr));
+    showToast('Redirecting to Admin Portal...', 'info');
+    setTimeout(() => { window.location.href = '/admin/'; }, 1000);
+  } else {
+    showToast('Invalid portal access for your role', 'error');
+    logout();
+  }
 }
 
 function showApp() {
@@ -1748,70 +1818,109 @@ async function renderProfile() {
   loading();
   try {
     const profile = await api('/auth/profile');
+    
+    // Determine level badge details
+    let levelBadgeHtml = '';
+    if (profile.teacher_level === 'Platinum') {
+      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#7C3AED,#C084FC);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-trophy me-1"></i>Platinum Class Mentor</span>`;
+    } else if (profile.teacher_level === 'Gold') {
+      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#F59E0B,#FCD34D);color:#78350F;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-award me-1"></i>Gold Class Mentor</span>`;
+    } else if (profile.teacher_level === 'Silver') {
+      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#64748B,#94A3B8);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-medal me-1"></i>Silver Class Mentor</span>`;
+    } else {
+      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#B45309,#D97706);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-certificate me-1"></i>Bronze Class Mentor</span>`;
+    }
+
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
+        <!-- Teacher Profile Card -->
         <div class="col-lg-4">
-          <div class="spx-card text-center">
-            <img src="${profile.photo_url||`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`}" style="width:90px;height:90px;border-radius:50%;border:3px solid var(--primary)" alt="">
-            <h5 class="fw-bold mt-3 mb-1">${profile.name}</h5>
-            <div class="text-muted small">${profile.role.toUpperCase()}</div>
-            <div class="mt-2" style="background:rgba(60,189,176,.1);border-radius:8px;padding:6px 12px;display:inline-block">
-              <span class="badge bg-warning">${profile.teacher_level || 'Bronze'}</span>
+          <div class="spx-card text-center position-relative overflow-hidden" style="border:1px solid rgba(60,189,176,0.2); background: radial-gradient(circle at top left, var(--bg-card), var(--bg-dark-alt));">
+            <div style="position:absolute; top:0; left:0; right:0; height:6px; background:var(--gradient);"></div>
+            
+            <div class="position-relative d-inline-block mt-3">
+              <img src="${profile.photo_url||`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.name)}`}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.2);box-shadow: 0 8px 20px rgba(0,0,0,0.12); object-fit: cover;" alt="Teacher Photo">
+              <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 14px; height: 14px; border-width: 2px !important;" title="Verified Educator"></span>
             </div>
-            <div class="mt-3 text-muted small">
-              <div>Qualification: <strong>${profile.qualification || '—'}</strong></div>
-              <div>Expertise: <strong>${profile.subject_expertise || '—'}</strong></div>
-              <div>Languages: <strong>${profile.languages || '—'}</strong></div>
-              <div>Experience: <strong>${profile.experience_years || 0} years</strong></div>
-              <div class="mt-2">${profile.email}</div>
-              <div>${profile.phone || ''}</div>
+            
+            <h4 class="fw-bold mt-3 mb-1" style="font-family:'Outfit',sans-serif;color:var(--text-primary);">${profile.name}</h4>
+            <div class="text-muted small mb-2"><i class="fas fa-chalkboard-teacher text-primary me-1"></i>Speaxa Verified Educator</div>
+            <div class="mb-3">${levelBadgeHtml}</div>
+            
+            <!-- Bio Showcase -->
+            <div class="text-start p-3 mb-3 mx-1 rounded-3 border" style="background:rgba(255,255,255,0.02); font-size:0.8rem; line-height:1.55;">
+              <strong style="color:var(--text-primary);">Teaching Philosophy:</strong>
+              <p class="text-muted mb-0 mt-1" style="font-style: italic;">"${profile.bio || 'Inspiring students to explore, discover, and excel through interactive live-classroom environments.'}"</p>
+            </div>
+
+            <!-- Profile Summary Stats -->
+            <div class="mt-4 text-start border-top pt-3 mx-1" style="font-size:0.85rem; border-color: rgba(255,255,255,0.08) !important;">
+              <div class="mb-2 text-secondary"><i class="fas fa-graduation-cap text-primary me-2" style="width:16px;"></i>Credentials: <strong style="color:var(--text-primary);">${profile.qualification || '—'}</strong></div>
+              <div class="mb-2 text-secondary"><i class="fas fa-book text-primary me-2" style="width:16px;"></i>Subject: <strong style="color:var(--text-primary);">${profile.subject_expertise || '—'}</strong></div>
+              <div class="mb-2 text-secondary"><i class="fas fa-history text-primary me-2" style="width:16px;"></i>Experience: <strong style="color:var(--text-primary);">${profile.experience_years || 0} Years</strong></div>
+              <div class="mb-2 text-secondary"><i class="fas fa-language text-primary me-2" style="width:16px;"></i>Languages: <strong style="color:var(--text-primary);">${profile.languages || '—'}</strong></div>
+              <div class="mb-2 text-secondary"><i class="far fa-envelope text-primary me-2" style="width:16px;"></i>Email: <strong style="color:var(--text-primary);">${profile.email}</strong></div>
+              <div class="text-secondary"><i class="fas fa-phone-alt text-primary me-2" style="width:16px;"></i>Phone: <strong style="color:var(--text-primary);">${profile.phone || '—'}</strong></div>
             </div>
           </div>
         </div>
         
+        <!-- Forms Card -->
         <div class="col-lg-8">
-          <div class="spx-card">
-            <h6 class="mb-4 fw-bold">Update Profile Details</h6>
+          <div class="spx-card" style="border:1px solid rgba(60,189,176,0.15);">
+            <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;color:var(--text-primary);"><i class="fas fa-user-edit text-primary me-2"></i>Update Educator Details</h5>
             <form onsubmit="updateProfile(event)">
               <div class="row g-3">
-                <div class="col-6">
-                  <label class="spx-label">Full Name</label>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Full Name</label>
                   <input class="form-control spx-input" id="profName" value="${profile.name||''}" required>
                 </div>
-                <div class="col-6">
-                  <label class="spx-label">Phone</label>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Contact Phone</label>
                   <input class="form-control spx-input" id="profPhone" value="${profile.phone||''}" required>
                 </div>
-                <div class="col-6">
-                  <label class="spx-label">Qualification</label>
-                  <input class="form-control spx-input" id="profQual" value="${profile.qualification||''}">
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Highest Academic Qualification</label>
+                  <input class="form-control spx-input" id="profQual" value="${profile.qualification||''}" placeholder="e.g. Ph.D in Chemistry, M.Sc. Mathematics">
                 </div>
-                <div class="col-6">
-                  <label class="spx-label">Expertise (e.g. Physics, Maths)</label>
-                  <input class="form-control spx-input" id="profExp" value="${profile.subject_expertise||''}">
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Subject Expertise (e.g. Physics, Chemistry)</label>
+                  <input class="form-control spx-input" id="profExp" value="${profile.subject_expertise||''}" placeholder="e.g. Physics, Mathematics">
                 </div>
-                <div class="col-6">
-                  <label class="spx-label">Teaching Languages</label>
-                  <input class="form-control spx-input" id="profLang" value="${profile.languages||''}">
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Teaching Languages</label>
+                  <input class="form-control spx-input" id="profLang" value="${profile.languages||''}" placeholder="e.g. English, Hindi, Spanish">
                 </div>
-                <div class="col-6">
-                  <label class="spx-label">Years of Experience</label>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Years of Teaching Experience</label>
                   <input type="number" class="form-control spx-input" id="profYrs" value="${profile.experience_years||0}">
                 </div>
                 <div class="col-12">
-                  <button type="submit" class="btn btn-spx">Save Changes</button>
+                  <label class="spx-label mb-1">Professional Bio / Introduction</label>
+                  <textarea class="form-control spx-input" id="profBio" rows="3" placeholder="Share your teaching philosophy, milestones, and introduction for students...">${profile.bio||''}</textarea>
+                </div>
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-spx px-4 py-2 fw-semibold"><i class="fas fa-save me-1"></i> Save Profile Details</button>
                 </div>
               </div>
             </form>
             
-            <hr style="border-color:var(--border);margin:20px 0">
+            <hr style="border-color:rgba(60,189,176,0.15); margin:30px 0;">
             
-            <h6 class="mb-3 fw-bold">Change Password</h6>
+            <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;color:var(--text-primary);"><i class="fas fa-shield-alt text-primary me-2"></i>Change Security Password</h5>
             <form onsubmit="changePassword(event)">
               <div class="row g-3">
-                <div class="col-6"><input class="form-control spx-input" id="currPass" type="password" placeholder="Current Password" required></div>
-                <div class="col-6"><input class="form-control spx-input" id="newPass" type="password" placeholder="New Password" required></div>
-                <div class="col-12"><button type="submit" class="btn btn-outline-primary">Update Password</button></div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Current Password</label>
+                  <input class="form-control spx-input" id="currPass" type="password" placeholder="••••••••" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">New Password</label>
+                  <input class="form-control spx-input" id="newPass" type="password" placeholder="••••••••" required>
+                </div>
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-outline-primary px-4 py-2 fw-semibold"><i class="fas fa-key me-1"></i> Update Password</button>
+                </div>
               </div>
             </form>
           </div>
@@ -1833,6 +1942,7 @@ async function updateProfile(e) {
       subject_expertise: document.getElementById('profExp').value,
       languages: document.getElementById('profLang').value,
       experience_years: parseInt(document.getElementById('profYrs').value) || 0,
+      bio: document.getElementById('profBio').value,
     };
 
     const data = await api('/auth/profile', {
@@ -1842,8 +1952,7 @@ async function updateProfile(e) {
 
     if (data.error) throw new Error(data.error);
     showToast('Profile updated successfully!');
-    user = data.user;
-    localStorage.setItem('teacher_user', JSON.stringify(user));
+    updateCachedUser(data.user);
     showApp();
     renderProfile();
   } catch(e) { showToast(e.message, 'error'); }
@@ -1867,9 +1976,26 @@ async function changePassword(e) {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-if (token && user && user.role === 'teacher') {
-  showApp();
-  navigateTo('home');
-} else {
-  document.getElementById('authScreen').classList.remove('d-none');
+async function initApp() {
+  if (token) {
+    try {
+      const profile = await api('/auth/profile');
+      if (profile.role === 'teacher') {
+        updateCachedUser(profile);
+        showApp();
+        const page = window.location.hash ? window.location.hash.substring(1) : 'home';
+        navigateTo(page);
+      } else {
+        handleCrossRoleRedirect(token, profile);
+      }
+    } catch (e) {
+      console.error('Failed to sync profile', e);
+      logout();
+    }
+  } else {
+    document.getElementById('authScreen').classList.remove('d-none');
+    document.getElementById('teacherApp').classList.add('d-none');
+  }
 }
+
+initApp();

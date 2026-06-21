@@ -31,7 +31,30 @@ INSERT INTO platform_settings (key, value) VALUES
   ('class_late_threshold_mins', '10'),
   ('class_half_threshold_pct', '50'),
   ('max_batch_capacity', '30'),
-  ('ad_banners', '[]')
+  ('ad_banners', '[]'),
+  ('home_hero_badge', '#1 Live EdTech Platform in India'),
+  ('home_hero_title', 'Learn From<br><span class="gradient-text">Expert Teachers</span><br>In Real-Time'),
+  ('home_hero_desc', 'Join live interactive classes, get personalized attention, and track your child''s growth with SPEAXA''s AI-powered learning management system.'),
+  ('home_hero_cta_primary', 'Browse Courses'),
+  ('home_hero_cta_secondary', 'How It Works'),
+  ('home_steps_title', 'Start Learning in <span class="gradient-text">3 Easy Steps</span>'),
+  ('home_step1_title', 'Register Free'),
+  ('home_step1_desc', 'Create your student account in under 2 minutes. No credit card required to browse courses.'),
+  ('home_step2_title', 'Choose a Batch'),
+  ('home_step2_desc', 'Browse courses, compare teachers, and enroll in the batch that matches your schedule and grade.'),
+  ('home_step3_title', 'Learn Live'),
+  ('home_step3_desc', 'Join live interactive classes, submit assignments, and track your growth with detailed monthly reports.'),
+  ('home_courses_badge', 'Explore'),
+  ('home_courses_title', 'Featured <span class="gradient-text">Courses</span>'),
+  ('home_teachers_badge', 'Our Faculty'),
+  ('home_teachers_title', 'Learn from <span class="gradient-text">Top Teachers</span>'),
+  ('home_teachers_desc', 'All teachers are SOP-verified and background-checked for quality assurance.'),
+  ('home_features_badge', 'Why SPEAXA'),
+  ('home_features_title', 'Everything You Need to <span class="gradient-text">Excel</span>'),
+  ('home_cta_title', 'Ready to Start Your Learning Journey?'),
+  ('home_cta_desc', 'Join 10,000+ students who are already excelling with SPEAXA''s live classes.'),
+  ('home_cta_btn_student', 'Join as Student'),
+  ('home_cta_btn_teacher', 'Teach with Us')
 ON CONFLICT (key) DO NOTHING;
 
 -- Demo coupon
@@ -57,7 +80,7 @@ VALUES (
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Demo teacher
-INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status, qualification, experience_years, subject_expertise, languages, teacher_level)
+INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url, approval_status, qualification, experience_years, subject_expertise, languages, teacher_level, bio)
 VALUES (
   'teacher_001',
   'teacher@speaxa.com',
@@ -72,7 +95,8 @@ VALUES (
   8,
   'Physics, Mathematics',
   'English, Hindi',
-  'Gold'
+  'Gold',
+  'Dr. Priya Sharma is a certified senior educator with over 8 years of teaching experience. She has mentored over 1,500 students in core Physics and Applied Mathematics, focusing on conceptual clarity and exam success.'
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Teacher SOP (approved)

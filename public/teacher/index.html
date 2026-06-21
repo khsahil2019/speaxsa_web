@@ -56,8 +56,20 @@
     <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
       <div class="auth-card">
         <div class="auth-brand">
-          <div class="auth-brand-row"><div class="brand-icon"><img src="/logo.png" alt="Speaxa Logo"></div><h2>Speaxa</h2></div><p>Teacher Portal</p>
+          <img src="/logo.png" alt="Speaxa Logo" class="auth-logo-premium mb-2">
+          <h2>Speaxa</h2>
+          <p class="text-uppercase font-semibold text-primary" style="font-size:0.75rem; letter-spacing:1px; margin-bottom:0;">Teacher Portal</p>
         </div>
+
+        <div class="portal-toggle-container mb-4">
+          <a href="/student" class="portal-toggle-btn" id="toggleStudent">
+            <i class="fas fa-graduation-cap"></i> Student
+          </a>
+          <a href="/teacher" class="portal-toggle-btn active" id="toggleTeacher">
+            <i class="fas fa-chalkboard-teacher"></i> Teacher
+          </a>
+        </div>
+
         <div class="auth-tabs">
           <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
           <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
@@ -78,9 +90,15 @@
               <input class="form-control spx-input" id="loginPassword" type="password" placeholder="••••••••">
             </div>
           </div>
+          <div class="mb-3 d-flex align-items-center justify-content-between">
+            <div class="form-check">
+              <input class="form-check-input spx-checkbox" type="checkbox" id="rememberMe">
+              <label class="form-check-label text-muted small" for="rememberMe" style="cursor:pointer; user-select:none;">Remember Me</label>
+            </div>
+            <a href="#" onclick="switchTab('forgot')" class="text-primary small text-decoration-none" style="font-weight: 500;">Forgot Password?</a>
+          </div>
           <div id="loginError" class="alert alert-danger d-none small"></div>
-          <button class="btn btn-spx w-100" onclick="doLogin()">Login</button>
-          <a href="#" onclick="switchTab('forgot')" class="d-block text-center mt-2 text-primary small">Forgot Password?</a>
+          <button class="btn btn-spx w-100 mt-2" onclick="doLogin()">Login</button>
         </div>
         <!-- Register -->
         <div id="registerSection" class="d-none">

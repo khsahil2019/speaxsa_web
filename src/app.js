@@ -14,6 +14,12 @@ const app = express();
 // ── Database Self-Healing Migrations ──────────────────────────
 const db = require('./db');
 db.query(`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS subject_expertise VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS languages VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_level VARCHAR(50) DEFAULT 'Bronze';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ratings INT DEFAULT 0;
+
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_name VARCHAR(150);
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_email VARCHAR(200);
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_phone VARCHAR(20);
@@ -23,6 +29,32 @@ db.query(`
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT false;
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMPTZ;
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS digital_signature VARCHAR(255);
+
+  INSERT INTO platform_settings (key, value) VALUES
+    ('home_hero_badge', 'Speaxa is Launching Soon – Stay Tuned!'),
+    ('home_hero_title', 'Learn From<br><span class="gradient-text">Expert Teachers</span><br>In Real-Time'),
+    ('home_hero_desc', 'Join live interactive classes, get personalized attention, and track your child''s growth with SPEAXA''s AI-powered learning management system.'),
+    ('home_hero_cta_primary', 'Browse Courses'),
+    ('home_hero_cta_secondary', 'How It Works'),
+    ('home_steps_title', 'Start Learning in <span class="gradient-text">3 Easy Steps</span>'),
+    ('home_step1_title', 'Register Free'),
+    ('home_step1_desc', 'Create your student account in under 2 minutes. No credit card required to browse courses.'),
+    ('home_step2_title', 'Choose a Batch'),
+    ('home_step2_desc', 'Browse courses, compare teachers, and enroll in the batch that matches your schedule and grade.'),
+    ('home_step3_title', 'Learn Live'),
+    ('home_step3_desc', 'Join live interactive classes, submit assignments, and track your growth with detailed monthly reports.'),
+    ('home_courses_badge', 'Explore'),
+    ('home_courses_title', 'Featured <span class="gradient-text">Courses</span>'),
+    ('home_teachers_badge', 'Our Faculty'),
+    ('home_teachers_title', 'Learn from <span class="gradient-text">Top Teachers</span>'),
+    ('home_teachers_desc', 'All teachers are SOP-verified and background-checked for quality assurance.'),
+    ('home_features_badge', 'Why SPEAXA'),
+    ('home_features_title', 'Everything You Need to <span class="gradient-text">Excel</span>'),
+    ('home_cta_title', 'Ready to Start Your Learning Journey?'),
+    ('home_cta_desc', 'Join 10,000+ students who are already excelling with SPEAXA''s live classes.'),
+    ('home_cta_btn_student', 'Join as Student'),
+    ('home_cta_btn_teacher', 'Teach with Us')
+  ON CONFLICT (key) DO NOTHING;
 `).then(() => {
   console.log("PostgreSQL: Database self-healing migrations verified/created.");
 }).catch((err) => {
@@ -37,6 +69,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:5001',
+    'http://localhost:5002',
     'https://speaxa.com',
     'https://admin.speaxa.com',
     'https://app.speaxa.com',
