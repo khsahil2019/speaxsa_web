@@ -306,18 +306,32 @@ function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-IN',{day:'nu
 async function renderHome() {
   loading();
   try {
-    const [analytics, batches] = await Promise.all([
+    const [analytics, batches, notifications] = await Promise.all([
       api('/teacher/analytics'),
       api('/teacher/batches'),
+      api('/teacher/notifications'),
     ]);
 
     const activeBatchesCount = batches.filter(b => b.status === 'active').length;
+    const activeNotifs = (notifications || []).filter(n => n.is_active && !n.is_read);
 
     document.getElementById('pageContent').innerHTML = `
       <div class="mb-4">
         <h5 class="fw-bold mb-1">Hello, ${user?.name || 'Educator'}! 👋</h5>
         <p class="text-muted small">Here's your class & earnings summary</p>
       </div>
+
+      <!-- Warning & Broadcast Notifications -->
+      ${activeNotifs.map(n => `
+        <div class="alert alert-${n.type === 'warning' ? 'danger' : 'info'} alert-dismissible fade show d-flex align-items-center gap-3 p-3 mb-3 border-0 shadow-sm" role="alert" style="background: rgba(${n.type === 'warning' ? '239, 68, 68' : '59, 130, 246'}, 0.08); color: var(--text-primary); border-left: 4px solid ${n.type === 'warning' ? '#EF4444' : '#3B82F6'} !important;">
+          <div style="font-size: 20px;">${n.type === 'warning' ? '⚠️' : 'ℹ️'}</div>
+          <div class="flex-grow-1">
+            <h6 class="fw-bold mb-1 small text-white">${n.title}</h6>
+            <div class="small text-muted">${n.message}</div>
+          </div>
+          <button type="button" class="btn-close" style="filter: invert(1);" onclick="dismissTeacherNotification('${n.id}')" aria-label="Close"></button>
+        </div>
+      `).join('')}
 
       <!-- Interactive Teacher Platform Guide -->
       <div class="spx-card mb-4 border-start border-4 border-primary" style="background: rgba(60, 189, 176, 0.04); box-shadow: 0 4px 12px rgba(15,23,42,0.03);">
@@ -396,6 +410,15 @@ async function renderHome() {
     `;
   } catch(e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+async function dismissTeacherNotification(notifId) {
+  try {
+    await api(`/teacher/notifications/${notifId}/read`, { method: 'POST' });
+    renderHome();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 

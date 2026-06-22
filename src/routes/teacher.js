@@ -644,4 +644,64 @@ router.get('/level', async (req, res) => {
   }
 });
 
+// ── Notifications ─────────────────────────────────────────────
+router.get('/notifications', async (req, res) => {
+  const teacherId = req.user.id;
+  try {
+    // 1. Check for active batches starting tomorrow or earlier with 0 students
+    const emptyBatches = await db.query(`
+      SELECT b.*, c.title AS course_title
+      FROM batches b
+      JOIN courses c ON c.id = b.course_id
+      WHERE b.teacher_id = $1
+        AND b.status = 'active'
+        AND b.seats_filled = 0
+        AND b.start_date <= CURRENT_DATE + INTERVAL '1 day'
+    `, [teacherId]);
+
+    for (const batch of emptyBatches.rows) {
+      const notifId = `no_students_warning_${batch.id}`;
+      // check if exists
+      const existCheck = await db.query('SELECT 1 FROM notifications WHERE id = $1', [notifId]);
+      if (existCheck.rows.length === 0) {
+        await db.query(`
+          INSERT INTO notifications (id, title, message, target_role, target_user, type, is_active)
+          VALUES ($1, $2, $3, 'teacher', $4, 'warning', true)
+        `, [
+          notifId,
+          'Batch Start Alert: No Students Joined',
+          `No students have joined your batch "${batch.batch_name}" yet, which is starting soon (Start Date: ${new Date(batch.start_date).toLocaleDateString('en-IN')}). Please consider changing the start date or adjusting the schedule.`,
+          teacherId
+        ]);
+      }
+    }
+
+    // 2. Fetch notifications for this teacher
+    const result = await db.query(`
+      SELECT * FROM notifications
+      WHERE (target_role = 'teacher' OR target_role = 'all' OR target_user = $1)
+        AND is_active = true
+      ORDER BY created_at DESC LIMIT 50
+    `, [teacherId]);
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/notifications/:id/read', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query(`
+      UPDATE notifications 
+      SET is_read = true, is_active = false 
+      WHERE id = $1 AND (target_user = $2 OR target_role = 'teacher' OR target_role = 'all')
+    `, [id, req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
