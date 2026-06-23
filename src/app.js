@@ -44,6 +44,57 @@ db.query(`
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_url TEXT;
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_name VARCHAR(255);
 
+  CREATE TABLE IF NOT EXISTS teacher_certificates (
+    id VARCHAR(100) PRIMARY KEY,
+    teacher_id VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,
+    certificate_type VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    issued_at TIMESTAMPTZ DEFAULT NOW(),
+    metadata JSONB DEFAULT '{}'
+  );
+
+  -- Retroactively issue SOP Verification certificates to legacy approved teachers
+  INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, metadata)
+  SELECT 
+    'cert_sop_' || u.id as id,
+    u.id as teacher_id,
+    'sop_completed' as certificate_type,
+    'SOP Verification & Teaching Compliance Certificate' as title,
+    'This certificate is awarded to acknowledge that the teacher has successfully completed the Speaxa Standard Operating Procedures (SOP) verification, technical compliance checks, and teaching standards certification.' as description,
+    '{"retroactive": true}'::jsonb as metadata
+  FROM users u
+  JOIN teacher_sop ts ON ts.teacher_id = u.id
+  WHERE u.role = 'teacher' 
+    AND u.approval_status = 'approved' 
+    AND ts.agreement_signed = true
+    AND NOT EXISTS (
+      SELECT 1 FROM teacher_certificates tc 
+      WHERE tc.teacher_id = u.id AND tc.certificate_type = 'sop_completed'
+    )
+  ON CONFLICT (id) DO NOTHING;
+
+  -- Retroactively issue Course Selection certificates to legacy active courses
+  INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, metadata)
+  SELECT 
+    'cert_course_' || c.id as id,
+    c.created_by as teacher_id,
+    'course_verified' as certificate_type,
+    'Course Selection & Verification Certificate' as title,
+    'This certificate is awarded to acknowledge that the course "' || c.title || '" has been reviewed, approved, and verified for the Speaxa interactive live curriculum.' as description,
+    json_build_object('course_id', c.id, 'course_title', c.title, 'retroactive', true)::jsonb as metadata
+  FROM courses c
+  WHERE c.status = 'active' 
+    AND c.created_by IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM teacher_certificates tc 
+      WHERE tc.teacher_id = c.created_by 
+        AND tc.certificate_type = 'course_verified' 
+        AND (tc.metadata->>'course_id' = c.id OR tc.title LIKE '%' || c.title || '%')
+    )
+  ON CONFLICT (id) DO NOTHING;
+
+
   INSERT INTO platform_settings (key, value) VALUES
     ('home_hero_badge', 'Speaxa is Launching Soon – Stay Tuned!'),
     ('home_hero_title', 'Learn From<br><span class="gradient-text">Expert Teachers</span><br>In Real-Time'),
@@ -123,6 +174,8 @@ app.use('/parent', express.static(path.join(__dirname, '../public/parent')));
 app.use('/student', express.static(path.join(__dirname, '../public/student')));
 app.use('/live', express.static(path.join(__dirname, '../public/live')));
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
+app.get('/verify-certificate', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/verify-certificate.html')));
 
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {

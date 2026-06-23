@@ -744,56 +744,32 @@ function renderTeachersTable(teachers) {
               <button class="btn btn-sm btn-success" onclick="approveTeacher('${t.id}')">Approve</button>
               <button class="btn btn-sm btn-danger" onclick="rejectTeacher('${t.id}')">Reject</button>` : ''}
             ${t.approval_status === 'approved' ? `<button class="btn btn-sm btn-warning" onclick="suspendTeacher('${t.id}')">Suspend</button>` : ''}
+            ${t.approval_status === 'suspended' ? `<button class="btn btn-sm btn-success" onclick="unsuspendTeacher('${t.id}')">Unsuspend</button>` : ''}
             <button class="btn btn-sm btn-outline-secondary" onclick="viewTeacher('${t.id}')">View</button>
-            <button class="btn btn-sm btn-outline-primary" onclick="impersonate('${t.id}', 'teacher')">Login As</button>
           </div>
         </td>
-      </tr>`).join(''),
-    true
+      </tr>
+    `).join('')
   );
-}
-
-async function approveTeacher(id) {
-  try {
-    const data = await apiPost(`/admin/teachers/${id}/approve`);
-    showToast(data.message || 'Teacher approved');
-    renderTeachers();
-  } catch (err) { showToast(err.message, 'error'); }
-}
-
-async function rejectTeacher(id) {
-  adminPrompt('Reject Teacher Account', 'Reason for rejection?', '', async (reason) => {
-    try {
-      const data = await apiPost(`/admin/teachers/${id}/reject`, { reason });
-      showToast(data.message || 'Teacher rejected');
-      renderTeachers();
-    } catch (err) { showToast(err.message, 'error'); }
-  });
-}
-
-async function suspendTeacher(id) {
-  adminPrompt('Suspend Teacher Account', 'Reason for suspension?', '', async (reason) => {
-    try {
-      const data = await apiPost(`/admin/teachers/${id}/suspend`, { reason });
-      showToast(data.message || 'Teacher suspended');
-      renderTeachers();
-    } catch (err) { showToast(err.message, 'error'); }
-  });
 }
 
 async function viewTeacher(id) {
   try {
-    const data = await apiGet(`/admin/teachers/${id}`);
+    const [data, certs] = await Promise.all([
+      apiGet(`/admin/teachers/${id}`),
+      apiGet(`/admin/teachers/${id}/certificates`)
+    ]);
+    window.loadedCertificates = certs;
     document.getElementById('formModalTitle').textContent = `Teacher: ${data.teacher?.name}`;
     document.getElementById('formModalBody').innerHTML = `
       <div class="row g-3">
         <div class="col-md-4 text-center">
           ${avatar(data.teacher?.photo_url, data.teacher?.name, 80)}
-          <div class="mt-2 fw-bold">${data.teacher?.name}</div>
+          <div class="mt-2 fw-bold text-dark">${data.teacher?.name}</div>
           ${levelBadge(data.teacher?.teacher_level)}
           <div class="mt-2">${statusBadge(data.teacher?.approval_status)}</div>
         </div>
-        <div class="col-md-8 text-start text-white">
+        <div class="col-md-8 text-start text-dark">
           <div class="row g-2 text-muted small">
             <div class="col-6"><strong>Email:</strong> ${data.teacher?.email}</div>
             <div class="col-6"><strong>Phone:</strong> ${data.teacher?.phone||'—'}</div>
@@ -821,9 +797,19 @@ async function viewTeacher(id) {
             <button class="btn btn-sm btn-spx" onclick="setTeacherLevel('${data.teacher?.id}')">Set Level</button>
             <button class="btn btn-sm btn-outline-primary" onclick="resetCredentials('${data.teacher?.id}')">Reset Password</button>
             <button class="btn btn-sm btn-outline-secondary" onclick="impersonate('${data.teacher?.id}', 'teacher')">Login As</button>
+            ${data.teacher?.approval_status === 'pending' || data.teacher?.approval_status === 'sop_pending' ? `
+              <button class="btn btn-sm btn-success" onclick="approveTeacher('${data.teacher?.id}')">Approve</button>
+              <button class="btn btn-sm btn-danger" onclick="rejectTeacher('${data.teacher?.id}')">Reject</button>
+            ` : ''}
+            ${data.teacher?.approval_status === 'approved' ? `
+              <button class="btn btn-sm btn-warning" onclick="suspendTeacher('${data.teacher?.id}')">Suspend</button>
+            ` : ''}
+            ${data.teacher?.approval_status === 'suspended' ? `
+              <button class="btn btn-sm btn-success" onclick="unsuspendTeacher('${data.teacher?.id}')">Unsuspend</button>
+            ` : ''}
           </div>
         </div>
-
+ 
         <div class="col-12 text-start mt-3 pt-3 border-top" style="border-color:var(--border) !important">
           <h6 class="fw-bold mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-id-card me-1"></i>Uploaded KYC Documents</h6>
           <div class="admin-doc-grid">
@@ -843,7 +829,7 @@ async function viewTeacher(id) {
               `;
             }).join('')}
           </div>
-
+ 
           <h6 class="fw-bold mt-4 mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-video me-1"></i>SOP Video & Link Evidence</h6>
           <div class="admin-doc-grid">
             ${[
@@ -864,18 +850,66 @@ async function viewTeacher(id) {
               </div>
             `).join('')}
           </div>
-
+ 
           ${data.sop?.agreement_signed ? `
             <h6 class="fw-bold mt-4 mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-file-contract me-1"></i>Affidavit of Undertaking</h6>
             <div class="admin-affidavit-preview p-3">
               <div class="stamp-label mb-2">SIGNED UNDER OATH - SPEAXA COMPLIANCE</div>
-              <p class="mb-1" style="font-size:0.85rem">I, <strong>${data.teacher?.name}</strong>, do hereby solemnly declare, depose, and state on oath that I comply with all standard operating procedures, technical lighting, noise levels, and non-solicitation code of conduct rules set by SPEAXA.</p>
-              <div class="d-flex justify-content-between mt-2 pt-2 border-top" style="font-size:0.75rem;">
+              <p class="mb-1" style="font-size:0.85rem; color: #000000;">I, <strong>${data.teacher?.name}</strong>, do hereby solemnly declare, depose, and state on oath that I comply with all standard operating procedures, technical lighting, noise levels, and non-solicitation code of conduct rules set by SPEAXA.</p>
+              <div class="d-flex justify-content-between mt-2 pt-2 border-top" style="font-size:0.75rem; color: #000000;">
                 <div>Signed Name: <code>${data.sop.digital_signature}</code></div>
                 <div>Timestamp: ${fmtDate(data.sop.agreement_signed_at)}</div>
               </div>
             </div>
           ` : ''}
+
+          <!-- Issued Certificates Section -->
+          <h6 class="fw-bold mt-4 mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-award me-1"></i>Issued Speaxa Certificates & Accomplishments</h6>
+          <div id="adminTeacherCertsContainer" class="d-flex flex-column gap-2 mb-3">
+            ${certs.map(cert => `
+              <div id="cert-row-${cert.id}" class="p-2 rounded d-flex justify-content-between align-items-center" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border);">
+                <div style="flex: 1;">
+                  <div class="fw-bold text-dark small"><i class="fas fa-certificate text-warning me-1"></i>${cert.title}</div>
+                  <div class="text-muted" style="font-size: 0.72rem;">Type: ${cert.certificate_type} • Issued: ${fmtDate(cert.issued_at)}</div>
+                  <p class="mb-0 text-secondary mt-1" style="font-size: 0.76rem; line-height: 1.4;">${cert.description}</p>
+                </div>
+                <div class="d-flex gap-1 ms-3">
+                  <button class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size:0.7rem; white-space:nowrap;" onclick="showEditCertificateForm(event, '${cert.id}', '${id}')">
+                    <i class="fas fa-edit"></i> Edit
+                  </button>
+                  <button class="btn btn-xs btn-outline-danger py-1 px-2" style="font-size:0.7rem; white-space:nowrap;" onclick="revokeCertificate(event, '${cert.id}', '${id}')">
+                    <i class="fas fa-trash-alt"></i> Revoke
+                  </button>
+                </div>
+              </div>
+            `).join('') || '<div class="text-muted small text-center py-2">No certificates issued yet.</div>'}
+          </div>
+
+          <!-- Form to issue manual certificate -->
+          <div class="mt-4 p-3 rounded text-dark" style="background: rgba(15, 23, 42, 0.03); border: 1px solid var(--border);">
+            <h6 class="fw-bold mb-2 text-dark" style="font-size:0.85rem;"><i class="fas fa-plus-circle me-1"></i>Issue Manual Certificate</h6>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="small text-muted mb-1">Certificate Title</label>
+                <input type="text" id="manualCertTitle" class="form-control form-control-sm spx-input" placeholder="e.g. Elite Mentor Performance" style="background:#f8fafc; color:#0f172a; border: 1px solid #cbd5e1;">
+              </div>
+              <div class="col-md-6">
+                <label class="small text-muted mb-1">Certificate Type</label>
+                <select id="manualCertType" class="form-select form-select-sm spx-input" style="background:#f8fafc; color:#0f172a; border: 1px solid #cbd5e1;">
+                  <option value="custom">Custom Achievement</option>
+                  <option value="elite_mentor">Elite Mentor Recognition</option>
+                  <option value="special_performance">Special Contribution</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="small text-muted mb-1">Certificate Description</label>
+                <textarea id="manualCertDesc" class="form-control form-control-sm spx-input" rows="2" placeholder="Describe the achievement and credentials detail..." style="background:#f8fafc; color:#0f172a; border: 1px solid #cbd5e1;"></textarea>
+              </div>
+              <div class="col-12 d-flex justify-content-end">
+                <button type="button" class="btn btn-xs btn-spx mt-2 text-white" onclick="issueManualCertificate('${id}')">Issue Certificate</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>`;
     formModal.show();
@@ -920,6 +954,60 @@ async function resetCredentials(userId) {
       const data = await apiPost(`/admin/users/${userId}/reset-credentials`, { password_plain: password });
       showToast(data.message || 'Password reset successfully!');
     } catch (err) { showToast(err.message, 'error'); }
+  });
+}
+
+async function approveTeacher(id) {
+  confirm('Approve Teacher?', 'This will approve the teacher\'s application and allow them to log in.', async () => {
+    try {
+      const data = await apiPost(`/admin/teachers/${id}/approve`);
+      showToast(data.message || 'Teacher approved successfully');
+      formModal.hide();
+      renderTeachers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function rejectTeacher(id) {
+  adminPrompt('Reject Teacher', 'Enter rejection reason:', '', async (reason) => {
+    if (!reason) return;
+    try {
+      const data = await apiPost(`/admin/teachers/${id}/reject`, { reason });
+      showToast(data.message || 'Teacher application rejected');
+      formModal.hide();
+      renderTeachers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function suspendTeacher(id) {
+  adminPrompt('Suspend Teacher', 'Enter suspension reason:', 'Violation of terms', async (reason) => {
+    if (!reason) return;
+    try {
+      const data = await apiPost(`/admin/teachers/${id}/suspend`, { reason });
+      showToast(data.message || 'Teacher suspended successfully');
+      formModal.hide();
+      renderTeachers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function unsuspendTeacher(id) {
+  confirm('Unsuspend Teacher?', 'This will restore the teacher\'s account to active approved status.', async () => {
+    try {
+      const data = await apiPost(`/admin/teachers/${id}/unsuspend`);
+      showToast(data.message || 'Teacher unsuspended successfully');
+      formModal.hide();
+      renderTeachers();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
   });
 }
 
@@ -1036,7 +1124,11 @@ async function renderCourses() {
                     <button class="btn btn-sm btn-danger py-1 px-2" style="font-size:0.75rem;" onclick="rejectCourse('${c.id}')">Reject</button>
                   ` : ''}
                   <button class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size:0.75rem;" onclick="editCourse('${c.id}')">Edit</button>
-                  <button class="btn btn-sm btn-outline-danger py-1 px-2" style="font-size:0.75rem;" onclick="archiveCourse('${c.id}')">Archive</button>
+                  ${c.status === 'archived' ? `
+                    <button class="btn btn-sm btn-outline-success py-1 px-2" style="font-size:0.75rem;" onclick="unarchiveCourse('${c.id}')">Unarchive</button>
+                  ` : `
+                    <button class="btn btn-sm btn-outline-danger py-1 px-2" style="font-size:0.75rem;" onclick="archiveCourse('${c.id}')">Archive</button>
+                  `}
                 </div>
               </td>
             </tr>`).join(''),
@@ -1262,11 +1354,11 @@ async function archiveCourse(id) {
   });
 }
 
-async function approveCourse(id) {
-  confirm('Approve Course?', 'This will publish the course and make it live for students to enroll.', async () => {
+async function rejectCourse(id) {
+  adminPrompt('Reject Course', 'Reason for rejection?', '', async (reason) => {
     try {
-      const data = await apiPost(`/admin/courses/${id}/approve`);
-      showToast(data.message || 'Course approved successfully');
+      const data = await apiPost(`/admin/courses/${id}/reject`, { reason });
+      showToast(data.message || 'Course rejected');
       renderCourses();
     } catch (err) {
       showToast(err.message, 'error');
@@ -1274,11 +1366,11 @@ async function approveCourse(id) {
   });
 }
 
-async function rejectCourse(id) {
-  adminPrompt('Reject Course', 'Reason for rejection?', '', async (reason) => {
+async function unarchiveCourse(id) {
+  confirm('Unarchive Course?', 'This will restore the course to active state and make it visible to students.', async () => {
     try {
-      const data = await apiPost(`/admin/courses/${id}/reject`, { reason });
-      showToast(data.message || 'Course rejected');
+      const data = await apiPost(`/admin/courses/${id}/unarchive`);
+      showToast(data.message || 'Course restored successfully');
       renderCourses();
     } catch (err) {
       showToast(err.message, 'error');
@@ -1324,6 +1416,105 @@ function viewCourseTeacher(courseId) {
     </div>
   `;
   formModal.show();
+}
+
+async function revokeCertificate(event, certId, teacherId) {
+  if (event) event.stopPropagation();
+  confirm('Revoke Certificate?', 'This will permanently remove this certificate from the teacher\'s profile.', async () => {
+    try {
+      const data = await apiDelete(`/admin/certificates/${certId}`);
+      showToast(data.message || 'Certificate revoked successfully');
+      formModal.hide();
+      setTimeout(() => viewTeacher(teacherId), 300);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function issueManualCertificate(teacherId) {
+  const title = document.getElementById('manualCertTitle').value.trim();
+  const certificate_type = document.getElementById('manualCertType').value;
+  const description = document.getElementById('manualCertDesc').value.trim();
+
+  if (!title || !description) {
+    showToast('Please fill out all fields.', 'error');
+    return;
+  }
+
+  try {
+    const data = await apiPost(`/admin/teachers/${teacherId}/certificates`, { title, description, certificate_type });
+    showToast(data.message || 'Certificate issued successfully');
+    formModal.hide();
+    setTimeout(() => viewTeacher(teacherId), 300);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function showEditCertificateForm(event, certId, teacherId) {
+  if (event) event.stopPropagation();
+  const cert = window.loadedCertificates ? window.loadedCertificates.find(c => c.id === certId) : null;
+  if (!cert) return;
+
+  const row = document.getElementById(`cert-row-${certId}`);
+  if (!row) return;
+
+  let dateVal = '';
+  if (cert.issued_at) {
+    const d = new Date(cert.issued_at);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    dateVal = `${yyyy}-${mm}-${dd}`;
+  }
+
+  row.innerHTML = `
+    <div style="flex: 1; width: 100%;" class="text-start text-dark">
+      <div class="mb-2">
+        <label class="small text-muted mb-1 fw-bold">Certificate Title</label>
+        <input type="text" id="edit-cert-title-${certId}" class="form-control form-control-sm spx-input" value="${cert.title.replace(/"/g, '&quot;')}" style="background:#f8fafc; color:#0f172a; border: 1px solid #cbd5e1;">
+      </div>
+      <div class="mb-2">
+        <label class="small text-muted mb-1 fw-bold">Date Issued</label>
+        <input type="date" id="edit-cert-date-${certId}" class="form-control form-control-sm spx-input" value="${dateVal}" style="background:#f8fafc; color:#0f172a; border: 1px solid #cbd5e1;">
+      </div>
+      <div class="mb-2">
+        <label class="small text-muted mb-1 fw-bold">Description</label>
+        <textarea id="edit-cert-desc-${certId}" class="form-control form-control-sm spx-input" rows="3" style="background:#f8fafc; color:#0f172a; border: 1px solid #cbd5e1;">${cert.description || ''}</textarea>
+      </div>
+      <div class="d-flex gap-2 justify-content-end mt-2">
+        <button class="btn btn-xs btn-outline-secondary py-1 px-2" style="font-size:0.75rem;" onclick="cancelEditCertificate(event, '${certId}', '${teacherId}')">Cancel</button>
+        <button class="btn btn-xs btn-primary py-1 px-2" style="font-size:0.75rem;" onclick="saveEditCertificate(event, '${certId}', '${teacherId}')">Save</button>
+      </div>
+    </div>
+  `;
+}
+
+function cancelEditCertificate(event, certId, teacherId) {
+  if (event) event.stopPropagation();
+  viewTeacher(teacherId);
+}
+
+async function saveEditCertificate(event, certId, teacherId) {
+  if (event) event.stopPropagation();
+  const title = document.getElementById(`edit-cert-title-${certId}`).value.trim();
+  const dateStr = document.getElementById(`edit-cert-date-${certId}`).value;
+  const description = document.getElementById(`edit-cert-desc-${certId}`).value.trim();
+
+  if (!title || !description) {
+    showToast('Title and description are required', 'error');
+    return;
+  }
+
+  try {
+    const issued_at = dateStr ? new Date(dateStr).toISOString() : null;
+    const data = await apiPut(`/admin/certificates/${certId}`, { title, description, issued_at });
+    showToast(data.message || 'Certificate updated successfully');
+    viewTeacher(teacherId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 // ── Batches ───────────────────────────────────────────────────

@@ -250,6 +250,20 @@ router.post('/sop/sign-agreement', async (req, res) => {
     await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1", [req.user.id]);
     await logAudit(req.user.id, 'AGREEMENT_SIGNED', 'teacher', req.user.id, { signature: digital_signature });
 
+    // Auto-issue SOP Verification & Compliance certificate
+    const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    await db.query(`
+      INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, metadata)
+      VALUES ($1, $2, 'sop_completed', $3, $4, $5)
+      ON CONFLICT DO NOTHING
+    `, [
+      certId, 
+      req.user.id, 
+      'SOP Verification & Teaching Compliance Certificate', 
+      'This certificate is awarded to acknowledge that the teacher has successfully completed the Speaxa Standard Operating Procedures (SOP) verification, technical compliance checks, and teaching standards certification.', 
+      JSON.stringify({ signature: digital_signature })
+    ]);
+
     res.json({ message: 'Agreement signed successfully. You can now start teaching!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -837,6 +851,15 @@ router.post('/notifications/:id/read', async (req, res) => {
       WHERE id = $1 AND (target_user = $2 OR target_role = 'teacher' OR target_role = 'all')
     `, [id, req.user.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/certificates', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM teacher_certificates WHERE teacher_id = $1 ORDER BY issued_at DESC', [req.user.id]);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

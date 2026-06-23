@@ -191,6 +191,17 @@ router.post('/teachers/:id/suspend', async (req, res) => {
   }
 });
 
+router.post('/teachers/:id/unsuspend', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query("UPDATE users SET approval_status = 'approved', is_disabled = false WHERE id = $1", [id]);
+    await logAudit(req.user.id, 'TEACHER_UNSUSPENDED', 'teacher', id);
+    res.json({ message: 'Teacher unsuspended successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── SOP Review ────────────────────────────────────────────────
 router.get('/sop', async (req, res) => {
   try {
@@ -385,6 +396,20 @@ router.post('/teachers/:id/set-level', async (req, res) => {
       INSERT INTO teacher_levels (id, teacher_id, level, previous_level, changed_by, reason)
       VALUES ($1,$2,$3,$4,$5,$6)
     `, [`lvl_${Date.now()}`, id, level, previousLevel, req.user.id, 'Manual admin override']);
+    
+    // Auto-issue milestone certificate for level change
+    const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    await db.query(`
+      INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, metadata)
+      VALUES ($1, $2, 'level_milestone', $3, $4, $5)
+    `, [
+      certId, 
+      id, 
+      `Speaxa ${level} Milestone Certificate`, 
+      `This certificate is awarded to acknowledge that the teacher has achieved the prestigious "${level}" status on the Speaxa platform, demonstrating outstanding pedagogy, platform engagement, and course completion success.`, 
+      JSON.stringify({ level, previous_level: previousLevel })
+    ]);
+
     await logAudit(req.user.id, 'TEACHER_LEVEL_CHANGED', 'teacher', id, { level, previousLevel });
     res.json({ message: `Teacher level set to ${level}` });
   } catch (err) {
@@ -1031,6 +1056,22 @@ router.post('/courses/:id/approve', async (req, res) => {
     await logAudit(req.user.id, 'COURSE_APPROVED', 'course', id, { title: course.title });
 
     if (course.created_by) {
+      // Auto-issue verification certificate
+      const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      await db.query(`
+        INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, metadata)
+        VALUES ($1, $2, 'course_verified', $3, $4, $5)
+        ON CONFLICT DO NOTHING
+      `, [
+        certId, 
+        course.created_by, 
+        'Course Selection & Verification Certificate', 
+        `This certificate is awarded to acknowledge that the course "${course.title}" has been reviewed, approved, and verified for the Speaxa interactive live curriculum.`, 
+        JSON.stringify({ course_id: id, course_title: course.title })
+      ]);
+    }
+
+    if (course.created_by) {
       await db.query(`
         INSERT INTO notifications (id, title, message, target_role, target_user, type, is_active)
         VALUES ($1, $2, $3, 'teacher', $4, 'success', true)
@@ -1153,6 +1194,89 @@ router.post('/courses/:id/reject', async (req, res) => {
     }
 
     res.json({ message: 'Course rejected successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Unarchive Course
+router.post('/courses/:id/unarchive', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query("UPDATE courses SET status = 'active', updated_at = NOW() WHERE id = $1 RETURNING *", [id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Course not found' });
+    await logAudit(req.user.id, 'COURSE_UNARCHIVED', 'course', id, {});
+    res.json({ message: 'Course restored successfully', course: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get teacher certificates
+router.get('/teachers/:id/certificates', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query('SELECT * FROM teacher_certificates WHERE teacher_id = $1 ORDER BY issued_at DESC', [id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Issue manual certificate
+router.post('/teachers/:id/certificates', async (req, res) => {
+  const { id } = req.params;
+  const { title, description, certificate_type = 'custom' } = req.body;
+  try {
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Title and description are required' });
+    }
+    const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const result = await db.query(`
+      INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [certId, id, certificate_type, title, description]);
+    await logAudit(req.user.id, 'CERTIFICATE_ISSUED', 'teacher', id, { title, type: certificate_type });
+    res.status(201).json({ message: 'Certificate issued successfully', certificate: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Revoke/Delete certificate
+router.delete('/certificates/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query('DELETE FROM teacher_certificates WHERE id = $1 RETURNING *', [id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Certificate not found' });
+    await logAudit(req.user.id, 'CERTIFICATE_REVOKED', 'teacher', result.rows[0].teacher_id, { title: result.rows[0].title });
+    res.json({ message: 'Certificate revoked successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Edit/Update certificate (Update title, description, and issued_at date)
+router.put('/certificates/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, description, issued_at } = req.body;
+  try {
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Title and description are required' });
+    }
+    const result = await db.query(`
+      UPDATE teacher_certificates 
+      SET title = $2, 
+          description = $3, 
+          issued_at = COALESCE($4, issued_at)
+      WHERE id = $1 
+      RETURNING *
+    `, [id, title, description, issued_at || null]);
+    
+    if (!result.rows.length) return res.status(404).json({ error: 'Certificate not found' });
+    await logAudit(req.user.id, 'CERTIFICATE_UPDATED', 'teacher', result.rows[0].teacher_id, { title });
+    res.json({ message: 'Certificate updated successfully', certificate: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

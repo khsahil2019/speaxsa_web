@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credential Verification | Speaxa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root {
+      --gold: #D4AF37;
+      --gold-dark: #aa841c;
+      --emerald: #10B981;
+      --bg-glass: rgba(255, 255, 255, 0.85);
+    }
+    body {
+      background: radial-gradient(circle at top left, rgba(60, 189, 176, 0.08), transparent 40%),
+                  radial-gradient(circle at bottom right, rgba(212, 163, 89, 0.05), transparent 45%),
+                  #F8FAFC;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header-verify {
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+    }
+    .verify-card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.04);
+      padding: 40px;
+      transition: all 0.3s ease;
+    }
+    .verify-badge-glowing {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+    }
+    .verify-badge-success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #059669;
+    }
+    .verify-badge-error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #DC2626;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+    }
+    .cert-frame {
+      border: 6px double var(--gold);
+      padding: 30px;
+      background: #ffffff;
+      position: relative;
+      border-radius: 8px;
+      box-shadow: inset 0 0 50px rgba(212, 163, 89, 0.03);
+    }
+    .cert-frame::before {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px; right: 3px; bottom: 3px;
+      border: 1px solid var(--gold);
+      pointer-events: none;
+    }
+    .cert-seal {
+      width: 80px;
+      height: 80px;
+      background: radial-gradient(circle, #fcd34d 0%, #d97706 100%);
+      border-radius: 50%;
+      border: 3px double white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.1;
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+    }
+    .spx-input {
+      background: #F1F5F9;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+    .spx-input:focus {
+      background: white;
+      border-color: #3CBDB0;
+      box-shadow: 0 0 0 4px rgba(60, 189, 176, 0.15);
+    }
+    .btn-spx {
+      background: linear-gradient(135deg, #3CBDB0, #0F766E);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      padding: 12px 24px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(60, 189, 176, 0.2);
+    }
+    .btn-spx:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(60, 189, 176, 0.35);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header-verify py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+      <a href="/" class="d-flex align-items-center gap-2 text-decoration-none">
+        <img src="/logo.png" alt="Speaxa Logo" style="height: 36px;">
+        <span style="font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.3rem; color: #0F172A;">Speaxa</span>
+      </a>
+      <a href="/" class="btn btn-sm btn-outline-secondary px-3" style="border-radius: 8px;">Back to Home</a>
+    </div>
+  </header>
+
+  <!-- Main Section -->
+  <main class="container my-auto py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        
+        <h2 class="fw-bold text-dark mb-2" style="font-family: 'Outfit';">Credential Authentication</h2>
+        <p class="text-muted mb-4">Validate the authenticity of Speaxa achievement certificates and teacher credentials.</p>
+
+        <!-- Verify Input Box -->
+        <div class="verify-card text-start mb-4">
+          <div class="mb-2 fw-semibold text-dark">Enter Certificate ID</div>
+          <div class="d-flex gap-2">
+            <input type="text" id="certIdInput" class="form-control spx-input flex-grow-1" placeholder="e.g. cert_1782194283640_qb1wk">
+            <button class="btn btn-spx" onclick="verifyInput()"><i class="fas fa-search me-1"></i> Verify</button>
+          </div>
+          <div id="verifyError" class="text-danger small mt-2 d-none"></div>
+        </div>
+
+        <!-- Result Container -->
+        <div id="resultContainer" class="d-none">
+          <div class="verify-card text-center" id="verifyCardBg">
+            
+            <!-- Success/Failure Badge -->
+            <div id="verifyBadge" class="verify-badge-glowing">
+              <!-- Dynamically populated -->
+            </div>
+
+            <!-- Certificate Frame Details -->
+            <div id="certFrameContainer" class="cert-frame text-start mt-2">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                  <div class="text-uppercase text-muted fw-bold" style="font-size: 0.72rem; letter-spacing: 1px;" id="certType"></div>
+                  <h4 class="fw-bold mt-1 text-dark" style="font-family: 'Outfit';" id="certTitle"></h4>
+                </div>
+                <div class="cert-seal d-none d-sm-flex" id="certSeal">
+                  Speaxa<br>Verified
+                </div>
+              </div>
+
+              <div class="mt-4 text-secondary" style="font-size: 0.95rem; line-height: 1.6;">
+                This document certifies that educator <strong class="text-dark" id="recipientName"></strong> has been awarded this credential for:
+                <p class="mt-2 text-dark bg-light p-3 rounded border border-light" id="certDesc" style="font-style: italic;"></p>
+              </div>
+
+              <!-- Footer with verify stats -->
+              <div class="row mt-4 pt-4 border-top g-3 text-start" style="font-size: 0.8rem; border-color: rgba(15, 23, 42, 0.06) !important;">
+                <div class="col-sm-4">
+                  <div class="text-muted text-uppercase mb-1">Status</div>
+                  <div class="fw-bold text-success"><i class="fas fa-check-circle me-1"></i>Active & Authentic</div>
+                </div>
+                <div class="col-sm-4">
+                  <div class="text-muted text-uppercase mb-1">Issued Date</div>
+                  <div class="fw-bold text-dark" id="issueDate"></div>
+                </div>
+                <div class="col-sm-4">
+                  <div class="text-muted text-uppercase mb-1">Credential ID</div>
+                  <div class="fw-bold text-dark" style="font-family: monospace;" id="credentialId"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-4 mt-auto border-top text-center text-muted" style="font-size: 0.85rem; border-color: rgba(15, 23, 42, 0.06);">
+    <div class="container">
+      © 2026 Speaxa EdTech Platform. All certificates are cryptographically recorded and verifiable.
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const id = urlParams.get('id');
+      if (id) {
+        document.getElementById('certIdInput').value = id;
+        performVerification(id);
+      }
+    });
+
+    function verifyInput() {
+      const id = document.getElementById('certIdInput').value.trim();
+      if (!id) return;
+      // Update URL without reloading page
+      const newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?id=' + encodeURIComponent(id);
+      window.history.pushState({path:newurl},'',newurl);
+      performVerification(id);
+    }
+
+    async function performVerification(id) {
+      const errEl = document.getElementById('verifyError');
+      const resContainer = document.getElementById('resultContainer');
+      errEl.classList.add('d-none');
+      resContainer.classList.add('d-none');
+
+      try {
+        const res = await fetch(`/api/public/certificates/verify/${encodeURIComponent(id)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Verification failed');
+        }
+
+        renderCertificateData(data.certificate);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('d-none');
+        renderVerificationFailure(id);
+      }
+    }
+
+    function renderCertificateData(cert) {
+      const resContainer = document.getElementById('resultContainer');
+      const badge = document.getElementById('verifyBadge');
+      const frame = document.getElementById('certFrameContainer');
+      
+      badge.className = 'verify-badge-glowing verify-badge-success';
+      badge.innerHTML = '<i class="fas fa-shield-alt"></i> Verified Speaxa Authentic Credential';
+
+      document.getElementById('certType').textContent = cert.certificate_type.replace('_', ' ');
+      document.getElementById('certTitle').textContent = cert.title;
+      document.getElementById('recipientName').textContent = cert.teacher_name;
+      document.getElementById('certDesc').textContent = cert.description;
+      document.getElementById('issueDate').textContent = new Date(cert.issued_at).toLocaleDateString('en-IN', {
+        day: 'numeric', month: 'long', year: 'numeric'
+      });
+      document.getElementById('credentialId').textContent = cert.id;
+
+      frame.classList.remove('d-none');
+      resContainer.classList.remove('d-none');
+    }
+
+    function renderVerificationFailure(id) {
+      const resContainer = document.getElementById('resultContainer');
+      const badge = document.getElementById('verifyBadge');
+      const frame = document.getElementById('certFrameContainer');
+
+      badge.className = 'verify-badge-glowing verify-badge-error';
+      badge.innerHTML = '<i class="fas fa-times-circle"></i> Unverified / Invalid Credential';
+
+      frame.classList.add('d-none');
+      resContainer.classList.remove('d-none');
+    }
+  </script>
+</body>
+</html>

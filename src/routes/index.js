@@ -92,4 +92,29 @@ router.get('/public/courses/:courseId/batches', async (req, res) => {
   }
 });
 
+// Public certificate verification check
+router.get('/public/certificates/verify/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const db = require('../db');
+    const result = await db.query(`
+      SELECT tc.*, u.name as teacher_name, u.photo_url as teacher_photo, u.email as teacher_email
+      FROM teacher_certificates tc
+      JOIN users u ON u.id = tc.teacher_id
+      WHERE tc.id = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Certificate not found or invalid' });
+    }
+    
+    res.json({
+      valid: true,
+      certificate: result.rows[0]
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

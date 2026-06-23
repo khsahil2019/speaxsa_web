@@ -78,7 +78,7 @@ async function loadCourses() {
             <div class="position-absolute bottom-0 start-0 w-100 p-2 d-flex flex-column gap-1 align-items-start" style="background: linear-gradient(0deg, rgba(11,19,41,0.9) 0%, transparent 100%); z-index: 2;">
               ${c.is_verified ? `
                 <span class="badge text-white border d-inline-flex align-items-center gap-1" style="backdrop-filter: blur(12px) saturate(180%); -webkit-backdrop-filter: blur(12px) saturate(180%); background: linear-gradient(135deg, rgba(250, 204, 21, 0.22) 0%, rgba(217, 119, 6, 0.12) 100%) !important; border-color: rgba(250, 204, 21, 0.4) !important; color: #fbbf24 !important; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12); text-shadow: 0 0 4px rgba(250, 204, 21, 0.4);">
-                  <i class="fas fa-certificate text-warning" style="animation: pulse-glow 2s infinite; font-size: 0.7rem;"></i> ★ SPEAXA VERIFIED
+                  <i class="fas fa-check-circle text-warning" style="animation: pulse-glow 2s infinite; font-size: 0.7rem;"></i> VERIFIED
                 </span>
               ` : ''}
               ${c.custom_tag ? `

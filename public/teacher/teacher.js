@@ -271,14 +271,14 @@ function navigateTo(page) {
     home:'Dashboard', sop:'SOP Setup', courses:'My Courses', batches:'My Batches',
     liveclasses:'Live Classes', assignments:'Assignments', observations:'Observations',
     attendance:'Attendance', notes:'Study Materials', earnings:'Earnings',
-    level:'My Level', profile:'Profile'
+    level:'My Level', certificates:'My Certificates', profile:'Profile'
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   const renders = {
     home:renderHome, sop:renderSop, courses:renderCourses, batches:renderBatches,
     liveclasses:renderLiveClasses, assignments:renderAssignments, observations:renderObservations,
     attendance:renderAttendance, notes:renderNotes, earnings:renderEarnings,
-    level:renderLevel, profile:renderProfile
+    level:renderLevel, certificates:renderCertificates, profile:renderProfile
   };
   renders[page]?.();
 }
@@ -3231,6 +3231,198 @@ async function uploadTeacherAvatar(input) {
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+async function renderCertificates() {
+  loading();
+  try {
+    const certs = await api('/teacher/certificates');
+    
+    let certListHtml = '';
+    if (certs && certs.length > 0) {
+      certListHtml = `
+        <div class="certificates-grid">
+          ${certs.map(c => {
+            let iconClass = 'fa-award';
+            if (c.certificate_type === 'sop_completed') iconClass = 'fa-clipboard-check';
+            if (c.certificate_type === 'course_verified') iconClass = 'fa-certificate';
+            
+            return `
+              <div class="certificate-card">
+                <div class="certificate-badge-ribbon">
+                  <i class="fas ${iconClass}"></i>
+                </div>
+                <div>
+                  <div class="certificate-type-label">${c.certificate_type.replace('_', ' ')}</div>
+                  <h6 class="certificate-title">${c.title}</h6>
+                  <p class="certificate-desc">${c.description || 'Certificate of achievement issued by Speaxa platform.'}</p>
+                </div>
+                <div>
+                  <div class="certificate-footer">
+                    <div class="certificate-meta-item">
+                      <span class="certificate-meta-label">Date Issued</span>
+                      <span class="certificate-meta-val">${fmtDate(c.issued_at)}</span>
+                    </div>
+                    <div class="certificate-meta-item">
+                      <span class="certificate-meta-label">Credential ID</span>
+                      <span class="certificate-meta-val" style="font-family: monospace; font-size: 0.65rem;">${c.id}</span>
+                    </div>
+                  </div>
+                  <div class="certificate-actions">
+                    <button class="btn btn-sm btn-outline-primary w-100 mt-3 py-2" onclick="previewCertificate('${c.id}')">
+                      <i class="fas fa-eye me-1"></i> Preview & Print
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    } else {
+      certListHtml = `
+        <div class="spx-card text-center py-5">
+          <div class="fs-1 text-muted mb-3"><i class="fas fa-award"></i></div>
+          <h5 class="fw-bold mb-2">No Certificates Yet</h5>
+          <p class="text-muted small mx-auto" style="max-width: 400px;">
+            Certificates are issued automatically for milestones like completing SOP setup, course approvals, or custom performance awards.
+          </p>
+        </div>
+      `;
+    }
+
+    document.getElementById('pageContent').innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h5 class="fw-bold mb-1">My Certificates & Achievements</h5>
+          <p class="text-muted small mb-0">Credentials, course verifications, and compliance milestones issued by Speaxa</p>
+        </div>
+        <div class="badge bg-primary-subtle text-primary py-2 px-3 fw-bold" style="font-size:0.85rem;">
+          Total Certificates: ${certs ? certs.length : 0}
+        </div>
+      </div>
+      
+      ${certListHtml}
+      
+      <!-- Dynamic Certificate Preview Modal Container -->
+      <div class="modal fade" id="certPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content" style="background:#ffffff; border:1px solid var(--border); color:var(--text-primary); border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header border-0 pb-0" style="padding:16px 24px;">
+              <h5 class="modal-title fw-bold" style="font-family:'Outfit';">Certificate Preview</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter:invert(0.5);"></button>
+            </div>
+            <div class="modal-body" style="padding:24px;" id="certPreviewModalBody">
+              <!-- Content rendered dynamically -->
+            </div>
+            <div class="modal-footer border-0 pt-0" style="padding:16px 24px;">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-spx text-white" id="btnPrintCert"><i class="fas fa-print me-1"></i> Print Certificate</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Store certificates in window object so we can retrieve them by ID for preview
+    window._teacherCertificates = certs || [];
+
+  } catch (e) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+// Preview and Print functions
+function previewCertificate(certId) {
+  const cert = (window._teacherCertificates || []).find(c => c.id === certId);
+  if (!cert) return showToast('Certificate details not found', 'error');
+
+  const bodyEl = document.getElementById('certPreviewModalBody');
+  const printBtn = document.getElementById('btnPrintCert');
+
+  bodyEl.innerHTML = `
+    <div class="certificate-preview-frame">
+      <div class="certificate-preview-header">
+        <img class="certificate-preview-logo" src="/logo.png" alt="Speaxa Logo" onerror="this.src='https://api.dicebear.com/7.x/identicon/svg?seed=speaxa'">
+        <div class="certificate-preview-subtitle">Speaxa Certificate of Accomplishment</div>
+      </div>
+      <div class="certificate-preview-main-title">Certificate of Achievement</div>
+      <div class="certificate-preview-recipient-label">This is proudly presented to</div>
+      <div class="certificate-preview-recipient-name">${user.name}</div>
+      <div class="certificate-preview-text">
+        ${cert.description || 'For outstanding achievement and contribution to Speaxa.'}
+      </div>
+      <div class="certificate-preview-footer">
+        <div class="certificate-preview-sig">
+          <div style="font-family: 'Georgia', serif; font-style: italic; font-size: 1.2rem; color: #1a1a1a; font-weight: bold;">Speaxa Operations</div>
+          <div class="certificate-preview-sig-line"></div>
+          <div class="certificate-preview-sig-label">Authorized Signatory</div>
+        </div>
+        <div class="certificate-preview-seal-inline">
+          SPEAXA<br>VERIFIED
+        </div>
+        <div class="certificate-preview-sig">
+          <div style="font-family: 'Georgia', serif; font-style: italic; font-size: 1.2rem; color: #1a1a1a; font-weight: bold;">${fmtDate(cert.issued_at)}</div>
+          <div class="certificate-preview-sig-line"></div>
+          <div class="certificate-preview-sig-label">Date of Issuance</div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3 text-center text-muted" style="font-size: 0.72rem;">
+      <i class="fas fa-shield-alt text-success me-1"></i> Authenticate this credential at: 
+      <a href="${window.location.origin}/verify-certificate?id=${cert.id}" target="_blank" class="text-decoration-none fw-semibold" style="color:var(--primary);">${window.location.origin}/verify-certificate?id=${cert.id}</a>
+    </div>
+  `;
+
+  // Attach dynamic print handler
+  printBtn.onclick = () => printCertificate(cert);
+
+  const modal = new bootstrap.Modal(document.getElementById('certPreviewModal'));
+  modal.show();
+}
+
+function printCertificate(cert) {
+  let printEl = document.getElementById('printArea');
+  if (!printEl) {
+    printEl = document.createElement('div');
+    printEl.id = 'printArea';
+    document.body.appendChild(printEl);
+  }
+  
+  printEl.innerHTML = `
+    <div class="certificate-preview-frame" style="page-break-inside: avoid; border: 12px double #D4AF37; padding: 40px; text-align: center; color: #2c2c2c; font-family: 'Outfit', sans-serif;">
+      <div class="certificate-preview-header">
+        <img class="certificate-preview-logo" src="/logo.png" alt="Speaxa Logo" style="height: 60px; margin-bottom: 12px;">
+        <div class="certificate-preview-subtitle" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; color: #7a6030; font-weight: 600; margin-bottom: 20px;">Speaxa Certificate of Accomplishment</div>
+      </div>
+      <div class="certificate-preview-main-title" style="font-size: 2.2rem; font-weight: 800; color: #1a1a1a; margin-bottom: 10px; text-transform: uppercase; letter-spacing: -0.5px;">Certificate of Achievement</div>
+      <div class="certificate-preview-recipient-label" style="font-size: 0.95rem; font-style: italic; color: #555; margin-bottom: 15px;">This is proudly presented to</div>
+      <div class="certificate-preview-recipient-name" style="font-size: 1.8rem; font-weight: 700; color: #0c0c0c; border-bottom: 2px solid #D4AF37; display: inline-block; padding-bottom: 4px; margin-bottom: 15px; min-width: 250px;">${user.name}</div>
+      <div class="certificate-preview-text" style="font-size: 0.95rem; line-height: 1.6; color: #4a4a4a; max-width: 580px; margin: 0 auto 30px auto;">
+        ${cert.description || 'For outstanding achievement and contribution to Speaxa.'}
+      </div>
+      <div class="certificate-preview-footer" style="display: flex; justify-content: space-around; align-items: center; margin-top: 40px;">
+        <div class="certificate-preview-sig" style="display: flex; flex-direction: column; align-items: center;">
+          <div style="font-family: 'Georgia', serif; font-style: italic; font-size: 1.2rem; color: #1a1a1a; font-weight: bold;">Speaxa Operations</div>
+          <div class="certificate-preview-sig-line" style="width: 140px; border-top: 1px solid #777; margin-top: 5px; margin-bottom: 2px;"></div>
+          <div class="certificate-preview-sig-label" style="font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Authorized Signatory</div>
+        </div>
+        <div class="certificate-preview-seal-inline" style="width: 90px; height: 90px; background: radial-gradient(circle, #fcd34d 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; text-align: center; line-height: 1.1; border: 4px double white; opacity: 0.9; margin: 0 20px;">
+          SPEAXA<br>VERIFIED
+        </div>
+        <div class="certificate-preview-sig" style="display: flex; flex-direction: column; align-items: center;">
+          <div style="font-family: 'Georgia', serif; font-style: italic; font-size: 1.2rem; color: #1a1a1a; font-weight: bold;">${fmtDate(cert.issued_at)}</div>
+          <div class="certificate-preview-sig-line" style="width: 140px; border-top: 1px solid #777; margin-top: 5px; margin-bottom: 2px;"></div>
+          <div class="certificate-preview-sig-label" style="font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Date of Issuance</div>
+        </div>
+      </div>
+      <div style="margin-top: 30px; font-size: 0.7rem; color: #666; text-align: center; border-top: 1px dashed #ddd; padding-top: 12px;">
+        <i class="fas fa-shield-alt me-1"></i> Verify authenticity of this Speaxa credential at: <strong>${window.location.origin}/verify-certificate?id=${cert.id}</strong>
+      </div>
+    </div>
+  `;
+  
+  window.print();
 }
 
 initApp();
