@@ -1,3 +1,5 @@
+
+
 require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
@@ -33,6 +35,14 @@ db.query(`
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS item_approvals JSONB DEFAULT '{}';
   ALTER TABLE batches DROP CONSTRAINT IF EXISTS batches_capacity_check;
 
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS created_by VARCHAR(100) REFERENCES users(id);
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS custom_tag VARCHAR(255);
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+  ALTER TABLE courses DROP CONSTRAINT IF EXISTS courses_status_check;
+  ALTER TABLE courses ADD CONSTRAINT courses_status_check CHECK (status IN ('active', 'archived', 'draft', 'pending_approval', 'rejected'));
+  ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_url TEXT;
+  ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_name VARCHAR(255);
 
   INSERT INTO platform_settings (key, value) VALUES
     ('home_hero_badge', 'Speaxa is Launching Soon – Stay Tuned!'),

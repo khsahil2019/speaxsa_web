@@ -1,6 +1,16 @@
 // SPEAXA Landing Page JavaScript
 const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
 
+// Inject premium animations for badges
+const badgeStyle = document.createElement('style');
+badgeStyle.textContent = `
+  @keyframes pulse-glow {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 1px rgba(250, 204, 21, 0.4)); }
+    50% { transform: scale(1.1); filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.8)); }
+  }
+`;
+document.head.appendChild(badgeStyle);
+
 // ── AOS Init ─────────────────────────────────────────────────
 AOS.init({ once: true, duration: 700, offset: 80 });
 
@@ -60,9 +70,23 @@ async function loadCourses() {
     grid.innerHTML = courses.slice(0, 6).map(c => `
       <div class="col-sm-6 col-md-6 col-lg-4" data-aos="fade-up">
         <div class="course-card">
-          <div class="course-thumbnail" style="${c.thumbnail_url ? `background: url(${c.thumbnail_url}) center/cover no-repeat;` : `background:linear-gradient(135deg,${randomGradient()})`}">
+          <div class="course-thumbnail" style="${c.thumbnail_url ? `background: url(${c.thumbnail_url}) center/cover no-repeat;` : `background:linear-gradient(135deg,${randomGradient()})`}; position: relative;">
             ${c.thumbnail_url ? '' : `<span style="font-size:3rem">${icons[c.subject] || icons.default}</span>`}
-            <div class="course-badge">${c.grade || ''}</div>
+            <div class="course-badge" style="z-index: 3;">${c.grade || ''}</div>
+            
+            <!-- Verified & Creator tag overlay -->
+            <div class="position-absolute bottom-0 start-0 w-100 p-2 d-flex flex-column gap-1 align-items-start" style="background: linear-gradient(0deg, rgba(11,19,41,0.9) 0%, transparent 100%); z-index: 2;">
+              ${c.is_verified ? `
+                <span class="badge text-white border d-inline-flex align-items-center gap-1" style="backdrop-filter: blur(12px) saturate(180%); -webkit-backdrop-filter: blur(12px) saturate(180%); background: linear-gradient(135deg, rgba(250, 204, 21, 0.22) 0%, rgba(217, 119, 6, 0.12) 100%) !important; border-color: rgba(250, 204, 21, 0.4) !important; color: #fbbf24 !important; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12); text-shadow: 0 0 4px rgba(250, 204, 21, 0.4);">
+                  <i class="fas fa-certificate text-warning" style="animation: pulse-glow 2s infinite; font-size: 0.7rem;"></i> ★ SPEAXA VERIFIED
+                </span>
+              ` : ''}
+              ${c.custom_tag ? `
+                <span class="badge text-white border d-inline-flex align-items-center gap-1" style="backdrop-filter: blur(8px); background-color: rgba(60, 189, 176, 0.2) !important; border-color: rgba(60, 189, 176, 0.35) !important; color: #e2e8f0 !important; font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                  <i class="fas fa-signature me-1" style="color: #3CBDB0;"></i> ${c.custom_tag}
+                </span>
+              ` : ''}
+            </div>
           </div>
           <div class="course-body">
             <div class="course-meta">
@@ -454,6 +478,14 @@ async function showCourseDetails(courseId) {
                 <button class="btn btn-link p-0 text-primary text-decoration-none fw-semibold" onclick="toggleTeacherProfile(event, '${b.id}')" style="font-size: 0.76rem; border: none; background: transparent; outline: none; box-shadow: none;">
                   <i class="fas fa-info-circle me-1"></i>View Mentor Bio & Qualifications
                 </button>
+                
+                ${b.planner_url ? `
+                  <div class="mt-2">
+                    <a href="${b.planner_url}" target="_blank" class="btn btn-sm btn-outline-success py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; border-radius: 6px; text-decoration: none;">
+                      <i class="fas fa-file-pdf"></i> View Chapter Planner
+                    </a>
+                  </div>
+                ` : ''}
               </div>
             </div>
             <div class="text-end d-flex flex-column align-items-end ms-auto">

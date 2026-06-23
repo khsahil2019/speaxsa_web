@@ -243,7 +243,7 @@ function levelBadge(level) {
 
 function statusBadge(status) {
   const map = { active:'badge-active', approved:'badge-approved', pending:'badge-pending',
-    rejected:'badge-rejected', suspended:'badge-suspended', sop_pending:'badge-pending', completed:'badge-active' };
+    rejected:'badge-rejected', suspended:'badge-suspended', sop_pending:'badge-pending', pending_approval:'badge-pending', completed:'badge-active' };
   return `<span class="${map[status]||'badge-pending'}">${status||'unknown'}</span>`;
 }
 
@@ -998,18 +998,46 @@ async function renderCourses() {
           <button class="btn btn-spx" onclick="showCreateCourse()"><i class="fas fa-plus me-2"></i>New Course</button>
         </div>
         ${table(
-          ['Title','Subject','Grade','Board','Fees','Status','Actions'],
+          ['Title','Subject','Grade','Board','Fees','Verified','Featured','Status','Actions'],
           courses.map(c => `
             <tr>
-              <td class="fw-semibold text-white">${c.title}</td>
+              <td>
+                <div class="fw-semibold text-white">${c.title}</div>
+                ${c.custom_tag ? `<small class="text-muted d-block" style="font-size:0.75rem;">${c.custom_tag}</small>` : ''}
+                ${c.teacher_name ? `<div style="font-size:0.75rem;" class="text-muted mt-1">Creator: <a href="javascript:void(0)" class="text-primary fw-semibold" onclick="viewCourseTeacher('${c.id}')">${c.teacher_name}</a></div>` : ''}
+                ${c.status === 'pending_approval' && c.teacher_name ? `
+                  <div class="mt-2 p-2 rounded small text-secondary" style="background: rgba(60, 189, 176, 0.06); border: 1px solid rgba(60, 189, 176, 0.15); font-size:0.78rem;">
+                    <strong style="color: var(--primary) !important;">Teacher Review Details:</strong><br>
+                    • Qualification: <span>${c.teacher_qualification || '—'}</span><br>
+                    • Exp: <span>${c.teacher_experience || 0} Years</span> (${c.teacher_level || 'Bronze'})<br>
+                    • Bio: <span class="text-muted">${c.teacher_bio || '—'}</span>
+                  </div>
+                ` : ''}
+              </td>
               <td>${c.subject||'—'}</td>
               <td>${c.grade||'—'}</td>
               <td>${c.board||'—'}</td>
               <td class="fw-semibold" style="color:var(--primary)">${fmtCurrency(c.fees)}</td>
+              <td>
+                <span class="badge cursor-pointer" style="cursor: pointer; background: ${c.is_verified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.1)'} !important; color: ${c.is_verified ? '#10B981' : '#94a3b8'} !important; border: 1px solid ${c.is_verified ? 'rgba(16, 185, 129, 0.25)' : 'rgba(148, 163, 184, 0.2)'} !important; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;" onclick="toggleCourseVerified('${c.id}')">
+                  <i class="fas ${c.is_verified ? 'fa-check-circle' : 'fa-minus-circle'} me-1"></i> ${c.is_verified ? 'Verified' : 'Unverified'}
+                </span>
+              </td>
+              <td>
+                <span class="badge cursor-pointer" style="cursor: pointer; background: ${c.is_featured ? 'rgba(245, 158, 11, 0.15)' : 'rgba(148, 163, 184, 0.1)'} !important; color: ${c.is_featured ? '#F59E0B' : '#94a3b8'} !important; border: 1px solid ${c.is_featured ? 'rgba(245, 158, 11, 0.25)' : 'rgba(148, 163, 184, 0.2)'} !important; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;" onclick="toggleCourseFeatured('${c.id}')">
+                  <i class="fas ${c.is_featured ? 'fa-fire' : 'fa-star-half-alt'} me-1"></i> ${c.is_featured ? 'Featured' : 'Standard'}
+                </span>
+              </td>
               <td>${statusBadge(c.status)}</td>
               <td>
-                <button class="btn btn-sm btn-outline-secondary me-1" onclick="editCourse('${c.id}')">Edit</button>
-                <button class="btn btn-sm btn-outline-danger" onclick="archiveCourse('${c.id}')">Archive</button>
+                <div class="d-flex gap-1 flex-wrap">
+                  ${c.status === 'pending_approval' ? `
+                    <button class="btn btn-sm btn-success py-1 px-2" style="font-size:0.75rem;" onclick="approveCourse('${c.id}')">Approve</button>
+                    <button class="btn btn-sm btn-danger py-1 px-2" style="font-size:0.75rem;" onclick="rejectCourse('${c.id}')">Reject</button>
+                  ` : ''}
+                  <button class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size:0.75rem;" onclick="editCourse('${c.id}')">Edit</button>
+                  <button class="btn btn-sm btn-outline-danger py-1 px-2" style="font-size:0.75rem;" onclick="archiveCourse('${c.id}')">Archive</button>
+                </div>
               </td>
             </tr>`).join(''),
           true
@@ -1232,6 +1260,70 @@ async function archiveCourse(id) {
       renderCourses();
     } catch (err) { showToast(err.message, 'error'); }
   });
+}
+
+async function approveCourse(id) {
+  confirm('Approve Course?', 'This will publish the course and make it live for students to enroll.', async () => {
+    try {
+      const data = await apiPost(`/admin/courses/${id}/approve`);
+      showToast(data.message || 'Course approved successfully');
+      renderCourses();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function rejectCourse(id) {
+  adminPrompt('Reject Course', 'Reason for rejection?', '', async (reason) => {
+    try {
+      const data = await apiPost(`/admin/courses/${id}/reject`, { reason });
+      showToast(data.message || 'Course rejected');
+      renderCourses();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function toggleCourseVerified(id) {
+  try {
+    const data = await apiPost(`/admin/courses/${id}/toggle-verified`);
+    showToast(data.message || 'Course verification updated');
+    renderCourses();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function toggleCourseFeatured(id) {
+  try {
+    const data = await apiPost(`/admin/courses/${id}/toggle-featured`);
+    showToast(data.message || 'Course featured status updated');
+    renderCourses();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function viewCourseTeacher(courseId) {
+  const c = (window._courses || []).find(x => x.id === courseId);
+  if (!c || !c.teacher_name) return;
+  document.getElementById('formModalTitle').textContent = `Teacher Profile: ${c.teacher_name}`;
+  document.getElementById('formModalBody').innerHTML = `
+    <div class="text-center mb-3">
+      <img src="${c.teacher_photo || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(c.teacher_name)}" style="width:72px; height:72px; border-radius:50%; border:2px solid var(--primary); object-fit: cover;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.teacher_name)}'">
+      <h5 class="fw-bold mt-2 text-dark">${c.teacher_name}</h5>
+      <span class="badge" style="background: rgba(60,189,176,0.1); color: var(--primary);">${c.teacher_level || 'Bronze'}</span>
+    </div>
+    <div class="text-start text-dark small">
+      <div class="mb-2"><strong>Email:</strong> <span>${c.teacher_email}</span></div>
+      <div class="mb-2"><strong>Qualification:</strong> <span>${c.teacher_qualification || '—'}</span></div>
+      <div class="mb-2"><strong>Experience:</strong> <span>${c.teacher_experience || 0} Years</span></div>
+      <div class="mb-2"><strong>Rating:</strong> <span>⭐ ${parseFloat(c.teacher_rating || 5).toFixed(1)}</span></div>
+      <div class="mb-2"><strong>Biography:</strong> <p class="text-muted mt-1" style="font-size: 0.8rem; line-height: 1.5;">${c.teacher_bio || '—'}</p></div>
+    </div>
+    <div class="d-flex justify-content-end mt-4">
+      <button class="btn btn-secondary btn-sm" onclick="formModal.hide()">Close</button>
+    </div>
+  `;
+  formModal.show();
 }
 
 // ── Batches ───────────────────────────────────────────────────

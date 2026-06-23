@@ -27,6 +27,8 @@ const sopUpload = multer({ storage: makeStorage('sop'), limits: { fileSize: 200 
 const docUpload = multer({ storage: makeStorage('documents'), limits: { fileSize: 20 * 1024 * 1024 } });
 const assignUpload = multer({ storage: makeStorage('assignments'), limits: { fileSize: 50 * 1024 * 1024 } });
 const notesUpload = multer({ storage: makeStorage('notes'), limits: { fileSize: 50 * 1024 * 1024 } });
+const plannerUpload = multer({ storage: makeStorage('planners'), limits: { fileSize: 20 * 1024 * 1024 } });
+
 
 // All teacher routes require authentication
 router.use(authenticateToken);
@@ -320,7 +322,7 @@ router.get('/batches', async (req, res) => {
   }
 });
 
-router.post('/batches', async (req, res) => {
+router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
   const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity } = req.body;
   try {
     // Check SOP approval
@@ -334,15 +336,28 @@ router.post('/batches', async (req, res) => {
     const cap = parseInt(capacity) || maxCapacity;
     if (cap > maxCapacity) return res.status(400).json({ error: `Maximum batch capacity is ${maxCapacity} students` });
 
+    // Robust parsing of days_of_week
+    let days = days_of_week;
+    if (typeof days === 'string') {
+      try {
+        days = JSON.parse(days);
+      } catch (e) {
+        days = days.split(',').map(d => d.trim()).filter(Boolean);
+      }
+    }
+    if (!Array.isArray(days)) {
+      days = [];
+    }
+
     // Check for overlapping batches (same teacher, overlapping time on same days)
-    if (start_time && end_time && days_of_week && start_date && end_date) {
+    if (start_time && end_time && days.length > 0 && start_date && end_date) {
       const overlap = await db.query(`
         SELECT id FROM batches 
         WHERE teacher_id = $1 AND status = 'active'
           AND start_date <= $3 AND end_date >= $2
           AND start_time < $5 AND end_time > $4
           AND days_of_week && $6::text[]
-      `, [req.user.id, start_date, end_date, start_time, end_time, days_of_week]);
+      `, [req.user.id, start_date, end_date, start_time, end_time, days]);
 
       if (overlap.rows.length > 0) {
         return res.status(400).json({ error: 'You have an overlapping batch at this time. Please choose a different schedule.' });
@@ -352,15 +367,19 @@ router.post('/batches', async (req, res) => {
     const id = generateUID('batch');
     const channel = `speaxa_${id}`.replace(/[^a-zA-Z0-9_]/g, '_');
 
+    // Planner file info
+    const planner_url = req.file ? `/uploads/planners/${req.file.filename}` : null;
+    const planner_name = req.file ? req.file.originalname : null;
+
     await db.query(`
       INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days_of_week, capacity, status, agora_channel)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12)
+        start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14)
     `, [id, course_id, req.user.id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days_of_week, cap, channel]);
+        start_time, end_time, days, cap, channel, planner_url, planner_name]);
 
-    await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id });
-    res.status(201).json({ message: 'Batch created', batchId: id });
+    await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id, has_planner: !!planner_url });
+    res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -690,6 +709,125 @@ router.get('/notifications', async (req, res) => {
   }
 });
 
+// ── Course Management (Teacher) ──────────────────────────────
+const courseThumbnailStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '../../public/uploads/courses');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `course_${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+const courseThumbnailUpload = multer({ storage: courseThumbnailStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+router.post('/courses/upload-thumbnail', courseThumbnailUpload.single('thumbnail'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const thumbnailUrl = `/uploads/courses/${req.file.filename}`;
+    res.json({ message: 'Thumbnail uploaded', thumbnailUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/courses', async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM courses WHERE created_by = $1 ORDER BY created_at DESC',
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/courses', async (req, res) => {
+  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, custom_tag } = req.body;
+  try {
+    if (!title || !fees) return res.status(400).json({ error: 'Title and fees are required' });
+    const id = `course_${Date.now()}`;
+    const result = await db.query(`
+      INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by, custom_tag)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11) RETURNING *
+    `, [id, title, subject, description, parseInt(duration_weeks) || 12, grade, board, parseFloat(fees), thumbnail_url || null, req.user.id, custom_tag || null]);
+    
+    await logAudit(req.user.id, 'TEACHER_COURSE_CREATED', 'course', id, { title });
+    res.status(201).json({ message: 'Course draft created successfully', course: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/courses/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, custom_tag } = req.body;
+  try {
+    const courseCheck = await db.query('SELECT status, created_by FROM courses WHERE id = $1', [id]);
+    if (!courseCheck.rows.length) return res.status(404).json({ error: 'Course not found' });
+    if (courseCheck.rows[0].created_by !== req.user.id) return res.status(403).json({ error: 'Unauthorized to edit this course' });
+    if (!['draft', 'rejected'].includes(courseCheck.rows[0].status)) {
+      return res.status(400).json({ error: 'Only draft or rejected courses can be edited' });
+    }
+
+    const result = await db.query(`
+      UPDATE courses SET 
+        title = COALESCE($1, title), 
+        subject = COALESCE($2, subject), 
+        description = COALESCE($3, description),
+        duration_weeks = COALESCE($4, duration_weeks), 
+        grade = COALESCE($5, grade), 
+        board = COALESCE($6, board),
+        fees = COALESCE($7, fees), 
+        thumbnail_url = COALESCE($8, thumbnail_url), 
+        custom_tag = COALESCE($9, custom_tag),
+        status = 'draft',
+        updated_at = NOW()
+      WHERE id = $10 RETURNING *
+    `, [title, subject, description, duration_weeks ? parseInt(duration_weeks) : null, grade, board, fees ? parseFloat(fees) : null, thumbnail_url, custom_tag, id]);
+    
+    await logAudit(req.user.id, 'TEACHER_COURSE_UPDATED', 'course', id, {});
+    res.json({ message: 'Course updated and reset to draft', course: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/courses/:id/request-approval', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const courseCheck = await db.query('SELECT status, created_by, title FROM courses WHERE id = $1', [id]);
+    if (!courseCheck.rows.length) return res.status(404).json({ error: 'Course not found' });
+    if (courseCheck.rows[0].created_by !== req.user.id) return res.status(403).json({ error: 'Unauthorized' });
+    if (!['draft', 'rejected'].includes(courseCheck.rows[0].status)) {
+      return res.status(400).json({ error: 'Only draft or rejected courses can be submitted for approval' });
+    }
+
+    const result = await db.query(
+      "UPDATE courses SET status = 'pending_approval', updated_at = NOW() WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    const notifId = `course_approval_req_${id}`;
+    await db.query(`
+      INSERT INTO notifications (id, title, message, target_role, type, is_active)
+      VALUES ($1, $2, $3, 'admin', 'warning', true)
+      ON CONFLICT (id) DO UPDATE SET is_active = true, is_read = false, created_at = NOW()
+    `, [
+      notifId,
+      'Course Approval Requested',
+      `Teacher "${req.user.name}" has requested approval for course "${courseCheck.rows[0].title}".`
+    ]);
+
+    await logAudit(req.user.id, 'TEACHER_COURSE_APPROVAL_REQUESTED', 'course', id, { title: courseCheck.rows[0].title });
+    res.json({ message: 'Course submitted for admin approval', course: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/notifications/:id/read', async (req, res) => {
   const { id } = req.params;
   try {
@@ -705,3 +843,4 @@ router.post('/notifications/:id/read', async (req, res) => {
 });
 
 module.exports = router;
+

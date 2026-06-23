@@ -534,12 +534,60 @@ router.post('/courses/upload-thumbnail', courseThumbnailUpload.single('thumbnail
 
 router.get('/courses', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM courses ORDER BY created_at DESC');
+    const result = await db.query(`
+      SELECT c.*, 
+             u.name as teacher_name, 
+             u.email as teacher_email, 
+             u.photo_url as teacher_photo, 
+             u.teacher_level, 
+             u.rating as teacher_rating, 
+             u.qualification as teacher_qualification, 
+             u.experience_years as teacher_experience,
+             u.bio as teacher_bio
+      FROM courses c
+      LEFT JOIN users u ON u.id = c.created_by
+      ORDER BY c.created_at DESC
+    `);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+router.post('/courses/:id/toggle-verified', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query(`
+      UPDATE courses 
+      SET is_verified = NOT COALESCE(is_verified, TRUE), updated_at = NOW()
+      WHERE id = $1 
+      RETURNING *
+    `, [id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Course not found' });
+    await logAudit(req.user.id, 'COURSE_VERIFIED_TOGGLED', 'course', id, { is_verified: result.rows[0].is_verified });
+    res.json({ message: 'Course verification status updated', course: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/courses/:id/toggle-featured', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query(`
+      UPDATE courses 
+      SET is_featured = NOT COALESCE(is_featured, FALSE), updated_at = NOW()
+      WHERE id = $1 
+      RETURNING *
+    `, [id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Course not found' });
+    await logAudit(req.user.id, 'COURSE_FEATURED_TOGGLED', 'course', id, { is_featured: result.rows[0].is_featured });
+    res.json({ message: 'Course featured status updated', course: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 router.post('/courses', async (req, res) => {
   const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url } = req.body;
@@ -963,6 +1011,148 @@ router.get('/revenue', async (req, res) => {
       GROUP BY u.id ORDER BY earnings DESC LIMIT 5
     `);
     res.json({ monthly: monthly.rows, topTeachers: topTeachers.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Course Approval and Rejection Endpoints ──────────────────
+router.post('/courses/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const courseRes = await db.query(
+      'SELECT c.title, c.created_by, u.email, u.name FROM courses c LEFT JOIN users u ON u.id = c.created_by WHERE c.id = $1',
+      [id]
+    );
+    if (!courseRes.rows.length) return res.status(404).json({ error: 'Course not found' });
+    const course = courseRes.rows[0];
+
+    await db.query("UPDATE courses SET status = 'active' WHERE id = $1", [id]);
+    await logAudit(req.user.id, 'COURSE_APPROVED', 'course', id, { title: course.title });
+
+    if (course.created_by) {
+      await db.query(`
+        INSERT INTO notifications (id, title, message, target_role, target_user, type, is_active)
+        VALUES ($1, $2, $3, 'teacher', $4, 'success', true)
+      `, [`notif_approve_${id}_${Date.now()}`, 'Course Approved!', `Your course "${course.title}" has been approved by the Admin and is now live.`, course.created_by]);
+    }
+
+    if (course.email) {
+      try {
+        const settingsRes = await db.query(
+          "SELECT key, value FROM platform_settings WHERE key IN ('smtp_host','smtp_port','smtp_user','smtp_pass','platform_name')"
+        );
+        const settings = {};
+        settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
+
+        if (settings.smtp_host && settings.smtp_user) {
+          const nodemailer = require('nodemailer');
+          const transporter = nodemailer.createTransport({
+            host: settings.smtp_host,
+            port: parseInt(settings.smtp_port || '587'),
+            secure: parseInt(settings.smtp_port || '587') === 465,
+            auth: { user: settings.smtp_user, pass: settings.smtp_pass },
+          });
+
+          const platformName = settings.platform_name || 'Speaxa';
+          await transporter.sendMail({
+            from: `"${platformName}" <${settings.smtp_user}>`,
+            to: course.email,
+            subject: `Course Approved: ${course.title}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #3CBDB0;">${platformName}</h2>
+                <p>Hello <strong>${course.name}</strong>,</p>
+                <p>We are excited to inform you that your course <strong>"${course.title}"</strong> has been approved by the Admin and is now published live on the platform!</p>
+                <p>You can check the course status and start managing study batches in your teacher dashboard.</p>
+                <br>
+                <small style="color: #999;">This is an automated notification. Please do not reply directly to this email.</small>
+              </div>
+            `
+          });
+          console.log(`[Admin Approval Email] Sent to teacher ${course.email} for course "${course.title}"`);
+        } else {
+          console.log(`[Admin Approval Email Fallback] Email: ${course.email} | Message: Course "${course.title}" approved.`);
+        }
+      } catch (mailErr) {
+        console.error('[Admin Approval Email Error]:', mailErr.message);
+      }
+    }
+
+    res.json({ message: 'Course approved successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/courses/:id/reject', async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  try {
+    const courseRes = await db.query(
+      'SELECT c.title, c.created_by, u.email, u.name FROM courses c LEFT JOIN users u ON u.id = c.created_by WHERE c.id = $1',
+      [id]
+    );
+    if (!courseRes.rows.length) return res.status(404).json({ error: 'Course not found' });
+    const course = courseRes.rows[0];
+
+    await db.query("UPDATE courses SET status = 'rejected' WHERE id = $1", [id]);
+    await logAudit(req.user.id, 'COURSE_REJECTED', 'course', id, { reason });
+
+    if (course.created_by) {
+      await db.query(`
+        INSERT INTO notifications (id, title, message, target_role, target_user, type, is_active)
+        VALUES ($1, $2, $3, 'teacher', $4, 'warning', true)
+      `, [`notif_reject_${id}_${Date.now()}`, 'Course Rejected', `Your course "${course.title}" was not approved. Reason: ${reason || 'Does not meet platform guidelines'}.`, course.created_by]);
+    }
+
+    if (course.email) {
+      try {
+        const settingsRes = await db.query(
+          "SELECT key, value FROM platform_settings WHERE key IN ('smtp_host','smtp_port','smtp_user','smtp_pass','platform_name')"
+        );
+        const settings = {};
+        settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
+
+        if (settings.smtp_host && settings.smtp_user) {
+          const nodemailer = require('nodemailer');
+          const transporter = nodemailer.createTransport({
+            host: settings.smtp_host,
+            port: parseInt(settings.smtp_port || '587'),
+            secure: parseInt(settings.smtp_port || '587') === 465,
+            auth: { user: settings.smtp_user, pass: settings.smtp_pass },
+          });
+
+          const platformName = settings.platform_name || 'Speaxa';
+          await transporter.sendMail({
+            from: `"${platformName}" <${settings.smtp_user}>`,
+            to: course.email,
+            subject: `Course Status Update: ${course.title}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #EF4444;">${platformName} Update</h2>
+                <p>Hello <strong>${course.name}</strong>,</p>
+                <p>Your course <strong>"${course.title}"</strong> has been reviewed. Unfortunately, it does not meet our guidelines at this time and has been rejected.</p>
+                <div style="background: #FEE2E2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                  <strong>Reason for Rejection:</strong><br>
+                  ${reason || 'Does not meet platform guidelines.'}
+                </div>
+                <p>You can modify the course in your dashboard and re-submit it for approval.</p>
+                <br>
+                <small style="color: #999;">This is an automated notification. Please do not reply directly to this email.</small>
+              </div>
+            `
+          });
+          console.log(`[Admin Rejection Email] Sent to teacher ${course.email} for course "${course.title}"`);
+        } else {
+          console.log(`[Admin Rejection Email Fallback] Email: ${course.email} | Reason: ${reason}`);
+        }
+      } catch (mailErr) {
+        console.error('[Admin Rejection Email Error]:', mailErr.message);
+      }
+    }
+
+    res.json({ message: 'Course rejected successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

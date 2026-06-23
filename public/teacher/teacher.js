@@ -268,14 +268,14 @@ function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
   const titles = {
-    home:'Dashboard', sop:'SOP Setup', batches:'My Batches',
+    home:'Dashboard', sop:'SOP Setup', courses:'My Courses', batches:'My Batches',
     liveclasses:'Live Classes', assignments:'Assignments', observations:'Observations',
     attendance:'Attendance', notes:'Study Materials', earnings:'Earnings',
     level:'My Level', profile:'Profile'
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   const renders = {
-    home:renderHome, sop:renderSop, batches:renderBatches,
+    home:renderHome, sop:renderSop, courses:renderCourses, batches:renderBatches,
     liveclasses:renderLiveClasses, assignments:renderAssignments, observations:renderObservations,
     attendance:renderAttendance, notes:renderNotes, earnings:renderEarnings,
     level:renderLevel, profile:renderProfile
@@ -1523,7 +1523,7 @@ async function renderBatches() {
                   <label class="spx-label">Course</label>
                   <select class="form-select spx-input" id="batchCourse" onchange="handleCourseChange(this.value)" required>
                     <option value="">Select Course</option>
-                    ${courses.map(c => `<option value="${c.id}">${c.title} (${c.grade})</option>`).join('')}
+                    ${courses.filter(c => c.status === 'active').map(c => `<option value="${c.id}">${c.title} (${c.grade})</option>`).join('')}
                   </select>
                 </div>
                 <div class="mb-3">
@@ -1561,6 +1561,11 @@ async function renderBatches() {
                 <div class="mb-3">
                   <label class="spx-label">Max Capacity (Max ${maxBatchCapacity})</label>
                   <input type="number" class="form-control spx-input" id="batchCapacity" value="${maxBatchCapacity}" max="${maxBatchCapacity}" oninput="updateBatchPreview()" required>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Upload Chapter-wise Course Planner (PDF/Doc) *</label>
+                  <input type="file" class="form-control spx-input" id="batchPlanner" accept=".pdf,.doc,.docx" required>
+                  <div class="form-text text-muted small mt-1">Submit the full learning schedule for this batch.</div>
                 </div>
                 <button type="submit" class="btn btn-spx w-100">Create Batch</button>
               </form>
@@ -1773,23 +1778,34 @@ async function createBatch(e) {
   const daysVal = document.getElementById('batchDays').value;
   const days_of_week = daysVal.split(',').map(s => s.trim()).filter(Boolean);
 
-  const payload = {
-    course_id: document.getElementById('batchCourse').value,
-    batch_name: document.getElementById('batchName').value,
-    subject: document.getElementById('batchSubject').value,
-    start_date: document.getElementById('batchStartD').value,
-    end_date: document.getElementById('batchEndD').value,
-    start_time: document.getElementById('batchStartT').value + ':00',
-    end_time: document.getElementById('batchEndT').value + ':00',
-    days_of_week,
-    capacity: parseInt(document.getElementById('batchCapacity').value) || 30,
-  };
+  const formData = new FormData();
+  formData.append('course_id', document.getElementById('batchCourse').value);
+  formData.append('batch_name', document.getElementById('batchName').value);
+  formData.append('subject', document.getElementById('batchSubject').value);
+  formData.append('start_date', document.getElementById('batchStartD').value);
+  formData.append('end_date', document.getElementById('batchEndD').value);
+  formData.append('start_time', document.getElementById('batchStartT').value + ':00');
+  formData.append('end_time', document.getElementById('batchEndT').value + ':00');
+  formData.append('days_of_week', JSON.stringify(days_of_week));
+  formData.append('capacity', parseInt(document.getElementById('batchCapacity').value) || 30);
+
+  const plannerFile = document.getElementById('batchPlanner').files[0];
+  if (plannerFile) {
+    formData.append('planner', plannerFile);
+  }
 
   try {
-    const data = await api('/teacher/batches', {
+    showToast('Creating batch & uploading planner...', 'info');
+    const res = await fetch(`${API}/teacher/batches`, {
       method: 'POST',
-      body: JSON.stringify(payload)
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
     });
+
+    if (res.status === 401) { logout(); throw new Error('Session expired'); }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
     showToast(data.message || 'Batch created successfully!');
     // Switch tab to list
     window._batchActiveTab = 'list';
@@ -1800,6 +1816,329 @@ async function createBatch(e) {
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+// ── My Courses Management (Teacher Dashboard Integration) ─────
+async function renderCourses() {
+  loading();
+  try {
+    const courses = await api('/teacher/courses');
+    window._teacherCourses = courses;
+
+    let coursesHtml = `
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom" style="border-color: var(--border) !important;">
+        <h5 class="fw-bold text-white mb-0" style="font-family: 'Outfit', sans-serif;">My Courses</h5>
+        <button class="btn btn-sm btn-spx" onclick="showCreateCourseModal()">
+          <i class="fas fa-plus me-1"></i> New Course Draft
+        </button>
+      </div>
+      <div class="row g-4">
+    `;
+
+    if (courses.length === 0) {
+      coursesHtml += `
+        <div class="col-12 text-center py-5">
+          <p class="text-muted">No courses created yet. Click "New Course Draft" to get started.</p>
+        </div>
+      `;
+    } else {
+      coursesHtml += courses.map(c => {
+        const statuses = {
+          draft: { label: 'Draft', class: 'bg-secondary' },
+          pending_approval: { label: 'Pending Approval', class: 'bg-warning text-dark' },
+          active: { label: 'Approved & Live', class: 'bg-success' },
+          rejected: { label: 'Rejected', class: 'bg-danger' },
+          archived: { label: 'Archived', class: 'bg-dark text-white' }
+        };
+        const status = statuses[c.status] || { label: c.status, class: 'bg-info' };
+        const fees = parseFloat(c.fees || 0).toLocaleString('en-IN');
+        const customTagHtml = c.custom_tag ? `<div class="text-primary small fw-bold mb-2"><i class="fas fa-tag me-1"></i>${c.custom_tag}</div>` : '';
+
+        // Action buttons
+        let actionsHtml = '';
+        if (['draft', 'rejected'].includes(c.status)) {
+          actionsHtml = `
+            <button class="btn btn-xs btn-outline-secondary me-2 px-3 py-1" style="font-size:0.75rem;" onclick="editTeacherCourse('${c.id}')"><i class="fas fa-edit me-1"></i>Edit</button>
+            <button class="btn btn-xs btn-spx px-3 py-1" style="font-size:0.75rem;" onclick="submitTeacherCourseForApproval('${c.id}')"><i class="fas fa-paper-plane me-1"></i>Submit</button>
+          `;
+        } else if (c.status === 'pending_approval') {
+          actionsHtml = `<span class="text-muted small"><i class="fas fa-clock me-1"></i>Pending Review</span>`;
+        } else if (c.status === 'active') {
+          actionsHtml = `<span class="text-success small fw-semibold"><i class="fas fa-check-circle me-1"></i>Live</span>`;
+        }
+
+        return `
+          <div class="col-md-6 col-lg-4">
+            <div class="spx-card h-100 d-flex flex-column justify-content-between" style="border: 1px solid var(--border);">
+              <div>
+                <div class="course-thumbnail rounded-3 mb-3 position-relative" style="height: 140px; ${c.thumbnail_url ? `background: url(${c.thumbnail_url}) center/cover no-repeat;` : `background: linear-gradient(135deg, #3CBDB0, #0F766E);`}; display:flex; align-items:center; justify-content:center;">
+                  ${c.thumbnail_url ? '' : '<span style="font-size: 2.5rem;">📖</span>'}
+                  <span class="badge ${status.class} position-absolute top-0 end-0 m-2" style="font-size:0.7rem; border-radius: 6px;">${status.label}</span>
+                </div>
+                <h6 class="text-white fw-bold mb-1">${c.title}</h6>
+                ${customTagHtml}
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.subject || 'General'}</span>
+                  <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.grade || 'Any'}</span>
+                  <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.board || 'Any'}</span>
+                  <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.duration_weeks || 12} Wks</span>
+                </div>
+                <p class="text-muted small" style="line-height:1.5; font-size:0.8rem;">${(c.description || 'No description provided.').substr(0, 100)}${c.description?.length > 100 ? '...' : ''}</p>
+              </div>
+              <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center" style="border-color: var(--border) !important;">
+                <span class="fw-bold text-white">₹${fees}</span>
+                <div class="d-flex align-items-center">
+                  ${actionsHtml}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    coursesHtml += `</div>`;
+    document.getElementById('pageContent').innerHTML = coursesHtml;
+
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+let _teacherActiveCourseId = null;
+let _teacherCurrentThumbnailUrl = '';
+
+function initCourseFormModal() {
+  if (document.getElementById('courseFormModal')) return;
+  const modalDiv = document.createElement('div');
+  modalDiv.innerHTML = `
+    <div class="modal fade" id="courseFormModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:#ffffff; border:1px solid var(--border); color:#000000; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
+          <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding:16px 24px;">
+            <h5 class="modal-title fw-bold text-dark" id="courseModalTitle">Create New Course</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter:invert(0.5);"></button>
+          </div>
+          <div class="modal-body text-dark" style="padding:24px;">
+            <form id="teacherCourseForm">
+              <div class="row g-3">
+                <div class="col-md-8">
+                  <label class="form-label fw-semibold text-dark">Course Title *</label>
+                  <input class="form-control" id="tCourseTitle" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold text-dark">Subject *</label>
+                  <input class="form-control" id="tCourseSubject" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Physics" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold text-dark">Grade *</label>
+                  <select class="form-select" id="tCourseGrade" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                    <option value="">Select Grade</option>
+                    <option>Class 6</option><option>Class 7</option><option>Class 8</option>
+                    <option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-semibold text-dark">Board *</label>
+                  <select class="form-select" id="tCourseBoard" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                    <option value="">Select Board</option>
+                    <option>CBSE</option><option>ICSE</option><option>State Board</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label fw-semibold text-dark">Duration (weeks)</label>
+                  <input class="form-control" id="tCourseDuration" type="number" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" value="12" required>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label fw-semibold text-dark">Fees (₹) *</label>
+                  <input class="form-control" id="tCourseFees" type="number" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="499" required>
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label fw-semibold text-dark">Custom Badge / Tag Line</label>
+                  <input class="form-control" id="tCourseCustomTag" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Designed by Sahil Sir">
+                  <small class="text-muted">A premium tag overlay to show on the course details card (e.g. "Designed by XYZ Sir").</small>
+                </div>
+                
+                <div class="col-12">
+                  <label class="form-label fw-semibold text-dark">Course Thumbnail / Banner</label>
+                  <div class="border border-dashed rounded text-center p-3" style="cursor:pointer; border-color:#cbd5e1 !important; background:#f8fafc;" onclick="document.getElementById('tCourseFileInput').click()">
+                    <input type="file" id="tCourseFileInput" accept="image/*" class="d-none" onchange="handleTeacherCourseFileSelect(this)">
+                    <div id="tCourseUploadPlaceholder">
+                      <i class="fas fa-cloud-upload-alt text-primary mb-2" style="font-size: 1.5rem;"></i>
+                      <p class="mb-0 text-dark small fw-semibold">Click to upload banner image</p>
+                    </div>
+                    <div id="tCourseUploadPreviewContainer" class="d-none position-relative mt-2">
+                      <img id="tCourseUploadPreview" src="" style="max-height: 120px; width:100%; object-fit:cover; border-radius:8px;" />
+                      <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-1" onclick="removeTeacherCourseThumbnail(event)">Remove</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label fw-semibold text-dark">Description</label>
+                  <textarea class="form-control" id="tCourseDesc" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" rows="3" placeholder="Enter course description details..."></textarea>
+                </div>
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-spx w-100 py-2" id="tCourseSubmitBtn">Save Course Draft</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalDiv.firstElementChild);
+}
+
+function showCreateCourseModal() {
+  initCourseFormModal();
+  _teacherActiveCourseId = null;
+  _teacherCurrentThumbnailUrl = '';
+  
+  document.getElementById('courseModalTitle').textContent = 'Create New Course';
+  document.getElementById('tCourseTitle').value = '';
+  document.getElementById('tCourseSubject').value = '';
+  document.getElementById('tCourseGrade').value = '';
+  document.getElementById('tCourseBoard').value = '';
+  document.getElementById('tCourseDuration').value = '12';
+  document.getElementById('tCourseFees').value = '';
+  document.getElementById('tCourseCustomTag').value = '';
+  document.getElementById('tCourseDesc').value = '';
+  
+  document.getElementById('tCourseUploadPreviewContainer').classList.add('d-none');
+  document.getElementById('tCourseUploadPlaceholder').classList.remove('d-none');
+  document.getElementById('tCourseUploadPreview').src = '';
+  
+  document.getElementById('teacherCourseForm').onsubmit = handleSaveTeacherCourse;
+  
+  const myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('courseFormModal'));
+  myModal.show();
+}
+
+function editTeacherCourse(id) {
+  initCourseFormModal();
+  const course = (window._teacherCourses || []).find(c => c.id === id);
+  if (!course) return showToast('Course not found', 'error');
+
+  _teacherActiveCourseId = id;
+  _teacherCurrentThumbnailUrl = course.thumbnail_url || '';
+
+  document.getElementById('courseModalTitle').textContent = 'Edit Course Draft';
+  document.getElementById('tCourseTitle').value = course.title || '';
+  document.getElementById('tCourseSubject').value = course.subject || '';
+  document.getElementById('tCourseGrade').value = course.grade || '';
+  document.getElementById('tCourseBoard').value = course.board || '';
+  document.getElementById('tCourseDuration').value = course.duration_weeks || '12';
+  document.getElementById('tCourseFees').value = course.fees || '';
+  document.getElementById('tCourseCustomTag').value = course.custom_tag || '';
+  document.getElementById('tCourseDesc').value = course.description || '';
+
+  const previewContainer = document.getElementById('tCourseUploadPreviewContainer');
+  const placeholder = document.getElementById('tCourseUploadPlaceholder');
+  const preview = document.getElementById('tCourseUploadPreview');
+
+  if (_teacherCurrentThumbnailUrl) {
+    preview.src = _teacherCurrentThumbnailUrl;
+    previewContainer.classList.remove('d-none');
+    placeholder.classList.add('d-none');
+  } else {
+    previewContainer.classList.add('d-none');
+    placeholder.classList.remove('d-none');
+    preview.src = '';
+  }
+
+  document.getElementById('teacherCourseForm').onsubmit = handleSaveTeacherCourse;
+
+  const myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('courseFormModal'));
+  myModal.show();
+}
+
+async function handleSaveTeacherCourse(e) {
+  e.preventDefault();
+  const payload = {
+    title: document.getElementById('tCourseTitle').value,
+    subject: document.getElementById('tCourseSubject').value,
+    grade: document.getElementById('tCourseGrade').value,
+    board: document.getElementById('tCourseBoard').value,
+    duration_weeks: parseInt(document.getElementById('tCourseDuration').value) || 12,
+    fees: parseFloat(document.getElementById('tCourseFees').value),
+    custom_tag: document.getElementById('tCourseCustomTag').value,
+    description: document.getElementById('tCourseDesc').value,
+    thumbnail_url: _teacherCurrentThumbnailUrl || null
+  };
+
+  try {
+    let data;
+    if (_teacherActiveCourseId) {
+      data = await api(`/teacher/courses/${_teacherActiveCourseId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    } else {
+      data = await api('/teacher/courses', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    }
+
+    showToast(data.message || 'Course saved successfully!');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('courseFormModal')).hide();
+    renderCourses();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function submitTeacherCourseForApproval(id) {
+  try {
+    const data = await api(`/teacher/courses/${id}/request-approval`, {
+      method: 'POST'
+    });
+    showToast(data.message || 'Course submitted for approval!');
+    renderCourses();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleTeacherCourseFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('thumbnail', file);
+
+  try {
+    showToast('Uploading banner...', 'info');
+    const res = await fetch(`${API}/teacher/courses/upload-thumbnail`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    
+    if (res.status === 401) { logout(); throw new Error('Session expired'); }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    _teacherCurrentThumbnailUrl = data.thumbnailUrl;
+    document.getElementById('tCourseUploadPreview').src = data.thumbnailUrl;
+    document.getElementById('tCourseUploadPreviewContainer').classList.remove('d-none');
+    document.getElementById('tCourseUploadPlaceholder').classList.add('d-none');
+    showToast('Banner uploaded successfully!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    input.value = '';
+  }
+}
+
+function removeTeacherCourseThumbnail(event) {
+  event.stopPropagation();
+  _teacherCurrentThumbnailUrl = '';
+  document.getElementById('tCourseUploadPreviewContainer').classList.add('d-none');
+  document.getElementById('tCourseUploadPlaceholder').classList.remove('d-none');
+  document.getElementById('tCourseUploadPreview').src = '';
 }
 
 // ── Live Classes ──────────────────────────────────────────────
