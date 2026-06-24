@@ -1951,30 +1951,213 @@ async function renderBatches() {
   loading();
   try {
     const batches = await apiGet('/admin/batches');
+    window._batches = batches;
+
+    // Initialize filter states on window if not present
+    if (window._batchesFilterSearch === undefined) window._batchesFilterSearch = '';
+    if (window._batchesFilterStatus === undefined) window._batchesFilterStatus = '';
+    if (window._batchesFilterCourse === undefined) window._batchesFilterCourse = '';
+    if (window._batchesFilterTeacher === undefined) window._batchesFilterTeacher = '';
+    if (window._batchesFilterDay === undefined) window._batchesFilterDay = '';
+
+    // Dynamically extract unique courses and teachers for filter dropdowns
+    const uniqueCourses = [...new Set(batches.map(b => b.course_title).filter(Boolean))].sort();
+    const uniqueTeachers = [...new Set(batches.map(b => b.teacher_name).filter(Boolean))].sort();
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
     document.getElementById('pageContent').innerHTML = `
       <div class="spx-card">
-        <h6 class="mb-4">All Batches (${batches.length})</h6>
-        ${table(
-          ['Batch','Course','Teacher','Schedule','Capacity','Status','Actions'],
-          batches.map(b => `
-            <tr>
-              <td class="fw-semibold text-white">${b.batch_name}</td>
-              <td>${b.course_title||'—'}</td>
-              <td>${b.teacher_name||'—'}</td>
-              <td>${(b.days_of_week||[]).join(', ')}<br><small class="text-muted">${b.start_time||''} - ${b.end_time||''}</small></td>
-              <td>${b.seats_filled||0}/${b.capacity||30}</td>
-              <td>${statusBadge(b.status)}</td>
-              <td>
-                <button class="btn btn-sm btn-outline-secondary me-1" onclick="toggleBatch('${b.id}')">Toggle</button>
-                <button class="btn btn-sm btn-outline-danger" onclick="cancelBatch('${b.id}')">Cancel</button>
-              </td>
-            </tr>`).join(''),
-          true
-        )}
-      </div>`;
+        <!-- Header Section -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <h6 class="mb-0" id="batchesCountTitle">All Batches (${batches.length})</h6>
+        </div>
+
+        <!-- Filters Grid Bar -->
+        <div class="course-filter-bar mb-4">
+          <!-- Text Search -->
+          <div class="course-filter-item search-item">
+            <label class="spx-label mb-1">Search</label>
+            <div class="course-filter-input-group">
+              <i class="fas fa-search"></i>
+              <input type="text" id="batchFilterSearch" class="form-control spx-input" placeholder="Search batch name, course, teacher..." value="${window._batchesFilterSearch}">
+            </div>
+          </div>
+
+          <!-- Status Filter -->
+          <div class="course-filter-item">
+            <label class="spx-label mb-1">Status</label>
+            <select id="batchFilterStatus" class="form-select spx-input">
+              <option value="">All Statuses</option>
+              <option value="active" ${window._batchesFilterStatus === 'active' ? 'selected' : ''}>Active</option>
+              <option value="inactive" ${window._batchesFilterStatus === 'inactive' ? 'selected' : ''}>Inactive</option>
+              <option value="cancelled" ${window._batchesFilterStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+            </select>
+          </div>
+
+          <!-- Course Filter -->
+          <div class="course-filter-item">
+            <label class="spx-label mb-1">Course</label>
+            <select id="batchFilterCourse" class="form-select spx-input">
+              <option value="">All Courses</option>
+              ${uniqueCourses.map(c => `<option value="${c}" ${window._batchesFilterCourse === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Teacher Filter -->
+          <div class="course-filter-item">
+            <label class="spx-label mb-1">Teacher</label>
+            <select id="batchFilterTeacher" class="form-select spx-input">
+              <option value="">All Teachers</option>
+              ${uniqueTeachers.map(t => `<option value="${t}" ${window._batchesFilterTeacher === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Day Filter -->
+          <div class="course-filter-item">
+            <label class="spx-label mb-1">Day</label>
+            <select id="batchFilterDay" class="form-select spx-input">
+              <option value="">All Days</option>
+              ${daysOfWeek.map(d => `<option value="${d}" ${window._batchesFilterDay === d ? 'selected' : ''}>${d}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Reset Button -->
+          <div class="course-filter-item btn-item align-self-end">
+            <button class="btn btn-secondary w-100" onclick="resetBatchFilters()" title="Reset Filters">
+              <i class="fas fa-undo"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-responsive">
+          <table class="spx-table">
+            <thead>
+              <tr>
+                <th>Batch</th>
+                <th>Course</th>
+                <th>Teacher</th>
+                <th>Schedule</th>
+                <th>Capacity</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="batchesTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Wire up events dynamically
+    document.getElementById('batchFilterSearch').addEventListener('input', e => handleBatchFilterChange('search', e.target.value));
+    document.getElementById('batchFilterStatus').addEventListener('change', e => handleBatchFilterChange('status', e.target.value));
+    document.getElementById('batchFilterCourse').addEventListener('change', e => handleBatchFilterChange('course', e.target.value));
+    document.getElementById('batchFilterTeacher').addEventListener('change', e => handleBatchFilterChange('teacher', e.target.value));
+    document.getElementById('batchFilterDay').addEventListener('change', e => handleBatchFilterChange('day', e.target.value));
+
+    // Render initial list
+    filterAndRenderBatchesTable();
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
   }
+}
+
+function handleBatchFilterChange(type, val) {
+  if (type === 'search') window._batchesFilterSearch = val;
+  if (type === 'status') window._batchesFilterStatus = val;
+  if (type === 'course') window._batchesFilterCourse = val;
+  if (type === 'teacher') window._batchesFilterTeacher = val;
+  if (type === 'day') window._batchesFilterDay = val;
+  filterAndRenderBatchesTable();
+}
+
+function resetBatchFilters() {
+  window._batchesFilterSearch = '';
+  window._batchesFilterStatus = '';
+  window._batchesFilterCourse = '';
+  window._batchesFilterTeacher = '';
+  window._batchesFilterDay = '';
+
+  const sInput = document.getElementById('batchFilterSearch');
+  const statSelect = document.getElementById('batchFilterStatus');
+  const crSelect = document.getElementById('batchFilterCourse');
+  const tcSelect = document.getElementById('batchFilterTeacher');
+  const dySelect = document.getElementById('batchFilterDay');
+
+  if (sInput) sInput.value = '';
+  if (statSelect) statSelect.value = '';
+  if (crSelect) crSelect.value = '';
+  if (tcSelect) tcSelect.value = '';
+  if (dySelect) dySelect.value = '';
+
+  filterAndRenderBatchesTable();
+}
+
+function filterAndRenderBatchesTable() {
+  const tbody = document.getElementById('batchesTableBody');
+  if (!tbody) return;
+
+  const batches = window._batches || [];
+  const searchVal = (window._batchesFilterSearch || '').toLowerCase().trim();
+  const statusVal = window._batchesFilterStatus || '';
+  const courseVal = window._batchesFilterCourse || '';
+  const teacherVal = window._batchesFilterTeacher || '';
+  const dayVal = window._batchesFilterDay || '';
+
+  // Apply filters
+  const filtered = batches.filter(b => {
+    if (searchVal) {
+      const matchBatch = (b.batch_name || '').toLowerCase().includes(searchVal);
+      const matchCourse = (b.course_title || '').toLowerCase().includes(searchVal);
+      const matchTeacher = (b.teacher_name || '').toLowerCase().includes(searchVal);
+      if (!matchBatch && !matchCourse && !matchTeacher) return false;
+    }
+    if (statusVal && b.status !== statusVal) return false;
+    if (courseVal && b.course_title !== courseVal) return false;
+    if (teacherVal && b.teacher_name !== teacherVal) return false;
+    if (dayVal) {
+      const days = b.days_of_week || [];
+      const matchDay = days.some(d => d.toLowerCase() === dayVal.toLowerCase());
+      if (!matchDay) return false;
+    }
+    return true;
+  });
+
+  // Update count title
+  const countTitle = document.getElementById('batchesCountTitle');
+  if (countTitle) {
+    countTitle.textContent = `All Batches (${filtered.length} of ${batches.length})`;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center py-4 text-muted">
+          <i class="fas fa-search-minus mb-2" style="font-size: 1.8rem;"></i>
+          <p class="mb-0 small fw-semibold">No batches match your active filters.</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(b => `
+    <tr>
+      <td class="fw-semibold text-white">${b.batch_name}</td>
+      <td>${b.course_title||'—'}</td>
+      <td>${b.teacher_name||'—'}</td>
+      <td>${(b.days_of_week||[]).join(', ')}<br><small class="text-muted">${b.start_time||''} - ${b.end_time||''}</small></td>
+      <td>${b.seats_filled||0}/${b.capacity||30}</td>
+      <td>${statusBadge(b.status)}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-secondary me-1" style="font-size: 0.78rem;" onclick="toggleBatch('${b.id}')">Toggle</button>
+        <button class="btn btn-sm btn-outline-danger" style="font-size: 0.78rem;" onclick="cancelBatch('${b.id}')">Cancel</button>
+      </td>
+    </tr>
+  `).join('');
 }
 
 async function toggleBatch(id) {
