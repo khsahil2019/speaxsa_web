@@ -74,6 +74,12 @@ async function doRegister() {
       email: document.getElementById('regEmail').value,
       phone: document.getElementById('regPhone').value,
       password: document.getElementById('regPassword').value,
+      alt_email: document.getElementById('regAltEmail').value,
+      mobile_number: document.getElementById('regMobileNumber').value,
+      social_links: {
+        linkedin: document.getElementById('regLinkedIn').value,
+        twitter: document.getElementById('regTwitter').value
+      },
       qualification: document.getElementById('regQualification').value,
       subject_expertise: document.getElementById('regSubjects').value,
       experience_years: parseInt(document.getElementById('regExp').value) || 0,
@@ -81,7 +87,7 @@ async function doRegister() {
       role: 'teacher',
     };
 
-    if (!payload.name || !payload.email || !payload.phone || !payload.password) {
+    if (!payload.name || !payload.email || !payload.phone || !payload.password || !payload.alt_email || !payload.mobile_number) {
       throw new Error('Please fill all required fields');
     }
 
@@ -445,6 +451,7 @@ async function renderSop() {
     // Validate Profile and Availability fields
     const allProfileFilled = profile.subject_expertise && profile.languages && 
                              (profile.experience_years !== null && profile.experience_years !== undefined) &&
+                             profile.alt_email && profile.mobile_number &&
                              docExpertise && docLanguage && docExperience;
 
     let parsedAvail = [];
@@ -732,7 +739,41 @@ async function renderSop() {
                 <div class="text-muted small mt-1" style="font-size:0.7rem">Degree title will be shown publicly in your profile page.</div>
               </div>
 
+              <!-- Alternative Email -->
               <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Alternative Email *</label>
+                  ${getGranularStatusHtml('alt_email', !!profile.alt_email)}
+                </div>
+                <input type="email" class="form-control spx-input" id="onboardAltEmail" value="${profile.alt_email || ''}" placeholder="e.g. alt@email.com" required ${isSubmitted ? 'disabled' : ''}>
+              </div>
+
+              <!-- Mobile Number -->
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Mobile Number *</label>
+                  ${getGranularStatusHtml('mobile_number', !!profile.mobile_number)}
+                </div>
+                <input class="form-control spx-input" id="onboardMobileNumber" value="${profile.mobile_number || ''}" placeholder="e.g. +91 99999 99999" required ${isSubmitted ? 'disabled' : ''}>
+              </div>
+
+              <!-- LinkedIn Link -->
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">LinkedIn Profile Link</label>
+                </div>
+                <input class="form-control spx-input" id="onboardLinkedIn" value="${profile.social_links?.linkedin || ''}" placeholder="e.g. https://linkedin.com/in/..." ${isSubmitted ? 'disabled' : ''}>
+              </div>
+
+              <!-- Twitter/Social Link -->
+              <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="spx-label mb-0">Twitter / YouTube Link</label>
+                </div>
+                <input class="form-control spx-input" id="onboardTwitter" value="${profile.social_links?.twitter || ''}" placeholder="e.g. https://twitter.com/..." ${isSubmitted ? 'disabled' : ''}>
+              </div>
+
+              <div class="col-md-12">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                   <label class="spx-label mb-0">Professional Bio / Introduction</label>
                 </div>
@@ -1335,6 +1376,10 @@ async function saveProfileOnboarding(e) {
   const languages = document.getElementById('onboardLanguages').value.trim();
   const experience_years = parseInt(document.getElementById('onboardExp').value) || 0;
   const qualification = document.getElementById('onboardQual').value.trim();
+  const alt_email = document.getElementById('onboardAltEmail').value.trim();
+  const mobile_number = document.getElementById('onboardMobileNumber').value.trim();
+  const linkedin = document.getElementById('onboardLinkedIn').value.trim();
+  const twitter = document.getElementById('onboardTwitter').value.trim();
   const bio = document.getElementById('onboardBio').value.trim();
 
   try {
@@ -1346,6 +1391,9 @@ async function saveProfileOnboarding(e) {
         languages,
         experience_years,
         qualification,
+        alt_email,
+        mobile_number,
+        social_links: { linkedin, twitter },
         bio
       })
     });
@@ -1539,10 +1587,36 @@ async function renderBatches() {
               <form onsubmit="createBatch(event)">
                 <div class="mb-3">
                   <label class="spx-label">Course</label>
-                  <select class="form-select spx-input" id="batchCourse" onchange="handleCourseChange(this.value)" required>
-                    <option value="">Select Course</option>
-                    ${courses.filter(c => c.status === 'active').map(c => `<option value="${c.id}">${c.title} (${c.grade})</option>`).join('')}
-                  </select>
+                  <div class="custom-searchable-select-container" id="customCourseContainer">
+                    <button type="button" class="form-select spx-input text-start" id="customBatchCourseTrigger" onclick="toggleCustomBatchCourseDropdown(event)" style="background-image: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3e%3cpath fill=%27none%27 stroke=%27%23ffffff%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27m2 5 6 6 6-6%27/%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 16px 12px; padding-right: 2.25rem;">
+                      <span id="customBatchCourseLabel" style="color: #64748b;">Select Course</span>
+                    </button>
+                    
+                    <div class="custom-searchable-select-menu" id="customBatchCourseMenu">
+                      <div class="custom-searchable-select-search-wrapper">
+                        <div class="input-group">
+                          <span class="input-group-text" style="background:#1e293b; border-color:var(--border); color:#a0aec0;"><i class="fas fa-search"></i></span>
+                          <input type="text" class="form-control" id="customCourseSearch" placeholder="Search courses..." oninput="filterCustomBatchCourses(this.value)" style="background:#1e293b; border-color:var(--border); color:#ffffff; font-size: 0.85rem;" autocomplete="off" onclick="event.stopPropagation()">
+                        </div>
+                      </div>
+                      
+                      <div class="custom-searchable-select-options-list" id="customCourseOptionsList">
+                        ${courses.filter(c => c.status === 'active').map(c => `
+                          <div class="custom-searchable-select-option" data-value="${c.id}" onclick="selectCustomBatchCourse('${c.id}', '${c.title.replace(/'/g, "\\'")} (${c.grade})', event)">
+                            ${c.title} (${c.grade})
+                          </div>
+                        `).join('')}
+                        ${courses.filter(c => c.status === 'active').length === 0 ? `
+                          <div class="custom-searchable-select-option no-results">No active courses found</div>
+                        ` : ''}
+                      </div>
+                    </div>
+
+                    <select id="batchCourse" onchange="handleCourseChange(this.value)" required style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; border:none; padding:0; margin:0; left:50%; bottom:0;">
+                      <option value="">Select Course</option>
+                      ${courses.filter(c => c.status === 'active').map(c => `<option value="${c.id}">${c.title} (${c.grade})</option>`).join('')}
+                    </select>
+                  </div>
                 </div>
                 <div class="mb-3">
                   <label class="spx-label">Batch Name</label>
@@ -1596,6 +1670,16 @@ async function renderBatches() {
                   <label class="spx-label">Upload Chapter-wise Course Planner (PDF/Doc)</label>
                   <input type="file" class="form-control spx-input" id="batchPlanner" accept=".pdf,.doc,.docx">
                   <div class="form-text text-muted small mt-1">Or upload a syllabus document file if you have one.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label mb-0">Way of Teaching / Teaching Methodology *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Explain your teaching style, interactive format, worksheets, and schedule structure to help students choose your batch.</small>
+                  <textarea class="form-control spx-input" id="batchTeachingMethod" rows="3" placeholder="e.g. I focus heavily on interactive visual slides, followed by live coding and daily worksheets. I conduct doubt sessions every alternate day." required></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label mb-0">Important Batch Instructions / Prerequisites</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Add any requirements, materials, prior knowledge or preparation instructions needed for this batch.</small>
+                  <textarea class="form-control spx-input" id="batchInstructions" rows="3" placeholder="e.g. Recommended for students with a basic understanding of quadratic equations. Must bring a notebook and laptop to classes."></textarea>
                 </div>
                 <button type="submit" class="btn btn-spx w-100">Create Batch</button>
               </form>
@@ -1834,6 +1918,8 @@ async function createBatch(e) {
   formData.append('days_of_week', JSON.stringify(days_of_week));
   formData.append('capacity', parseInt(document.getElementById('batchCapacity').value) || 30);
   formData.append('planner_desc', document.getElementById('batchPlannerDesc')?.value || '');
+  formData.append('teaching_method', document.getElementById('batchTeachingMethod').value);
+  formData.append('batch_instructions', document.getElementById('batchInstructions').value);
 
   const plannerFile = document.getElementById('batchPlanner').files[0];
   if (plannerFile) {
@@ -1926,7 +2012,7 @@ async function renderCourses() {
                 <div class="d-flex flex-wrap gap-2 mb-3">
                   <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.subject || 'General'}</span>
                   <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.grade || 'Any'}</span>
-                  <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.board || 'Any'}</span>
+              <div class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.board || 'Any'}</div>
                   <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.duration_weeks || 12} Wks</span>
                 </div>
                 <p class="text-muted small" style="line-height:1.5; font-size:0.8rem;">${(c.description || 'No description provided.').substr(0, 100)}${c.description?.length > 100 ? '...' : ''}</p>
@@ -1969,44 +2055,71 @@ function initCourseFormModal() {
             <form id="teacherCourseForm">
               <div class="row g-3">
                 <div class="col-md-8">
-                  <label class="form-label fw-semibold text-dark">Course Title *</label>
-                  <input class="form-control" id="tCourseTitle" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" required>
+                  <label class="form-label fw-semibold text-dark mb-0">Course Title *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Give the course a clear name that describes the core topic and target grade level.</small>
+                  <input class="form-control" id="tCourseTitle" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Class 10 Physics Complete Masterclass" required>
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label fw-semibold text-dark">Subject *</label>
-                  <input class="form-control" id="tCourseSubject" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Physics" required>
+                  <label class="form-label fw-semibold text-dark mb-0">Subject *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Enter the primary subject area.</small>
+                  <input class="form-control" id="tCourseSubject" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Physics, Math, Chemistry" required>
                 </div>
-                <div class="col-md-4">
-                  <label class="form-label fw-semibold text-dark">Grade *</label>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Grade *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Target student grade or class level.</small>
                   <select class="form-select" id="tCourseGrade" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" required>
                     <option value="">Select Grade</option>
                     <option>Class 6</option><option>Class 7</option><option>Class 8</option>
                     <option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option>
                   </select>
                 </div>
-                <div class="col-md-4">
-                  <label class="form-label fw-semibold text-dark">Board *</label>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Board *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Curriculum alignment standard.</small>
                   <select class="form-select" id="tCourseBoard" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" required>
                     <option value="">Select Board</option>
                     <option>CBSE</option><option>ICSE</option><option>State Board</option>
                   </select>
                 </div>
-                <div class="col-md-2">
-                  <label class="form-label fw-semibold text-dark">Duration (weeks)</label>
-                  <input class="form-control" id="tCourseDuration" type="number" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" value="12" required>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Learning Duration *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Specify total duration (e.g., number of months, weeks, or live session hours).</small>
+                  <input class="form-control" id="tCourseLearningDuration" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. 3 Months / 24 Live Hours" required>
                 </div>
-                <div class="col-md-2">
-                  <label class="form-label fw-semibold text-dark">Fees (₹) *</label>
-                  <input class="form-control" id="tCourseFees" type="number" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="499" required>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Language of Instruction *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Primary language used for teaching during classes.</small>
+                  <input class="form-control" id="tCourseLanguageInstruction" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. English, Hindi, Bilingual" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Daily Class Duration *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Length of a single live class session.</small>
+                  <input class="form-control" id="tCourseDailyClassDuration" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. 60 Minutes per session" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Assessment Days *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Days or frequency scheduled for tests/evaluations.</small>
+                  <input class="form-control" id="tCourseAssessmentDays" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Saturdays, End of each module" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Objective *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Explain the core goal and what students will achieve.</small>
+                  <textarea class="form-control" id="tCourseObjective" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" rows="2" placeholder="e.g. Master fundamental algebra concepts and equation solving..." required></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold text-dark mb-0">Learning Outcome *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">List the specific skills/knowledge students will acquire.</small>
+                  <textarea class="form-control" id="tCourseLearningOutcome" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" rows="2" placeholder="e.g. Students will be able to solve quadratic equations independently..." required></textarea>
                 </div>
                 <div class="col-md-12">
-                  <label class="form-label fw-semibold text-dark">Custom Badge / Tag Line</label>
-                  <input class="form-control" id="tCourseCustomTag" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Designed by Sahil Sir">
-                  <small class="text-muted">A premium tag overlay to show on the course details card (e.g. "Designed by XYZ Sir").</small>
+                  <label class="form-label fw-semibold text-dark mb-0">Custom Badge / Tag Line</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">A premium tag overlay to show on the course details card (optional).</small>
+                  <input class="form-control" id="tCourseCustomTag" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Designed by Priya Ma'am">
                 </div>
                 
                 <div class="col-12">
-                  <label class="form-label fw-semibold text-dark">Course Thumbnail / Banner</label>
+                  <label class="form-label fw-semibold text-dark mb-0">Course Thumbnail / Banner</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Upload a high-quality cover image for the course listing (Max 5MB).</small>
                   <div class="border border-dashed rounded text-center p-3" style="cursor:pointer; border-color:#cbd5e1 !important; background:#f8fafc;" onclick="document.getElementById('tCourseFileInput').click()">
                     <input type="file" id="tCourseFileInput" accept="image/*" class="d-none" onchange="handleTeacherCourseFileSelect(this)">
                     <div id="tCourseUploadPlaceholder">
@@ -2021,8 +2134,9 @@ function initCourseFormModal() {
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label fw-semibold text-dark">Description</label>
-                  <textarea class="form-control" id="tCourseDesc" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" rows="3" placeholder="Enter course description details..."></textarea>
+                  <label class="form-label fw-semibold text-dark mb-0">Description *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Provide a comprehensive overview of course contents, modules, and requirements.</small>
+                  <textarea class="form-control" id="tCourseDesc" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" rows="3" placeholder="Enter course description details..." required></textarea>
                 </div>
                 <div class="col-12 mt-4">
                   <button type="submit" class="btn btn-spx w-100 py-2" id="tCourseSubmitBtn">Save Course Draft</button>
@@ -2047,8 +2161,12 @@ function showCreateCourseModal() {
   document.getElementById('tCourseSubject').value = '';
   document.getElementById('tCourseGrade').value = '';
   document.getElementById('tCourseBoard').value = '';
-  document.getElementById('tCourseDuration').value = '12';
-  document.getElementById('tCourseFees').value = '';
+  document.getElementById('tCourseLearningDuration').value = '';
+  document.getElementById('tCourseLanguageInstruction').value = '';
+  document.getElementById('tCourseDailyClassDuration').value = '';
+  document.getElementById('tCourseAssessmentDays').value = '';
+  document.getElementById('tCourseObjective').value = '';
+  document.getElementById('tCourseLearningOutcome').value = '';
   document.getElementById('tCourseCustomTag').value = '';
   document.getElementById('tCourseDesc').value = '';
   
@@ -2075,8 +2193,12 @@ function editTeacherCourse(id) {
   document.getElementById('tCourseSubject').value = course.subject || '';
   document.getElementById('tCourseGrade').value = course.grade || '';
   document.getElementById('tCourseBoard').value = course.board || '';
-  document.getElementById('tCourseDuration').value = course.duration_weeks || '12';
-  document.getElementById('tCourseFees').value = course.fees || '';
+  document.getElementById('tCourseLearningDuration').value = course.learning_duration || '';
+  document.getElementById('tCourseLanguageInstruction').value = course.language_instruction || '';
+  document.getElementById('tCourseDailyClassDuration').value = course.daily_class_duration || '';
+  document.getElementById('tCourseAssessmentDays').value = course.assessment_days || '';
+  document.getElementById('tCourseObjective').value = course.objective || '';
+  document.getElementById('tCourseLearningOutcome').value = course.learning_outcome || '';
   document.getElementById('tCourseCustomTag').value = course.custom_tag || '';
   document.getElementById('tCourseDesc').value = course.description || '';
 
@@ -2107,11 +2229,16 @@ async function handleSaveTeacherCourse(e) {
     subject: document.getElementById('tCourseSubject').value,
     grade: document.getElementById('tCourseGrade').value,
     board: document.getElementById('tCourseBoard').value,
-    duration_weeks: parseInt(document.getElementById('tCourseDuration').value) || 12,
-    fees: parseFloat(document.getElementById('tCourseFees').value),
+    duration_weeks: parseInt(document.getElementById('tCourseLearningDuration').value) || 12,
     custom_tag: document.getElementById('tCourseCustomTag').value,
     description: document.getElementById('tCourseDesc').value,
-    thumbnail_url: _teacherCurrentThumbnailUrl || null
+    thumbnail_url: _teacherCurrentThumbnailUrl || null,
+    learning_duration: document.getElementById('tCourseLearningDuration').value,
+    objective: document.getElementById('tCourseObjective').value,
+    learning_outcome: document.getElementById('tCourseLearningOutcome').value,
+    language_instruction: document.getElementById('tCourseLanguageInstruction').value,
+    daily_class_duration: document.getElementById('tCourseDailyClassDuration').value,
+    assessment_days: document.getElementById('tCourseAssessmentDays').value
   };
 
   try {
@@ -3096,7 +3223,11 @@ async function renderProfile() {
               <div class="mb-2 text-secondary"><i class="fas fa-history text-primary me-2" style="width:16px;"></i>Experience: <strong style="color:var(--text-primary);">${profile.experience_years || 0} Years</strong></div>
               <div class="mb-2 text-secondary"><i class="fas fa-language text-primary me-2" style="width:16px;"></i>Languages: <strong style="color:var(--text-primary);">${profile.languages || '—'}</strong></div>
               <div class="mb-2 text-secondary"><i class="far fa-envelope text-primary me-2" style="width:16px;"></i>Email: <strong style="color:var(--text-primary);">${profile.email}</strong></div>
-              <div class="text-secondary"><i class="fas fa-phone-alt text-primary me-2" style="width:16px;"></i>Phone: <strong style="color:var(--text-primary);">${profile.phone || '—'}</strong></div>
+              <div class="mb-2 text-secondary"><i class="far fa-envelope text-primary me-2" style="width:16px;"></i>Alt Email: <strong style="color:var(--text-primary);">${profile.alt_email || '—'}</strong></div>
+              <div class="mb-2 text-secondary"><i class="fas fa-phone-alt text-primary me-2" style="width:16px;"></i>Phone: <strong style="color:var(--text-primary);">${profile.phone || '—'}</strong></div>
+              <div class="mb-2 text-secondary"><i class="fas fa-phone-alt text-primary me-2" style="width:16px;"></i>Mobile: <strong style="color:var(--text-primary);">${profile.mobile_number || '—'}</strong></div>
+              <div class="mb-2 text-secondary"><i class="fab fa-linkedin text-primary me-2" style="width:16px;"></i>LinkedIn: <strong style="color:var(--text-primary);">${profile.social_links?.linkedin ? `<a href="${profile.social_links.linkedin}" target="_blank" class="text-primary text-decoration-none fw-semibold">${profile.social_links.linkedin}</a>` : '—'}</strong></div>
+              <div class="text-secondary"><i class="fab fa-twitter text-primary me-2" style="width:16px;"></i>Twitter/Other: <strong style="color:var(--text-primary);">${profile.social_links?.twitter ? `<a href="${profile.social_links.twitter}" target="_blank" class="text-primary text-decoration-none fw-semibold">${profile.social_links.twitter}</a>` : '—'}</strong></div>
             </div>
           </div>
         </div>
@@ -3114,6 +3245,22 @@ async function renderProfile() {
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Contact Phone</label>
                   <input class="form-control spx-input" id="profPhone" value="${profile.phone||''}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Alternative Email *</label>
+                  <input class="form-control spx-input" id="profAltEmail" value="${profile.alt_email||''}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">WhatsApp / Mobile Number *</label>
+                  <input class="form-control spx-input" id="profMobileNumber" value="${profile.mobile_number||''}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">LinkedIn Profile Link</label>
+                  <input class="form-control spx-input" id="profLinkedIn" value="${profile.social_links?.linkedin||''}">
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label mb-1">Twitter / Other Link</label>
+                  <input class="form-control spx-input" id="profTwitter" value="${profile.social_links?.twitter||''}">
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Highest Academic Qualification</label>
@@ -3179,6 +3326,12 @@ async function updateProfile(e) {
       languages: document.getElementById('profLang').value,
       experience_years: parseInt(document.getElementById('profYrs').value) || 0,
       bio: document.getElementById('profBio').value,
+      alt_email: document.getElementById('profAltEmail').value,
+      mobile_number: document.getElementById('profMobileNumber').value,
+      social_links: {
+        linkedin: document.getElementById('profLinkedIn').value,
+        twitter: document.getElementById('profTwitter').value
+      }
     };
 
     const data = await api('/auth/profile', {
@@ -3548,6 +3701,165 @@ async function uploadPlanner(e, batchId) {
     showToast(err.message, 'error');
   }
 }
+
+// Custom Searchable Dropdown Select Component for Batch Creation Course List
+const style = document.createElement('style');
+style.innerHTML = `
+  .custom-searchable-select-container {
+    position: relative;
+    width: 100%;
+  }
+  .custom-searchable-select-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    z-index: 1050;
+    display: none;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    padding: 8px;
+    margin-top: 4px;
+  }
+  .custom-searchable-select-menu.show {
+    display: block;
+  }
+  .custom-searchable-select-search-wrapper {
+    margin-bottom: 8px;
+  }
+  .custom-searchable-select-options-list {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .custom-searchable-select-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    color: #cbd5e1;
+    transition: background 0.2s, color 0.2s;
+    font-size: 0.85rem;
+  }
+  .custom-searchable-select-option:hover {
+    background: rgba(60, 189, 176, 0.15);
+    color: var(--primary);
+  }
+  .custom-searchable-select-option.selected {
+    background: rgba(60, 189, 176, 0.25);
+    color: var(--primary) !important;
+    font-weight: 600;
+  }
+  .custom-searchable-select-option.no-results {
+    color: #64748b;
+    text-align: center;
+    cursor: default;
+    pointer-events: none;
+  }
+`;
+document.head.appendChild(style);
+
+function toggleCustomBatchCourseDropdown(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('customBatchCourseMenu');
+  if (!menu) return;
+  const isShown = menu.classList.contains('show');
+  
+  // Close the menu if open, or open it if closed
+  menu.classList.toggle('show', !isShown);
+  
+  if (!isShown) {
+    const searchInput = document.getElementById('customCourseSearch');
+    if (searchInput) {
+      searchInput.value = '';
+      filterCustomBatchCourses('');
+      setTimeout(() => searchInput.focus(), 50);
+    }
+  }
+}
+
+function filterCustomBatchCourses(val) {
+  const search = val.toLowerCase().trim();
+  const optionsList = document.getElementById('customCourseOptionsList');
+  if (!optionsList) return;
+  const options = optionsList.querySelectorAll('.custom-searchable-select-option:not(.no-results)');
+  let matches = 0;
+  
+  options.forEach(opt => {
+    const text = opt.textContent.toLowerCase();
+    if (text.includes(search)) {
+      opt.style.display = '';
+      matches++;
+    } else {
+      opt.style.display = 'none';
+    }
+  });
+  
+  let noResults = optionsList.querySelector('.no-results');
+  if (matches === 0) {
+    if (!noResults) {
+      noResults = document.createElement('div');
+      noResults.className = 'custom-searchable-select-option no-results';
+      noResults.textContent = 'No matching courses found';
+      optionsList.appendChild(noResults);
+    } else {
+      noResults.style.display = '';
+    }
+  } else if (noResults) {
+    noResults.style.display = 'none';
+  }
+}
+
+function selectCustomBatchCourse(id, labelText, event) {
+  if (event) event.stopPropagation();
+  
+  const label = document.getElementById('customBatchCourseLabel');
+  if (label) {
+    label.textContent = labelText;
+    label.style.color = '#ffffff';
+  }
+  
+  const nativeSelect = document.getElementById('batchCourse');
+  if (nativeSelect) {
+    nativeSelect.value = id;
+    nativeSelect.dispatchEvent(new Event('change'));
+  }
+  
+  const optionsList = document.getElementById('customCourseOptionsList');
+  if (optionsList) {
+    const options = optionsList.querySelectorAll('.custom-searchable-select-option');
+    options.forEach(opt => {
+      if (opt.getAttribute('data-value') === id) {
+        opt.classList.add('selected');
+      } else {
+        opt.classList.remove('selected');
+      }
+    });
+  }
+  
+  const menu = document.getElementById('customBatchCourseMenu');
+  if (menu) {
+    menu.classList.remove('show');
+  }
+}
+
+// Click outside logic to dismiss custom dropdown list
+document.addEventListener('click', function(e) {
+  const container = document.getElementById('customCourseContainer');
+  if (container && !container.contains(e.target)) {
+    const menu = document.getElementById('customBatchCourseMenu');
+    if (menu) {
+      menu.classList.remove('show');
+    }
+  }
+});
+
+// Bind custom functions to global window context
+window.toggleCustomBatchCourseDropdown = toggleCustomBatchCourseDropdown;
+window.filterCustomBatchCourses = filterCustomBatchCourses;
+window.selectCustomBatchCourse = selectCustomBatchCourse;
 
 initApp();
 

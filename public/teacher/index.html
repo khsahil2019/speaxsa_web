@@ -103,14 +103,18 @@
         <!-- Register -->
         <div id="registerSection" class="d-none">
           <div class="row g-2">
-            <div class="col-12"><input class="form-control spx-input" id="regName" placeholder="Full Name *"></div>
-            <div class="col-12"><input class="form-control spx-input" id="regEmail" type="email" placeholder="Email *"></div>
-            <div class="col-6"><input class="form-control spx-input" id="regPhone" placeholder="Phone *"></div>
-            <div class="col-6"><input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *"></div>
-            <div class="col-12"><input class="form-control spx-input" id="regQualification" placeholder="Qualification (e.g. M.Sc Physics)"></div>
-            <div class="col-6"><input class="form-control spx-input" id="regSubjects" placeholder="Subjects (e.g. Physics, Maths)"></div>
-            <div class="col-6"><input class="form-control spx-input" id="regExp" type="number" placeholder="Experience (years)"></div>
-            <div class="col-12"><input class="form-control spx-input" id="regLanguages" placeholder="Teaching Languages (e.g. English, Hindi)"></div>
+            <div class="col-12"><input class="form-control spx-input" id="regName" placeholder="Full Name *" required></div>
+            <div class="col-12"><input class="form-control spx-input" id="regEmail" type="email" placeholder="Email Address *" required></div>
+            <div class="col-6"><input class="form-control spx-input" id="regPhone" placeholder="Contact Phone *" required></div>
+            <div class="col-6"><input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *" required></div>
+            <div class="col-6"><input class="form-control spx-input" id="regAltEmail" type="email" placeholder="Alternative Email *" required></div>
+            <div class="col-6"><input class="form-control spx-input" id="regMobileNumber" placeholder="WhatsApp / Mobile Number *" required></div>
+            <div class="col-6"><input class="form-control spx-input" id="regLinkedIn" placeholder="LinkedIn Profile Link (e.g. https://linkedin.com/in/...)"></div>
+            <div class="col-6"><input class="form-control spx-input" id="regTwitter" placeholder="Twitter / YouTube Link"></div>
+            <div class="col-12"><input class="form-control spx-input" id="regQualification" placeholder="Highest Qualification (e.g. M.Sc Physics) *" required></div>
+            <div class="col-6"><input class="form-control spx-input" id="regSubjects" placeholder="Subjects (e.g. Physics, Maths) *" required></div>
+            <div class="col-6"><input class="form-control spx-input" id="regExp" type="number" placeholder="Experience (years) *" required></div>
+            <div class="col-12"><input class="form-control spx-input" id="regLanguages" placeholder="Teaching Languages (e.g. English, Hindi) *" required></div>
             <div id="registerError" class="col-12 alert alert-danger d-none small"></div>
             <div class="col-12"><button class="btn btn-spx w-100" onclick="doRegister()">Register as Teacher</button></div>
             <div class="col-12 text-muted text-center" style="font-size:.75rem">Your account will be reviewed by admin before you can start teaching.</div>

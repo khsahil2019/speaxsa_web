@@ -446,6 +446,13 @@ async function showCourseDetails(courseId) {
     document.getElementById('modalCourseDesc').textContent = course.description || 'No description available.';
     document.getElementById('modalCourseFees').textContent = `₹${parseFloat(course.fees).toLocaleString('en-IN')}`;
     
+    document.getElementById('modalCourseLearningDuration').textContent = course.learning_duration || '—';
+    document.getElementById('modalCourseLanguage').textContent = course.language_instruction || '—';
+    document.getElementById('modalCourseDailyDuration').textContent = course.daily_class_duration || '—';
+    document.getElementById('modalCourseAssessment').textContent = course.assessment_days || '—';
+    document.getElementById('modalCourseObjective').textContent = course.objective || '—';
+    document.getElementById('modalCourseOutcome').textContent = course.learning_outcome || '—';
+    
     // Fetch Batches
     const resBatches = await fetch(`/api/public/courses/${courseId}/batches`);
     const batches = await resBatches.json();
@@ -490,6 +497,18 @@ async function showCourseDetails(courseId) {
                   <div class="mt-2 p-2 rounded text-secondary" style="background:#f8fafc; font-size:0.75rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid #e2e8f0; color: #475569 !important;">
                     <strong class="d-block mb-1 text-dark" style="font-weight: 700;"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
                     ${b.planner_desc}
+                  </div>
+                ` : ''}
+                ${b.teaching_method ? `
+                  <div class="mt-2 p-2 rounded text-secondary" style="background:#f8fafc; font-size:0.75rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid #e2e8f0; color: #475569 !important;">
+                    <strong class="d-block mb-1 text-dark" style="font-weight: 700;"><i class="fas fa-chalkboard me-1 text-primary"></i>Teaching Style & Methodology:</strong>
+                    ${b.teaching_method}
+                  </div>
+                ` : ''}
+                ${b.batch_instructions ? `
+                  <div class="mt-2 p-2 rounded text-warning-dark" style="background:#fffbeb; font-size:0.75rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid #fef3c7; color: #b45309 !important;">
+                    <strong class="d-block mb-1" style="font-weight: 700; color: #d97706 !important;"><i class="fas fa-exclamation-circle me-1"></i>Important Batch Requirements / Instructions:</strong>
+                    ${b.batch_instructions}
                   </div>
                 ` : ''}
               </div>

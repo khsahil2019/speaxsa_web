@@ -615,14 +615,17 @@ router.post('/courses/:id/toggle-featured', async (req, res) => {
 
 
 router.post('/courses', async (req, res) => {
-  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url } = req.body;
+  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url,
+          learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
     if (!title || !fees) return res.status(400).json({ error: 'title and fees are required' });
     const id = `course_${Date.now()}`;
     const result = await db.query(`
-      INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10) RETURNING *
-    `, [id, title, subject, description, duration_weeks || 12, grade, board, parseFloat(fees), thumbnail_url, req.user.id]);
+      INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by,
+        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10,$11,$12,$13,$14,$15,$16) RETURNING *
+    `, [id, title, subject, description, duration_weeks || 12, grade, board, parseFloat(fees), thumbnail_url, req.user.id,
+        learning_duration || null, objective || null, learning_outcome || null, language_instruction || null, daily_class_duration || null, assessment_days || null]);
     await logAudit(req.user.id, 'COURSE_CREATED', 'course', id, { title });
     res.status(201).json({ message: 'Course created', course: result.rows[0] });
   } catch (err) {
@@ -632,14 +635,19 @@ router.post('/courses', async (req, res) => {
 
 router.put('/courses/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status } = req.body;
+  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status,
+          learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
     const result = await db.query(`
       UPDATE courses SET title=COALESCE($2,title), subject=COALESCE($3,subject), description=COALESCE($4,description),
         duration_weeks=COALESCE($5,duration_weeks), grade=COALESCE($6,grade), board=COALESCE($7,board),
-        fees=COALESCE($8,fees), thumbnail_url=COALESCE($9,thumbnail_url), status=COALESCE($10,status), updated_at=NOW()
+        fees=COALESCE($8,fees), thumbnail_url=COALESCE($9,thumbnail_url), status=COALESCE($10,status),
+        learning_duration=COALESCE($11,learning_duration), objective=COALESCE($12,objective), learning_outcome=COALESCE($13,learning_outcome),
+        language_instruction=COALESCE($14,language_instruction), daily_class_duration=COALESCE($15,daily_class_duration), assessment_days=COALESCE($16,assessment_days),
+        updated_at=NOW()
       WHERE id = $1 RETURNING *
-    `, [id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status]);
+    `, [id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status,
+        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days]);
     if (!result.rows.length) return res.status(404).json({ error: 'Course not found' });
     await logAudit(req.user.id, 'COURSE_UPDATED', 'course', id, {});
     res.json({ message: 'Course updated', course: result.rows[0] });
@@ -1044,6 +1052,7 @@ router.get('/revenue', async (req, res) => {
 // ── Course Approval and Rejection Endpoints ──────────────────
 router.post('/courses/:id/approve', async (req, res) => {
   const { id } = req.params;
+  const { fees } = req.body;
   try {
     const courseRes = await db.query(
       'SELECT c.title, c.created_by, u.email, u.name FROM courses c LEFT JOIN users u ON u.id = c.created_by WHERE c.id = $1',
@@ -1052,7 +1061,7 @@ router.post('/courses/:id/approve', async (req, res) => {
     if (!courseRes.rows.length) return res.status(404).json({ error: 'Course not found' });
     const course = courseRes.rows[0];
 
-    await db.query("UPDATE courses SET status = 'active' WHERE id = $1", [id]);
+    await db.query("UPDATE courses SET status = 'active', fees = COALESCE($2, fees) WHERE id = $1", [id, fees !== undefined ? parseFloat(fees) : null]);
     await logAudit(req.user.id, 'COURSE_APPROVED', 'course', id, { title: course.title });
 
     if (course.created_by) {

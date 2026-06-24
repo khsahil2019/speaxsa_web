@@ -773,6 +773,10 @@ async function viewTeacher(id) {
           <div class="row g-2 text-muted small">
             <div class="col-6"><strong>Email:</strong> ${data.teacher?.email}</div>
             <div class="col-6"><strong>Phone:</strong> ${data.teacher?.phone||'—'}</div>
+            <div class="col-6"><strong>Alternative Email:</strong> ${data.teacher?.alt_email||'—'}</div>
+            <div class="col-6"><strong>Mobile Number:</strong> ${data.teacher?.mobile_number||'—'}</div>
+            <div class="col-6"><strong>LinkedIn:</strong> ${data.teacher?.social_links?.linkedin ? `<a href="${data.teacher?.social_links.linkedin}" target="_blank" class="text-primary text-decoration-none fw-semibold">${data.teacher?.social_links.linkedin}</a>` : '—'}</div>
+            <div class="col-6"><strong>Twitter/Social:</strong> ${data.teacher?.social_links?.twitter ? `<a href="${data.teacher?.social_links.twitter}" target="_blank" class="text-primary text-decoration-none fw-semibold">${data.teacher?.social_links.twitter}</a>` : '—'}</div>
             <div class="col-6"><strong>Qualification:</strong> ${data.teacher?.qualification||'—'}</div>
             <div class="col-6"><strong>Experience:</strong> ${data.teacher?.experience_years||0} years</div>
             <div class="col-6"><strong>Subjects:</strong> ${data.teacher?.subject_expertise||'—'}</div>
@@ -1146,26 +1150,73 @@ function showCreateCourse() {
   document.getElementById('formModalBody').innerHTML = `
     <form id="courseForm">
       <div class="row g-3">
-        <div class="col-md-8"><label class="spx-label">Course Title *</label><input class="form-control spx-input" id="courseTitle" required></div>
-        <div class="col-md-4"><label class="spx-label">Subject</label><input class="form-control spx-input" id="courseSubject"></div>
-        <div class="col-md-4"><label class="spx-label">Grade</label>
-          <select class="form-select spx-input" id="courseGrade">
-            <option value="">Any</option>
+        <div class="col-md-8">
+          <label class="spx-label mb-0">Course Title *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Give the course a clear name that describes the core topic and target grade level.</small>
+          <input class="form-control spx-input" id="courseTitle" placeholder="e.g. Class 10 Physics Complete Masterclass" required>
+        </div>
+        <div class="col-md-4">
+          <label class="spx-label mb-0">Subject *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Enter the primary subject area.</small>
+          <input class="form-control spx-input" id="courseSubject" placeholder="e.g. Physics, Math, Chemistry" required>
+        </div>
+        <div class="col-md-5">
+          <label class="spx-label mb-0">Grade *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Target student grade or class level.</small>
+          <select class="form-select spx-input" id="courseGrade" required>
+            <option value="">Select Grade</option>
             ${['Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'].map(g => `<option>${g}</option>`).join('')}
           </select>
         </div>
-        <div class="col-md-4"><label class="spx-label">Board</label>
-          <select class="form-select spx-input" id="courseBoard">
-            <option value="">Any</option>
+        <div class="col-md-5">
+          <label class="spx-label mb-0">Board *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Curriculum alignment standard.</small>
+          <select class="form-select spx-input" id="courseBoard" required>
+            <option value="">Select Board</option>
             <option>CBSE</option><option>ICSE</option><option>State Board</option>
           </select>
         </div>
-        <div class="col-md-2"><label class="spx-label">Duration (weeks)</label><input class="form-control spx-input" id="courseDuration" type="number" value="24"></div>
-        <div class="col-md-2"><label class="spx-label">Fees (₹) *</label><input class="form-control spx-input" id="courseFees" type="number" required></div>
+        <div class="col-md-2">
+          <label class="spx-label mb-0">Fees (₹) *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Pricing amount.</small>
+          <input class="form-control spx-input" id="courseFees" type="number" placeholder="e.g. 599" required>
+        </div>
+        
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Learning Duration *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Specify total duration (e.g. months, weeks, or live hours).</small>
+          <input class="form-control spx-input" id="courseLearningDuration" placeholder="e.g. 3 Months / 24 Live Hours" required>
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Language of Instruction *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Primary language used for classroom lectures.</small>
+          <input class="form-control spx-input" id="courseLanguageInstruction" placeholder="e.g. English, Hindi, Bilingual" required>
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Daily Class Duration *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Length of a single live class session.</small>
+          <input class="form-control spx-input" id="courseDailyClassDuration" placeholder="e.g. 60 Minutes per session" required>
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Assessment Days *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Days or frequency scheduled for tests/evaluations.</small>
+          <input class="form-control spx-input" id="courseAssessmentDays" placeholder="e.g. Saturdays, End of each module" required>
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Objective *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Explain the core goal and what students will achieve.</small>
+          <textarea class="form-control spx-input" id="courseObjective" rows="2" placeholder="e.g. Master fundamental algebra concepts and equation solving..." required></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Learning Outcome *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">List the specific skills/knowledge students will acquire.</small>
+          <textarea class="form-control spx-input" id="courseLearningOutcome" rows="2" placeholder="e.g. Students will be able to solve quadratic equations independently..." required></textarea>
+        </div>
         
         <!-- Course Banner Image Upload -->
         <div class="col-12">
-          <label class="spx-label">Course Banner / Thumbnail</label>
+          <label class="spx-label mb-0">Course Banner / Thumbnail</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Upload a high-quality cover image for the course listing (Max 5MB).</small>
           <div class="course-upload-box position-relative d-flex flex-column align-items-center justify-content-center p-4 border border-dashed rounded text-center" style="min-height: 150px; cursor: pointer;" onclick="document.getElementById('courseFileInput').click()">
             <input type="file" id="courseFileInput" accept="image/*" class="d-none" onchange="handleCourseFileSelect(this)">
             <div id="courseUploadPlaceholder">
@@ -1185,7 +1236,11 @@ function showCreateCourse() {
           </div>
         </div>
 
-        <div class="col-12"><label class="spx-label">Description</label><textarea class="form-control spx-input" id="courseDesc" rows="3"></textarea></div>
+        <div class="col-12">
+          <label class="spx-label mb-0">Description *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Provide a comprehensive overview of course contents, modules, and requirements.</small>
+          <textarea class="form-control spx-input" id="courseDesc" rows="3" placeholder="Enter course description details..." required></textarea>
+        </div>
         <div class="col-12"><button type="submit" class="btn btn-spx w-100">Create Course</button></div>
       </div>
     </form>`;
@@ -1201,10 +1256,16 @@ async function createCourse(e) {
       subject: document.getElementById('courseSubject').value,
       grade: document.getElementById('courseGrade').value,
       board: document.getElementById('courseBoard').value,
-      duration_weeks: parseInt(document.getElementById('courseDuration').value) || 12,
+      duration_weeks: parseInt(document.getElementById('courseLearningDuration').value) || 12,
       fees: parseFloat(document.getElementById('courseFees').value),
       description: document.getElementById('courseDesc').value,
-      thumbnail_url: window._currentThumbnailUrl || null
+      thumbnail_url: window._currentThumbnailUrl || null,
+      learning_duration: document.getElementById('courseLearningDuration').value,
+      objective: document.getElementById('courseObjective').value,
+      learning_outcome: document.getElementById('courseLearningOutcome').value,
+      language_instruction: document.getElementById('courseLanguageInstruction').value,
+      daily_class_duration: document.getElementById('courseDailyClassDuration').value,
+      assessment_days: document.getElementById('courseAssessmentDays').value
     });
     showToast(data.message || 'Course created');
     formModal.hide();
@@ -1220,33 +1281,80 @@ function editCourse(id) {
   }
   
   window._currentThumbnailUrl = course.thumbnail_url || '';
-
+ 
   document.getElementById('formModalTitle').textContent = 'Edit Course';
   document.getElementById('formModalBody').innerHTML = `
     <form id="courseForm">
       <div class="row g-3">
-        <div class="col-md-8"><label class="spx-label">Course Title *</label><input class="form-control spx-input" id="courseTitle" required value="${course.title || ''}"></div>
-        <div class="col-md-4"><label class="spx-label">Subject</label><input class="form-control spx-input" id="courseSubject" value="${course.subject || ''}"></div>
-        <div class="col-md-4"><label class="spx-label">Grade</label>
-          <select class="form-select spx-input" id="courseGrade">
-            <option value="">Any</option>
+        <div class="col-md-8">
+          <label class="spx-label mb-0">Course Title *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Give the course a clear name that describes the core topic and target grade level.</small>
+          <input class="form-control spx-input" id="courseTitle" required value="${course.title || ''}" placeholder="e.g. Class 10 Physics Complete Masterclass">
+        </div>
+        <div class="col-md-4">
+          <label class="spx-label mb-0">Subject *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Enter the primary subject area.</small>
+          <input class="form-control spx-input" id="courseSubject" value="${course.subject || ''}" placeholder="e.g. Physics, Math, Chemistry" required>
+        </div>
+        <div class="col-md-5">
+          <label class="spx-label mb-0">Grade *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Target student grade or class level.</small>
+          <select class="form-select spx-input" id="courseGrade" required>
+            <option value="">Select Grade</option>
             ${['Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'].map(g => `<option ${course.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
           </select>
         </div>
-        <div class="col-md-4"><label class="spx-label">Board</label>
-          <select class="form-select spx-input" id="courseBoard">
-            <option value="">Any</option>
+        <div class="col-md-5">
+          <label class="spx-label mb-0">Board *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Curriculum alignment standard.</small>
+          <select class="form-select spx-input" id="courseBoard" required>
+            <option value="">Select Board</option>
             <option ${course.board === 'CBSE' ? 'selected' : ''}>CBSE</option>
             <option ${course.board === 'ICSE' ? 'selected' : ''}>ICSE</option>
             <option ${course.board === 'State Board' ? 'selected' : ''}>State Board</option>
           </select>
         </div>
-        <div class="col-md-2"><label class="spx-label">Duration (weeks)</label><input class="form-control spx-input" id="courseDuration" type="number" value="${course.duration_weeks || 24}"></div>
-        <div class="col-md-2"><label class="spx-label">Fees (₹) *</label><input class="form-control spx-input" id="courseFees" type="number" required value="${course.fees || ''}"></div>
+        <div class="col-md-2">
+          <label class="spx-label mb-0">Fees (₹) *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Pricing amount.</small>
+          <input class="form-control spx-input" id="courseFees" type="number" required value="${course.fees || ''}" placeholder="e.g. 599">
+        </div>
+        
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Learning Duration *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Specify total duration (e.g. months, weeks, or live hours).</small>
+          <input class="form-control spx-input" id="courseLearningDuration" placeholder="e.g. 3 Months / 24 Live Hours" required value="${course.learning_duration || ''}">
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Language of Instruction *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Primary language used for classroom lectures.</small>
+          <input class="form-control spx-input" id="courseLanguageInstruction" placeholder="e.g. English, Hindi, Bilingual" required value="${course.language_instruction || ''}">
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Daily Class Duration *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Length of a single live class session.</small>
+          <input class="form-control spx-input" id="courseDailyClassDuration" placeholder="e.g. 60 Minutes per session" required value="${course.daily_class_duration || ''}">
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Assessment Days *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Days or frequency scheduled for tests/evaluations.</small>
+          <input class="form-control spx-input" id="courseAssessmentDays" placeholder="e.g. Saturdays, End of each module" required value="${course.assessment_days || ''}">
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Objective *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Explain the core goal and what students will achieve.</small>
+          <textarea class="form-control spx-input" id="courseObjective" rows="2" placeholder="e.g. Master fundamental algebra concepts and equation solving..." required>${course.objective || ''}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="spx-label mb-0">Learning Outcome *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">List the specific skills/knowledge students will acquire.</small>
+          <textarea class="form-control spx-input" id="courseLearningOutcome" rows="2" placeholder="e.g. Students will be able to solve quadratic equations independently..." required>${course.learning_outcome || ''}</textarea>
+        </div>
         
         <!-- Course Banner Image Upload -->
         <div class="col-12">
-          <label class="spx-label">Course Banner / Thumbnail</label>
+          <label class="spx-label mb-0">Course Banner / Thumbnail</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Upload a high-quality cover image for the course listing (Max 5MB).</small>
           <div class="course-upload-box position-relative d-flex flex-column align-items-center justify-content-center p-4 border border-dashed rounded text-center" style="min-height: 150px; cursor: pointer;" onclick="document.getElementById('courseFileInput').click()">
             <input type="file" id="courseFileInput" accept="image/*" class="d-none" onchange="handleCourseFileSelect(this)">
             <div id="courseUploadPlaceholder" class="${window._currentThumbnailUrl ? 'd-none' : ''}">
@@ -1266,7 +1374,11 @@ function editCourse(id) {
           </div>
         </div>
 
-        <div class="col-12"><label class="spx-label">Description</label><textarea class="form-control spx-input" id="courseDesc" rows="3">${course.description || ''}</textarea></div>
+        <div class="col-12">
+          <label class="spx-label mb-0">Description *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Provide a comprehensive overview of course contents, modules, and requirements.</small>
+          <textarea class="form-control spx-input" id="courseDesc" rows="3" placeholder="Enter course description details..." required>${course.description || ''}</textarea>
+        </div>
         <div class="col-12"><button type="submit" class="btn btn-spx w-100">Update Course</button></div>
       </div>
     </form>`;
@@ -1282,10 +1394,16 @@ async function updateCourse(e, id) {
       subject: document.getElementById('courseSubject').value,
       grade: document.getElementById('courseGrade').value,
       board: document.getElementById('courseBoard').value,
-      duration_weeks: parseInt(document.getElementById('courseDuration').value) || 12,
+      duration_weeks: parseInt(document.getElementById('courseLearningDuration').value) || 12,
       fees: parseFloat(document.getElementById('courseFees').value),
       description: document.getElementById('courseDesc').value,
-      thumbnail_url: window._currentThumbnailUrl || null
+      thumbnail_url: window._currentThumbnailUrl || null,
+      learning_duration: document.getElementById('courseLearningDuration').value,
+      objective: document.getElementById('courseObjective').value,
+      learning_outcome: document.getElementById('courseLearningOutcome').value,
+      language_instruction: document.getElementById('courseLanguageInstruction').value,
+      daily_class_duration: document.getElementById('courseDailyClassDuration').value,
+      assessment_days: document.getElementById('courseAssessmentDays').value
     });
     showToast(data.message || 'Course updated');
     formModal.hide();
@@ -1355,9 +1473,14 @@ async function archiveCourse(id) {
 }
 
 async function approveCourse(id) {
-  confirm('Approve Course?', 'This will approve the course and notify the teacher.', async () => {
+  adminPrompt('Approve Course', 'Enter Course Fees (₹) to make it active:', '499', async (feesVal) => {
+    const fees = parseFloat(feesVal);
+    if (isNaN(fees) || fees < 0) {
+      showToast('Please enter a valid course fee amount.', 'error');
+      return;
+    }
     try {
-      const data = await apiPost(`/admin/courses/${id}/approve`);
+      const data = await apiPost(`/admin/courses/${id}/approve`, { fees });
       showToast(data.message || 'Course approved successfully');
       renderCourses();
     } catch (err) {
@@ -1950,7 +2073,11 @@ async function refreshSOPModal(teacherId) {
           ${avatar(t.photo_url, t.name, 60)}
           <div>
             <h5 class="fw-bold text-white mb-1" style="font-family: 'Outfit';">${t.name}</h5>
-            <div class="text-secondary small mb-1"><i class="far fa-envelope me-1"></i>${t.email} | <i class="fas fa-phone-alt me-1"></i>${t.phone || 'No Phone'}</div>
+            <div class="text-secondary small mb-1"><i class="far fa-envelope me-1"></i>${t.email} | <i class="fas fa-phone-alt me-1"></i>${t.phone || 'No Phone'} | Mobile: ${t.mobile_number || '—'} | Alt Email: ${t.alt_email || '—'}</div>
+            <div class="text-secondary small mb-1">
+              LinkedIn: ${t.social_links?.linkedin ? `<a href="${t.social_links.linkedin}" target="_blank" class="text-primary text-decoration-none fw-semibold">${t.social_links.linkedin}</a>` : '—'} |
+              Twitter/Social: ${t.social_links?.twitter ? `<a href="${t.social_links.twitter}" target="_blank" class="text-primary text-decoration-none fw-semibold">${t.social_links.twitter}</a>` : '—'}
+            </div>
             <div class="text-secondary small"><i class="fas fa-graduation-cap me-1"></i>Highest Qualification: <strong class="text-white">${t.qualification || 'Not provided'}</strong></div>
           </div>
         </div>

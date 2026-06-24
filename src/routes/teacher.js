@@ -337,7 +337,7 @@ router.get('/batches', async (req, res) => {
 });
 
 router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
-  const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, planner_desc } = req.body;
+  const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, planner_desc, teaching_method, batch_instructions } = req.body;
   try {
     // Check SOP approval
     const sop = await db.query("SELECT status, agreement_signed FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
@@ -387,10 +387,10 @@ router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
 
     await db.query(`
       INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name, planner_desc)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14,$15)
+        start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14,$15,$16,$17)
     `, [id, course_id, req.user.id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc]);
+        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc, teaching_method || null, batch_instructions || null]);
 
     await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id, has_planner: !!planner_url });
     res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url });
@@ -805,14 +805,17 @@ router.get('/courses', async (req, res) => {
 });
 
 router.post('/courses', async (req, res) => {
-  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, custom_tag } = req.body;
+  const { title, subject, description, duration_weeks, grade, board, thumbnail_url, custom_tag,
+          learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
-    if (!title || !fees) return res.status(400).json({ error: 'Title and fees are required' });
+    if (!title) return res.status(400).json({ error: 'Title is required' });
     const id = `course_${Date.now()}`;
     const result = await db.query(`
-      INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by, custom_tag)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'draft', $10, $11) RETURNING *
-    `, [id, title, subject, description, parseInt(duration_weeks) || 12, grade, board, parseFloat(fees), thumbnail_url || null, req.user.id, custom_tag || null]);
+      INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by, custom_tag,
+        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, 'draft', $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *
+    `, [id, title, subject, description, parseInt(duration_weeks) || 12, grade, board, thumbnail_url || null, req.user.id, custom_tag || null,
+        learning_duration || null, objective || null, learning_outcome || null, language_instruction || null, daily_class_duration || null, assessment_days || null]);
     
     await logAudit(req.user.id, 'TEACHER_COURSE_CREATED', 'course', id, { title });
     res.status(201).json({ message: 'Course draft created successfully', course: result.rows[0] });
@@ -823,7 +826,8 @@ router.post('/courses', async (req, res) => {
 
 router.put('/courses/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, custom_tag } = req.body;
+  const { title, subject, description, duration_weeks, grade, board, thumbnail_url, custom_tag,
+          learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
     const courseCheck = await db.query('SELECT status, created_by FROM courses WHERE id = $1', [id]);
     if (!courseCheck.rows.length) return res.status(404).json({ error: 'Course not found' });
@@ -840,13 +844,19 @@ router.put('/courses/:id', async (req, res) => {
         duration_weeks = COALESCE($4, duration_weeks), 
         grade = COALESCE($5, grade), 
         board = COALESCE($6, board),
-        fees = COALESCE($7, fees), 
-        thumbnail_url = COALESCE($8, thumbnail_url), 
-        custom_tag = COALESCE($9, custom_tag),
+        thumbnail_url = COALESCE($7, thumbnail_url), 
+        custom_tag = COALESCE($8, custom_tag),
+        learning_duration = COALESCE($9, learning_duration),
+        objective = COALESCE($10, objective),
+        learning_outcome = COALESCE($11, learning_outcome),
+        language_instruction = COALESCE($12, language_instruction),
+        daily_class_duration = COALESCE($13, daily_class_duration),
+        assessment_days = COALESCE($14, assessment_days),
         status = 'draft',
         updated_at = NOW()
-      WHERE id = $10 RETURNING *
-    `, [title, subject, description, duration_weeks ? parseInt(duration_weeks) : null, grade, board, fees ? parseFloat(fees) : null, thumbnail_url, custom_tag, id]);
+      WHERE id = $15 RETURNING *
+    `, [title, subject, description, duration_weeks ? parseInt(duration_weeks) : null, grade, board, thumbnail_url, custom_tag,
+        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days, id]);
     
     await logAudit(req.user.id, 'TEACHER_COURSE_UPDATED', 'course', id, {});
     res.json({ message: 'Course updated and reset to draft', course: result.rows[0] });

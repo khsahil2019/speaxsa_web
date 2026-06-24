@@ -9,7 +9,7 @@ const { logAudit } = require('../services/AuditService');
 
 // ── POST /api/auth/register ──────────────────────────────────
 router.post('/register', async (req, res) => {
-  const { name, email, phone, role, password, qualification, board, grade, experience_years, subject_expertise, languages, address } = req.body;
+  const { name, email, phone, role, password, qualification, board, grade, experience_years, subject_expertise, languages, address, alt_email, mobile_number, social_links } = req.body;
 
   try {
     if (!name || !email || !phone || !role || !password) {
@@ -49,13 +49,14 @@ router.post('/register', async (req, res) => {
     await db.query(`
       INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url,
         approval_status, teacher_level, qualification, experience_years, subject_expertise,
-        languages, address, board, grade, student_code, referral_code)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        languages, address, board, grade, student_code, referral_code, alt_email, mobile_number, social_links)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
     `, [
       id, email, phone, name, role, passwordHash, password, photoUrl,
       approvalStatus, teacherLevel, qualification || null, experience_years || 0,
       subject_expertise || null, languages || null, address || null, board || null,
-      grade || null, studentCode, referralCode
+      grade || null, studentCode, referralCode, alt_email || null, mobile_number || null,
+      typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}')
     ]);
 
     // Create teacher SOP entry if teacher
@@ -298,13 +299,18 @@ router.get('/profile', authenticateToken, async (req, res) => {
 
 // ── PUT /api/auth/profile ─────────────────────────────────────
 router.put('/profile', authenticateToken, async (req, res) => {
-  const { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years } = req.body;
+  const { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years, alt_email, mobile_number, social_links } = req.body;
   try {
     const updates = [];
     const values = [];
     let idx = 1;
 
-    const fields = { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years };
+    const fields = { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years, alt_email, mobile_number };
+    
+    if (social_links !== undefined) {
+      fields.social_links = typeof social_links === 'object' ? JSON.stringify(social_links) : social_links;
+    }
+
     for (const [key, val] of Object.entries(fields)) {
       if (val !== undefined) {
         updates.push(`${key} = $${idx++}`);

@@ -21,6 +21,9 @@ db.query(`
   ALTER TABLE users ADD COLUMN IF NOT EXISTS languages VARCHAR(255);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_level VARCHAR(50) DEFAULT 'Bronze';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ratings INT DEFAULT 0;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS alt_email VARCHAR(200);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(50);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
 
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_name VARCHAR(150);
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_email VARCHAR(200);
@@ -39,11 +42,19 @@ db.query(`
   ALTER TABLE courses ADD COLUMN IF NOT EXISTS custom_tag VARCHAR(255);
   ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
   ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS learning_duration VARCHAR(255);
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS objective TEXT;
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS learning_outcome TEXT;
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS language_instruction VARCHAR(100);
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS daily_class_duration VARCHAR(100);
+  ALTER TABLE courses ADD COLUMN IF NOT EXISTS assessment_days VARCHAR(100);
   ALTER TABLE courses DROP CONSTRAINT IF EXISTS courses_status_check;
   ALTER TABLE courses ADD CONSTRAINT courses_status_check CHECK (status IN ('active', 'archived', 'draft', 'pending_approval', 'rejected'));
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_url TEXT;
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_name VARCHAR(255);
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_desc TEXT;
+  ALTER TABLE batches ADD COLUMN IF NOT EXISTS teaching_method TEXT;
+  ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_instructions TEXT;
 
   CREATE TABLE IF NOT EXISTS teacher_certificates (
     id VARCHAR(100) PRIMARY KEY,
