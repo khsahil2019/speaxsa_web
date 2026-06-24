@@ -1083,66 +1083,360 @@ async function renderCourses() {
   try {
     const courses = await apiGet('/admin/courses');
     window._courses = courses;
+
+    // Initialize filter states on window if not present
+    if (window._coursesFilterSearch === undefined) window._coursesFilterSearch = '';
+    if (window._coursesFilterStatus === undefined) window._coursesFilterStatus = '';
+    if (window._coursesFilterSubject === undefined) window._coursesFilterSubject = '';
+    if (window._coursesFilterGrade === undefined) window._coursesFilterGrade = '';
+    if (window._coursesFilterSort === undefined) window._coursesFilterSort = 'newest';
+
+    // Dynamically extract unique subjects and grades for filter dropdowns
+    const uniqueSubjects = [...new Set(courses.map(c => c.subject).filter(Boolean))].sort();
+    const uniqueGrades = [...new Set(courses.map(c => c.grade).filter(Boolean))].sort();
+
     document.getElementById('pageContent').innerHTML = `
-      <div class="spx-card">
-        <div class="d-flex align-items-center justify-content-between mb-4">
-          <h6 class="mb-0">All Courses (${courses.length})</h6>
-          <button class="btn btn-spx" onclick="showCreateCourse()"><i class="fas fa-plus me-2"></i>New Course</button>
+      <!-- Header Action Block -->
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+          <h5 class="mb-1 text-white">Course Management</h5>
+          <small class="text-muted" id="courseCountBadge">Showing ${courses.length} courses</small>
         </div>
-        ${table(
-          ['Title','Subject','Grade','Board','Fees','Verified','Featured','Status','Actions'],
-          courses.map(c => `
-            <tr>
-              <td>
-                <div class="fw-semibold text-white">${c.title}</div>
-                ${c.custom_tag ? `<small class="text-muted d-block" style="font-size:0.75rem;">${c.custom_tag}</small>` : ''}
-                ${c.teacher_name ? `<div style="font-size:0.75rem;" class="text-muted mt-1">Creator: <a href="javascript:void(0)" class="text-primary fw-semibold" onclick="viewCourseTeacher('${c.id}')">${c.teacher_name}</a></div>` : ''}
-                ${c.status === 'pending_approval' && c.teacher_name ? `
-                  <div class="mt-2 p-2 rounded small text-secondary" style="background: rgba(60, 189, 176, 0.06); border: 1px solid rgba(60, 189, 176, 0.15); font-size:0.78rem;">
-                    <strong style="color: var(--primary) !important;">Teacher Review Details:</strong><br>
-                    • Qualification: <span>${c.teacher_qualification || '—'}</span><br>
-                    • Exp: <span>${c.teacher_experience || 0} Years</span> (${c.teacher_level || 'Bronze'})<br>
-                    • Bio: <span class="text-muted">${c.teacher_bio || '—'}</span>
-                  </div>
-                ` : ''}
-              </td>
-              <td>${c.subject||'—'}</td>
-              <td>${c.grade||'—'}</td>
-              <td>${c.board||'—'}</td>
-              <td class="fw-semibold" style="color:var(--primary)">${fmtCurrency(c.fees)}</td>
-              <td>
-                <span class="badge cursor-pointer" style="cursor: pointer; background: ${c.is_verified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.1)'} !important; color: ${c.is_verified ? '#10B981' : '#94a3b8'} !important; border: 1px solid ${c.is_verified ? 'rgba(16, 185, 129, 0.25)' : 'rgba(148, 163, 184, 0.2)'} !important; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;" onclick="toggleCourseVerified('${c.id}')">
-                  <i class="fas ${c.is_verified ? 'fa-check-circle' : 'fa-minus-circle'} me-1"></i> ${c.is_verified ? 'Verified' : 'Unverified'}
-                </span>
-              </td>
-              <td>
-                <span class="badge cursor-pointer" style="cursor: pointer; background: ${c.is_featured ? 'rgba(245, 158, 11, 0.15)' : 'rgba(148, 163, 184, 0.1)'} !important; color: ${c.is_featured ? '#F59E0B' : '#94a3b8'} !important; border: 1px solid ${c.is_featured ? 'rgba(245, 158, 11, 0.25)' : 'rgba(148, 163, 184, 0.2)'} !important; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;" onclick="toggleCourseFeatured('${c.id}')">
-                  <i class="fas ${c.is_featured ? 'fa-fire' : 'fa-star-half-alt'} me-1"></i> ${c.is_featured ? 'Featured' : 'Standard'}
-                </span>
-              </td>
-              <td>${statusBadge(c.status)}</td>
-              <td>
-                <div class="d-flex gap-1 flex-wrap">
-                  ${c.status === 'pending_approval' ? `
-                    <button class="btn btn-sm btn-success py-1 px-2" style="font-size:0.75rem;" onclick="approveCourse('${c.id}')">Approve</button>
-                    <button class="btn btn-sm btn-danger py-1 px-2" style="font-size:0.75rem;" onclick="rejectCourse('${c.id}')">Reject</button>
-                  ` : ''}
-                  <button class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size:0.75rem;" onclick="editCourse('${c.id}')">Edit</button>
-                  ${c.status === 'archived' ? `
-                    <button class="btn btn-sm btn-outline-success py-1 px-2" style="font-size:0.75rem;" onclick="unarchiveCourse('${c.id}')">Unarchive</button>
-                  ` : `
-                    <button class="btn btn-sm btn-outline-danger py-1 px-2" style="font-size:0.75rem;" onclick="archiveCourse('${c.id}')">Archive</button>
-                  `}
-                </div>
-              </td>
-            </tr>`).join(''),
-          true
-        )}
-      </div>`;
+        <button class="btn btn-spx" onclick="showCreateCourse()">
+          <i class="fas fa-plus me-2"></i>New Course
+        </button>
+      </div>
+
+      <!-- Filters & Search Bar Control Center -->
+      <div class="course-filter-bar">
+        <!-- Search Input -->
+        <div class="course-filter-item search-item">
+          <label class="spx-label mb-1">Search</label>
+          <div class="course-filter-input-group">
+            <i class="fas fa-search"></i>
+            <input type="text" id="courseFilterSearch" class="form-control spx-input" placeholder="Search title, creator, or tags..." value="${window._coursesFilterSearch}">
+          </div>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="course-filter-item">
+          <label class="spx-label mb-1">Status</label>
+          <select id="courseFilterStatus" class="form-select spx-input">
+            <option value="">All Statuses</option>
+            <option value="active" ${window._coursesFilterStatus === 'active' ? 'selected' : ''}>Active</option>
+            <option value="pending_approval" ${window._coursesFilterStatus === 'pending_approval' ? 'selected' : ''}>Pending Approval</option>
+            <option value="rejected" ${window._coursesFilterStatus === 'rejected' ? 'selected' : ''}>Rejected</option>
+            <option value="archived" ${window._coursesFilterStatus === 'archived' ? 'selected' : ''}>Archived</option>
+          </select>
+        </div>
+
+        <!-- Subject Filter -->
+        <div class="course-filter-item">
+          <label class="spx-label mb-1">Subject</label>
+          <select id="courseFilterSubject" class="form-select spx-input">
+            <option value="">All Subjects</option>
+            ${uniqueSubjects.map(s => `<option value="${s}" ${window._coursesFilterSubject === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- Grade Filter -->
+        <div class="course-filter-item">
+          <label class="spx-label mb-1">Grade</label>
+          <select id="courseFilterGrade" class="form-select spx-input">
+            <option value="">All Grades</option>
+            ${uniqueGrades.map(g => `<option value="${g}" ${window._coursesFilterGrade === g ? 'selected' : ''}>${g}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- Sorting -->
+        <div class="course-filter-item">
+          <label class="spx-label mb-1">Sort By</label>
+          <select id="courseFilterSort" class="form-select spx-input">
+            <option value="newest" ${window._coursesFilterSort === 'newest' ? 'selected' : ''}>Newest First</option>
+            <option value="oldest" ${window._coursesFilterSort === 'oldest' ? 'selected' : ''}>Oldest First</option>
+            <option value="price_asc" ${window._coursesFilterSort === 'price_asc' ? 'selected' : ''}>Price: Low to High</option>
+            <option value="price_desc" ${window._coursesFilterSort === 'price_desc' ? 'selected' : ''}>Price: High to Low</option>
+            <option value="alphabetical" ${window._coursesFilterSort === 'alphabetical' ? 'selected' : ''}>Title: A-Z</option>
+          </select>
+        </div>
+
+        <!-- Reset Button -->
+        <div class="course-filter-item btn-item align-self-end">
+          <button class="btn btn-secondary w-100" onclick="resetCourseFilters()" title="Reset Filters">
+            <i class="fas fa-undo"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Courses Card Grid Container -->
+      <div class="course-grid" id="courseCardsGrid"></div>
+    `;
+
+    // Wire up events dynamically to prevent inline pollution
+    document.getElementById('courseFilterSearch').addEventListener('input', e => handleCourseFilterChange('search', e.target.value));
+    document.getElementById('courseFilterStatus').addEventListener('change', e => handleCourseFilterChange('status', e.target.value));
+    document.getElementById('courseFilterSubject').addEventListener('change', e => handleCourseFilterChange('subject', e.target.value));
+    document.getElementById('courseFilterGrade').addEventListener('change', e => handleCourseFilterChange('grade', e.target.value));
+    document.getElementById('courseFilterSort').addEventListener('change', e => handleCourseFilterChange('sort', e.target.value));
+
+    // Initial grid render
+    filterAndRenderCourseCards();
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
   }
 }
+
+function handleCourseFilterChange(type, val) {
+  if (type === 'search') window._coursesFilterSearch = val;
+  if (type === 'status') window._coursesFilterStatus = val;
+  if (type === 'subject') window._coursesFilterSubject = val;
+  if (type === 'grade') window._coursesFilterGrade = val;
+  if (type === 'sort') window._coursesFilterSort = val;
+  filterAndRenderCourseCards();
+}
+
+function resetCourseFilters() {
+  window._coursesFilterSearch = '';
+  window._coursesFilterStatus = '';
+  window._coursesFilterSubject = '';
+  window._coursesFilterGrade = '';
+  window._coursesFilterSort = 'newest';
+
+  const sInput = document.getElementById('courseFilterSearch');
+  const statSelect = document.getElementById('courseFilterStatus');
+  const subjSelect = document.getElementById('courseFilterSubject');
+  const grSelect = document.getElementById('courseFilterGrade');
+  const sortSelect = document.getElementById('courseFilterSort');
+
+  if (sInput) sInput.value = '';
+  if (statSelect) statSelect.value = '';
+  if (subjSelect) subjSelect.value = '';
+  if (grSelect) grSelect.value = '';
+  if (sortSelect) sortSelect.value = 'newest';
+
+  filterAndRenderCourseCards();
+}
+
+function filterAndRenderCourseCards() {
+  const gridEl = document.getElementById('courseCardsGrid');
+  if (!gridEl) return;
+
+  const courses = window._courses || [];
+  const searchVal = (window._coursesFilterSearch || '').toLowerCase().trim();
+  const statusVal = window._coursesFilterStatus || '';
+  const subjectVal = window._coursesFilterSubject || '';
+  const gradeVal = window._coursesFilterGrade || '';
+  const sortVal = window._coursesFilterSort || 'newest';
+
+  // Apply filters
+  let filtered = courses.filter(c => {
+    if (searchVal) {
+      const matchTitle = (c.title || '').toLowerCase().includes(searchVal);
+      const matchCreator = (c.teacher_name || '').toLowerCase().includes(searchVal);
+      const matchTag = (c.custom_tag || '').toLowerCase().includes(searchVal);
+      const matchSubj = (c.subject || '').toLowerCase().includes(searchVal);
+      if (!matchTitle && !matchCreator && !matchTag && !matchSubj) return false;
+    }
+    if (statusVal && c.status !== statusVal) return false;
+    if (subjectVal && c.subject !== subjectVal) return false;
+    if (gradeVal && c.grade !== gradeVal) return false;
+    return true;
+  });
+
+  // Apply sorting
+  if (sortVal === 'newest') {
+    filtered.sort((a, b) => b.id - a.id);
+  } else if (sortVal === 'oldest') {
+    filtered.sort((a, b) => a.id - b.id);
+  } else if (sortVal === 'price_asc') {
+    filtered.sort((a, b) => (parseFloat(a.fees) || 0) - (parseFloat(b.fees) || 0));
+  } else if (sortVal === 'price_desc') {
+    filtered.sort((a, b) => (parseFloat(b.fees) || 0) - (parseFloat(a.fees) || 0));
+  } else if (sortVal === 'alphabetical') {
+    filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  }
+
+  // Update count badge
+  const countBadge = document.getElementById('courseCountBadge');
+  if (countBadge) {
+    countBadge.textContent = `Showing ${filtered.length} of ${courses.length} courses`;
+  }
+
+  if (filtered.length === 0) {
+    gridEl.innerHTML = `
+      <div class="w-100 text-center py-5" style="grid-column: 1 / -1;">
+        <div class="text-muted mb-3" style="font-size: 2.8rem;"><i class="fas fa-search-minus"></i></div>
+        <h5 class="text-secondary fw-semibold">No courses match your search or filters</h5>
+        <p class="text-muted small">Try adjusting your terms or resetting your selections above.</p>
+        <button class="btn btn-secondary btn-sm mt-2" onclick="resetCourseFilters()">
+          <i class="fas fa-undo me-1"></i>Reset Filters
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  gridEl.innerHTML = filtered.map(c => {
+    // Generate Dicebear avatars for creators to keep UI premium and visual
+    const creatorAvatar = c.teacher_photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.teacher_name || 'Creator')}`;
+
+    // Determine status badge classes
+    let badgeClass = 'badge-pending';
+    let label = 'Draft';
+    if (c.status === 'active' || c.status === 'approved') {
+      badgeClass = 'badge-approved';
+      label = 'Active';
+    } else if (c.status === 'rejected') {
+      badgeClass = 'badge-rejected';
+      label = 'Rejected';
+    } else if (c.status === 'archived') {
+      badgeClass = 'badge-suspended';
+      label = 'Archived';
+    }
+
+    const creatorHtml = c.teacher_name
+      ? `<a href="javascript:void(0)" class="course-card-creator-link" onclick="viewCourseTeacher('${c.id}')">${c.teacher_name}</a>`
+      : '<span class="text-muted">Administrator</span>';
+
+    // Banner logic
+    let bannerContent = '';
+    if (c.thumbnail_url) {
+      bannerContent = `<img src="${c.thumbnail_url}" alt="${c.title}" onerror="this.onerror=null; this.parentNode.innerHTML=getPlaceholderBanner('${c.subject || 'Course'}')">`;
+    } else {
+      bannerContent = getPlaceholderBanner(c.subject || 'Course');
+    }
+
+    return `
+      <div class="course-premium-card" id="course-card-${c.id}">
+        <div class="course-card-banner">
+          ${bannerContent}
+          <div class="course-card-status-overlay">
+            <span class="badge ${badgeClass}">${label}</span>
+          </div>
+          <div class="course-card-badges-overlay">
+            <span class="course-card-badge-clickable" style="background: ${c.is_verified ? 'rgba(16, 185, 129, 0.9)' : 'rgba(15, 23, 42, 0.75)'}; color: #ffffff;" onclick="toggleCourseVerified('${c.id}')" title="Click to toggle verified status">
+              <i class="fas ${c.is_verified ? 'fa-check-circle' : 'fa-minus-circle'}"></i> ${c.is_verified ? 'Verified' : 'Unverified'}
+            </span>
+            <span class="course-card-badge-clickable" style="background: ${c.is_featured ? 'rgba(245, 158, 11, 0.9)' : 'rgba(15, 23, 42, 0.75)'}; color: #ffffff;" onclick="toggleCourseFeatured('${c.id}')" title="Click to toggle featured status">
+              <i class="fas ${c.is_featured ? 'fa-fire' : 'fa-star'}"></i> ${c.is_featured ? 'Featured' : 'Standard'}
+            </span>
+          </div>
+        </div>
+
+        <div class="course-card-body">
+          <div>
+            <div class="course-card-tags">
+              ${c.subject ? `<span class="course-pill subject-pill">${c.subject}</span>` : ''}
+              ${c.grade ? `<span class="course-pill grade-pill">${c.grade}</span>` : ''}
+              ${c.board ? `<span class="course-pill">${c.board}</span>` : ''}
+              ${c.custom_tag ? `<span class="course-pill" style="border-color: rgba(60,189,176,0.3); background: rgba(60,189,176,0.04); color: var(--primary-dark); font-size: 0.65rem;">${c.custom_tag}</span>` : ''}
+            </div>
+
+            <h6 class="course-card-title" title="${c.title}">${c.title}</h6>
+
+            <div class="course-card-creator">
+              <img src="${creatorAvatar}" alt="Creator avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.teacher_name || 'Creator')}'">
+              <div>Creator: ${creatorHtml}</div>
+            </div>
+
+            ${c.status === 'pending_approval' && c.teacher_name ? `
+              <div class="course-card-review-panel">
+                <div class="course-card-review-header">
+                  <i class="fas fa-clipboard-check"></i> Teacher Profile details
+                </div>
+                <div>Qualification: <strong>${c.teacher_qualification || '—'}</strong></div>
+                <div>Experience: <strong>${c.teacher_experience || 0} Years</strong> (${c.teacher_level || 'Bronze'})</div>
+                <div class="text-muted mt-1 text-truncate" style="max-width: 100%; cursor: help;" title="${c.teacher_bio || ''}">
+                  Bio: ${c.teacher_bio || '—'}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div>
+            <div class="course-card-metadata">
+              <div class="course-card-meta-item" title="Learning Duration: ${c.learning_duration || '—'}">
+                <i class="fas fa-calendar-alt"></i> <span>${c.learning_duration || '—'}</span>
+              </div>
+              <div class="course-card-meta-item" title="Daily Class Duration: ${c.daily_class_duration || '—'}">
+                <i class="fas fa-clock"></i> <span>${c.daily_class_duration || '—'}</span>
+              </div>
+              <div class="course-card-meta-item" title="Language of Instruction: ${c.language_instruction || '—'}">
+                <i class="fas fa-globe"></i> <span>${c.language_instruction || '—'}</span>
+              </div>
+              <div class="course-card-meta-item" title="Assessment Days: ${c.assessment_days || '—'}">
+                <i class="fas fa-tasks"></i> <span>${c.assessment_days || '—'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="course-card-footer">
+          <div class="course-card-price">${fmtCurrency(c.fees)}</div>
+          <div class="course-card-actions">
+            ${c.status === 'pending_approval' ? `
+              <button class="btn btn-sm btn-success py-1.5 px-2.5" style="font-size:0.75rem;" onclick="approveCourse('${c.id}')" title="Approve Course">
+                <i class="fas fa-check"></i> Approve
+              </button>
+              <button class="btn btn-sm btn-danger py-1.5 px-2.5" style="font-size:0.75rem;" onclick="rejectCourse('${c.id}')" title="Reject Course">
+                <i class="fas fa-times"></i> Reject
+              </button>
+            ` : ''}
+            <button class="btn btn-sm btn-outline-secondary py-1.5 px-2.5" style="font-size:0.75rem;" onclick="editCourse('${c.id}')" title="Edit Course">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            ${c.status === 'archived' ? `
+              <button class="btn btn-sm btn-outline-success py-1.5 px-2.5" style="font-size:0.75rem;" onclick="unarchiveCourse('${c.id}')" title="Unarchive Course">
+                <i class="fas fa-undo"></i> Restore
+              </button>
+            ` : `
+              <button class="btn btn-sm btn-outline-danger py-1.5 px-2.5" style="font-size:0.75rem;" onclick="archiveCourse('${c.id}')" title="Archive Course">
+                <i class="fas fa-archive"></i> Archive
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function getPlaceholderBanner(subject) {
+  let hash = 0;
+  for (let i = 0; i < subject.length; i++) {
+    hash = subject.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = [
+    ['#3CBDB0', '#0F766E'], // Teal
+    ['#3B82F6', '#1D4ED8'], // Blue
+    ['#8B5CF6', '#5B21B6'], // Purple
+    ['#EC4899', '#9D174D'], // Pink
+    ['#F59E0B', '#B45309'], // Amber
+    ['#10B981', '#065F46'], // Emerald
+  ];
+  const colorIndex = Math.abs(hash) % colors.length;
+  const gradient = `linear-gradient(135deg, ${colors[colorIndex][0]}40, ${colors[colorIndex][1]}60)`;
+  const icon = getSubjectIcon(subject);
+  return `
+    <div class="course-banner-placeholder" style="background: ${gradient}">
+      <i class="${icon}"></i>
+      <span class="fw-bold d-block text-white" style="letter-spacing: 0.5px; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.25);">${subject}</span>
+    </div>
+  `;
+}
+
+function getSubjectIcon(subject) {
+  const s = subject.toLowerCase();
+  if (s.includes('math') || s.includes('algebra') || s.includes('geometry') || s.includes('calculus')) return 'fas fa-calculator';
+  if (s.includes('physic')) return 'fas fa-atom';
+  if (s.includes('chem')) return 'fas fa-flask';
+  if (s.includes('biolog') || s.includes('science') || s.includes('evs')) return 'fas fa-dna';
+  if (s.includes('english') || s.includes('gram') || s.includes('languag') || s.includes('hindi') || s.includes('french') || s.includes('german')) return 'fas fa-language';
+  if (s.includes('history') || s.includes('social') || s.includes('geograph') || s.includes('civics')) return 'fas fa-globe-americas';
+  if (s.includes('cod') || s.includes('comput') || s.includes('program') || s.includes('tech')) return 'fas fa-code';
+  return 'fas fa-book-open';
+}
+
 
 function showCreateCourse() {
   window._currentThumbnailUrl = '';
