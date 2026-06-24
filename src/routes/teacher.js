@@ -337,7 +337,7 @@ router.get('/batches', async (req, res) => {
 });
 
 router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
-  const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity } = req.body;
+  const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, planner_desc } = req.body;
   try {
     // Check SOP approval
     const sop = await db.query("SELECT status, agreement_signed FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
@@ -387,13 +387,59 @@ router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
 
     await db.query(`
       INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14)
+        start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name, planner_desc)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14,$15)
     `, [id, course_id, req.user.id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days, cap, channel, planner_url, planner_name]);
+        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc]);
 
     await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id, has_planner: !!planner_url });
     res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upload/Update batch planner separately
+router.post('/batches/:id/planner', plannerUpload.single('planner'), async (req, res) => {
+  const { id } = req.params;
+  const { planner_desc } = req.body;
+  try {
+    // Check if batch belongs to teacher
+    const batch = await db.query("SELECT id FROM batches WHERE id = $1 AND teacher_id = $2", [id, req.user.id]);
+    if (!batch.rows.length) {
+      return res.status(404).json({ error: 'Batch not found' });
+    }
+
+    let query = 'UPDATE batches SET updated_at = NOW()';
+    const params = [];
+    let pIdx = 1;
+
+    if (req.file) {
+      query += `, planner_url = $${pIdx++}, planner_name = $${pIdx++}`;
+      params.push(`/uploads/planners/${req.file.filename}`, req.file.originalname);
+    }
+
+    if (planner_desc !== undefined) {
+      query += `, planner_desc = $${pIdx++}`;
+      params.push(planner_desc);
+    }
+
+    query += ` WHERE id = $${pIdx}`;
+    params.push(id);
+
+    if (params.length === 1) {
+      return res.status(400).json({ error: 'Please select a file to upload or write description content' });
+    }
+
+    await db.query(query, params);
+
+    await logAudit(req.user.id, 'BATCH_PLANNER_UPDATED', 'batch', id, { has_file: !!req.file, has_desc: !!planner_desc });
+    res.json({ 
+      message: 'Planner updated successfully', 
+      planner_url: req.file ? `/uploads/planners/${req.file.filename}` : undefined,
+      planner_name: req.file ? req.file.originalname : undefined,
+      planner_desc
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

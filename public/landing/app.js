@@ -486,6 +486,12 @@ async function showCourseDetails(courseId) {
                     </a>
                   </div>
                 ` : ''}
+                ${b.planner_desc ? `
+                  <div class="mt-2 p-2 rounded text-secondary" style="background:#f8fafc; font-size:0.75rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid #e2e8f0; color: #475569 !important;">
+                    <strong class="d-block mb-1 text-dark" style="font-weight: 700;"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
+                    ${b.planner_desc}
+                  </div>
+                ` : ''}
               </div>
             </div>
             <div class="text-end d-flex flex-column align-items-end ms-auto">

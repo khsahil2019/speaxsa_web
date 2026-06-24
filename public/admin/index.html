@@ -1,248 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Speaxa Admin Panel</title>
   <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="admin.css?v=2.0.1">
 </head>
+
 <body>
 
-<!-- ── Login Screen ──────────────────────────────────────────── -->
-<div id="loginScreen" class="login-screen">
-  <div class="row g-0 w-100 min-vh-100">
-    <!-- Left Visual Panel -->
-    <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between auth-visual-panel">
-      <div class="visual-brand">
-        <img src="/logo.png" alt="Speaxa Logo" class="visual-logo">
-        <span class="visual-brand-text">Speaxa</span>
-      </div>
-      <div class="visual-content">
-        <span class="badge visual-badge">Admin Portal</span>
-        <h1 class="visual-title">Control and <span class="text-gold">Scale the Platform</span></h1>
-        <p class="visual-subtitle">The central command center for Speaxa. Oversee students, teachers, finance logs, live classrooms, and platform settings.</p>
-        
-        <div class="visual-features mt-5">
-          <div class="d-flex align-items-center gap-3 mb-4">
-            <div class="feature-icon"><i class="fas fa-cogs"></i></div>
-            <div>
-              <h5 class="feature-title mb-0">Operations Management</h5>
-              <p class="feature-desc mb-0">Approve SOP applications, manage coupons, and oversee billing.</p>
+  <!-- ── Login Screen ──────────────────────────────────────────── -->
+  <div id="loginScreen" class="login-screen">
+    <div class="row g-0 w-100 min-vh-100">
+      <!-- Left Visual Panel -->
+      <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between auth-visual-panel">
+        <div class="visual-brand">
+          <img src="/logo.png" alt="Speaxa Logo" class="visual-logo">
+          <span class="visual-brand-text">Speaxa</span>
+        </div>
+        <div class="visual-content">
+          <span class="badge visual-badge">Admin Portal</span>
+          <h1 class="visual-title">Control and <span class="text-gold">Scale the Platform</span></h1>
+          <p class="visual-subtitle">The central command center for Speaxa. Oversee students, teachers, finance logs,
+            live classrooms, and platform settings.</p>
+
+          <div class="visual-features mt-5">
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="feature-icon"><i class="fas fa-cogs"></i></div>
+              <div>
+                <h5 class="feature-title mb-0">Operations Management</h5>
+                <p class="feature-desc mb-0">Approve SOP applications, manage coupons, and oversee billing.</p>
+              </div>
             </div>
-          </div>
-          <div class="d-flex align-items-center gap-3 mb-4">
-            <div class="feature-icon"><i class="fas fa-users-cog"></i></div>
-            <div>
-              <h5 class="feature-title mb-0">Complete User Management</h5>
-              <p class="feature-desc mb-0">Detailed oversight of student, teacher, and parent profiles.</p>
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="feature-icon"><i class="fas fa-users-cog"></i></div>
+              <div>
+                <h5 class="feature-title mb-0">Complete User Management</h5>
+                <p class="feature-desc mb-0">Detailed oversight of student, teacher, and parent profiles.</p>
+              </div>
             </div>
-          </div>
-          <div class="d-flex align-items-center gap-3">
-            <div class="feature-icon"><i class="fas fa-chart-pie"></i></div>
-            <div>
-              <h5 class="feature-title mb-0">Platform Analytics</h5>
-              <p class="feature-desc mb-0">Track payouts, payments, class statistics, and platform audit logs.</p>
+            <div class="d-flex align-items-center gap-3">
+              <div class="feature-icon"><i class="fas fa-chart-pie"></i></div>
+              <div>
+                <h5 class="feature-title mb-0">Platform Analytics</h5>
+                <p class="feature-desc mb-0">Track payouts, payments, class statistics, and platform audit logs.</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="visual-footer">
-        <p class="mb-0">© 2026 Speaxa EdTech. All rights reserved.</p>
-      </div>
-    </div>
-    
-    <!-- Right Form Panel -->
-    <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
-      <div class="login-card">
-        <div class="login-brand">
-          <div class="login-brand-row"><div class="brand-icon"><img src="/logo.png" alt="Speaxa Logo"></div><h2>Speaxa</h2></div>
-          <p>Admin Control Panel</p>
+        <div class="visual-footer">
+          <p class="mb-0">© 2026 Speaxa EdTech. All rights reserved.</p>
         </div>
-        <form id="loginForm" class="mt-4">
-          <div class="mb-3">
-            <label class="form-label spx-label">Email Address</label>
-            <div class="input-group">
-              <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
-              <input type="email" class="form-control spx-input" id="loginEmail" placeholder="admin@speaxa.com" required>
+      </div>
+
+      <!-- Right Form Panel -->
+      <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
+        <div class="login-card">
+          <div class="login-brand">
+            <div class="login-brand-row">
+              <div class="brand-icon"><img src="/logo.png" alt="Speaxa Logo"></div>
+              <h2>Speaxa</h2>
             </div>
+            <p>Admin Control Panel</p>
           </div>
-          <div class="mb-4">
-            <label class="form-label spx-label">Password</label>
-            <div class="input-group">
-              <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
-              <input type="password" class="form-control spx-input" id="loginPassword" required>
-              <button class="btn spx-input-prefix" type="button" id="togglePass"><i class="fas fa-eye"></i></button>
+          <form id="loginForm" class="mt-4">
+            <div class="mb-3">
+              <label class="form-label spx-label">Email Address</label>
+              <div class="input-group">
+                <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
+                <input type="email" class="form-control spx-input" id="loginEmail" placeholder="admin@speaxa.com"
+                  required>
+              </div>
             </div>
-          </div>
-          <div id="loginError" class="alert alert-danger d-none"></div>
-          <button type="submit" class="btn btn-spx w-100 py-3" id="loginBtn">
-            <i class="fas fa-sign-in-alt me-2"></i>Login as Admin
-          </button>
-        </form>
+            <div class="mb-4">
+              <label class="form-label spx-label">Password</label>
+              <div class="input-group">
+                <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
+                <input type="password" class="form-control spx-input" id="loginPassword" required>
+                <button class="btn spx-input-prefix" type="button" id="togglePass"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+            <div id="loginError" class="alert alert-danger d-none"></div>
+            <button type="submit" class="btn btn-spx w-100 py-3" id="loginBtn">
+              <i class="fas fa-sign-in-alt me-2"></i>Login as Admin
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ── Main App ───────────────────────────────────────────────── -->
-<div id="adminApp" class="d-none">
-  <!-- Sidebar -->
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-icon"><img src="/logo.png" alt="Speaxa Logo"></div>
-      <span>Speaxa</span>
-    </div>
-    <div class="sidebar-user">
-      <img src="" id="adminAvatarSidebar" alt="Admin" class="sidebar-avatar">
-      <div>
-        <div class="sidebar-user-name" id="adminNameSidebar">Admin</div>
-        <div class="sidebar-user-role">Super Admin</div>
+  <!-- ── Main App ───────────────────────────────────────────────── -->
+  <div id="adminApp" class="d-none">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon"><img src="/logo.png" alt="Speaxa Logo"></div>
+        <span>Speaxa</span>
       </div>
-    </div>
-    <nav class="sidebar-nav">
-      <div class="nav-section-label">Overview</div>
-      <a class="nav-item active" data-page="dashboard" id="nav-dashboard">
-        <i class="fas fa-th-large"></i><span>Dashboard</span>
-      </a>
-      <div class="nav-section-label">Users</div>
-      <a class="nav-item" data-page="teachers" id="nav-teachers">
-        <i class="fas fa-chalkboard-teacher"></i><span>Teachers</span>
-      </a>
-      <a class="nav-item" data-page="students" id="nav-students">
-        <i class="fas fa-user-graduate"></i><span>Students</span>
-      </a>
-      <a class="nav-item" data-page="parents" id="nav-parents">
-        <i class="fas fa-users"></i><span>Parents</span>
-      </a>
-      <div class="nav-section-label">Content</div>
-      <a class="nav-item" data-page="courses" id="nav-courses">
-        <i class="fas fa-book"></i><span>Courses</span>
-      </a>
-      <a class="nav-item" data-page="batches" id="nav-batches">
-        <i class="fas fa-layer-group"></i><span>Batches</span>
-      </a>
-      <a class="nav-item" data-page="liveclasses" id="nav-liveclasses">
-        <i class="fas fa-video"></i><span>Live Classes</span>
-      </a>
-      <div class="nav-section-label">Finance</div>
-      <a class="nav-item" data-page="payments" id="nav-payments">
-        <i class="fas fa-credit-card"></i><span>Payments</span>
-      </a>
-      <a class="nav-item" data-page="payouts" id="nav-payouts">
-        <i class="fas fa-wallet"></i><span>Payouts</span>
-      </a>
-      <a class="nav-item" data-page="commission" id="nav-commission">
-        <i class="fas fa-percentage"></i><span>Commission</span>
-      </a>
-      <a class="nav-item" data-page="refunds" id="nav-refunds">
-        <i class="fas fa-undo"></i><span>Refunds</span>
-      </a>
-      <div class="nav-section-label">Management</div>
-      <a class="nav-item" data-page="sop" id="nav-sop">
-        <i class="fas fa-clipboard-check"></i><span>SOP Review</span>
-        <span class="nav-badge" id="sopBadge" style="display:none">0</span>
-      </a>
-      <a class="nav-item" data-page="coupons" id="nav-coupons">
-        <i class="fas fa-tag"></i><span>Coupons</span>
-      </a>
-      <a class="nav-item" data-page="support" id="nav-support">
-        <i class="fas fa-question-circle"></i><span>Connect Queries</span>
-      </a>
-      <a class="nav-item" data-page="notifications" id="nav-notifications">
-        <i class="fas fa-bell"></i><span>Notifications</span>
-      </a>
-      <a class="nav-item" data-page="settings" id="nav-settings">
-        <i class="fas fa-cog"></i><span>Settings</span>
-      </a>
-      <a class="nav-item" data-page="auditlogs" id="nav-auditlogs">
-        <i class="fas fa-history"></i><span>Audit Logs</span>
-      </a>
-    </nav>
-    <button class="sidebar-logout" id="logoutBtn">
-      <i class="fas fa-sign-out-alt"></i><span>Logout</span>
-    </button>
-  </div>
-
-  <!-- Main Content -->
-  <div class="main-content" id="mainContent">
-    <!-- Header -->
-    <div class="top-header">
-      <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-icon" id="sidebarToggle">
-          <i class="fas fa-bars"></i>
-        </button>
+      <div class="sidebar-user">
+        <img src="" id="adminAvatarSidebar" alt="Admin" class="sidebar-avatar">
         <div>
-          <div class="page-title" id="pageTitle">Dashboard</div>
-          <div class="page-breadcrumb" id="pageBreadcrumb">Admin / Dashboard</div>
+          <div class="sidebar-user-name" id="adminNameSidebar">Admin</div>
+          <div class="sidebar-user-role">Super Admin</div>
         </div>
       </div>
-      <div class="d-flex align-items-center gap-3">
-        <div class="search-box d-none d-md-flex">
-          <i class="fas fa-search"></i>
-          <input type="text" id="globalSearch" placeholder="Search users, courses...">
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <a class="nav-item active" data-page="dashboard" id="nav-dashboard">
+          <i class="fas fa-th-large"></i><span>Dashboard</span>
+        </a>
+        <div class="nav-section-label">Users</div>
+        <a class="nav-item" data-page="teachers" id="nav-teachers">
+          <i class="fas fa-chalkboard-teacher"></i><span>Teachers</span>
+        </a>
+        <a class="nav-item" data-page="students" id="nav-students">
+          <i class="fas fa-user-graduate"></i><span>Students</span>
+        </a>
+        <a class="nav-item" data-page="parents" id="nav-parents">
+          <i class="fas fa-users"></i><span>Parents</span>
+        </a>
+        <div class="nav-section-label">Content</div>
+        <a class="nav-item" data-page="courses" id="nav-courses">
+          <i class="fas fa-book"></i><span>Courses</span>
+        </a>
+        <a class="nav-item" data-page="batches" id="nav-batches">
+          <i class="fas fa-layer-group"></i><span>Batches</span>
+        </a>
+        <a class="nav-item" data-page="liveclasses" id="nav-liveclasses">
+          <i class="fas fa-video"></i><span>Live Classes</span>
+        </a>
+        <div class="nav-section-label">Finance</div>
+        <a class="nav-item" data-page="payments" id="nav-payments">
+          <i class="fas fa-credit-card"></i><span>Payments</span>
+        </a>
+        <a class="nav-item" data-page="payouts" id="nav-payouts">
+          <i class="fas fa-wallet"></i><span>Payouts</span>
+        </a>
+        <a class="nav-item" data-page="commission" id="nav-commission">
+          <i class="fas fa-percentage"></i><span>Commission</span>
+        </a>
+        <a class="nav-item" data-page="refunds" id="nav-refunds">
+          <i class="fas fa-undo"></i><span>Refunds</span>
+        </a>
+        <div class="nav-section-label">Management</div>
+        <a class="nav-item" data-page="sop" id="nav-sop">
+          <i class="fas fa-clipboard-check"></i><span>SOP Review</span>
+          <span class="nav-badge" id="sopBadge" style="display:none">0</span>
+        </a>
+        <a class="nav-item" data-page="coupons" id="nav-coupons">
+          <i class="fas fa-tag"></i><span>Coupons</span>
+        </a>
+        <a class="nav-item" data-page="support" id="nav-support">
+          <i class="fas fa-question-circle"></i><span>Connect Queries</span>
+        </a>
+        <a class="nav-item" data-page="notifications" id="nav-notifications">
+          <i class="fas fa-bell"></i><span>Notifications</span>
+        </a>
+        <a class="nav-item" data-page="settings" id="nav-settings">
+          <i class="fas fa-cog"></i><span>Settings</span>
+        </a>
+        <a class="nav-item" data-page="auditlogs" id="nav-auditlogs">
+          <i class="fas fa-history"></i><span>Audit Logs</span>
+        </a>
+      </nav>
+      <button class="sidebar-logout" id="logoutBtn">
+        <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+      </button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+      <!-- Header -->
+      <div class="top-header">
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn btn-icon" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div>
+            <div class="page-title" id="pageTitle">Dashboard</div>
+            <div class="page-breadcrumb" id="pageBreadcrumb">Admin / Dashboard</div>
+          </div>
         </div>
-        <div class="notification-bell" id="notifBell">
-          <i class="fas fa-bell"></i>
-          <span class="notif-dot"></span>
+        <div class="d-flex align-items-center gap-3">
+          <div class="search-box d-none d-md-flex">
+            <i class="fas fa-search"></i>
+            <input type="text" id="globalSearch" placeholder="Search users, courses...">
+          </div>
+          <div class="notification-bell" id="notifBell">
+            <i class="fas fa-bell"></i>
+            <span class="notif-dot"></span>
+          </div>
+          <img src="" id="adminAvatarHeader" class="header-avatar" alt="Admin">
         </div>
-        <img src="" id="adminAvatarHeader" class="header-avatar" alt="Admin">
       </div>
-    </div>
 
-    <!-- Page Content -->
-    <div class="page-content" id="pageContent">
-      <!-- Pages are rendered here by JS -->
-    </div>
-  </div>
-</div>
-
-<!-- Global Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
-  <div id="toastEl" class="toast" role="alert">
-    <div class="toast-body d-flex align-items-center gap-2">
-      <i class="fas" id="toastIcon"></i>
-      <span id="toastMsg"></span>
-    </div>
-  </div>
-</div>
-
-<!-- Confirm Modal -->
-<div class="modal fade" id="confirmModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content spx-modal">
-      <div class="modal-header border-0">
-        <h5 class="modal-title" id="confirmTitle">Confirm Action</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="confirmBody"></div>
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+      <!-- Page Content -->
+      <div class="page-content" id="pageContent">
+        <!-- Pages are rendered here by JS -->
       </div>
     </div>
   </div>
-</div>
 
-<!-- Universal Form Modal -->
-<div class="modal fade" id="formModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content spx-modal">
-      <div class="modal-header border-0">
-        <h5 class="modal-title" id="formModalTitle">Form</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <!-- Global Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+    <div id="toastEl" class="toast" role="alert">
+      <div class="toast-body d-flex align-items-center gap-2">
+        <i class="fas" id="toastIcon"></i>
+        <span id="toastMsg"></span>
       </div>
-      <div class="modal-body" id="formModalBody"></div>
     </div>
   </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="admin.js?v=2.0.1"></script>
+  <!-- Confirm Modal -->
+  <div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content spx-modal">
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="confirmTitle">Confirm Action</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="confirmBody"></div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Universal Form Modal -->
+  <div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content spx-modal">
+
+
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="formModalTitle">Form</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="formModalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="admin.js?v=2.0.1"></script>
 </body>
+
 </html>

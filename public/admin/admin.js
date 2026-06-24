@@ -1354,6 +1354,18 @@ async function archiveCourse(id) {
   });
 }
 
+async function approveCourse(id) {
+  confirm('Approve Course?', 'This will approve the course and notify the teacher.', async () => {
+    try {
+      const data = await apiPost(`/admin/courses/${id}/approve`);
+      showToast(data.message || 'Course approved successfully');
+      renderCourses();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
 async function rejectCourse(id) {
   adminPrompt('Reject Course', 'Reason for rejection?', '', async (reason) => {
     try {

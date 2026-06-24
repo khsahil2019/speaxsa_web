@@ -1456,6 +1456,7 @@ async function renderBatches() {
 
     // Cache courses for live details
     window._coursesCache = courses;
+    window._batchesCache = batches || [];
     window._batchActiveTab = window._batchActiveTab || 'list';
 
     // Build the sub-tab bar
@@ -1491,9 +1492,26 @@ async function renderBatches() {
                         <span><i class="fas fa-users me-1"></i>${b.enrolled_count || 0} / ${b.capacity} Students</span>
                         <span><i class="fas fa-calendar me-1"></i>${(b.days_of_week || []).join(', ')}</span>
                         <span><i class="fas fa-clock me-1"></i>${b.start_time} - ${b.end_time}</span>
+                        <span>
+                          <i class="fas fa-file-pdf me-1"></i>
+                          ${b.planner_url ? `
+                            <a href="${b.planner_url}" target="_blank" class="text-primary text-decoration-none fw-bold">
+                              <i class="fas fa-download me-1"></i>${b.planner_name || 'Download Planner'}
+                            </a>
+                          ` : '<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>No Planner</span>'}
+                        </span>
                       </div>
+                      ${b.planner_desc ? `
+                        <div class="mt-2 p-2 rounded text-secondary" style="background:rgba(255,255,255,0.02); font-size:0.78rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid rgba(255,255,255,0.03);">
+                          <strong class="text-white d-block mb-1"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
+                          ${b.planner_desc}
+                        </div>
+                      ` : ''}
                     </div>
-                    <div>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-sm btn-outline-primary" onclick="openUploadPlannerModal('${b.id}', '${b.batch_name.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-upload me-1"></i> Planner
+                      </button>
                       <button class="btn btn-sm btn-spx" onclick="viewBatchStudents('${b.id}', '${b.batch_name}')">Students</button>
                     </div>
                   </div>
@@ -1555,17 +1573,29 @@ async function renderBatches() {
                   </div>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label">Days of Week (Comma Separated)</label>
-                  <input class="form-control spx-input" id="batchDays" placeholder="Monday, Wednesday, Friday" oninput="updateBatchPreview()" required>
+                  <label class="spx-label mb-2">Days of Week</label>
+                  <div class="d-flex flex-wrap gap-2" id="batchDaysContainer">
+                    ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => `
+                      <button type="button" class="btn btn-sm btn-outline-primary day-selector-btn px-3 py-2 fw-semibold" data-day="${day}" onclick="toggleDaySelector(this)" style="border-radius: 8px; font-size: 0.8rem;">
+                        ${day.slice(0, 3)}
+                      </button>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="batchDays" required>
                 </div>
                 <div class="mb-3">
                   <label class="spx-label">Max Capacity (Max ${maxBatchCapacity})</label>
                   <input type="number" class="form-control spx-input" id="batchCapacity" value="${maxBatchCapacity}" max="${maxBatchCapacity}" oninput="updateBatchPreview()" required>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label">Upload Chapter-wise Course Planner (PDF/Doc) *</label>
-                  <input type="file" class="form-control spx-input" id="batchPlanner" accept=".pdf,.doc,.docx" required>
-                  <div class="form-text text-muted small mt-1">Submit the full learning schedule for this batch.</div>
+                  <label class="spx-label mb-1">Learning Schedule / Syllabus Text</label>
+                  <textarea class="form-control spx-input" id="batchPlannerDesc" rows="4" placeholder="e.g. Week 1: Introduction to Mechanics&#10;Week 2: Newtons Laws of Motion" oninput="updateBatchPreview()"></textarea>
+                  <div class="form-text text-muted small mt-1">Write out the weekly schedule details directly.</div>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Upload Chapter-wise Course Planner (PDF/Doc)</label>
+                  <input type="file" class="form-control spx-input" id="batchPlanner" accept=".pdf,.doc,.docx">
+                  <div class="form-text text-muted small mt-1">Or upload a syllabus document file if you have one.</div>
                 </div>
                 <button type="submit" class="btn btn-spx w-100">Create Batch</button>
               </form>
@@ -1604,6 +1634,21 @@ async function handleCourseChange(courseId) {
   } catch (err) {
     showToast('Failed to load course modules: ' + err.message, 'error');
     window._selectedCourseModules = [];
+  }
+  updateBatchPreview();
+}
+
+function toggleDaySelector(btn) {
+  btn.classList.toggle('active');
+  btn.classList.toggle('btn-primary');
+  btn.classList.toggle('btn-outline-primary');
+
+  const selectedButtons = document.querySelectorAll('#batchDaysContainer .day-selector-btn.active');
+  const selectedDays = Array.from(selectedButtons).map(b => b.getAttribute('data-day'));
+  
+  const hiddenInput = document.getElementById('batchDays');
+  if (hiddenInput) {
+    hiddenInput.value = selectedDays.join(', ');
   }
   updateBatchPreview();
 }
@@ -1788,6 +1833,7 @@ async function createBatch(e) {
   formData.append('end_time', document.getElementById('batchEndT').value + ':00');
   formData.append('days_of_week', JSON.stringify(days_of_week));
   formData.append('capacity', parseInt(document.getElementById('batchCapacity').value) || 30);
+  formData.append('planner_desc', document.getElementById('batchPlannerDesc')?.value || '');
 
   const plannerFile = document.getElementById('batchPlanner').files[0];
   if (plannerFile) {
@@ -3423,6 +3469,84 @@ function printCertificate(cert) {
   `;
   
   window.print();
+}
+
+function openUploadPlannerModal(batchId, batchName) {
+  let modalEl = document.getElementById('uploadPlannerModal');
+  if (!modalEl) {
+    modalEl = document.createElement('div');
+    modalEl.id = 'uploadPlannerModal';
+    modalEl.className = 'modal fade';
+    modalEl.tabIndex = -1;
+    modalEl.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(modalEl);
+  }
+
+  const batch = (window._batchesCache || []).find(b => b.id === batchId);
+  const currentDesc = batch ? (batch.planner_desc || '') : '';
+
+  modalEl.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#1e293b; border:1px solid var(--border); color:#ffffff; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <div class="modal-header border-0 pb-0" style="padding:16px 24px;">
+          <h5 class="modal-title fw-bold" style="font-family:'Outfit';">Update Syllabus Planner</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter:invert(1);"></button>
+        </div>
+        <div class="modal-body" style="padding:24px;">
+          <p class="text-secondary small mb-3">Update the syllabus description or upload a document file for <strong>${batchName}</strong>.</p>
+          <form id="uploadPlannerForm" onsubmit="uploadPlanner(event, '${batchId}')">
+            <div class="mb-3">
+              <label class="spx-label mb-1">Learning Schedule / Syllabus Text</label>
+              <textarea class="form-control spx-input" id="modalPlannerDesc" rows="4" placeholder="e.g. Week 1: Introduction" style="background:#0f172a; color:#ffffff; border:1px solid var(--border);">${currentDesc}</textarea>
+            </div>
+            <div class="mb-3">
+              <label class="spx-label mb-1">Upload PDF/Doc Document File</label>
+              <input type="file" class="form-control spx-input" id="plannerFile" accept=".pdf,.doc,.docx" style="background:#0f172a; color:#ffffff; border:1px solid var(--border);">
+            </div>
+            <button type="submit" class="btn btn-spx w-100">Save Changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+  window._uploadPlannerModalInstance = modal;
+}
+
+async function uploadPlanner(e, batchId) {
+  e.preventDefault();
+  const descVal = document.getElementById('modalPlannerDesc')?.value || '';
+  const fileInput = document.getElementById('plannerFile');
+  const file = fileInput.files[0];
+
+  const formData = new FormData();
+  if (file) {
+    formData.append('planner', file);
+  }
+  formData.append('planner_desc', descVal);
+
+  try {
+    showToast('Saving planner changes...', 'info');
+    const res = await fetch(`${API}/teacher/batches/${batchId}/planner`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+
+    if (res.status === 401) { logout(); throw new Error('Session expired'); }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    showToast(data.message || 'Planner updated successfully!');
+    if (window._uploadPlannerModalInstance) {
+      window._uploadPlannerModalInstance.hide();
+    }
+    renderBatches();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 initApp();

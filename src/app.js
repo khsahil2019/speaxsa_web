@@ -43,6 +43,7 @@ db.query(`
   ALTER TABLE courses ADD CONSTRAINT courses_status_check CHECK (status IN ('active', 'archived', 'draft', 'pending_approval', 'rejected'));
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_url TEXT;
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_name VARCHAR(255);
+  ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_desc TEXT;
 
   CREATE TABLE IF NOT EXISTS teacher_certificates (
     id VARCHAR(100) PRIMARY KEY,
