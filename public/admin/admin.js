@@ -240,8 +240,22 @@ function avatar(url, name, size = 36) {
 }
 
 function levelBadge(level) {
-  const map = { 'Bronze':'badge-bronze','Silver':'badge-silver','Gold':'badge-gold','Elite Mentor':'badge-elite' };
-  return `<span class="${map[level]||'badge-bronze'}">${level||'Bronze'}</span>`;
+  const map = {
+    'Junior Teacher': 'badge-bronze',
+    'Assistant Teacher': 'badge-bronze',
+    'Senior Teacher': 'badge-silver',
+    'Executive Teacher': 'badge-silver',
+    'Lecturer': 'badge-silver',
+    'Professor': 'badge-gold',
+    'Senior Professor': 'badge-gold',
+    'HOD': 'badge-elite',
+    'Dean': 'badge-elite',
+    'Bronze': 'badge-bronze',
+    'Silver': 'badge-silver',
+    'Gold': 'badge-gold',
+    'Elite Mentor': 'badge-elite'
+  };
+  return `<span class="${map[level]||'badge-bronze'}">${level||'Junior Teacher'}</span>`;
 }
 
 function statusBadge(status) {
@@ -924,8 +938,12 @@ async function viewTeacher(id) {
 }
 
 async function setTeacherLevel(id) {
-  adminPrompt('Set Teacher Level', 'Enter level (Bronze / Silver / Gold / Elite Mentor):', 'Bronze', async (level) => {
-    if (!['Bronze','Silver','Gold','Elite Mentor'].includes(level)) { showToast('Invalid level', 'error'); return; }
+  const allowed = [
+    'Junior Teacher', 'Assistant Teacher', 'Senior Teacher', 'Executive Teacher',
+    'Lecturer', 'Professor', 'Senior Professor', 'HOD', 'Dean'
+  ];
+  adminPrompt('Set Teacher Level', `Enter level (${allowed.join(' / ')}):`, 'Junior Teacher', async (level) => {
+    if (!allowed.includes(level)) { showToast('Invalid level. Please check spelling.', 'error'); return; }
     try {
       const data = await apiPost(`/admin/teachers/${id}/set-level`, { level });
       showToast(data.message || 'Level updated');
@@ -2846,6 +2864,27 @@ async function renderSettings() {
               <button type="submit" class="btn btn-spx w-100">Save Settings</button>
             </form>
           </div>
+          <div class="spx-card mt-4">
+            <h6 class="mb-4">Level-Wise Teacher Payout Share (%)</h6>
+            <form onsubmit="saveLevelPayouts(event)">
+              ${[
+                {key:'payout_pct_Junior_Teacher', label:'Junior Teacher Share (%)', default:'50.00'},
+                {key:'payout_pct_Assistant_Teacher', label:'Assistant Teacher Share (%)', default:'55.00'},
+                {key:'payout_pct_Senior_Teacher', label:'Senior Teacher Share (%)', default:'60.00'},
+                {key:'payout_pct_Executive_Teacher', label:'Executive Teacher Share (%)', default:'65.00'},
+                {key:'payout_pct_Lecturer', label:'Lecturer Share (%)', default:'70.00'},
+                {key:'payout_pct_Professor', label:'Professor Share (%)', default:'75.00'},
+                {key:'payout_pct_Senior_Professor', label:'Senior Professor Share (%)', default:'80.00'},
+                {key:'payout_pct_HOD', label:'HOD Share (%)', default:'85.00'},
+                {key:'payout_pct_Dean', label:'Dean Share (%)', default:'90.00'},
+              ].map(f => `
+                <div class="mb-3">
+                  <label class="spx-label">${f.label}</label>
+                  <input class="form-control spx-input" type="number" step="0.01" min="0" max="100" id="setting_${f.key}" value="${settings[f.key]||f.default}">
+                </div>`).join('')}
+              <button type="submit" class="btn btn-spx w-100">Save Level Payouts</button>
+            </form>
+          </div>
         </div>
         <div class="col-lg-4">
           <div class="spx-card">
@@ -2922,6 +2961,19 @@ async function saveSettings(e) {
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
   try { const d = await apiPost('/admin/settings',body); showToast(d.message||'Settings saved'); }
+  catch (err) { showToast(err.message,'error'); }
+}
+
+async function saveLevelPayouts(e) {
+  e.preventDefault();
+  const keys = [
+    'payout_pct_Junior_Teacher', 'payout_pct_Assistant_Teacher', 'payout_pct_Senior_Teacher',
+    'payout_pct_Executive_Teacher', 'payout_pct_Lecturer', 'payout_pct_Professor',
+    'payout_pct_Senior_Professor', 'payout_pct_HOD', 'payout_pct_Dean'
+  ];
+  const body = {};
+  keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
+  try { const d = await apiPost('/admin/settings',body); showToast(d.message||'Level payouts saved'); }
   catch (err) { showToast(err.message,'error'); }
 }
 

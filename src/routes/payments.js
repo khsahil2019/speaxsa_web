@@ -59,9 +59,26 @@ router.post('/create-order', async (req, res) => {
       }
     }
 
-    // Get commission split dynamically from settings
-    const teacherPctSettingKey = commissionType === 'referral' ? 'referral_teacher_share_pct' : 'default_teacher_share_pct';
-    const teacherPct = parseFloat(await SystemConfigService.getSetting(teacherPctSettingKey, 50.0));
+    // Resolve teacher's level and retrieve their level-wise payout share percentage
+    const teacherRes = await db.query("SELECT teacher_level FROM users WHERE id = $1", [b.teacher_id]);
+    const teacherLevel = teacherRes.rows[0]?.teacher_level || 'Junior Teacher';
+    const levelKey = `payout_pct_${teacherLevel.replace(' ', '_')}`;
+
+    // Map default fallback rates per level
+    const defaultPctMap = {
+      'Junior Teacher': 50.0,
+      'Assistant Teacher': 55.0,
+      'Senior Teacher': 60.0,
+      'Executive Teacher': 65.0,
+      'Lecturer': 70.0,
+      'Professor': 75.0,
+      'Senior Professor': 80.0,
+      'HOD': 85.0,
+      'Dean': 90.0
+    };
+    const defaultPct = defaultPctMap[teacherLevel] || 50.0;
+
+    const teacherPct = parseFloat(await SystemConfigService.getSetting(levelKey, defaultPct));
     const platformPct = 100.0 - teacherPct;
     const teacherShare = (amount * teacherPct) / 100;
     const platformShare = (amount * platformPct) / 100;

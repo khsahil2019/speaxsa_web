@@ -386,7 +386,10 @@ router.post('/sop/:teacherId/deapprove', async (req, res) => {
 router.post('/teachers/:id/set-level', async (req, res) => {
   const { id } = req.params;
   const { level } = req.body;
-  const validLevels = ['Bronze', 'Silver', 'Gold', 'Elite Mentor'];
+  const validLevels = [
+    'Junior Teacher', 'Assistant Teacher', 'Senior Teacher', 'Executive Teacher',
+    'Lecturer', 'Professor', 'Senior Professor', 'HOD', 'Dean'
+  ];
   try {
     if (!validLevels.includes(level)) return res.status(400).json({ error: 'Invalid level' });
     const current = await db.query('SELECT teacher_level FROM users WHERE id = $1', [id]);
