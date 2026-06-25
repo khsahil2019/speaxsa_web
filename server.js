@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('./src/app');
+app.set('trust proxy', 1);
 const cron = require('node-cron');
 
 const PORT = process.env.PORT || 5001;
