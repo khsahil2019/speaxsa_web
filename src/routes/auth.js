@@ -20,14 +20,51 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Role must be teacher, student, or parent' });
     }
 
-    const existing = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: 'Email already registered' });
+    // Role-based Email and Phone uniqueness validation
+    if (role === 'teacher') {
+      const emailCheck = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already registered' });
+      }
+      const phoneCheck = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+      if (phoneCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Mobile number already registered' });
+      }
+    } else if (role === 'student') {
+      // Check if email or phone is linked to a non-student account (teacher or parent)
+      const nonStudentEmail = await db.query("SELECT id, role FROM users WHERE LOWER(email) = LOWER($1) AND role != 'student'", [email]);
+      if (nonStudentEmail.rows.length > 0) {
+        return res.status(400).json({ error: `This email belongs to a ${nonStudentEmail.rows[0].role} account and cannot be shared.` });
+      }
+      const nonStudentPhone = await db.query("SELECT id, role FROM users WHERE phone = $1 AND role != 'student'", [phone]);
+      if (nonStudentPhone.rows.length > 0) {
+        return res.status(400).json({ error: `This mobile number belongs to a ${nonStudentPhone.rows[0].role} account and cannot be shared.` });
+      }
+
+      // Check student limits (max 2 student accounts per email, and max 2 student accounts per phone)
+      const emailCountRes = await db.query("SELECT COUNT(*) as count FROM users WHERE LOWER(email) = LOWER($1) AND role = 'student'", [email]);
+      if (parseInt(emailCountRes.rows[0].count || 0) >= 2) {
+        return res.status(400).json({ error: 'This email is already linked to the maximum limit of 2 student accounts.' });
+      }
+      const phoneCountRes = await db.query("SELECT COUNT(*) as count FROM users WHERE phone = $1 AND role = 'student'", [phone]);
+      if (parseInt(phoneCountRes.rows[0].count || 0) >= 2) {
+        return res.status(400).json({ error: 'This mobile number is already linked to the maximum limit of 2 student accounts.' });
+      }
+    } else {
+      // Default checks for parents or other roles
+      const emailCheck = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already registered' });
+      }
+      const phoneCheck = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+      if (phoneCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Mobile number already registered' });
+      }
     }
 
     const id = generateUID(role.substr(0, 3));
     const passwordHash = hashPassword(password);
-    const photoUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+    const photoUrl = null;
 
     let approvalStatus = 'approved';
     let teacherLevel = null;
@@ -129,14 +166,20 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await db.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
-    const user = result.rows[0];
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found with this email' });
 
-    if (!user) return res.status(404).json({ error: 'User not found with this email' });
-    if (user.is_disabled) return res.status(403).json({ error: 'Account disabled. Contact admin.' });
+    let user = null;
+    for (const row of result.rows) {
+      if (verifyPassword(password, row.password_hash)) {
+        user = row;
+        break;
+      }
+    }
 
-    if (!verifyPassword(password, user.password_hash)) {
+    if (!user) {
       return res.status(401).json({ error: 'Invalid password' });
     }
+    if (user.is_disabled) return res.status(403).json({ error: 'Account disabled. Contact admin.' });
 
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name, role: user.role },
@@ -205,10 +248,11 @@ router.post('/verify-otp', async (req, res) => {
       : 'SELECT * FROM users WHERE phone = $1';
       
     const result = await db.query(query, [input]);
-    const user = result.rows[0];
-
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.is_disabled) return res.status(403).json({ error: 'Account disabled' });
+    const activeUsers = result.rows.filter(u => !u.is_disabled);
+    if (activeUsers.length === 0) {
+      return res.status(404).json({ error: result.rows.length > 0 ? 'Account disabled' : 'User not found' });
+    }
+    const user = activeUsers[0];
 
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name, role: user.role },

@@ -1,5 +1,6 @@
 // SPEAXA Teacher Portal JS
 const API = '/api';
+const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 let token = localStorage.getItem('teacher_token') || sessionStorage.getItem('teacher_token');
 let user = JSON.parse(localStorage.getItem('teacher_user') || sessionStorage.getItem('teacher_user') || 'null');
 
@@ -233,7 +234,7 @@ function showApp() {
   document.getElementById('authScreen').classList.add('d-none');
   document.getElementById('teacherApp').classList.remove('d-none');
   if (user) {
-    const av = user.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`;
+    const av = user.photo_url || defaultAvatar;
     document.getElementById('avatarSidebar').src = av;
     document.getElementById('avatarHeader').src = av;
     document.getElementById('nameSidebar').textContent = user.name;
@@ -1886,7 +1887,7 @@ async function viewBatchStudents(batchId, batchName) {
           <tbody>
             ${students.map(s => `
               <tr style="color: var(--text-primary);">
-                <td><img src="${s.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${s.name}`}" style="width:36px;height:36px;border-radius:50%"></td>
+                <td><img src="${s.photo_url || defaultAvatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" onerror="this.src=defaultAvatar"></td>
                 <td class="fw-semibold">${s.name}</td>
                 <td><code>${s.student_code || s.id}</code></td>
                 <td>${s.grade || ''} • ${s.board || ''}</td>
@@ -3200,7 +3201,7 @@ async function renderProfile() {
             
             <div class="position-relative d-inline-block mt-3">
               <div class="profile-avatar-wrapper" onclick="document.getElementById('teacherAvatarInput').click()">
-                <img src="${profile.photo_url||`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.name)}`}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.2);box-shadow: 0 8px 20px rgba(0,0,0,0.12); object-fit: cover;" alt="Teacher Photo">
+                <img src="${profile.photo_url||defaultAvatar}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.2);box-shadow: 0 8px 20px rgba(0,0,0,0.12); object-fit: cover;" alt="Teacher Photo" onerror="this.src=defaultAvatar">
                 <div class="profile-avatar-overlay">
                   <i class="fas fa-camera"></i>
                 </div>
@@ -4107,7 +4108,7 @@ async function renderReferrals() {
                     <tr>
                       <td>
                         <div class="d-flex align-items-center gap-2">
-                          <img src="${t.photo_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + t.name}" class="rounded-circle" style="width:24px; height:24px;">
+                          <img src="${t.photo_url || defaultAvatar}" class="rounded-circle" style="width:24px; height:24px; object-fit:cover;" onerror="this.src=defaultAvatar">
                           <span class="text-white">${t.name}</span>
                         </div>
                       </td>
@@ -4147,7 +4148,7 @@ async function renderReferrals() {
                     <tr>
                       <td>
                         <div class="d-flex align-items-center gap-2">
-                          <img src="${s.photo_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + s.name}" class="rounded-circle" style="width:24px; height:24px;">
+                          <img src="${s.photo_url || defaultAvatar}" class="rounded-circle" style="width:24px; height:24px; object-fit:cover;" onerror="this.src=defaultAvatar">
                           <span class="text-white">${s.name}</span>
                         </div>
                       </td>

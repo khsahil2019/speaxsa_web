@@ -56,7 +56,9 @@ db.query(`
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS teaching_method TEXT;
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_instructions TEXT;
 
-  -- ── Referral and Wallet Ledger Migrations ──────────────────────
+  -- Drop UNIQUE constraint on users(email) to allow duplicate emails (handled programmatically by signup rules)
+  ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
+
   ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL;
 
   CREATE TABLE IF NOT EXISTS teacher_wallet_ledger (

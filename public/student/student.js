@@ -1,5 +1,6 @@
 // SPEAXA Student Portal JS
 const API = '/api';
+const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 let token = localStorage.getItem('student_token') || sessionStorage.getItem('student_token');
 let user = JSON.parse(localStorage.getItem('student_user') || sessionStorage.getItem('student_user') || 'null');
 
@@ -193,7 +194,7 @@ function showApp() {
   document.getElementById('authScreen').classList.add('d-none');
   document.getElementById('studentApp').classList.remove('d-none');
   if (user) {
-    const av = user.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`;
+    const av = user.photo_url || defaultAvatar;
     document.getElementById('avatarSidebar').src = av;
     document.getElementById('avatarHeader').src = av;
     document.getElementById('nameSidebar').textContent = user.name;
@@ -497,7 +498,7 @@ async function showCourseDetails(courseId) {
                   <!-- Expandable Teacher Info Section -->
                   <div id="teacher-profile-${b.id}" class="mt-3 pt-3 border-top" style="display: none; border-color: rgba(255, 255, 255, 0.08) !important;">
                     <div class="d-flex align-items-center gap-2 mb-2">
-                      <img src="${b.teacher_photo || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + b.teacher_name}" class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover; border-color: rgba(60, 189, 176, 0.25) !important;" alt="${b.teacher_name}">
+                      <img src="${b.teacher_photo || defaultAvatar}" class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover; border-color: rgba(60, 189, 176, 0.25) !important;" alt="${b.teacher_name}" onerror="this.src=defaultAvatar">
                       <div>
                         <div class="fw-bold text-white" style="font-size: 0.78rem;">${b.teacher_name}</div>
                         <div style="font-size: 0.68rem; color: var(--text-secondary);"><span class="badge bg-primary-subtle text-primary py-0 px-2" style="font-size: 0.6rem; font-weight: 600;">${b.teacher_level || 'Gold'} Mentor</span></div>
@@ -884,7 +885,7 @@ async function renderProfile() {
             
             <div class="position-relative d-inline-block mt-3">
               <div class="profile-avatar-wrapper" onclick="document.getElementById('studentAvatarInput').click()">
-                <img src="${profile.photo_url||`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.25);box-shadow: 0 8px 20px rgba(0,0,0,0.15); object-fit: cover;" alt="Student Avatar">
+                <img src="${profile.photo_url||defaultAvatar}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.25);box-shadow: 0 8px 20px rgba(0,0,0,0.15); object-fit: cover;" alt="Student Avatar" onerror="this.src=defaultAvatar">
                 <div class="profile-avatar-overlay">
                   <i class="fas fa-camera"></i>
                 </div>
@@ -996,7 +997,7 @@ async function updateProfile(e) {
     updateCachedUser(data.user);
     if (user) {
       document.getElementById('nameSidebar').textContent = user.name;
-      const av = user.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`;
+      const av = user.photo_url || defaultAvatar;
       document.getElementById('avatarSidebar').src = av;
       document.getElementById('avatarHeader').src = av;
     }

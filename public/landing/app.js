@@ -1,5 +1,6 @@
 // SPEAXA Landing Page JavaScript
 const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
+const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 
 // Inject premium animations for badges
 const badgeStyle = document.createElement('style');
@@ -465,12 +466,12 @@ async function showCourseDetails(courseId) {
     
     batchesList.innerHTML = batches.map(b => {
       const days = Array.isArray(b.days_of_week) ? b.days_of_week.join(', ') : b.days_of_week || 'Mon, Wed, Fri';
-      const teacherPhoto = b.teacher_photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(b.teacher_name || 'Expert')}`;
+      const teacherPhoto = b.teacher_photo || defaultAvatar;
       return `
         <div class="card bg-dark-alt p-3" style="background: #f8fafc !important; border: 1px solid rgba(60, 189, 176, 0.25) !important;">
           <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
             <div class="d-flex align-items-center gap-3">
-              <img src="${teacherPhoto}" alt="${b.teacher_name}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; flex-shrink: 0;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(b.teacher_name || 'Expert')}'">
+              <img src="${teacherPhoto}" alt="${b.teacher_name}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover; flex-shrink: 0;" onerror="this.src=defaultAvatar">
               <div>
                 <h6 class="fw-bold mb-1" style="color: #0F766E !important; font-size: 1.05rem;">${b.batch_name}</h6>
                 <div class="small mb-1" style="color: #334155 !important;">

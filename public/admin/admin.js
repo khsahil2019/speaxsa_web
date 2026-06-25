@@ -4,6 +4,7 @@ const API = '/api';
 let token = localStorage.getItem('admin_token');
 let adminUser = JSON.parse(localStorage.getItem('admin_user') || 'null');
 let currentPage = 'dashboard';
+const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 
 // ── Bootstrap components ──────────────────────────────────────
 const Toast = new bootstrap.Toast(document.getElementById('toastEl'), { delay: 3000 });
@@ -97,7 +98,7 @@ function showApp() {
   document.getElementById('loginScreen').classList.add('d-none');
   document.getElementById('adminApp').classList.remove('d-none');
   if (adminUser) {
-    const avatar = adminUser.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${adminUser.name}`;
+    const avatar = adminUser.photo_url || defaultAvatar;
     document.getElementById('adminAvatarSidebar').src = avatar;
     document.getElementById('adminAvatarHeader').src = avatar;
     document.getElementById('adminNameSidebar').textContent = adminUser.name;
@@ -234,8 +235,8 @@ function table(cols, rows, actions = '') {
 }
 
 function avatar(url, name, size = 36) {
-  const src = url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
-  return `<img src="${src}" alt="${name}" style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid var(--primary)" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}'">`;
+  const src = url || defaultAvatar;
+  return `<img src="${src}" alt="${name}" style="width:${size}px;height:${size}px;border-radius:50%;border:2px solid var(--primary);background:#1e293b;padding:3px;" onerror="this.src=defaultAvatar">`;
 }
 
 function levelBadge(level) {
@@ -1279,8 +1280,7 @@ function filterAndRenderCourseCards() {
   }
 
   gridEl.innerHTML = filtered.map(c => {
-    // Generate Dicebear avatars for creators to keep UI premium and visual
-    const creatorAvatar = c.teacher_photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.teacher_name || 'Creator')}`;
+    const creatorAvatar = c.teacher_photo || defaultAvatar;
 
     // Determine status badge classes
     let badgeClass = 'badge-pending';
@@ -1335,9 +1335,8 @@ function filterAndRenderCourseCards() {
             </div>
 
             <h6 class="course-card-title" title="${c.title}">${c.title}</h6>
-
             <div class="course-card-creator">
-              <img src="${creatorAvatar}" alt="Creator avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.teacher_name || 'Creator')}'">
+              <img src="${creatorAvatar}" alt="Creator avatar" onerror="this.src=defaultAvatar">
               <div>Creator: ${creatorHtml}</div>
             </div>
 
@@ -1831,7 +1830,7 @@ function viewCourseTeacher(courseId) {
   document.getElementById('formModalTitle').textContent = `Teacher Profile: ${c.teacher_name}`;
   document.getElementById('formModalBody').innerHTML = `
     <div class="text-center mb-3">
-      <img src="${c.teacher_photo || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(c.teacher_name)}" style="width:72px; height:72px; border-radius:50%; border:2px solid var(--primary); object-fit: cover;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.teacher_name)}'">
+      <img src="${c.teacher_photo || defaultAvatar}" style="width:72px; height:72px; border-radius:50%; border:2px solid var(--primary); object-fit: cover; background:#1e293b; padding:4px;" onerror="this.src=defaultAvatar">
       <h5 class="fw-bold mt-2 text-dark">${c.teacher_name}</h5>
       <span class="badge" style="background: rgba(60,189,176,0.1); color: var(--primary);">${c.teacher_level || 'Bronze'}</span>
     </div>

@@ -1,5 +1,6 @@
 // Speaxa Admin Portal Extended JavaScript Controller
 const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
+const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 
 // Global Fetch Interceptor for Security Header Injection
 const originalFetch = window.fetch;
@@ -756,7 +757,7 @@ function openUserDetailsModal(id) {
   // Render general profile details
   let html = `
     <div style="display:flex; flex-direction:column; gap:16px; align-items:center; text-align:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:16px;">
-      <img src="${user.photo_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.name}" alt="${user.name}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);" onerror="this.onerror=null; this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name)}';">
+      <img src="${user.photo_url || defaultAvatar}" alt="${user.name}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);" onerror="this.onerror=null; this.src=defaultAvatar;">
       <div>
         <h3 style="font-size:20px; color:var(--text-primary);">${user.name}</h3>
         <p class="text-secondary">${user.email}</p>
@@ -995,7 +996,7 @@ function renderTeachers(filter = 'all') {
       <div class="teacher-card">
         <span class="card-badge badge-status ${labelClass}">${t.approval_status.toUpperCase()}</span>
         <div class="teacher-header">
-          <img class="teacher-photo" src="${t.photo_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + t.name}" alt="${t.name}">
+          <img class="teacher-photo" src="${t.photo_url || defaultAvatar}" alt="${t.name}" onerror="this.src=defaultAvatar">
           <div class="teacher-meta">
             <h3>${t.name}</h3>
             <p>${t.email}</p>
@@ -1072,8 +1073,8 @@ function renderDirectory(searchQuery = '') {
     if (user.approval_status === 'rejected') statusClass = 'rejected';
 
     const avatarHtml = user.photo_url 
-      ? `<img src="${user.photo_url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:10px;" onerror="this.onerror=null; this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name)}';" />`
-      : `<div class="avatar-initials">${user.name.charAt(0)}</div>`;
+      ? `<img src="${user.photo_url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:10px;" onerror="this.onerror=null; this.src=defaultAvatar;" />`
+      : `<img src="${defaultAvatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:10px; background:#1e293b;" />`;
 
     const academicInfo = user.role === 'student'
       ? `<span class="text-secondary" style="font-size:11px; margin-top:2px;">${user.qualification || 'Class not set'} • ${user.board || 'Board not set'}</span>`
@@ -1417,7 +1418,7 @@ async function showTeacherDetails(id) {
   
   content.innerHTML = `
     <div style="display:flex; flex-direction:column; gap:16px; align-items:center; text-align:center; margin-bottom:20px;">
-      <img src="${teacher.photo_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + teacher.name}" alt="${teacher.name}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">
+      <img src="${teacher.photo_url || defaultAvatar}" alt="${teacher.name}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);" onerror="this.src=defaultAvatar;">
       <div>
         <h3 style="font-size:18px;">${teacher.name}</h3>
         <p class="text-secondary">${teacher.email}</p>

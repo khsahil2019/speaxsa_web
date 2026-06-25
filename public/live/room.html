@@ -490,6 +490,7 @@
   <!-- Agora Web SDK -->
   <script src="https://download.agora.io/sdk/web/AgoraRTC_N-4.20.0.js"></script>
   <script>
+    const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
     const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
     const urlParams = new URLSearchParams(window.location.search);
     const classId = urlParams.get('classId');
@@ -706,7 +707,7 @@
             simStudent.innerHTML = `
               <div class="user-label" id="label-simstudent">Sahil Khan (Student)</div>
               <div id="player-simstudent" class="video-stream d-flex flex-column align-items-center justify-content-center" style="background: rgba(15,23,42,0.9); color: white;">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sahil" style="width:70px; height:70px; border-radius:50%; border:2px solid var(--primary); margin-bottom:10px;">
+                <img src="${defaultAvatar}" style="width:70px; height:70px; border-radius:50%; border:2px solid var(--primary); margin-bottom:10px; object-fit:cover;" onerror="this.src=defaultAvatar">
                 <span class="badge bg-success-subtle text-success border border-success" style="font-size:0.7rem;"><i class="fas fa-microphone me-1 animate__animated animate__pulse animate__infinite"></i> Audio Connected</span>
               </div>
             `;
@@ -743,7 +744,7 @@
           localPlayerEl.innerHTML = `
             <div class="d-flex flex-column align-items-center justify-content-center h-100" style="background: rgba(15,23,42,0.9); padding: 20px; color:#fff;">
               <div style="position:relative; margin-bottom:15px;">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=TeacherPriya" style="width: 100px; height: 100px; border-radius:50%; border:3px solid var(--primary);">
+                <img src="${defaultAvatar}" style="width: 100px; height: 100px; border-radius:50%; border:3px solid var(--primary); object-fit:cover;" onerror="this.src=defaultAvatar">
                 <div class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 20px; height: 20px; padding: 2px;"></div>
               </div>
               <h6 class="fw-bold mb-1">Dr. Priya Sharma</h6>
