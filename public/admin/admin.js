@@ -3106,6 +3106,17 @@ async function renderRewards() {
           <div class="spx-card h-100">
             <h6 class="mb-4 text-white"><i class="fas fa-sliders-h text-primary me-2"></i>Global Referral & Reward Settings</h6>
             <p class="text-muted small">Configure the global percentages and limits for student referrals, teacher referrals, and course sharing splits.</p>
+            
+            <div class="mb-4 p-3 rounded" style="background: rgba(59,130,246,0.05); border: 1px dashed rgba(59,130,246,0.2); font-size: 0.8rem; color:#94a3b8;">
+              <strong class="text-white"><i class="fas fa-info-circle me-1"></i> Admin Guide / मार्गदर्शिका:</strong>
+              <ul class="mb-0 ps-3 mt-1 small">
+                <li><strong>Student Referral Bonus:</strong> जब भी student कोई Course बुक करेगा, तो total payment का यह % refer करने वाले teacher को wallet में मिलेगा। (Teacher receives this % of referred student's course purchase).</li>
+                <li><strong>Teacher Referral Bonus:</strong> जब referred teacher Course sales से कमाएगा, तो उसकी earning का यह % refer करने वाले teacher को मिलेगा। (Teacher receives this % of referred teacher's earnings).</li>
+                <li><strong>Max Cap:</strong> एक teacher अधिकतम कितने शिक्षकों को refer कर बोनस पा सकता है। (Maximum referred teachers eligible for the earnings bonus).</li>
+                <li><strong>Default/Referral Share:</strong> Course sale से creator teacher को मिलने वाला हिस्सा (बाकी platform share होगा)। (Percentage of course sale paid to creator teacher).</li>
+              </ul>
+            </div>
+
             <form onsubmit="saveReferralSettings(event)">
               <div class="row g-3">
                 <div class="col-md-6">
@@ -3146,7 +3157,14 @@ async function renderRewards() {
               <h6 class="mb-4 text-white"><i class="fas fa-magic text-info me-2"></i>Monthly Grooming Allowances</h6>
               <p class="text-muted small">Generate monthly allowances for all verified teachers. Allowance amounts are computed dynamically based on the teacher's highest approved performance slab group.</p>
               
-              <div class="mb-4">
+              <div class="mb-4 p-3 rounded" style="background: rgba(6,182,212,0.05); border: 1px dashed rgba(6,182,212,0.2); font-size: 0.8rem; color:#94a3b8;">
+                <strong class="text-white"><i class="fas fa-info-circle me-1"></i> Admin Guide / मार्गदर्शिका:</strong>
+                <p class="mb-0 mt-1 small">
+                  हर महीने के अंत में यहाँ से <strong>Grooming Allowances</strong> जनरेट करें। यह ऑटोमैटिकली सभी teachers के हाइएस्ट अप्रूव्ड परफॉर्मेंस स्लैब (जैसे HOD/Dean) के अलाउंस को कैलकुलेट करके उनके Wallet में क्रेडिट कर देता है। (Trigger monthly allowance payouts at the end of the month based on each teacher's highest approved slab milestone group).
+                </p>
+              </div>
+
+              <div class="mb-4 mt-3">
                 <label class="spx-label text-muted">Select Month (YYYY-MM)</label>
                 <input type="month" class="form-control spx-input" id="allowanceMonthSelect" value="${curMonth}">
               </div>
@@ -3191,6 +3209,14 @@ async function renderRewards() {
               <h6 class="mb-0 text-white"><i class="fas fa-trophy text-warning me-2"></i>Performance Slab Milestones</h6>
               <button class="btn btn-sm btn-spx" onclick="showSlabModal()"><i class="fas fa-plus me-1"></i>Add New Slab</button>
             </div>
+            
+            <div class="mb-4 p-3 rounded" style="background: rgba(234,179,8,0.05); border: 1px dashed rgba(234,179,8,0.2); font-size: 0.8rem; color:#94a3b8;">
+              <strong class="text-white"><i class="fas fa-info-circle me-1"></i> Admin Guide / मार्गदर्शिका:</strong>
+              <p class="mb-0 mt-1 small">
+                शिक्षकों की cumulative sales कमाई (Revenue) के आधार पर परफॉर्मेंस स्लैब अनलॉक होते हैं। स्लैब अनलॉक होने पर शिक्षक को इनाम (Cash + Item Gift) मिलता है, और वे एक विशिष्ट भत्ते समूह (Allowance Group) में शामिल हो जाते हैं। (Slab milestones are automatically reached based on teacher revenue. Unlocking rewards the teacher and assigns them to an allowance group).
+              </p>
+            </div>
+
             ${slabs.length > 0 ? table(
               ['Slab Name', 'Target Revenue', 'Reward Cash', 'Gift Item', 'Grooming Group', 'Actions'],
               slabs.map(s => `
@@ -3217,6 +3243,14 @@ async function renderRewards() {
               <h6 class="mb-0 text-white"><i class="fas fa-hand-holding-usd text-success me-2"></i>Grooming Allowance Groups</h6>
               <button class="btn btn-sm btn-spx" onclick="showAllowanceModal()"><i class="fas fa-plus me-1"></i>Add Allowance Group</button>
             </div>
+            
+            <div class="mb-4 p-3 rounded" style="background: rgba(16,185,129,0.05); border: 1px dashed rgba(16,185,129,0.2); font-size: 0.8rem; color:#94a3b8;">
+              <strong class="text-white"><i class="fas fa-info-circle me-1"></i> Admin Guide / मार्गदर्शिका:</strong>
+              <p class="mb-0 mt-1 small">
+                यहाँ अलाउंस ग्रुप की मासिक राशि सेट करें (जैसे Leadership Group = ₹25,000)। जब शिक्षक का स्लैब इस ग्रुप से जुड़ा होगा, तो मासिक अलाउंस जनरेट करने पर उन्हें यह निश्चित राशि प्राप्त होगी। (Configure the fixed monthly allowance amount for each tier. Teachers linked to these groups will receive this amount during monthly allowance payouts).
+              </p>
+            </div>
+
             ${allowances.length > 0 ? table(
               ['Group Name', 'Monthly Allowance Amount', 'Description', 'Actions'],
               allowances.map(a => `
