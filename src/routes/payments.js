@@ -6,6 +6,7 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { generateUID } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
+const SystemConfigService = require('../services/SystemConfigService');
 
 router.use(authenticateToken);
 
@@ -58,10 +59,10 @@ router.post('/create-order', async (req, res) => {
       }
     }
 
-    // Get commission split
-    const commission = await db.query('SELECT * FROM commission_config WHERE commission_type = $1', [commissionType]);
-    const teacherPct = parseFloat(commission.rows[0]?.teacher_pct || 50);
-    const platformPct = parseFloat(commission.rows[0]?.platform_pct || 50);
+    // Get commission split dynamically from settings
+    const teacherPctSettingKey = commissionType === 'referral' ? 'referral_teacher_share_pct' : 'default_teacher_share_pct';
+    const teacherPct = parseFloat(await SystemConfigService.getSetting(teacherPctSettingKey, 50.0));
+    const platformPct = 100.0 - teacherPct;
     const teacherShare = (amount * teacherPct) / 100;
     const platformShare = (amount * platformPct) / 100;
 
@@ -137,7 +138,7 @@ router.post('/verify', async (req, res) => {
       await db.query('UPDATE batches SET seats_filled = seats_filled + 1 WHERE id = $1', [payment.batch_id]);
     }
 
-    // Update teacher wallet
+    // Update teacher wallet and log ledger transaction
     if (payment.teacher_id) {
       await db.query(`
         INSERT INTO teacher_wallet (teacher_id, total_earnings, pending_earnings, wallet_balance)
@@ -147,6 +148,130 @@ router.post('/verify', async (req, res) => {
           pending_earnings = teacher_wallet.pending_earnings + $2,
           wallet_balance = teacher_wallet.wallet_balance + $2
       `, [payment.teacher_id, payment.teacher_share]);
+
+      await db.query(`
+        INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id)
+        VALUES ($1, $2, $3, 'course_share', $4, $5)
+      `, [generateUID('tx'), payment.teacher_id, payment.teacher_share, `Earnings from student enrollment in batch: ${payment.batch_id}`, payment_id]);
+
+      // ── Student Referral incentive ──────
+      const studentRef = await db.query(
+        "SELECT referred_by FROM users WHERE id = $1 AND role = 'student'",
+        [payment.student_id]
+      );
+      if (studentRef.rows.length > 0 && studentRef.rows[0].referred_by) {
+        const referringTeacherId = studentRef.rows[0].referred_by;
+        const studentRefPct = parseFloat(await SystemConfigService.getSetting('student_referral_bonus_pct', 5.0));
+        const studentReferralShare = parseFloat(payment.amount) * (studentRefPct / 100);
+
+        // Credit referring teacher
+        await db.query(`
+          INSERT INTO teacher_wallet (teacher_id, total_earnings, pending_earnings, wallet_balance)
+          VALUES ($1, $2, $2, $2)
+          ON CONFLICT (teacher_id) DO UPDATE SET
+            total_earnings = teacher_wallet.total_earnings + $2,
+            pending_earnings = teacher_wallet.pending_earnings + $2,
+            wallet_balance = teacher_wallet.wallet_balance + $2
+        `, [referringTeacherId, studentReferralShare]);
+
+        await db.query(`
+          INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id, referred_user_id)
+          VALUES ($1, $2, $3, 'student_referral', $4, $5, $6)
+        `, [
+          generateUID('tx'),
+          referringTeacherId,
+          studentReferralShare,
+          `${studentRefPct}% Student Referral incentive from user ${payment.student_id} booking batch ${payment.batch_id}`,
+          payment_id,
+          payment.student_id
+        ]);
+        console.log(`[Referral Share] ${studentRefPct}% student referral incentive credited to ${referringTeacherId} for student ${payment.student_id}`);
+      }
+
+      // ── Teacher Referral incentive ──────
+      const teacherRef = await db.query(
+        "SELECT referred_by FROM users WHERE id = $1 AND role = 'teacher'",
+        [payment.teacher_id]
+      );
+      if (teacherRef.rows.length > 0 && teacherRef.rows[0].referred_by) {
+        const referringTeacherId = teacherRef.rows[0].referred_by;
+
+        // Verify if the referred teacher is one of the first dynamic capacity limit teachers referred
+        const rankCheck = await db.query(`
+          SELECT id FROM users 
+          WHERE referred_by = $1 AND role = 'teacher' 
+          ORDER BY created_at ASC
+        `, [referringTeacherId]);
+        const referredTeachersList = rankCheck.rows.map(r => r.id);
+        const rank = referredTeachersList.indexOf(payment.teacher_id);
+        const maxCap = parseInt(await SystemConfigService.getSetting('teacher_referral_max_cap', 10));
+
+        if (rank !== -1 && rank < maxCap) {
+          const teacherRefPct = parseFloat(await SystemConfigService.getSetting('teacher_referral_bonus_pct', 1.0));
+          const teacherReferralShare = parseFloat(payment.teacher_share) * (teacherRefPct / 100);
+
+          // Credit referring teacher
+          await db.query(`
+            INSERT INTO teacher_wallet (teacher_id, total_earnings, pending_earnings, wallet_balance)
+            VALUES ($1, $2, $2, $2)
+            ON CONFLICT (teacher_id) DO UPDATE SET
+              total_earnings = teacher_wallet.total_earnings + $2,
+              pending_earnings = teacher_wallet.pending_earnings + $2,
+              wallet_balance = teacher_wallet.wallet_balance + $2
+          `, [referringTeacherId, teacherReferralShare]);
+
+          await db.query(`
+            INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id, referred_user_id)
+            VALUES ($1, $2, $3, 'teacher_referral', $4, $5, $6)
+          `, [
+            generateUID('tx'),
+            referringTeacherId,
+            teacherReferralShare,
+            `${teacherRefPct}% Teacher Referral incentive from teacher ${payment.teacher_id} course earnings`,
+            payment_id,
+            payment.teacher_id
+          ]);
+          console.log(`[Referral Share] ${teacherRefPct}% teacher referral incentive credited to ${referringTeacherId} for teacher ${payment.teacher_id}`);
+        }
+      }
+
+      // ── Teacher Performance Slabs Check ──────
+      const revRes = await db.query(
+        "SELECT COALESCE(SUM(amount), 0) as total_rev FROM payments WHERE teacher_id = $1 AND status = 'captured'",
+        [payment.teacher_id]
+      );
+      const totalRevenue = parseFloat(revRes.rows[0].total_rev);
+
+      const slabsRes = await db.query("SELECT slab_name as name, target_revenue as target, reward_amount as reward, reward_item as item FROM performance_slabs_config ORDER BY target_revenue ASC");
+      const slabs = slabsRes.rows.map(row => ({
+        name: row.name,
+        target: parseFloat(row.target),
+        reward: parseFloat(row.reward),
+        item: row.item
+      }));
+
+      for (const slab of slabs) {
+        if (totalRevenue >= slab.target) {
+          const rewardCheck = await db.query(
+            "SELECT id FROM teacher_rewards WHERE teacher_id = $1 AND slab_name = $2",
+            [payment.teacher_id, slab.name]
+          );
+          if (rewardCheck.rows.length === 0) {
+            const rewardId = generateUID('rwd');
+            await db.query(`
+              INSERT INTO teacher_rewards (id, teacher_id, slab_name, target_revenue, reward_amount, reward_item, status)
+              VALUES ($1, $2, $3, $4, $5, $6, 'pending_review')
+            `, [rewardId, payment.teacher_id, slab.name, slab.target, slab.reward, slab.item]);
+            
+            await logAudit('system', 'REWARD_SLAB_ACHIEVED', 'user', payment.teacher_id, {
+              slab_name: slab.name,
+              target_revenue: slab.target,
+              reward_amount: slab.reward,
+              reward_item: slab.item
+            });
+          }
+        }
+      }
     }
 
     await logAudit(req.user.id, 'PAYMENT_CAPTURED', 'payment', payment_id, {

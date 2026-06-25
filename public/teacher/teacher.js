@@ -84,6 +84,7 @@ async function doRegister() {
       subject_expertise: document.getElementById('regSubjects').value,
       experience_years: parseInt(document.getElementById('regExp').value) || 0,
       languages: document.getElementById('regLanguages').value,
+      referred_by_code: document.getElementById('regReferralCode') ? document.getElementById('regReferralCode').value.trim() : '',
       role: 'teacher',
     };
 
@@ -277,6 +278,7 @@ function navigateTo(page) {
     home:'Dashboard', sop:'SOP Setup', courses:'My Courses', batches:'My Batches',
     liveclasses:'Live Classes', assignments:'Assignments', observations:'Observations',
     attendance:'Attendance', notes:'Study Materials', earnings:'Earnings',
+    referrals:'Referrals & Rewards',
     level:'My Level', certificates:'My Certificates', profile:'Profile'
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
@@ -284,6 +286,7 @@ function navigateTo(page) {
     home:renderHome, sop:renderSop, courses:renderCourses, batches:renderBatches,
     liveclasses:renderLiveClasses, assignments:renderAssignments, observations:renderObservations,
     attendance:renderAttendance, notes:renderNotes, earnings:renderEarnings,
+    referrals:renderReferrals,
     level:renderLevel, certificates:renderCertificates, profile:renderProfile
   };
   renders[page]?.();
@@ -3860,6 +3863,362 @@ document.addEventListener('click', function(e) {
 window.toggleCustomBatchCourseDropdown = toggleCustomBatchCourseDropdown;
 window.filterCustomBatchCourses = filterCustomBatchCourses;
 window.selectCustomBatchCourse = selectCustomBatchCourse;
+
+async function renderReferrals() {
+  loading();
+  try {
+    const [referralData, rewardsData] = await Promise.all([
+      api('/teacher/referrals'),
+      api('/teacher/rewards')
+    ]);
+
+    const code = referralData.referral_code;
+    const stats = referralData.stats;
+    const refStudents = referralData.referred_students || [];
+    const refTeachers = referralData.referred_teachers || [];
+
+    const cumulativeRevenue = rewardsData.cumulative_revenue || 0;
+    const slabs = rewardsData.slabs || [];
+    const allowances = rewardsData.allowance_history || [];
+    const allowanceMap = rewardsData.allowance_map || {};
+    const refSettings = rewardsData.settings || { student_referral_bonus_pct: 5, teacher_referral_bonus_pct: 1, teacher_referral_max_cap: 10 };
+    const studentRefPct = refSettings.student_referral_bonus_pct;
+    const teacherRefPct = refSettings.teacher_referral_bonus_pct;
+    const maxCap = refSettings.teacher_referral_max_cap;
+
+    // Find next slab
+    const nextSlab = slabs.find(s => cumulativeRevenue < s.target) || slabs[slabs.length - 1];
+    const prevSlabTarget = nextSlab ? (slabs[slabs.indexOf(nextSlab) - 1]?.target || 0) : 0;
+    const progressPct = nextSlab ? Math.min(100, Math.max(0, ((cumulativeRevenue - prevSlabTarget) / (nextSlab.target - prevSlabTarget)) * 100)) : 100;
+
+    const statement = await api('/teacher/wallet/statement');
+
+    const shareLink = `${window.location.origin}/student?ref=${code}`;
+    const teacherShareLink = `${window.location.origin}/teacher?ref=${code}`;
+
+    document.getElementById('pageContent').innerHTML = `
+      <!-- Referral Code and Links -->
+      <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+          <div class="spx-card h-100">
+            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-share-nodes me-2"></i>Referral Links</h6>
+            <p class="text-muted small">Share these codes with students or teachers to earn commissions on their activities.</p>
+            
+            <div class="mb-3">
+              <label class="spx-label" style="font-size:0.75rem;">Your Referral Code</label>
+              <div class="input-group">
+                <input type="text" class="form-control spx-input" id="refCodeInput" value="${code}" readonly>
+                <button class="btn btn-outline-primary" onclick="copyText('refCodeInput', 'Referral Code copied!')">
+                  <i class="fas fa-copy"></i> Copy
+                </button>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="spx-label" style="font-size:0.75rem;">Student Referral Link (${studentRefPct}% Commission)</label>
+              <div class="input-group">
+                <input type="text" class="form-control spx-input" id="studentRefInput" value="${shareLink}" readonly>
+                <button class="btn btn-outline-primary" onclick="copyText('studentRefInput', 'Student referral link copied!')">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="spx-label" style="font-size:0.75rem;">Teacher Referral Link (${teacherRefPct}% Commission - Max ${maxCap})</label>
+              <div class="input-group">
+                <input type="text" class="form-control spx-input" id="teacherRefInput" value="${teacherShareLink}" readonly>
+                <button class="btn btn-outline-primary" onclick="copyText('teacherRefInput', 'Teacher referral link copied!')">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Referral Stats -->
+        <div class="col-lg-6">
+          <div class="spx-card h-100">
+            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-chart-line me-2"></i>Referral Statistics</h6>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="p-3 rounded" style="background:var(--bg-dark); border:1px solid var(--border)">
+                  <div class="text-white fw-bold fs-5">${stats.total_referred_students}</div>
+                  <div class="text-muted" style="font-size:0.7rem;">Students Referred</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 rounded" style="background:var(--bg-dark); border:1px solid var(--border)">
+                  <div class="text-white fw-bold fs-5">${stats.total_referred_teachers} / ${maxCap}</div>
+                  <div class="text-muted" style="font-size:0.7rem;">Teachers Referred</div>
+                </div>
+              </div>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <div class="p-2 rounded text-success" style="background:var(--bg-dark); border:1px solid var(--border); font-size:0.8rem;">
+                  <span>Student Earnings:</span> <strong class="float-end">₹${stats.student_referral_earnings.toLocaleString('en-IN')}</strong>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 rounded text-success" style="background:var(--bg-dark); border:1px solid var(--border); font-size:0.8rem;">
+                  <span>Teacher Earnings:</span> <strong class="float-end">₹${stats.teacher_referral_earnings.toLocaleString('en-IN')}</strong>
+                </div>
+              </div>
+            </div>
+            <div class="p-3 rounded text-center mt-2" style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3)">
+              <div class="text-muted small">Total Referral Commission Earned</div>
+              <div class="text-success fw-bold fs-4" style="font-family:'Outfit',sans-serif;">₹${stats.total_referral_earnings.toLocaleString('en-IN')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cumulative Revenue Progress towards Next Performance Slab -->
+      <div class="spx-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="fw-bold mb-0">Performance Slabs Progress</h6>
+          <span class="badge bg-primary" style="font-size: 0.8rem;">Cumulative Revenue: ₹${cumulativeRevenue.toLocaleString('en-IN')}</span>
+        </div>
+        ${nextSlab ? `
+          <div class="text-muted small mb-2 d-flex justify-content-between">
+            <span>Next milestone: <strong>${nextSlab.name}</strong> (Target: ₹${nextSlab.target.toLocaleString('en-IN')})</span>
+            <span>${progressPct.toFixed(1)}% Completed</span>
+          </div>
+          <div class="progress mb-2" style="height:10px; background:var(--bg-dark); border-radius:5px;">
+            <div class="progress-bar" role="progressbar" style="width: ${progressPct}%; background:var(--gradient); border-radius:5px;" aria-valuenow="${progressPct}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div class="text-muted" style="font-size:0.7rem;">
+            * Earn ₹${(nextSlab.target - cumulativeRevenue).toLocaleString('en-IN')} more to unlock <strong>${nextSlab.name}</strong> reward: <strong>${nextSlab.item}</strong> (₹${nextSlab.reward.toLocaleString('en-IN')} cash payout).
+          </div>
+        ` : `<div class="text-success small">🎉 Amazing! You have achieved the highest milestone (Dean status) on Speaxa!</div>`}
+      </div>
+
+      <!-- Performance Slabs list -->
+      <div class="spx-card mb-4">
+        <h6 class="fw-bold mb-3"><i class="fas fa-medal me-2 text-primary"></i>Performance Rewards Checklist</h6>
+        <div style="overflow-x:auto;">
+          <table class="spx-table">
+            <thead>
+              <tr>
+                <th>Tier / Slab Name</th>
+                <th>Target Revenue</th>
+                <th>Reward Amount</th>
+                <th>Gift Item Reward</th>
+                <th>Grooming Allowance</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${slabs.map(s => {
+                let badgeClass = 'bg-secondary';
+                let statusText = 'LOCKED';
+                let iconHtml = '<i class="fas fa-lock text-muted"></i>';
+
+                if (s.status === 'approved') {
+                  badgeClass = 'bg-success';
+                  statusText = 'APPROVED';
+                  iconHtml = '<i class="fas fa-check-circle text-success fs-5"></i>';
+                } else if (s.status === 'pending_review') {
+                  badgeClass = 'bg-warning text-dark';
+                  statusText = 'PENDING REVIEW';
+                  iconHtml = '<i class="fas fa-spinner fa-spin text-warning fs-5"></i>';
+                } else if (s.status === 'rejected') {
+                  badgeClass = 'bg-danger';
+                  statusText = 'REJECTED';
+                  iconHtml = '<i class="fas fa-times-circle text-danger fs-5"></i>';
+                } else if (cumulativeRevenue >= s.target) {
+                  badgeClass = 'bg-info text-dark';
+                  statusText = 'UNLOCKED';
+                  iconHtml = '<i class="fas fa-unlock text-info fs-5"></i>';
+                }
+
+                const allowanceVal = allowanceMap[s.group] !== undefined ? allowanceMap[s.group] : 0.00;
+                const allowanceText = allowanceVal > 0 ? `₹${allowanceVal.toLocaleString('en-IN')}/mo` : '₹0';
+
+                return `
+                  <tr style="${cumulativeRevenue >= s.target ? 'background:rgba(60,189,176,0.02);' : ''}">
+                    <td><strong>${s.name}</strong></td>
+                    <td>₹${s.target.toLocaleString('en-IN')}</td>
+                    <td class="text-white fw-bold">₹${s.reward.toLocaleString('en-IN')}</td>
+                    <td>${s.item}</td>
+                    <td><span class="text-muted">${allowanceText}</span></td>
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        ${iconHtml}
+                        <span class="badge ${badgeClass}" style="font-size:0.65rem;">${statusText}</span>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Grooming Allowance history & Referred Users lists -->
+      <div class="row g-4 mb-4">
+        <!-- Grooming Allowance History -->
+        <div class="col-lg-6">
+          <div class="spx-card h-100">
+            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-user-gear me-2"></i>Monthly Grooming Allowance History</h6>
+            <div style="overflow-y:auto; max-height: 250px;">
+              <table class="spx-table" style="font-size:0.8rem;">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Meeting Group</th>
+                    <th>Allowance Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${allowances.map(a => `
+                    <tr>
+                      <td><strong>${a.payment_month}</strong></td>
+                      <td>${a.group_name}</td>
+                      <td class="text-success fw-bold">₹${parseFloat(a.allowance_amount).toLocaleString('en-IN')}</td>
+                      <td><span class="badge bg-success">PAID</span></td>
+                    </tr>
+                  `).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No allowance payouts yet. Complete milestones to trigger allowances.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Referred Teachers list -->
+        <div class="col-lg-6">
+          <div class="spx-card h-100">
+            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-chalkboard-teacher me-2"></i>Referred Teachers</h6>
+            <div style="overflow-y:auto; max-height: 250px;">
+              <table class="spx-table" style="font-size:0.8rem;">
+                <thead>
+                  <tr>
+                    <th>Teacher Name</th>
+                    <th>Joined On</th>
+                    <th>Comm. Earned (1%)</th>
+                    <th>Index</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${refTeachers.map((t, idx) => `
+                    <tr>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <img src="${t.photo_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + t.name}" class="rounded-circle" style="width:24px; height:24px;">
+                          <span class="text-white">${t.name}</span>
+                        </div>
+                      </td>
+                      <td>${fmtDate(t.created_at)}</td>
+                      <td class="text-success fw-bold">₹${parseFloat(t.commission_earned).toLocaleString('en-IN')}</td>
+                      <td>
+                        ${idx < 10 
+                          ? '<span class="badge bg-success-subtle text-success">Active</span>' 
+                          : '<span class="badge bg-danger-subtle text-danger" title="Cap limit of 10 teachers exceeded. No commission generated from this teacher.">Cap Exceeded</span>'}
+                      </td>
+                    </tr>
+                  `).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No teachers referred yet.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Referred Students list & Ledger Statement -->
+      <div class="row g-4">
+        <!-- Referred Students -->
+        <div class="col-lg-5">
+          <div class="spx-card h-100">
+            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-user-graduate me-2"></i>Referred Students</h6>
+            <div style="overflow-y:auto; max-height: 350px;">
+              <table class="spx-table" style="font-size:0.8rem;">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Joined On</th>
+                    <th>Comm. Earned (5%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${refStudents.map(s => `
+                    <tr>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <img src="${s.photo_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + s.name}" class="rounded-circle" style="width:24px; height:24px;">
+                          <span class="text-white">${s.name}</span>
+                        </div>
+                      </td>
+                      <td>${fmtDate(s.created_at)}</td>
+                      <td class="text-success fw-bold">₹${parseFloat(s.commission_earned).toLocaleString('en-IN')}</td>
+                    </tr>
+                  `).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">No students referred yet.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ledger Statement -->
+        <div class="col-lg-7">
+          <div class="spx-card h-100">
+            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-list-ul me-2"></i>Wallet Ledger Statement</h6>
+            <div style="overflow-y:auto; max-height: 350px;">
+              <table class="spx-table" style="font-size:0.8rem;">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Transaction Type</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${statement.map(l => {
+                    const isCredit = parseFloat(l.amount) >= 0;
+                    const amountText = (isCredit ? '+' : '-') + '₹' + Math.abs(parseFloat(l.amount)).toLocaleString('en-IN');
+                    const colorClass = isCredit ? 'text-success' : 'text-danger';
+                    
+                    let typeBadge = 'bg-secondary';
+                    if (l.type === 'course_share') typeBadge = 'bg-primary';
+                    else if (l.type === 'student_referral') typeBadge = 'bg-success';
+                    else if (l.type === 'teacher_referral') typeBadge = 'bg-info text-dark';
+                    else if (l.type === 'grooming_allowance') typeBadge = 'bg-warning text-dark';
+                    else if (l.type === 'slab_reward') typeBadge = 'bg-danger';
+                    else if (l.type === 'withdrawal') typeBadge = 'bg-dark border';
+
+                    return `
+                      <tr>
+                        <td>${fmtDate(l.created_at)}</td>
+                        <td><span class="badge ${typeBadge}" style="font-size:0.6rem;">${l.type.toUpperCase().replace('_', ' ')}</span></td>
+                        <td><span class="text-muted" style="font-size:0.75rem;">${l.description}</span></td>
+                        <td class="${colorClass} fw-bold">${amountText}</td>
+                      </tr>
+                    `;
+                  }).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No transactions logged yet.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+// Global copy function helper
+window.copyText = function(inputId, message) {
+  const copyText = document.getElementById(inputId);
+  if (!copyText) return;
+  copyText.select();
+  copyText.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(copyText.value);
+  showToast(message, 'success');
+}
 
 initApp();
 

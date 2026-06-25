@@ -6,10 +6,11 @@ const { authenticateToken, JWT_SECRET, JWT_EXPIRES_IN } = require('../middleware
 const { hashPassword, verifyPassword, generateUID, generateStudentCode, generateTeacherReferralCode, sanitizeUser } = require('../utils/security');
 const { createOTP, verifyOTP, sendOTPEmail, sendOTPSms } = require('../services/OTPService');
 const { logAudit } = require('../services/AuditService');
+const SystemConfigService = require('../services/SystemConfigService');
 
 // ── POST /api/auth/register ──────────────────────────────────
 router.post('/register', async (req, res) => {
-  const { name, email, phone, role, password, qualification, board, grade, experience_years, subject_expertise, languages, address, alt_email, mobile_number, social_links } = req.body;
+  const { name, email, phone, role, password, qualification, board, grade, experience_years, subject_expertise, languages, address, alt_email, mobile_number, social_links, referred_by_code } = req.body;
 
   try {
     if (!name || !email || !phone || !role || !password) {
@@ -39,6 +40,33 @@ router.post('/register', async (req, res) => {
       referralCode = generateTeacherReferralCode(name);
     }
 
+    // Process referral code if provided
+    let referredById = null;
+    if (referred_by_code) {
+      const referrer = await db.query("SELECT id, role FROM users WHERE referral_code = $1", [referred_by_code.trim()]);
+      if (referrer.rows.length > 0) {
+        const refUser = referrer.rows[0];
+        if (refUser.role === 'teacher') {
+          if (role === 'teacher') {
+            // Verify capacity cap (maximum from settings per referring teacher)
+            const countCheck = await db.query(
+              "SELECT COUNT(*) as count FROM users WHERE referred_by = $1 AND role = 'teacher'",
+              [refUser.id]
+            );
+            const currentCount = parseInt(countCheck.rows[0].count || 0);
+            const maxCap = parseInt(await SystemConfigService.getSetting('teacher_referral_max_cap', 10));
+            if (currentCount < maxCap) {
+              referredById = refUser.id;
+            } else {
+              console.log(`[Referral Signup] Referrer ${refUser.id} has already reached capacity limit (${maxCap}). Link skipped.`);
+            }
+          } else {
+            referredById = refUser.id;
+          }
+        }
+      }
+    }
+
     if (role === 'student') {
       // Generate unique student code
       const countRes = await db.query("SELECT COUNT(*) as cnt FROM users WHERE role = 'student'");
@@ -49,14 +77,15 @@ router.post('/register', async (req, res) => {
     await db.query(`
       INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url,
         approval_status, teacher_level, qualification, experience_years, subject_expertise,
-        languages, address, board, grade, student_code, referral_code, alt_email, mobile_number, social_links)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+        languages, address, board, grade, student_code, referral_code, alt_email, mobile_number, social_links, referred_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
     `, [
       id, email, phone, name, role, passwordHash, password, photoUrl,
       approvalStatus, teacherLevel, qualification || null, experience_years || 0,
       subject_expertise || null, languages || null, address || null, board || null,
       grade || null, studentCode, referralCode, alt_email || null, mobile_number || null,
-      typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}')
+      typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}'),
+      referredById
     ]);
 
     // Create teacher SOP entry if teacher

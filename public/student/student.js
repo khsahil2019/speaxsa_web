@@ -71,6 +71,7 @@ async function doRegister() {
       password: document.getElementById('regPassword').value,
       grade: document.getElementById('regGrade').value,
       board: document.getElementById('regBoard').value,
+      referred_by_code: document.getElementById('regReferralCode') ? document.getElementById('regReferralCode').value.trim() : '',
       role: 'student',
     }) })).json();
     if (data.error) throw new Error(data.error);

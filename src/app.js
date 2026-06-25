@@ -56,6 +56,96 @@ db.query(`
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS teaching_method TEXT;
   ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_instructions TEXT;
 
+  -- ── Referral and Wallet Ledger Migrations ──────────────────────
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL;
+
+  CREATE TABLE IF NOT EXISTS teacher_wallet_ledger (
+    id VARCHAR(100) PRIMARY KEY,
+    teacher_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL,
+    type VARCHAR(50) NOT NULL, -- 'course_share', 'student_referral', 'teacher_referral', 'grooming_allowance', 'slab_reward', 'withdrawal'
+    description TEXT,
+    payment_id VARCHAR(100) REFERENCES payments(id) ON DELETE SET NULL,
+    referred_user_id VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS teacher_rewards (
+    id VARCHAR(100) PRIMARY KEY,
+    teacher_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    slab_name VARCHAR(100) NOT NULL,
+    target_revenue DECIMAL(10,2) NOT NULL,
+    reward_amount DECIMAL(10,2) NOT NULL,
+    reward_item VARCHAR(255) NOT NULL,
+    status VARCHAR(30) DEFAULT 'pending_review' CHECK (status IN ('pending_review', 'approved', 'rejected', 'released')),
+    admin_notes TEXT,
+    achieved_at TIMESTAMPTZ DEFAULT NOW(),
+    processed_at TIMESTAMPTZ,
+    processed_by VARCHAR(100) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS teacher_allowances (
+    id VARCHAR(100) PRIMARY KEY,
+    teacher_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    group_name VARCHAR(100) NOT NULL,
+    allowance_amount DECIMAL(10,2) NOT NULL,
+    payment_month VARCHAR(7) NOT NULL, -- YYYY-MM
+    status VARCHAR(30) DEFAULT 'paid' CHECK (status IN ('pending', 'paid')),
+    paid_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS razorpay_payout_id VARCHAR(200);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS razorpay_payout_status VARCHAR(50);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS razorpay_fund_account_id VARCHAR(200);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS razorpay_contact_id VARCHAR(200);
+
+  CREATE TABLE IF NOT EXISTS performance_slabs_config (
+    id VARCHAR(100) PRIMARY KEY,
+    slab_name VARCHAR(100) NOT NULL UNIQUE,
+    target_revenue DECIMAL(10,2) NOT NULL,
+    reward_amount DECIMAL(10,2) NOT NULL,
+    reward_item VARCHAR(255) NOT NULL,
+    grooming_group VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS grooming_allowances_config (
+    group_name VARCHAR(100) PRIMARY KEY,
+    allowance_amount DECIMAL(10,2) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  INSERT INTO grooming_allowances_config (group_name, allowance_amount, description) VALUES
+  ('Leadership Group', 25000.00, 'HOD and Dean level teachers monthly allowance plan'),
+  ('Academic Excellence Group', 10000.00, 'Professor and Senior Professor level teachers monthly allowance plan'),
+  ('Teaching Excellence Group', 5000.00, 'Senior Teacher, Executive Teacher, and Lecturer level teachers monthly allowance plan'),
+  ('Foundation Group', 0.00, 'Junior and Assistant level teachers allowance plan')
+  ON CONFLICT (group_name) DO NOTHING;
+
+  INSERT INTO performance_slabs_config (id, slab_name, target_revenue, reward_amount, reward_item, grooming_group) VALUES
+  ('slab_1', 'Junior Teacher', 100000.00, 5000.00, 'Executive Kit', 'Foundation Group'),
+  ('slab_2', 'Assistant Teacher', 300000.00, 25000.00, 'Tablet (25K)', 'Foundation Group'),
+  ('slab_3', 'Senior Teacher', 500000.00, 40000.00, 'AC / Refrigerator (40K)', 'Teaching Excellence Group'),
+  ('slab_4', 'Executive Teacher', 1000000.00, 80000.00, 'PC / Laptop (80K)', 'Teaching Excellence Group'),
+  ('slab_5', 'Lecturer', 2000000.00, 150000.00, 'Bike (1.5L)', 'Teaching Excellence Group'),
+  ('slab_6', 'Professor', 3500000.00, 225000.00, 'Bullet (2.25L)', 'Academic Excellence Group'),
+  ('slab_7', 'Senior Professor', 5000000.00, 300000.00, 'Family Tour (3L)', 'Academic Excellence Group'),
+  ('slab_8', 'HOD', 7500000.00, 400000.00, 'Car (4L)', 'Leadership Group'),
+  ('slab_9', 'Dean', 10000000.00, 600000.00, 'Premium Car (6L)', 'Leadership Group')
+  ON CONFLICT (slab_name) DO NOTHING;
+
+  INSERT INTO platform_settings (key, value) VALUES
+  ('student_referral_bonus_pct', '5.00'),
+  ('teacher_referral_bonus_pct', '1.00'),
+  ('teacher_referral_max_cap', '10'),
+  ('default_teacher_share_pct', '50.00'),
+  ('referral_teacher_share_pct', '50.00')
+  ON CONFLICT (key) DO NOTHING;
+
+
   CREATE TABLE IF NOT EXISTS teacher_certificates (
     id VARCHAR(100) PRIMARY KEY,
     teacher_id VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,

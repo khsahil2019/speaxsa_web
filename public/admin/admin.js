@@ -180,7 +180,8 @@ function navigateTo(page) {
     dashboard:'Dashboard', teachers:'Teacher Management', students:'Student Management',
     parents:'Parent Management', courses:'Course Management', batches:'Batch Management',
     liveclasses:'Live Classes', payments:'Payment History', payouts:'Payout Requests',
-    commission:'Commission Config', refunds:'Refunds', sop:'SOP Review',
+    rewards:'Rewards & Allowances',
+    refunds:'Refunds', sop:'SOP Review',
     coupons:'Coupon Management', notifications:'Send Notifications',
     settings:'Platform Settings', auditlogs:'Audit Logs', support:'Connect Queries',
   };
@@ -191,7 +192,8 @@ function navigateTo(page) {
     dashboard: renderDashboard, teachers: renderTeachers, students: renderStudents,
     parents: renderParents, courses: renderCourses, batches: renderBatches,
     liveclasses: renderLiveClasses, payments: renderPayments, payouts: renderPayouts,
-    commission: renderCommission, refunds: renderRefunds, sop: renderSOP,
+    rewards: renderRewards,
+    refunds: renderRefunds, sop: renderSOP,
     coupons: renderCoupons, notifications: renderNotifications,
     settings: renderSettings, auditlogs: renderAuditLogs, support: renderSupport,
   };
@@ -2260,7 +2262,9 @@ async function renderPayouts() {
                 ${p.status === 'requested' ? `
                   <button class="btn btn-sm btn-success me-1" onclick="approvePayout('${p.id}')">Approve</button>
                   <button class="btn btn-sm btn-danger" onclick="rejectPayout('${p.id}')">Reject</button>` : ''}
-                ${p.status === 'approved' ? `<button class="btn btn-sm btn-primary" onclick="markPaid('${p.id}')">Mark Paid</button>` : ''}
+                ${p.status === 'approved' ? `
+                  <button class="btn btn-sm btn-primary me-1" onclick="markPaid('${p.id}')">Mark Paid</button>
+                  <button class="btn btn-sm btn-spx" onclick="payViaRazorpay(event, '${p.id}')"><i class="fas fa-money-bill-wave me-1"></i>Pay via Razorpay</button>` : ''}
               </td>
             </tr>`).join(''),
           true
@@ -2285,44 +2289,20 @@ async function markPaid(id) {
   try { const d = await apiPost(`/admin/payouts/${id}/mark-paid`); showToast(d.message); renderPayouts(); }
   catch (err) { showToast(err.message,'error'); }
 }
-
-// ── Commission ────────────────────────────────────────────────
-async function renderCommission() {
-  loading();
+async function payViaRazorpay(event, id) {
   try {
-    const configs = await apiGet('/admin/commission');
-    document.getElementById('pageContent').innerHTML = `
-      <div class="row g-4">
-        ${configs.map(c => `
-          <div class="col-md-4">
-            <div class="spx-card">
-              <h6 class="text-capitalize mb-4">${c.commission_type} Commission</h6>
-              <p class="text-muted small">${c.description||''}</p>
-              <div class="row g-2 mb-3">
-                <div class="col-6">
-                  <label class="spx-label">Teacher %</label>
-                  <input class="form-control spx-input" id="teacher_pct_${c.commission_type}" type="number" value="${c.teacher_pct}" min="0" max="100">
-                </div>
-                <div class="col-6">
-                  <label class="spx-label">Platform %</label>
-                  <input class="form-control spx-input" id="platform_pct_${c.commission_type}" type="number" value="${c.platform_pct}" min="0" max="100">
-                </div>
-              </div>
-              <button class="btn btn-spx w-100" onclick="updateCommission('${c.commission_type}')">Update</button>
-            </div>
-          </div>`).join('')}
-      </div>`;
+    const btn = event.target.closest('button');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Processing...`;
+    }
+    const d = await apiPost(`/admin/payouts/${id}/pay-razorpay`);
+    showToast(d.message || 'Payout successfully processed via Razorpay X!');
+    renderPayouts();
   } catch (err) {
-    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    showToast(err.message, 'error');
+    renderPayouts();
   }
-}
-
-async function updateCommission(type) {
-  const tp = parseFloat(document.getElementById(`teacher_pct_${type}`).value);
-  const pp = parseFloat(document.getElementById(`platform_pct_${type}`).value);
-  if (tp + pp !== 100) { showToast('Teacher % + Platform % must equal 100','error'); return; }
-  try { const d = await apiPut(`/admin/commission/${type}`,{teacher_pct:tp,platform_pct:pp}); showToast(d.message); }
-  catch (err) { showToast(err.message,'error'); }
 }
 
 // ── Refunds ───────────────────────────────────────────────────
@@ -3101,6 +3081,382 @@ async function viewTicketReplies(id) {
       </div>
     `;
     formModal.show();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ── Rewards & Allowances management ──────────────────────────
+async function renderRewards() {
+  loading();
+  try {
+    const pending = await apiGet('/admin/rewards/pending');
+    const settings = await apiGet('/admin/settings');
+    const slabs = await apiGet('/admin/config/slabs');
+    const allowances = await apiGet('/admin/config/allowances');
+    
+    // Set default month in YYYY-MM
+    const today = new Date();
+    const curMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+
+    document.getElementById('pageContent').innerHTML = `
+      <div class="row g-4">
+        <!-- 1. Global Rewards & Referral Settings -->
+        <div class="col-lg-7">
+          <div class="spx-card h-100">
+            <h6 class="mb-4 text-white"><i class="fas fa-sliders-h text-primary me-2"></i>Global Referral & Reward Settings</h6>
+            <p class="text-muted small">Configure the global percentages and limits for student referrals, teacher referrals, and course sharing splits.</p>
+            <form onsubmit="saveReferralSettings(event)">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="spx-label text-muted">Student Referral Bonus (%)</label>
+                  <input type="number" step="0.01" class="form-control spx-input text-white" id="ref_student_referral_bonus_pct" value="${settings.student_referral_bonus_pct || '5.00'}" required>
+                  <div class="text-muted mt-1" style="font-size:0.75rem;">% of payment amount credited to referring teacher</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label text-muted">Teacher Referral Bonus (%)</label>
+                  <input type="number" step="0.01" class="form-control spx-input text-white" id="ref_teacher_referral_bonus_pct" value="${settings.teacher_referral_bonus_pct || '1.00'}" required>
+                  <div class="text-muted mt-1" style="font-size:0.75rem;">% of referred teacher's share paid to referrer</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label text-muted">Max Referral Capacity Cap</label>
+                  <input type="number" class="form-control spx-input text-white" id="ref_teacher_referral_max_cap" value="${settings.teacher_referral_max_cap || '10'}" required>
+                  <div class="text-muted mt-1" style="font-size:0.75rem;">Maximum referred teachers count eligible for bonus</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label text-muted">Default Teacher Share (%)</label>
+                  <input type="number" step="0.01" class="form-control spx-input text-white" id="ref_default_teacher_share_pct" value="${settings.default_teacher_share_pct || '50.00'}" required>
+                  <div class="text-muted mt-1" style="font-size:0.75rem;">Default course split share paid to teaching creator</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="spx-label text-muted">Referral Teacher Share (%)</label>
+                  <input type="number" step="0.01" class="form-control spx-input text-white" id="ref_referral_teacher_share_pct" value="${settings.referral_teacher_share_pct || '50.00'}" required>
+                  <div class="text-muted mt-1" style="font-size:0.75rem;">Split share when course is bought via referral link</div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-spx mt-4 px-4"><i class="fas fa-save me-2"></i>Save Referral Settings</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- 2. Monthly Grooming Allowance Generator -->
+        <div class="col-lg-5">
+          <div class="spx-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <h6 class="mb-4 text-white"><i class="fas fa-magic text-info me-2"></i>Monthly Grooming Allowances</h6>
+              <p class="text-muted small">Generate monthly allowances for all verified teachers. Allowance amounts are computed dynamically based on the teacher's highest approved performance slab group.</p>
+              
+              <div class="mb-4">
+                <label class="spx-label text-muted">Select Month (YYYY-MM)</label>
+                <input type="month" class="form-control spx-input" id="allowanceMonthSelect" value="${curMonth}">
+              </div>
+            </div>
+
+            <button class="btn btn-spx w-100 py-3 mt-auto" id="btnGenAllowances" onclick="generateAllowances()">
+              <i class="fas fa-bolt me-2"></i>Generate & Pay Allowances
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Pending Slab Achievements Review -->
+        <div class="col-12">
+          <div class="spx-card">
+            <h6 class="mb-4 text-white"><i class="fas fa-clock text-warning me-2"></i>Pending Slab Achievements Review (${pending.length})</h6>
+            ${pending.length > 0 ? table(
+              ['Teacher', 'Slab', 'Reward Value', 'Item Gift', 'Achieved', 'Actions'],
+              pending.map(p => `
+                <tr>
+                  <td class="fw-semibold text-white">
+                    ${p.teacher_name || '—'}<br>
+                    <small class="text-muted">${p.teacher_email || ''}</small>
+                  </td>
+                  <td><strong class="text-info">${p.slab_name}</strong></td>
+                  <td class="fw-bold text-success">${fmtCurrency(p.reward_amount)}</td>
+                  <td>${p.reward_item}</td>
+                  <td>${fmtDate(p.achieved_at)}</td>
+                  <td>
+                    <button class="btn btn-sm btn-success me-1 text-white" onclick="approveReward('${p.id}')">Approve</button>
+                    <button class="btn btn-sm btn-danger text-white" onclick="rejectReward('${p.id}')">Reject</button>
+                  </td>
+                </tr>
+              `).join('')
+            ) : '<p class="text-muted text-center py-4">No pending performance rewards claims under review.</p>'}
+          </div>
+        </div>
+
+        <!-- 4. Performance Slabs Configuration -->
+        <div class="col-12">
+          <div class="spx-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h6 class="mb-0 text-white"><i class="fas fa-trophy text-warning me-2"></i>Performance Slab Milestones</h6>
+              <button class="btn btn-sm btn-spx" onclick="showSlabModal()"><i class="fas fa-plus me-1"></i>Add New Slab</button>
+            </div>
+            ${slabs.length > 0 ? table(
+              ['Slab Name', 'Target Revenue', 'Reward Cash', 'Gift Item', 'Grooming Group', 'Actions'],
+              slabs.map(s => `
+                <tr>
+                  <td class="fw-semibold text-white">${s.slab_name}</td>
+                  <td class="fw-bold text-info">${fmtCurrency(s.target_revenue)}</td>
+                  <td class="fw-bold text-success">${fmtCurrency(s.reward_amount)}</td>
+                  <td>${s.reward_item}</td>
+                  <td><span class="badge text-primary bg-primary bg-opacity-10 border border-primary border-opacity-20">${s.grooming_group}</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-light border text-dark me-1" onclick="showSlabModal('${s.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger text-white" onclick="deleteSlab('${s.id}')"><i class="fas fa-trash"></i></button>
+                  </td>
+                </tr>
+              `).join('')
+            ) : '<p class="text-muted text-center py-4">No performance slab milestones configured.</p>'}
+          </div>
+        </div>
+
+        <!-- 5. Grooming Allowances Configuration -->
+        <div class="col-12">
+          <div class="spx-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h6 class="mb-0 text-white"><i class="fas fa-hand-holding-usd text-success me-2"></i>Grooming Allowance Groups</h6>
+              <button class="btn btn-sm btn-spx" onclick="showAllowanceModal()"><i class="fas fa-plus me-1"></i>Add Allowance Group</button>
+            </div>
+            ${allowances.length > 0 ? table(
+              ['Group Name', 'Monthly Allowance Amount', 'Description', 'Actions'],
+              allowances.map(a => `
+                <tr>
+                  <td class="fw-semibold text-white">${a.group_name}</td>
+                  <td class="fw-bold text-success">${fmtCurrency(a.allowance_amount)}</td>
+                  <td class="text-muted">${a.description || '—'}</td>
+                  <td>
+                    <button class="btn btn-sm btn-light border text-dark me-1" onclick="showAllowanceModal('${encodeURIComponent(a.group_name)}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger text-white" onclick="deleteAllowance('${encodeURIComponent(a.group_name)}')"><i class="fas fa-trash"></i></button>
+                  </td>
+                </tr>
+              `).join('')
+            ) : '<p class="text-muted text-center py-4">No grooming allowance groups configured.</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function saveReferralSettings(e) {
+  e.preventDefault();
+  const keys = [
+    'student_referral_bonus_pct',
+    'teacher_referral_bonus_pct',
+    'teacher_referral_max_cap',
+    'default_teacher_share_pct',
+    'referral_teacher_share_pct'
+  ];
+  const body = {};
+  keys.forEach(k => {
+    const el = document.getElementById(`ref_${k}`);
+    if (el) body[k] = el.value;
+  });
+  try {
+    const d = await apiPost('/admin/settings', body);
+    showToast(d.message || 'Settings saved successfully');
+    renderRewards();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function approveReward(id) {
+  try {
+    const d = await apiPost(`/admin/rewards/${id}/approve`);
+    showToast(d.message || 'Slab reward approved and teacher wallet credited.');
+    renderRewards();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function rejectReward(id) {
+  adminPrompt('Reject Slab Reward Claim', 'Provide a rejection reason:', '', async (notes) => {
+    try {
+      const d = await apiPost(`/admin/rewards/${id}/reject`, { admin_notes: notes });
+      showToast(d.message || 'Slab reward claim rejected.');
+      renderRewards();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+async function generateAllowances() {
+  const month = document.getElementById('allowanceMonthSelect').value.trim();
+  if (!month) return showToast('Please select a valid month', 'error');
+
+  const btn = document.getElementById('btnGenAllowances');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Generating...`;
+  }
+
+  try {
+    const d = await apiPost('/admin/allowances/generate', { payment_month: month });
+    showToast(d.message || `Grooming allowances for ${month} generated & paid successfully!`);
+    renderRewards();
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fas fa-magic me-2"></i>Generate & Pay Allowances`;
+    }
+  }
+}
+
+async function showSlabModal(slabId = null) {
+  let slab = { slab_name: '', target_revenue: '', reward_amount: '', reward_item: '', grooming_group: '' };
+  if (slabId) {
+    try {
+      const slabs = await apiGet('/admin/config/slabs');
+      const found = slabs.find(s => s.id === slabId);
+      if (found) slab = found;
+    } catch (err) {
+      showToast(err.message, 'error');
+      return;
+    }
+  }
+
+  // Get allowance groups to fill the selector
+  let groups = [];
+  try {
+    groups = await apiGet('/admin/config/allowances');
+  } catch (err) {
+    console.error(err);
+  }
+
+  document.getElementById('formModalTitle').textContent = slabId ? 'Edit Slab Milestone' : 'Add Slab Milestone';
+  document.getElementById('formModalBody').innerHTML = `
+    <form id="slabConfigForm" onsubmit="saveSlabConfig(event, ${slabId ? `'${slabId}'` : 'null'})">
+      <div class="mb-3">
+        <label class="spx-label text-dark">Slab Name *</label>
+        <input type="text" class="form-control text-dark" id="slab_name" value="${slab.slab_name}" required placeholder="e.g. Junior Teacher">
+      </div>
+      <div class="mb-3">
+        <label class="spx-label text-dark">Target Revenue (INR) *</label>
+        <input type="number" class="form-control text-dark" id="slab_target_revenue" value="${slab.target_revenue}" required placeholder="e.g. 100000">
+      </div>
+      <div class="mb-3">
+        <label class="spx-label text-dark">Reward Cash Amount (INR) *</label>
+        <input type="number" class="form-control text-dark" id="slab_reward_amount" value="${slab.reward_amount}" required placeholder="e.g. 5000">
+      </div>
+      <div class="mb-3">
+        <label class="spx-label text-dark">Reward Gift Item *</label>
+        <input type="text" class="form-control text-dark" id="slab_reward_item" value="${slab.reward_item}" required placeholder="e.g. Tablet (25K)">
+      </div>
+      <div class="mb-3">
+        <label class="spx-label text-dark">Grooming Allowance Group *</label>
+        <select class="form-select text-dark" id="slab_grooming_group" required>
+          <option value="" disabled ${!slab.grooming_group ? 'selected' : ''}>Select a group</option>
+          ${groups.map(g => `<option value="${g.group_name}" ${slab.grooming_group === g.group_name ? 'selected' : ''}>${g.group_name}</option>`).join('')}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-spx w-100 mt-3 text-white">Save Slab Configuration</button>
+    </form>
+  `;
+  formModal.show();
+}
+
+async function saveSlabConfig(e, slabId) {
+  e.preventDefault();
+  const body = {
+    slab_name: document.getElementById('slab_name').value.trim(),
+    target_revenue: parseFloat(document.getElementById('slab_target_revenue').value),
+    reward_amount: parseFloat(document.getElementById('slab_reward_amount').value),
+    reward_item: document.getElementById('slab_reward_item').value.trim(),
+    grooming_group: document.getElementById('slab_grooming_group').value
+  };
+
+  try {
+    let d;
+    if (slabId) {
+      d = await apiPut(`/admin/config/slabs/${slabId}`, body);
+    } else {
+      d = await apiPost('/admin/config/slabs', body);
+    }
+    showToast(d.message || 'Slab configuration saved successfully');
+    formModal.hide();
+    renderRewards();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteSlab(slabId) {
+  if (!confirm('Are you sure you want to delete this slab milestone?')) return;
+  try {
+    const d = await apiDelete(`/admin/config/slabs/${slabId}`);
+    showToast(d.message || 'Slab deleted successfully');
+    renderRewards();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function showAllowanceModal(groupNameEncoded = null) {
+  let group = { group_name: '', allowance_amount: '', description: '' };
+  const groupName = groupNameEncoded ? decodeURIComponent(groupNameEncoded) : null;
+  if (groupName) {
+    try {
+      const allowances = await apiGet('/admin/config/allowances');
+      const found = allowances.find(a => a.group_name === groupName);
+      if (found) group = found;
+    } catch (err) {
+      showToast(err.message, 'error');
+      return;
+    }
+  }
+
+  document.getElementById('formModalTitle').textContent = groupName ? 'Edit Allowance Group' : 'Add Allowance Group';
+  document.getElementById('formModalBody').innerHTML = `
+    <form id="allowanceConfigForm" onsubmit="saveAllowanceConfig(event, ${groupName ? `'${encodeURIComponent(groupName)}'` : 'null'})">
+      <div class="mb-3">
+        <label class="spx-label text-dark">Group Name *</label>
+        <input type="text" class="form-control text-dark" id="group_name" value="${group.group_name}" ${groupName ? 'disabled' : ''} required placeholder="e.g. Teaching Excellence Group">
+      </div>
+      <div class="mb-3">
+        <label class="spx-label text-dark">Monthly Allowance Amount (INR) *</label>
+        <input type="number" class="form-control text-dark" id="allowance_amount" value="${group.allowance_amount}" required placeholder="e.g. 5000">
+      </div>
+      <div class="mb-3">
+        <label class="spx-label text-dark">Description</label>
+        <textarea class="form-control text-dark" id="group_desc" rows="3" placeholder="Description of this group's eligibility or tier...">${group.description || ''}</textarea>
+      </div>
+      <button type="submit" class="btn btn-spx w-100 mt-3 text-white">Save Allowance Group</button>
+    </form>
+  `;
+  formModal.show();
+}
+
+async function saveAllowanceConfig(e, groupNameEncoded) {
+  e.preventDefault();
+  const body = {
+    group_name: document.getElementById('group_name').value.trim(),
+    allowance_amount: parseFloat(document.getElementById('allowance_amount').value),
+    description: document.getElementById('group_desc').value.trim()
+  };
+
+  try {
+    const d = await apiPost('/admin/config/allowances', body);
+    showToast(d.message || 'Allowance group saved successfully');
+    formModal.hide();
+    renderRewards();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteAllowance(groupNameEncoded) {
+  const groupName = decodeURIComponent(groupNameEncoded);
+  if (!confirm(`Are you sure you want to delete allowance group "${groupName}"?`)) return;
+  try {
+    const d = await apiDelete(`/admin/config/allowances/${groupNameEncoded}`);
+    showToast(d.message || 'Allowance group deleted successfully');
+    renderRewards();
   } catch (err) {
     showToast(err.message, 'error');
   }

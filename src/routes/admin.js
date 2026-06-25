@@ -878,34 +878,6 @@ router.post('/payouts/:id/mark-paid', async (req, res) => {
   }
 });
 
-// ── Commission Config ─────────────────────────────────────────
-router.get('/commission', async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM commission_config ORDER BY commission_type');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put('/commission/:type', async (req, res) => {
-  const { type } = req.params;
-  const { teacher_pct, platform_pct } = req.body;
-  try {
-    if (parseFloat(teacher_pct) + parseFloat(platform_pct) !== 100) {
-      return res.status(400).json({ error: 'teacher_pct + platform_pct must equal 100' });
-    }
-    await db.query(`
-      UPDATE commission_config SET teacher_pct = $1, platform_pct = $2, updated_at = NOW()
-      WHERE commission_type = $3
-    `, [teacher_pct, platform_pct, type]);
-    await logAudit(req.user.id, 'COMMISSION_UPDATED', 'platform', type, { teacher_pct, platform_pct });
-    res.json({ message: 'Commission config updated' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ── Notifications ─────────────────────────────────────────────
 router.get('/notifications', async (req, res) => {
   try {
@@ -1286,6 +1258,341 @@ router.put('/certificates/:id', async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Certificate not found' });
     await logAudit(req.user.id, 'CERTIFICATE_UPDATED', 'teacher', result.rows[0].teacher_id, { title });
     res.json({ message: 'Certificate updated successfully', certificate: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Rewards & Allowances endpoints ────────────────────────────
+// GET /admin/rewards/pending - List all pending rewards
+router.get('/rewards/pending', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT tr.*, u.name as teacher_name, u.email as teacher_email
+      FROM teacher_rewards tr
+      JOIN users u ON u.id = tr.teacher_id
+      WHERE tr.status = 'pending_review'
+      ORDER BY tr.achieved_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/rewards/:id/approve - Approve slab reward and credit teacher wallet
+router.post('/rewards/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rewardRes = await db.query('SELECT * FROM teacher_rewards WHERE id = $1', [id]);
+    if (!rewardRes.rows.length) return res.status(404).json({ error: 'Reward record not found' });
+    const reward = rewardRes.rows[0];
+
+    if (reward.status !== 'pending_review') {
+      return res.status(400).json({ error: `Reward claim is already ${reward.status}` });
+    }
+
+    // Update status to approved
+    await db.query(`
+      UPDATE teacher_rewards 
+      SET status = 'approved', processed_at = NOW(), processed_by = $2
+      WHERE id = $1
+    `, [id, req.user.id]);
+
+    // Credit teacher's wallet
+    await db.query(`
+      INSERT INTO teacher_wallet (teacher_id, total_earnings, pending_earnings, wallet_balance)
+      VALUES ($1, $2, $2, $2)
+      ON CONFLICT (teacher_id) DO UPDATE SET
+        total_earnings = teacher_wallet.total_earnings + $2,
+        pending_earnings = teacher_wallet.pending_earnings + $2,
+        wallet_balance = teacher_wallet.wallet_balance + $2
+    `, [reward.teacher_id, reward.reward_amount]);
+
+    // Log to ledger
+    const txId = `tx_rwd_${id}`;
+    await db.query(`
+      INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description)
+      VALUES ($1, $2, $3, 'slab_reward', $4)
+      ON CONFLICT (id) DO NOTHING
+    `, [
+      txId,
+      reward.teacher_id,
+      reward.reward_amount,
+      `Performance slab reward approved: ${reward.slab_name} (Slab Target: ₹${reward.target_revenue}). Reward Item: ${reward.reward_item}`
+    ]);
+
+    await logAudit(req.user.id, 'REWARD_SLAB_APPROVED', 'teacher', reward.teacher_id, {
+      reward_id: id,
+      slab_name: reward.slab_name,
+      amount: reward.reward_amount
+    });
+
+    res.json({ message: 'Performance reward approved successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/rewards/:id/reject - Reject slab reward
+router.post('/rewards/:id/reject', async (req, res) => {
+  const { id } = req.params;
+  const { admin_notes } = req.body;
+  try {
+    const rewardRes = await db.query('SELECT * FROM teacher_rewards WHERE id = $1', [id]);
+    if (!rewardRes.rows.length) return res.status(404).json({ error: 'Reward record not found' });
+    const reward = rewardRes.rows[0];
+
+    if (reward.status !== 'pending_review') {
+      return res.status(400).json({ error: `Reward claim is already ${reward.status}` });
+    }
+
+    await db.query(`
+      UPDATE teacher_rewards 
+      SET status = 'rejected', admin_notes = $2, processed_at = NOW(), processed_by = $3
+      WHERE id = $1
+    `, [id, admin_notes || 'Does not meet criteria', req.user.id]);
+
+    await logAudit(req.user.id, 'REWARD_SLAB_REJECTED', 'teacher', reward.teacher_id, {
+      reward_id: id,
+      slab_name: reward.slab_name,
+      reason: admin_notes
+    });
+
+    res.json({ message: 'Performance reward claim rejected' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/config/slabs - List slabs
+router.get('/config/slabs', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM performance_slabs_config ORDER BY target_revenue ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/config/slabs - Create slab
+router.post('/config/slabs', async (req, res) => {
+  const { id, slab_name, target_revenue, reward_amount, reward_item, grooming_group } = req.body;
+  try {
+    if (!slab_name || target_revenue === undefined || reward_amount === undefined || !reward_item || !grooming_group) {
+      return res.status(400).json({ error: 'slab_name, target_revenue, reward_amount, reward_item, and grooming_group are required' });
+    }
+    const newId = id || `slab_${Date.now()}`;
+    await db.query(`
+      INSERT INTO performance_slabs_config (id, slab_name, target_revenue, reward_amount, reward_item, grooming_group, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+    `, [newId, slab_name, target_revenue, reward_amount, reward_item, grooming_group]);
+    res.status(201).json({ message: 'Slab configuration created successfully', id: newId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /admin/config/slabs/:id - Update slab
+router.put('/config/slabs/:id', async (req, res) => {
+  const { id } = req.params;
+  const { slab_name, target_revenue, reward_amount, reward_item, grooming_group } = req.body;
+  try {
+    if (!slab_name || target_revenue === undefined || reward_amount === undefined || !reward_item || !grooming_group) {
+      return res.status(400).json({ error: 'slab_name, target_revenue, reward_amount, reward_item, and grooming_group are required' });
+    }
+    const result = await db.query(`
+      UPDATE performance_slabs_config
+      SET slab_name = $1, target_revenue = $2, reward_amount = $3, reward_item = $4, grooming_group = $5, updated_at = NOW()
+      WHERE id = $6
+    `, [slab_name, target_revenue, reward_amount, reward_item, grooming_group, id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Slab configuration not found' });
+    }
+    res.json({ message: 'Slab configuration updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /admin/config/slabs/:id - Delete slab
+router.delete('/config/slabs/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query('DELETE FROM performance_slabs_config WHERE id = $1', [id]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Slab configuration not found' });
+    }
+    res.json({ message: 'Slab configuration deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/config/allowances - List allowance groups
+router.get('/config/allowances', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM grooming_allowances_config ORDER BY allowance_amount DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/config/allowances - Create or update allowance group
+router.post('/config/allowances', async (req, res) => {
+  const { group_name, allowance_amount, description } = req.body;
+  try {
+    if (!group_name || allowance_amount === undefined) {
+      return res.status(400).json({ error: 'group_name and allowance_amount are required' });
+    }
+    await db.query(`
+      INSERT INTO grooming_allowances_config (group_name, allowance_amount, description, created_at, updated_at)
+      VALUES ($1, $2, $3, NOW(), NOW())
+      ON CONFLICT (group_name) DO UPDATE SET allowance_amount = $2, description = $3, updated_at = NOW()
+    `, [group_name, allowance_amount, description || '']);
+    res.json({ message: 'Grooming allowance configuration saved successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /admin/config/allowances/:group_name - Delete allowance group
+router.delete('/config/allowances/:group_name', async (req, res) => {
+  const { group_name } = req.params;
+  try {
+    const result = await db.query('DELETE FROM grooming_allowances_config WHERE group_name = $1', [group_name]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Grooming allowance configuration not found' });
+    }
+    res.json({ message: 'Grooming allowance configuration deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/allowances/generate - Trigger monthly grooming allowances
+router.post('/allowances/generate', async (req, res) => {
+  const { payment_month } = req.body; // format: 'YYYY-MM'
+  try {
+    if (!payment_month || !/^\d{4}-\d{2}$/.test(payment_month)) {
+      return res.status(400).json({ error: 'Valid payment_month in YYYY-MM format is required' });
+    }
+
+    // Check if already generated
+    const existCheck = await db.query('SELECT 1 FROM teacher_allowances WHERE payment_month = $1 LIMIT 1', [payment_month]);
+    if (existCheck.rows.length > 0) {
+      return res.status(400).json({ error: `Grooming allowances for month ${payment_month} have already been generated` });
+    }
+
+    // Query highest approved slab for each teacher
+    const teachersSlabQuery = await db.query(`
+      SELECT DISTINCT ON (teacher_id) teacher_id, slab_name, target_revenue
+      FROM teacher_rewards
+      WHERE status = 'approved'
+      ORDER BY teacher_id, target_revenue DESC
+    `);
+
+    const generated = [];
+
+    for (const row of teachersSlabQuery.rows) {
+      const teacherId = row.teacher_id;
+      const slabName = row.slab_name;
+
+      // Query grooming group for this slab from performance_slabs_config
+      const slabConfigRes = await db.query(
+        "SELECT grooming_group FROM performance_slabs_config WHERE slab_name = $1",
+        [slabName]
+      );
+      let groupName = 'Foundation Group';
+      if (slabConfigRes.rows.length > 0) {
+        groupName = slabConfigRes.rows[0].grooming_group;
+      }
+
+      // Query monthly allowance amount for this grooming group from grooming_allowances_config
+      const allowanceConfigRes = await db.query(
+        "SELECT allowance_amount FROM grooming_allowances_config WHERE group_name = $1",
+        [groupName]
+      );
+      let amount = 0.00;
+      if (allowanceConfigRes.rows.length > 0) {
+        amount = parseFloat(allowanceConfigRes.rows[0].allowance_amount);
+      }
+
+      const id = `alw_${payment_month.replace('-', '')}_${teacherId}`;
+
+      await db.query(`
+        INSERT INTO teacher_allowances (id, teacher_id, group_name, allowance_amount, payment_month, status)
+        VALUES ($1, $2, $3, $4, $5, 'paid')
+        ON CONFLICT (id) DO NOTHING
+      `, [id, teacherId, groupName, amount, payment_month]);
+
+      if (amount > 0) {
+        // Credit to teacher wallet
+        await db.query(`
+          INSERT INTO teacher_wallet (teacher_id, total_earnings, pending_earnings, wallet_balance)
+          VALUES ($1, $2, $2, $2)
+          ON CONFLICT (teacher_id) DO UPDATE SET
+            total_earnings = teacher_wallet.total_earnings + $2,
+            pending_earnings = teacher_wallet.pending_earnings + $2,
+            wallet_balance = teacher_wallet.wallet_balance + $2
+        `, [teacherId, amount]);
+
+        // Log transaction to ledger
+        const txId = `tx_alw_${id}`;
+        await db.query(`
+          INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description)
+          VALUES ($1, $2, $3, 'grooming_allowance', $4)
+          ON CONFLICT (id) DO NOTHING
+        `, [
+          txId,
+          teacherId,
+          amount,
+          `Monthly Grooming Allowance generated for ${payment_month} (Group: ${groupName})`
+        ]);
+      }
+
+      generated.push({
+        teacher_id: teacherId,
+        group_name: groupName,
+        allowance_amount: amount,
+        payment_month
+      });
+    }
+
+    await logAudit(req.user.id, 'ALLOWANCES_GENERATED', 'platform', payment_month, { count: generated.length });
+
+    res.json({ message: `Grooming allowances for ${payment_month} generated successfully`, generated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/payouts/:id/pay-razorpay - Trigger Razorpay Payout executing payout programmatically
+router.post('/payouts/:id/pay-razorpay', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const payoutQuery = await db.query('SELECT * FROM teacher_payouts WHERE id = $1', [id]);
+    if (!payoutQuery.rows.length) return res.status(404).json({ error: 'Payout request not found' });
+    const p = payoutQuery.rows[0];
+
+    if (p.status === 'paid') {
+      return res.status(400).json({ error: 'Payout has already been paid' });
+    }
+
+    const { executePayout } = require('../services/RazorpayPayoutService');
+    const result = await executePayout(id);
+
+    await logAudit(req.user.id, 'PAYOUT_PAID_RAZORPAY', 'payout', id, {
+      razorpay_payout_id: result.razorpayPayoutId,
+      status: result.status
+    });
+
+    res.json({
+      message: 'Payout processed successfully via Razorpay X API',
+      razorpay_payout_id: result.razorpayPayoutId,
+      status: result.status
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
