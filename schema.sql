@@ -5,6 +5,12 @@
 -- ============================================================
 
 -- Drop all tables in reverse dependency order
+DROP TABLE IF EXISTS teacher_wallet_ledger CASCADE;
+DROP TABLE IF EXISTS teacher_rewards CASCADE;
+DROP TABLE IF EXISTS teacher_allowances CASCADE;
+DROP TABLE IF EXISTS teacher_certificates CASCADE;
+DROP TABLE IF EXISTS performance_slabs_config CASCADE;
+DROP TABLE IF EXISTS grooming_allowances_config CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS monthly_reports CASCADE;
 DROP TABLE IF EXISTS student_observations CASCADE;
@@ -71,6 +77,11 @@ CREATE TABLE users (
   learning_streak   INT DEFAULT 0,
   -- Admin impersonation tracking
   impersonated_by   VARCHAR(100),
+  -- Additional fields added dynamically
+  alt_email         VARCHAR(200),
+  mobile_number     VARCHAR(50),
+  social_links      JSONB DEFAULT '{}',
+  referred_by       VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
   -- Timestamps
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW()
@@ -149,8 +160,17 @@ CREATE TABLE courses (
   board           VARCHAR(100),
   fees            DECIMAL(10,2) NOT NULL DEFAULT 999.00,
   thumbnail_url   TEXT,
-  status          VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','archived','draft')),
+  status          VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','archived','draft','pending_approval','rejected')),
   created_by      VARCHAR(100) REFERENCES users(id),
+  custom_tag      VARCHAR(255),
+  is_verified     BOOLEAN DEFAULT TRUE,
+  is_featured     BOOLEAN DEFAULT FALSE,
+  learning_duration VARCHAR(255),
+  objective       TEXT,
+  learning_outcome TEXT,
+  language_instruction VARCHAR(100),
+  daily_class_duration VARCHAR(100),
+  assessment_days  VARCHAR(100),
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
@@ -169,10 +189,16 @@ CREATE TABLE batches (
   start_time      TIME,
   end_time        TIME,
   days_of_week    TEXT[], -- ['Monday','Wednesday','Friday']
-  capacity        INT DEFAULT 30 CHECK (capacity <= 30),
+  capacity        INT DEFAULT 30, -- Capacity check constraint dropped dynamically in app.js
   seats_filled    INT DEFAULT 0,
   status          VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','inactive','cancelled','completed')),
   agora_channel   VARCHAR(200), -- auto-generated unique channel name
+  planner_url     TEXT,
+  planner_name    VARCHAR(255),
+  planner_desc    TEXT,
+  teaching_method TEXT,
+  batch_instructions TEXT,
+  is_free_demo    BOOLEAN DEFAULT false,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
@@ -208,6 +234,7 @@ CREATE TABLE live_classes (
   duration_mins   INT DEFAULT 0,
   end_reason      VARCHAR(100),
   recording_url   TEXT,
+  is_free_demo    BOOLEAN DEFAULT false,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -416,6 +443,88 @@ CREATE TABLE teacher_wallet (
 );
 
 -- ============================================================
+-- 18a. PERFORMANCE SLABS CONFIG
+-- ============================================================
+CREATE TABLE performance_slabs_config (
+  id              VARCHAR(100) PRIMARY KEY,
+  slab_name       VARCHAR(100) NOT NULL UNIQUE,
+  target_revenue  DECIMAL(10,2) NOT NULL,
+  reward_amount   DECIMAL(10,2) NOT NULL,
+  reward_item     VARCHAR(255) NOT NULL,
+  grooming_group  VARCHAR(100) NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 18b. GROOMING ALLOWANCES CONFIG
+-- ============================================================
+CREATE TABLE grooming_allowances_config (
+  group_name      VARCHAR(100) PRIMARY KEY,
+  allowance_amount DECIMAL(10,2) NOT NULL,
+  description     TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 18c. TEACHER WALLET LEDGER
+-- ============================================================
+CREATE TABLE teacher_wallet_ledger (
+  id              VARCHAR(100) PRIMARY KEY,
+  teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount          DECIMAL(10,2) NOT NULL,
+  type            VARCHAR(50) NOT NULL, -- course_share, student_referral, teacher_referral, grooming_allowance, slab_reward, withdrawal
+  description     TEXT,
+  payment_id      VARCHAR(100) REFERENCES payments(id) ON DELETE SET NULL,
+  referred_user_id VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 18d. TEACHER REWARDS
+-- ============================================================
+CREATE TABLE teacher_rewards (
+  id              VARCHAR(100) PRIMARY KEY,
+  teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  slab_name       VARCHAR(100) NOT NULL,
+  target_revenue  DECIMAL(10,2) NOT NULL,
+  reward_amount   DECIMAL(10,2) NOT NULL,
+  reward_item     VARCHAR(255) NOT NULL,
+  status          VARCHAR(30) DEFAULT 'pending_review' CHECK (status IN ('pending_review', 'approved', 'rejected', 'released')),
+  admin_notes     TEXT,
+  achieved_at     TIMESTAMPTZ DEFAULT NOW(),
+  processed_at    TIMESTAMPTZ,
+  processed_by    VARCHAR(100) REFERENCES users(id)
+);
+
+-- ============================================================
+-- 18e. TEACHER ALLOWANCES
+-- ============================================================
+CREATE TABLE teacher_allowances (
+  id              VARCHAR(100) PRIMARY KEY,
+  teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  group_name      VARCHAR(100) NOT NULL,
+  allowance_amount DECIMAL(10,2) NOT NULL,
+  payment_month   VARCHAR(7) NOT NULL, -- YYYY-MM
+  status          VARCHAR(30) DEFAULT 'paid' CHECK (status IN ('pending', 'paid')),
+  paid_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 18f. TEACHER CERTIFICATES
+-- ============================================================
+CREATE TABLE teacher_certificates (
+  id              VARCHAR(100) PRIMARY KEY,
+  teacher_id      VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,
+  certificate_type VARCHAR(100) NOT NULL,
+  title           VARCHAR(255) NOT NULL,
+  description     TEXT,
+  issued_at       TIMESTAMPTZ DEFAULT NOW(),
+  metadata        JSONB DEFAULT '{}'
+);
+
+-- ============================================================
 -- 19. TEACHER PAYOUTS
 -- ============================================================
 CREATE TABLE teacher_payouts (
@@ -429,7 +538,11 @@ CREATE TABLE teacher_payouts (
   requested_at    TIMESTAMPTZ DEFAULT NOW(),
   reviewed_at     TIMESTAMPTZ,
   paid_at         TIMESTAMPTZ,
-  processed_by    VARCHAR(100) REFERENCES users(id)
+  processed_by    VARCHAR(100) REFERENCES users(id),
+  razorpay_payout_id VARCHAR(200),
+  razorpay_payout_status VARCHAR(50),
+  razorpay_fund_account_id VARCHAR(200),
+  razorpay_contact_id VARCHAR(200)
 );
 
 -- ============================================================
@@ -440,6 +553,7 @@ CREATE TABLE parent_student_links (
   parent_id   VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   student_id  VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   linked_at   TIMESTAMPTZ DEFAULT NOW(),
+  status      VARCHAR(30) DEFAULT 'pending',
   UNIQUE(parent_id, student_id)
 );
 
@@ -564,6 +678,10 @@ CREATE TABLE support_tickets (
   description TEXT,
   status      VARCHAR(30) DEFAULT 'open', -- open, in_progress, resolved, closed
   priority    VARCHAR(20) DEFAULT 'normal', -- low, normal, high, urgent
+  guest_name  VARCHAR(150),
+  guest_email VARCHAR(200),
+  guest_phone VARCHAR(20),
+  guest_role  VARCHAR(50),
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
