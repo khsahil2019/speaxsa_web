@@ -43,6 +43,7 @@ DROP TABLE IF EXISTS coupons CASCADE;
 DROP TABLE IF EXISTS support_replies CASCADE;
 DROP TABLE IF EXISTS support_tickets CASCADE;
 DROP TABLE IF EXISTS study_materials CASCADE;
+DROP TABLE IF EXISTS course_modules CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 -- ============================================================
