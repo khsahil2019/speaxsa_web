@@ -2936,6 +2936,16 @@ async function renderSettings() {
                 {key:'home_cta_desc', label:'CTA Section Subtitle', type:'textarea'},
                 {key:'home_cta_btn_student', label:'CTA Button Join Student'},
                 {key:'home_cta_btn_teacher', label:'CTA Button Join Teacher'},
+                {key:'home_footer_desc', label:'Footer Description', type:'textarea'},
+                {key:'home_footer_toll_free', label:'Footer Toll Free Number'},
+                {key:'home_footer_phone', label:'Footer Support Phone'},
+                {key:'home_footer_email', label:'Footer Support Email'},
+                {key:'home_footer_instagram', label:'Footer Instagram Link'},
+                {key:'home_footer_facebook', label:'Footer Facebook Link'},
+                {key:'home_footer_youtube', label:'Footer Youtube Link'},
+                {key:'home_footer_twitter', label:'Footer Twitter Link'},
+                {key:'home_footer_play_store_url', label:'Google Play Store App URL'},
+                {key:'home_footer_app_store_url', label:'Apple App Store App URL'},
               ].map(f => `
                 <div class="mb-3">
                   <label class="spx-label">${f.label}</label>
@@ -2992,7 +3002,10 @@ async function saveHomepageSettings(e) {
     'home_hero_badge', 'home_hero_title', 'home_hero_desc', 'home_hero_cta_primary', 'home_hero_cta_secondary',
     'home_steps_title', 'home_step1_title', 'home_step1_desc', 'home_step2_title', 'home_step2_desc', 'home_step3_title', 'home_step3_desc',
     'home_courses_badge', 'home_courses_title', 'home_teachers_badge', 'home_teachers_title', 'home_teachers_desc',
-    'home_features_badge', 'home_features_title', 'home_cta_title', 'home_cta_desc', 'home_cta_btn_student', 'home_cta_btn_teacher'
+    'home_features_badge', 'home_features_title', 'home_cta_title', 'home_cta_desc', 'home_cta_btn_student', 'home_cta_btn_teacher',
+    'home_footer_desc', 'home_footer_toll_free', 'home_footer_phone', 'home_footer_email',
+    'home_footer_instagram', 'home_footer_facebook', 'home_footer_youtube', 'home_footer_twitter',
+    'home_footer_play_store_url', 'home_footer_app_store_url'
   ];
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });

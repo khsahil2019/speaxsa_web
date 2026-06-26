@@ -398,6 +398,136 @@ async function loadSettings() {
       ctaBtnTeacher.innerHTML = `<i class="fas fa-chalkboard-teacher me-2"></i>${settings.home_cta_btn_teacher}`;
     }
 
+    // ── Dynamic Footer Customization ──
+    
+    // 1. Description
+    const footerDescEl = document.querySelector('.spx-footer p.small') || document.getElementById('footerDesc');
+    if (footerDescEl && settings.home_footer_desc) {
+      footerDescEl.textContent = settings.home_footer_desc;
+    }
+
+    // 2. Toll free link
+    const footerTollFreeEl = document.querySelector('.spx-footer a[href*="tel:1800"]') || 
+                           Array.from(document.querySelectorAll('.spx-footer strong')).find(el => el.textContent.includes('TOLL FREE'))?.nextElementSibling;
+    if (footerTollFreeEl && settings.home_footer_toll_free) {
+      footerTollFreeEl.href = `tel:${settings.home_footer_toll_free.replace(/[-\s()]+/g, '')}`;
+      footerTollFreeEl.textContent = settings.home_footer_toll_free;
+    }
+
+    // 3. Support phone
+    const footerPhoneEl = document.querySelector('.spx-footer a[href^="tel:+91"]');
+    if (footerPhoneEl && settings.home_footer_phone) {
+      const parts = settings.home_footer_phone.split('(');
+      const numberOnly = parts[0].trim();
+      const hours = parts[1] ? '(' + parts[1] : '';
+      
+      footerPhoneEl.href = `tel:${numberOnly.replace(/[-\s()]+/g, '')}`;
+      footerPhoneEl.textContent = numberOnly;
+      
+      if (footerPhoneEl.nextSibling && hours) {
+        footerPhoneEl.nextSibling.textContent = ' ' + hours;
+      }
+    }
+
+    // 4. Support email
+    const footerEmailEl = document.querySelector('.spx-footer a[href^="mailto:"]');
+    if (footerEmailEl && settings.home_footer_email) {
+      footerEmailEl.href = `mailto:${settings.home_footer_email}`;
+      footerEmailEl.textContent = settings.home_footer_email;
+    }
+
+    // 5. Social Links updates
+    if (settings.home_footer_instagram) {
+      document.querySelectorAll('a[href*="instagram.com"]').forEach(el => el.href = settings.home_footer_instagram);
+    }
+    if (settings.home_footer_youtube) {
+      document.querySelectorAll('a[href*="youtube.com"]').forEach(el => el.href = settings.home_footer_youtube);
+    }
+    if (settings.home_footer_facebook) {
+      document.querySelectorAll('a[href*="facebook.com"], a[href*="facebook-f"]').forEach(el => el.href = settings.home_footer_facebook);
+    }
+    if (settings.home_footer_twitter) {
+      document.querySelectorAll('a[href*="twitter.com"]').forEach(el => el.href = settings.home_footer_twitter);
+    }
+
+    // 6. App download buttons dynamic injection
+    const appSupportCol = Array.from(document.querySelectorAll('.spx-footer h6.footer-heading')).find(el => el.textContent.includes('App & Support'))?.parentElement;
+    if (appSupportCol) {
+      const existingDownloads = appSupportCol.querySelector('.footer-app-downloads');
+      if (!existingDownloads) {
+        const downloadsDiv = document.createElement('div');
+        downloadsDiv.className = 'footer-app-downloads d-flex gap-2 mb-4';
+        downloadsDiv.style.marginTop = '15px';
+        downloadsDiv.innerHTML = `
+          <a href="${settings.home_footer_play_store_url || '#'}" target="_blank" class="app-download-btn play-store-btn d-flex align-items-center gap-2 px-3 py-2 text-white text-decoration-none" style="border-radius: 12px; transition: all 0.3s ease; flex: 1;">
+            <i class="fab fa-google-play" style="font-size: 1.3rem;"></i>
+            <div class="text-start">
+              <div style="font-size: 0.6rem; text-transform: uppercase; color: rgba(255,255,255,0.75); font-weight: 500; letter-spacing: 0.5px; line-height: 1.2;">Get it on</div>
+              <div style="font-size: 0.8rem; font-weight: 700; font-family: 'Outfit', sans-serif; line-height: 1.2; color: #ffffff;">Google Play</div>
+            </div>
+          </a>
+          <a href="${settings.home_footer_app_store_url || '#'}" target="_blank" class="app-download-btn app-store-btn d-flex align-items-center gap-2 px-3 py-2 text-white text-decoration-none" style="border-radius: 12px; transition: all 0.3s ease; flex: 1;">
+            <i class="fab fa-apple" style="font-size: 1.3rem;"></i>
+            <div class="text-start">
+              <div style="font-size: 0.6rem; text-transform: uppercase; color: rgba(255,255,255,0.75); font-weight: 500; letter-spacing: 0.5px; line-height: 1.2;">Download on</div>
+              <div style="font-size: 0.8rem; font-weight: 700; font-family: 'Outfit', sans-serif; line-height: 1.2; color: #ffffff;">App Store</div>
+            </div>
+          </a>
+        `;
+        
+        const appBtnStyles = document.createElement('style');
+        appBtnStyles.textContent = `
+          .app-download-btn {
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+          }
+          .play-store-btn {
+            background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
+            border: 1px solid rgba(16, 185, 129, 0.4) !important;
+          }
+          .play-store-btn i {
+            color: #ffffff;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+          }
+          .play-store-btn:hover {
+            background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+            border-color: rgba(16, 185, 129, 0.8) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important;
+          }
+          .app-store-btn {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+            border: 1px solid rgba(37, 99, 235, 0.4) !important;
+          }
+          .app-store-btn i {
+            color: #ffffff;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+          }
+          .app-store-btn:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
+            border-color: rgba(37, 99, 235, 0.8) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4) !important;
+          }
+        `;
+        document.head.appendChild(appBtnStyles);
+
+        const counsellingCard = appSupportCol.querySelector('.counselling-card');
+        if (counsellingCard) {
+          appSupportCol.insertBefore(downloadsDiv, counsellingCard);
+        } else {
+          appSupportCol.appendChild(downloadsDiv);
+        }
+      } else {
+        const playBtn = existingDownloads.querySelector('.play-store-btn');
+        if (playBtn) playBtn.href = settings.home_footer_play_store_url || '#';
+        const appBtn = existingDownloads.querySelector('.app-store-btn');
+        if (appBtn) appBtn.href = settings.home_footer_app_store_url || '#';
+      }
+    }
+
   } catch (err) {
     console.error('Failed to load settings:', err);
   }

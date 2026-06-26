@@ -232,7 +232,17 @@ db.query(`
     ('home_cta_title', 'Ready to Start Your Learning Journey?'),
     ('home_cta_desc', 'Join 10,000+ students who are already excelling with SPEAXA''s live classes.'),
     ('home_cta_btn_student', 'Join as Student'),
-    ('home_cta_btn_teacher', 'Teach with Us')
+    ('home_cta_btn_teacher', 'Teach with Us'),
+    ('home_footer_desc', 'Speaxa is India''s leading live interactive EdTech platform, empowering students with live classrooms, expert mentors, and performance reports.'),
+    ('home_footer_toll_free', '1800-120-456-456'),
+    ('home_footer_phone', '+91 9999 999 999 (9 AM - 9:30 PM)'),
+    ('home_footer_email', 'support@speaxa.com'),
+    ('home_footer_instagram', 'https://instagram.com/speaxa'),
+    ('home_footer_facebook', 'https://facebook.com/speaxa'),
+    ('home_footer_youtube', 'https://youtube.com/speaxa'),
+    ('home_footer_twitter', 'https://twitter.com/speaxa'),
+    ('home_footer_play_store_url', 'https://play.google.com/store/apps/details?id=com.speaxa'),
+    ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa')
   ON CONFLICT (key) DO NOTHING;
 `).then(() => {
   console.log("PostgreSQL: Database self-healing migrations verified/created.");

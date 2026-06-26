@@ -737,3 +737,57 @@ CREATE INDEX idx_otp_tokens_identifier ON otp_tokens(identifier);
 CREATE INDEX idx_teacher_sop_teacher ON teacher_sop(teacher_id);
 CREATE INDEX idx_course_modules_course ON course_modules(course_id);
 
+
+-- ============================================================
+-- INITIAL PLATFORM SETTINGS SEED DATA
+-- ============================================================
+INSERT INTO platform_settings (key, value) VALUES
+  ('student_referral_bonus_pct', '5.00'),
+  ('teacher_referral_bonus_pct', '1.00'),
+  ('teacher_referral_max_cap', '10'),
+  ('default_teacher_share_pct', '50.00'),
+  ('referral_teacher_share_pct', '50.00'),
+  ('payout_pct_Junior_Teacher', '50.00'),
+  ('payout_pct_Assistant_Teacher', '55.00'),
+  ('payout_pct_Senior_Teacher', '60.00'),
+  ('payout_pct_Executive_Teacher', '65.00'),
+  ('payout_pct_Lecturer', '70.00'),
+  ('payout_pct_Professor', '75.00'),
+  ('payout_pct_Senior_Professor', '80.00'),
+  ('payout_pct_HOD', '85.00'),
+  ('payout_pct_Dean', '90.00'),
+  ('home_hero_badge', 'Speaxa is Launching Soon – Stay Tuned!'),
+  ('home_hero_title', 'Learn From<br><span class="gradient-text">Expert Teachers</span><br>In Real-Time'),
+  ('home_hero_desc', 'Join live interactive classes, get personalized attention, and track your child''s growth with SPEAXA''s AI-powered learning management system.'),
+  ('home_hero_cta_primary', 'Browse Courses'),
+  ('home_hero_cta_secondary', 'How It Works'),
+  ('home_steps_title', 'Start Learning in <span class="gradient-text">3 Easy Steps</span>'),
+  ('home_step1_title', 'Register Free'),
+  ('home_step1_desc', 'Create your student account in under 2 minutes. No credit card required to browse courses.'),
+  ('home_step2_title', 'Choose a Batch'),
+  ('home_step2_desc', 'Browse courses, compare teachers, and enroll in the batch that matches your schedule and grade.'),
+  ('home_step3_title', 'Learn Live'),
+  ('home_step3_desc', 'Join live interactive classes, submit assignments, and track your growth with detailed monthly reports.'),
+  ('home_courses_badge', 'Explore'),
+  ('home_courses_title', 'Featured <span class="gradient-text">Courses</span>'),
+  ('home_teachers_badge', 'Our Faculty'),
+  ('home_teachers_title', 'Learn from <span class="gradient-text">Top Teachers</span>'),
+  ('home_teachers_desc', 'All teachers are SOP-verified and background-checked for quality assurance.'),
+  ('home_features_badge', 'Why SPEAXA'),
+  ('home_features_title', 'Everything You Need to <span class="gradient-text">Excel</span>'),
+  ('home_cta_title', 'Ready to Start Your Learning Journey?'),
+  ('home_cta_desc', 'Join 10,000+ students who are already excelling with SPEAXA''s live classes.'),
+  ('home_cta_btn_student', 'Join as Student'),
+  ('home_cta_btn_teacher', 'Teach with Us'),
+  ('home_footer_desc', 'Speaxa is India''s leading live interactive EdTech platform, empowering students with live classrooms, expert mentors, and performance reports.'),
+  ('home_footer_toll_free', '1800-120-456-456'),
+  ('home_footer_phone', '+91 9999 999 999 (9 AM - 9:30 PM)'),
+  ('home_footer_email', 'support@speaxa.com'),
+  ('home_footer_instagram', 'https://instagram.com/speaxa'),
+  ('home_footer_facebook', 'https://facebook.com/speaxa'),
+  ('home_footer_youtube', 'https://youtube.com/speaxa'),
+  ('home_footer_twitter', 'https://twitter.com/speaxa'),
+  ('home_footer_play_store_url', 'https://play.google.com/store/apps/details?id=com.speaxa'),
+  ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa')
+ON CONFLICT (key) DO NOTHING;
+
