@@ -253,9 +253,12 @@ function levelBadge(level) {
     'Bronze': 'badge-bronze',
     'Silver': 'badge-silver',
     'Gold': 'badge-gold',
-    'Elite Mentor': 'badge-elite'
+    'Elite Mentor': 'badge-elite',
+    'Without Slab': 'badge-pending'
   };
-  return `<span class="${map[level]||'badge-bronze'}">${level||'Junior Teacher'}</span>`;
+  const val = level || 'Without Slab';
+  const badgeClass = map[val] || 'badge-pending';
+  return `<span class="${badgeClass}">${val}</span>`;
 }
 
 function statusBadge(status) {
@@ -1076,25 +1079,88 @@ async function renderStudents() {
 async function renderParents() {
   loading();
   try {
-    const parents = await apiGet('/admin/parents');
+    const [parents, links] = await Promise.all([
+      apiGet('/admin/parents'),
+      apiGet('/admin/parent-links')
+    ]);
+    
     document.getElementById('pageContent').innerHTML = `
-      <div class="spx-card">
-        <h6 class="mb-4">All Parents (${parents.length})</h6>
-        ${table(
-          ['Parent','Email','Phone','Joined','Actions'],
-          parents.map(p => `
-            <tr>
-              <td><div class="d-flex align-items-center gap-2">${avatar(p.photo_url,p.name)}<span class="fw-semibold text-white">${p.name}</span></div></td>
-              <td>${p.email}</td>
-              <td>${p.phone||'—'}</td>
-              <td>${fmtDate(p.created_at)}</td>
-              <td><button class="btn btn-sm btn-outline-primary" onclick="impersonate('${p.id}','parent')">Login As</button></td>
-            </tr>`).join(''),
-          true
-        )}
-      </div>`;
+      <div class="row g-4">
+        <div class="col-lg-7">
+          <div class="spx-card h-100">
+            <h6 class="mb-4 text-white"><i class="fas fa-users me-2 text-primary"></i>All Parents (${parents.length})</h6>
+            ${table(
+              ['Parent','Email','Phone','Actions'],
+              parents.map(p => `
+                <tr>
+                  <td><div class="d-flex align-items-center gap-2">${avatar(p.photo_url,p.name)}<span class="fw-semibold text-white">${p.name}</span></div></td>
+                  <td>${p.email}</td>
+                  <td>${p.phone||'—'}</td>
+                  <td><button class="btn btn-sm btn-outline-primary" onclick="impersonate('${p.id}','parent')">Login As</button></td>
+                </tr>`).join(''),
+              true
+            )}
+          </div>
+        </div>
+        
+        <div class="col-lg-5">
+          <div class="spx-card h-100">
+            <h6 class="mb-4 text-white"><i class="fas fa-link me-2 text-primary"></i>Parent-Student Connections</h6>
+            <div class="table-responsive">
+              <table class="spx-table table-sm">
+                <thead>
+                  <tr>
+                    <th>Connection</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${links.map(l => {
+                    let statusBadge = 'bg-secondary';
+                    if (l.status === 'approved') statusBadge = 'bg-success';
+                    else if (l.status === 'rejected') statusBadge = 'bg-danger';
+                    else if (l.status === 'pending') statusBadge = 'bg-warning text-dark';
+                    
+                    return `
+                      <tr>
+                        <td>
+                          <div class="small">
+                            <span class="text-white fw-bold">Parent:</span> ${l.parent_name}<br>
+                            <span class="text-white fw-bold">Student:</span> ${l.student_name}
+                          </div>
+                        </td>
+                        <td><span class="badge ${statusBadge} small" style="font-size: 0.65rem;">${l.status.toUpperCase()}</span></td>
+                        <td>
+                          ${l.status === 'approved' ? `
+                            <button class="btn btn-xs btn-outline-danger" onclick="revertParentLink(${l.id})" style="font-size: 0.7rem; padding: 2px 6px;">Revert Access</button>
+                          ` : `
+                            <span class="text-muted small">—</span>
+                          `}
+                        </td>
+                      </tr>
+                    `;
+                  }).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">No connections found.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function revertParentLink(linkId) {
+  if (!confirm('Are you sure you want to revert/revoke this approved parent connection request? This will block the parent\'s access to the student\'s reports.')) return;
+  try {
+    const res = await apiPost(`/admin/parent-links/${linkId}/revert`);
+    showToast(res.message || 'Parent connection reverted successfully');
+    await renderParents();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 

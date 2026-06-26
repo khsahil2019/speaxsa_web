@@ -238,7 +238,7 @@ function showApp() {
     document.getElementById('avatarSidebar').src = av;
     document.getElementById('avatarHeader').src = av;
     document.getElementById('nameSidebar').textContent = user.name;
-    document.getElementById('levelSidebar').textContent = user.teacher_level || 'Bronze';
+    document.getElementById('levelSidebar').textContent = user.teacher_level || 'Without Slab';
   }
   checkSopStatus();
 }
@@ -357,7 +357,7 @@ async function renderHome() {
             <div class="col-md-6 col-lg-3">
               <div class="p-3 rounded-3 h-100" style="background: var(--bg-card); border: 1px solid var(--border);">
                 <strong class="text-primary d-block mb-1">1. Video SOP Setup</strong>
-                You start at <strong>Bronze Level</strong>. Fill out details in <strong>Profile</strong>, upload 5 required SOP video links in <strong>SOP Setup</strong>, and submit for Admin approval.
+                You start at <strong>Without Slab</strong>. Fill out details in <strong>Profile</strong>, upload 5 required SOP video links in <strong>SOP Setup</strong>, and submit for Admin approval.
               </div>
             </div>
             <div class="col-md-6 col-lg-3">
@@ -411,7 +411,7 @@ async function renderHome() {
             <h6 class="mb-3 fw-bold">Educator Level</h6>
             <div class="text-center p-3 rounded" style="background:rgba(255,255,255,.02)">
               <div class="display-5 text-warning mb-2"><i class="fas fa-medal"></i></div>
-              <h5 class="text-white fw-bold mb-1">${analytics.level} Mentor</h5>
+              <h5 class="text-white fw-bold mb-1">${analytics.level === 'Without Slab' || !analytics.level ? 'Without Slab' : `${analytics.level} Mentor`}</h5>
               <p class="text-muted small mb-0">Engagement score based on attendance, student ratings & homework submission feedback.</p>
             </div>
           </div>
@@ -1129,7 +1129,29 @@ async function renderSop() {
       }
     }
 
+    let rejectAlertHtml = '';
+    if (sop && sop.status === 'rejected') {
+      rejectAlertHtml = `
+        <div class="alert alert-danger p-4 mb-4 text-start" style="border-radius: 12px; border-left: 5px solid var(--bs-danger); background: rgba(239, 68, 68, 0.05); color: var(--bs-danger);">
+          <div class="d-flex gap-3 align-items-start">
+            <div class="text-danger" style="font-size: 1.75rem; line-height: 1;"><i class="fas fa-times-circle text-danger"></i></div>
+            <div class="flex-grow-1">
+              <h5 class="fw-bold text-danger mb-1">Onboarding Verification Rejected</h5>
+              <p class="text-secondary small mb-3">Your standard operating procedure (SOP) setup or documents did not pass the verification checks. Please read the admin review notes below, correct the flagged items, and re-submit the complete SOP for verification.</p>
+              <div class="p-3 mb-2 rounded bg-light border-start border-3 border-danger text-dark font-monospace" style="font-size: 0.85rem;">
+                <strong>Admin Feedback:</strong> ${sop.admin_notes || 'Please verify the uploaded proofs and details.'}
+              </div>
+              <div class="text-muted small mt-2">
+                <i class="fas fa-info-circle me-1"></i> You can edit and re-upload any rejected items under the tabs below (e.g. KYC Documents, Profile, Availability, Technical SOPs).
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     document.getElementById('pageContent').innerHTML = `
+      ${rejectAlertHtml}
       <div class="sop-wizard-tabs">
         <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'guidelines' ? 'active' : ''}" onclick="setSopTab('guidelines')">
           <i class="fas fa-book-open"></i> 1. Onboarding Guide
@@ -2343,6 +2365,7 @@ async function renderLiveClasses() {
     ]);
 
     const activeBatches = batches.filter(b => b.status === 'active');
+    window._teacherActiveBatches = activeBatches;
 
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
@@ -2365,7 +2388,7 @@ async function renderLiveClasses() {
                   ${classes.map(c => `
                     <tr>
                       <td>${fmtDate(c.class_date)}</td>
-                      <td>${c.class_time}</td>
+                      <td>${c.class_time ? formatTime(c.class_time) : ''}</td>
                       <td class="text-white">${c.title}</td>
                       <td>${c.batch_name || 'Batch'}</td>
                       <td><span class="badge ${c.status === 'live' ? 'bg-danger' : c.status === 'ended' ? 'bg-secondary' : 'bg-primary'}">${c.status.toUpperCase()}</span></td>
@@ -2392,7 +2415,7 @@ async function renderLiveClasses() {
             <form onsubmit="scheduleClass(event)">
               <div class="mb-3">
                 <label class="spx-label">Select Batch</label>
-                <select class="form-select spx-input" id="classBatch" required>
+                <select class="form-select spx-input" id="classBatch" onchange="autoFillBatchTime(this.value)" required>
                   <option value="">Select Batch</option>
                   ${activeBatches.map(b => `<option value="${b.id}">${b.batch_name} (${b.subject})</option>`).join('')}
                 </select>
@@ -2415,18 +2438,65 @@ async function renderLiveClasses() {
         </div>
       </div>
     `;
+
+    // Default classDate to today's date (local timezone) and set min attribute
+    const dateInput = document.getElementById('classDate');
+    if (dateInput) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      dateInput.value = todayStr;
+      dateInput.min = todayStr;
+    }
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
 }
 
+function autoFillBatchTime(batchId) {
+  if (!batchId || !window._teacherActiveBatches) return;
+  const batch = window._teacherActiveBatches.find(b => b.id === batchId);
+  if (batch && batch.start_time) {
+    const timeParts = batch.start_time.split(':');
+    if (timeParts.length >= 2) {
+      const timeInput = document.getElementById('classTime');
+      if (timeInput) {
+        timeInput.value = `${timeParts[0]}:${timeParts[1]}`;
+      }
+    }
+  }
+}
+
 async function scheduleClass(e) {
   e.preventDefault();
+  const classDate = document.getElementById('classDate').value;
+  const classTime = document.getElementById('classTime').value + ':00';
+
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  if (classDate < todayStr) {
+    showToast('Class date must be today or in the future', 'error');
+    return;
+  }
+
+  const scheduledDateTime = new Date(`${classDate}T${classTime}`);
+  if (scheduledDateTime <= new Date()) {
+    showToast('Class time must be in the future', 'error');
+    return;
+  }
+
   const payload = {
     batchId: document.getElementById('classBatch').value,
     title: document.getElementById('classTitle').value,
-    classDate: document.getElementById('classDate').value,
-    classTime: document.getElementById('classTime').value + ':00',
+    classDate,
+    classTime,
+    clientDateTime: scheduledDateTime.toISOString()
   };
 
   try {
@@ -3125,7 +3195,7 @@ async function renderLevel() {
           <div class="spx-card text-center">
             <h6 class="text-muted mb-2">My Current Level</h6>
             <div class="display-4 text-warning mb-2"><i class="fas fa-medal"></i></div>
-            <h4 class="text-white fw-bold mb-1">${data.level}</h4>
+            <h4 class="text-white fw-bold mb-1">${data.level || 'Without Slab'}</h4>
             <div class="text-muted small">Current Rating: <strong>${parseFloat(data.rating).toFixed(2)}</strong></div>
             
             <hr style="border-color:var(--border);margin:20px 0">
@@ -3188,8 +3258,10 @@ async function renderProfile() {
       levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#F59E0B,#FCD34D);color:#78350F;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-award me-1"></i>Gold Class Mentor</span>`;
     } else if (profile.teacher_level === 'Silver') {
       levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#64748B,#94A3B8);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-medal me-1"></i>Silver Class Mentor</span>`;
-    } else {
+    } else if (profile.teacher_level === 'Bronze') {
       levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#B45309,#D97706);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-certificate me-1"></i>Bronze Class Mentor</span>`;
+    } else {
+      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#64748B,#94A3B8);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-user me-1"></i>Without Slab</span>`;
     }
 
     document.getElementById('pageContent').innerHTML = `

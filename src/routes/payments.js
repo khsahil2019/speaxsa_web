@@ -10,10 +10,17 @@ const SystemConfigService = require('../services/SystemConfigService');
 
 router.use(authenticateToken);
 
+function getCleanEnv(val) {
+  if (!val || val.startsWith('YOUR_') || val.startsWith('CHANGE_') || val.includes('XXXX') || val === 'demo') {
+    return undefined;
+  }
+  return val;
+}
+
 async function getRazorpayInstance() {
   const configService = require('../services/SystemConfigService');
-  const keyId = process.env.RAZORPAY_KEY_ID || await configService.getSetting('razorpay_key_id', '');
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || await configService.getSetting('razorpay_key_secret', '');
+  const keyId = getCleanEnv(process.env.RAZORPAY_KEY_ID) || await configService.getSetting('razorpay_key_id', '');
+  const keySecret = getCleanEnv(process.env.RAZORPAY_KEY_SECRET) || await configService.getSetting('razorpay_key_secret', '');
   return new Razorpay({ key_id: keyId, key_secret: keySecret });
 }
 
@@ -61,7 +68,7 @@ router.post('/create-order', async (req, res) => {
 
     // Resolve teacher's level and retrieve their level-wise payout share percentage
     const teacherRes = await db.query("SELECT teacher_level FROM users WHERE id = $1", [b.teacher_id]);
-    const teacherLevel = teacherRes.rows[0]?.teacher_level || 'Junior Teacher';
+    const teacherLevel = teacherRes.rows[0]?.teacher_level || 'Without Slab';
     const levelKey = `payout_pct_${teacherLevel.replace(' ', '_')}`;
 
     // Map default fallback rates per level
@@ -74,7 +81,12 @@ router.post('/create-order', async (req, res) => {
       'Professor': 75.0,
       'Senior Professor': 80.0,
       'HOD': 85.0,
-      'Dean': 90.0
+      'Dean': 90.0,
+      'Without Slab': 50.0,
+      'Bronze': 50.0,
+      'Silver': 60.0,
+      'Gold': 70.0,
+      'Elite Mentor': 80.0
     };
     const defaultPct = defaultPctMap[teacherLevel] || 50.0;
 
@@ -120,7 +132,7 @@ router.post('/verify', async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, payment_id } = req.body;
   try {
     const configService = require('../services/SystemConfigService');
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || await configService.getSetting('razorpay_key_secret', '');
+    const keySecret = getCleanEnv(process.env.RAZORPAY_KEY_SECRET) || await configService.getSetting('razorpay_key_secret', '');
 
     // Verify signature
     const expectedSignature = crypto
@@ -363,7 +375,7 @@ router.post('/refund', async (req, res) => {
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const configService = require('../services/SystemConfigService');
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || await configService.getSetting('razorpay_webhook_secret', '');
+    const webhookSecret = getCleanEnv(process.env.RAZORPAY_WEBHOOK_SECRET) || await configService.getSetting('razorpay_webhook_secret', '');
     const signature = req.headers['x-razorpay-signature'];
     const body = req.body;
 

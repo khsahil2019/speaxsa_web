@@ -5,6 +5,13 @@
 const { RtcTokenBuilder, RtcRole, RtmTokenBuilder } = require('agora-access-token');
 const db = require('../db');
 
+function getCleanEnv(val) {
+  if (!val || val.startsWith('YOUR_') || val.startsWith('CHANGE_') || val.includes('XXXX') || val === 'demo') {
+    return undefined;
+  }
+  return val;
+}
+
 async function getAgoraCredentials() {
   try {
     const res = await db.query(
@@ -13,13 +20,13 @@ async function getAgoraCredentials() {
     const creds = {};
     res.rows.forEach(r => { creds[r.key] = r.value; });
     return {
-      appId: process.env.AGORA_APP_ID || creds.agora_app_id || '',
-      appCertificate: process.env.AGORA_APP_CERTIFICATE || creds.agora_app_certificate || '',
+      appId: getCleanEnv(process.env.AGORA_APP_ID) || creds.agora_app_id || '',
+      appCertificate: getCleanEnv(process.env.AGORA_APP_CERTIFICATE) || creds.agora_app_certificate || '',
     };
   } catch {
     return {
-      appId: process.env.AGORA_APP_ID || '',
-      appCertificate: process.env.AGORA_APP_CERTIFICATE || '',
+      appId: getCleanEnv(process.env.AGORA_APP_ID) || '',
+      appCertificate: getCleanEnv(process.env.AGORA_APP_CERTIFICATE) || '',
     };
   }
 }

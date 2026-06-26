@@ -61,7 +61,7 @@ CREATE TABLE users (
   is_disabled       BOOLEAN DEFAULT false,
   -- Teacher specific
   approval_status   VARCHAR(50) DEFAULT 'approved',
-  teacher_level     VARCHAR(50) DEFAULT 'Bronze',
+  teacher_level     VARCHAR(50) DEFAULT NULL,
   qualification     TEXT,
   experience_years  INT DEFAULT 0,
   subject_expertise TEXT,

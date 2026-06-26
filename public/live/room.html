@@ -613,14 +613,15 @@
     canvas.addEventListener('mousedown', (e) => {
       if (!isTeacher) return;
       drawing = true;
-      draw(e);
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      relayDrawPoint(x, y, true);
     });
 
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', () => drawing = false);
-    canvas.addEventListener('mouseout', () => drawing = false);
-
-    function draw(e) {
+    canvas.addEventListener('mousemove', (e) => {
       if (!drawing || !isTeacher) return;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -631,9 +632,11 @@
       ctx.beginPath();
       ctx.moveTo(x, y);
 
-      // Broadcast drawing coordinates via Agora custom stream or RTM (simulated)
-      relayDrawPoint(x, y);
-    }
+      relayDrawPoint(x, y, false);
+    });
+
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseout', () => drawing = false);
 
     document.getElementById('btnClearBoard').addEventListener('click', () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -798,9 +801,9 @@
 
           // Join Agora channel
           const joinedUid = await agoraClient.join(
-            'demo_agora_app_id', // Stub Agora app ID
+            credentials.rtc.appId,
             credentials.channel,
-            null,
+            credentials.rtc.token,
             credentials.uid
           );
 
@@ -1087,10 +1090,15 @@
           const data = JSON.parse(e.newValue);
           if (data && data.classId === classId && !isTeacher) {
             // Draw remote lines on student view
-            ctx.lineTo(data.x, data.y);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(data.x, data.y);
+            if (data.start) {
+              ctx.beginPath();
+              ctx.moveTo(data.x, data.y);
+            } else {
+              ctx.lineTo(data.x, data.y);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(data.x, data.y);
+            }
             toggleWhiteboard(true);
           }
         } catch(e) {}
@@ -1113,8 +1121,8 @@
     });
 
     // Whiteboard drawing synchronization stubs
-    function relayDrawPoint(x, y) {
-      localStorage.setItem('speaxa_board_point', JSON.stringify({ classId, x, y, time: Date.now() }));
+    function relayDrawPoint(x, y, start = false) {
+      localStorage.setItem('speaxa_board_point', JSON.stringify({ classId, x, y, start, time: Date.now() }));
     }
     function relayClearBoard() {
       localStorage.setItem('speaxa_board_clear', JSON.stringify({ classId, time: Date.now() }));

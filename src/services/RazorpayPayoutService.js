@@ -1,11 +1,18 @@
 const db = require('../db');
 const configService = require('./SystemConfigService');
 
+function getCleanEnv(val) {
+  if (!val || val.startsWith('YOUR_') || val.startsWith('CHANGE_') || val.includes('XXXX') || val === 'demo') {
+    return undefined;
+  }
+  return val;
+}
+
 // Helper to fetch Razorpay credentials and standard configuration
 async function getRazorpayClientConfig() {
-  const keyId = process.env.RAZORPAY_KEY_ID || await configService.getSetting('razorpay_key_id', '');
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || await configService.getSetting('razorpay_key_secret', '');
-  const merchantAccount = process.env.RAZORPAYX_ACCOUNT_NUMBER || await configService.getSetting('razorpayx_account_number', '1234567890');
+  const keyId = getCleanEnv(process.env.RAZORPAY_KEY_ID) || await configService.getSetting('razorpay_key_id', '');
+  const keySecret = getCleanEnv(process.env.RAZORPAY_KEY_SECRET) || await configService.getSetting('razorpay_key_secret', '');
+  const merchantAccount = getCleanEnv(process.env.RAZORPAYX_ACCOUNT_NUMBER) || await configService.getSetting('razorpayx_account_number', '1234567890');
   
   return {
     auth: Buffer.from(`${keyId}:${keySecret}`).toString('base64'),

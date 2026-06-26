@@ -19,8 +19,9 @@ db.query(`
   ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS subject_expertise VARCHAR(255);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS languages VARCHAR(255);
-  ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_level VARCHAR(50) DEFAULT 'Junior Teacher';
-  UPDATE users SET teacher_level = 'Junior Teacher' WHERE role = 'teacher' AND (teacher_level = 'Bronze' OR teacher_level IS NULL);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_level VARCHAR(50) DEFAULT NULL;
+  ALTER TABLE users ALTER COLUMN teacher_level DROP DEFAULT;
+  UPDATE users SET teacher_level = NULL WHERE role = 'teacher' AND (teacher_level = 'Bronze' OR teacher_level = 'Junior Teacher') AND id NOT IN (SELECT DISTINCT teacher_id FROM batches);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS total_ratings INT DEFAULT 0;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS alt_email VARCHAR(200);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(50);

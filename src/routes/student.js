@@ -107,6 +107,23 @@ router.get('/batches/:batchId/notes', async (req, res) => {
   }
 });
 
+// Fetch live classes schedule for batch
+router.get('/batches/:batchId/live-classes', async (req, res) => {
+  const { batchId } = req.params;
+  try {
+    const result = await db.query(`
+      SELECT lc.*, u.name as teacher_name
+      FROM live_classes lc
+      LEFT JOIN users u ON u.id = lc.teacher_id
+      WHERE lc.batch_id = $1 AND lc.status IN ('scheduled', 'live', 'ended')
+      ORDER BY lc.class_date DESC, lc.class_time DESC
+    `, [batchId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Enroll in Batch (after payment) ──────────────────────────
 router.post('/batches/:batchId/enroll', async (req, res) => {
   const { batchId } = req.params;
@@ -261,9 +278,19 @@ router.get('/notifications', async (req, res) => {
       SELECT * FROM notifications
       WHERE (target_role = 'student' OR target_role = 'all' OR target_user = $1)
         AND is_active = true
-      ORDER BY created_at DESC LIMIT 20
+      ORDER BY created_at DESC LIMIT 100
     `, [req.user.id]);
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/notifications/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('DELETE FROM notifications WHERE id = $1 AND (target_user = $2 OR target_user IS NULL)', [id, req.user.id]);
+    res.json({ message: 'Notification deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -317,13 +344,22 @@ router.post('/parent-requests/:linkId/approve', async (req, res) => {
 router.post('/parent-requests/:linkId/reject', async (req, res) => {
   const { linkId } = req.params;
   try {
+    // Check current connection status
+    const checkRes = await db.query(
+      "SELECT status FROM parent_student_links WHERE id = $1 AND student_id = $2",
+      [linkId, req.user.id]
+    );
+    if (!checkRes.rows.length) {
+      return res.status(404).json({ error: 'Connection request not found' });
+    }
+    if (checkRes.rows[0].status === 'approved') {
+      return res.status(400).json({ error: 'Once parent access is approved, it cannot be revoked by the student. Only an administrator can revert this.' });
+    }
+
     const result = await db.query(
       "UPDATE parent_student_links SET status = 'rejected' WHERE id = $1 AND student_id = $2 RETURNING *",
       [linkId, req.user.id]
     );
-    if (!result.rows.length) {
-      return res.status(404).json({ error: 'Connection request not found' });
-    }
     await logAudit(req.user.id, 'PARENT_LINK_REJECTED', 'parent_student_links', linkId, { parent_id: result.rows[0].parent_id });
     res.json({ message: 'Parent access request rejected successfully', link: result.rows[0] });
   } catch (err) {

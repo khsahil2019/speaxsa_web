@@ -351,6 +351,7 @@ router.post('/sop/:teacherId/reject', async (req, res) => {
       UPDATE teacher_sop SET status = 'rejected', admin_notes = $2, reviewed_by = $3, reviewed_at = NOW()
       WHERE teacher_id = $1
     `, [teacherId, admin_notes, req.user.id]);
+    await db.query("UPDATE users SET approval_status = 'rejected' WHERE id = $1", [teacherId]);
     await logAudit(req.user.id, 'SOP_REJECTED', 'teacher', teacherId, { admin_notes });
     res.json({ message: 'SOP rejected. Teacher notified.' });
   } catch (err) {
@@ -455,6 +456,43 @@ router.get('/parents', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Get all parent-student connection links for review/management
+router.get('/parent-links', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT psl.*, 
+             p.name as parent_name, p.email as parent_email,
+             s.name as student_name, s.email as student_email
+      FROM parent_student_links psl
+      JOIN users p ON p.id = psl.parent_id
+      JOIN users s ON s.id = psl.student_id
+      ORDER BY psl.linked_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin reverts or deletes parent access
+router.post('/parent-links/:linkId/revert', async (req, res) => {
+  const { linkId } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE parent_student_links SET status = 'rejected' WHERE id = $1 RETURNING *",
+      [linkId]
+    );
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Connection request not found' });
+    }
+    await logAudit(req.user.id, 'PARENT_LINK_REVERTED_BY_ADMIN', 'parent_student_links', linkId, { parent_id: result.rows[0].parent_id, student_id: result.rows[0].student_id });
+    res.json({ message: 'Parent access request reverted successfully', link: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ── User Management (Generic) ─────────────────────────────────
 router.put('/users/:id', async (req, res) => {
@@ -728,8 +766,17 @@ router.get('/live-classes', async (req, res) => {
 });
 
 router.post('/live-classes', async (req, res) => {
-  const { batchId, title, classDate, classTime } = req.body;
+  const { batchId, title, classDate, classTime, clientDateTime } = req.body;
   try {
+    // Validate future date/time (timezone aware via clientDateTime if provided)
+    const scheduledDateTime = clientDateTime ? new Date(clientDateTime) : new Date(`${classDate}T${classTime}`);
+    if (isNaN(scheduledDateTime.getTime())) {
+      return res.status(400).json({ error: 'Invalid class date or time format' });
+    }
+    if (scheduledDateTime <= new Date()) {
+      return res.status(400).json({ error: 'Class date and time must be scheduled in the future' });
+    }
+
     const id = `live_${Date.now()}`;
     const batch = await db.query('SELECT * FROM batches WHERE id = $1', [batchId]);
     if (!batch.rows.length) return res.status(404).json({ error: 'Batch not found' });
@@ -741,6 +788,18 @@ router.post('/live-classes', async (req, res) => {
     `, [id, batchId, batch.rows[0].teacher_id, title, classDate, classTime, channel]);
 
     await logAudit(req.user.id, 'CLASS_SCHEDULED', 'live_class', id, { title, batchId });
+
+    // Dispatch in-app notifications and email alerts to enrolled students asynchronously
+    const notificationService = require('../services/notification.service');
+    notificationService.notifyClassScheduled({
+      classId: id,
+      batchId,
+      title,
+      classDate,
+      classTime,
+      teacherId: batch.rows[0].teacher_id || req.user.id
+    }).catch(err => console.error('[NotificationService] notifyClassScheduled async failed for admin:', err));
+
     res.status(201).json({ message: 'Live class scheduled', classId: id });
   } catch (err) {
     res.status(500).json({ error: err.message });

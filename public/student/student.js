@@ -215,11 +215,11 @@ document.querySelectorAll('.nav-item[data-page]').forEach(item => {
 function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
-  const titles = { home:'Dashboard', courses:'Browse Courses', mybatches:'My Batches',
+  const titles = { home:'Dashboard', courses:'Browse Courses', mybatches:'My Batches', 'upcoming-classes':'Upcoming Classes',
     attendance:'Attendance', assignments:'Assignments', recordings:'Recordings',
     reports:'Monthly Reports', notifications:'Notifications', profile:'My Profile', parents:'Parent Access Requests' };
   document.getElementById('pageTitle').textContent = titles[page] || page;
-  const renders = { home:renderHome, courses:renderCourses, mybatches:renderMyBatches,
+  const renders = { home:renderHome, courses:renderCourses, mybatches:renderMyBatches, 'upcoming-classes':renderUpcomingClasses,
     attendance:renderAttendance, assignments:renderAssignments, recordings:renderRecordings,
     reports:renderReports, notifications:renderNotifications, profile:renderProfile, parents:renderParents };
   renders[page]?.();
@@ -313,7 +313,6 @@ async function renderHome() {
           <div class="spx-card">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h6 class="mb-0">My Batches</h6>
-              <a onclick="navigateTo('courses')" class="text-primary small" style="cursor:pointer">Browse More →</a>
             </div>
             ${batches.length ? batches.slice(0,4).map(b => `
               <div class="d-flex align-items-center gap-3 p-3 mb-2 rounded-3" style="background:var(--bg-dark);border:1px solid var(--border)">
@@ -322,13 +321,18 @@ async function renderHome() {
                   <div class="fw-semibold text-white small">${b.course_title||b.batch_name}</div>
                   <div class="text-muted" style="font-size:.75rem">${b.teacher_name||''} • ${(b.days_of_week||[]).join(', ')} ${b.start_time||''}</div>
                 </div>
-                ${b.status === 'active' ? `<a href="/live" class="btn btn-sm btn-spx px-3" style="font-size:.75rem">Join Live</a>` : '<span class="text-muted small">Inactive</span>'}
+                <div style="width:110px; text-align:right; flex-shrink:0;">
+                  ${b.status === 'active' ? `<button onclick="viewBatchDetails('${b.id}')" class="btn btn-sm btn-spx w-100" style="font-size:.75rem">View Details</button>` : '<span class="text-muted small d-block text-center">Inactive</span>'}
+                </div>
               </div>`).join('') : '<p class="text-muted small text-center py-3">No batches enrolled yet</p>'}
           </div>
         </div>
         <div class="col-lg-4">
           <div class="spx-card">
-            <h6 class="mb-3">Notifications</h6>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="mb-0">Notifications (${notifs.length})</h6>
+              <a onclick="navigateTo('notifications')" class="text-primary small" style="cursor:pointer">View All →</a>
+            </div>
             ${notifs.slice(0,5).map(n => `
               <div class="mb-3 p-2 rounded" style="background:var(--bg-dark)">
                 <div class="fw-semibold small text-white">${n.title}</div>
@@ -421,8 +425,62 @@ async function showCourseDetails(courseId) {
     ]);
 
     const myBatchIds = myBatches.map(mb => mb.id);
-
     const bodyEl = document.getElementById('courseDetailsBody');
+    
+    // Course Details metadata
+    let extraDetailsHtml = '';
+    if (course.learning_duration) {
+      extraDetailsHtml += `<div class="d-flex justify-content-between mb-2 small text-muted"><span>Learning Duration:</span><strong style="color:var(--text-primary);">${course.learning_duration}</strong></div>`;
+    }
+    if (course.language_instruction) {
+      extraDetailsHtml += `<div class="d-flex justify-content-between mb-2 small text-muted"><span>Language of Instruction:</span><strong style="color:var(--text-primary);">${course.language_instruction}</strong></div>`;
+    }
+    if (course.daily_class_duration) {
+      extraDetailsHtml += `<div class="d-flex justify-content-between mb-2 small text-muted"><span>Daily Class Duration:</span><strong style="color:var(--text-primary);">${course.daily_class_duration}</strong></div>`;
+    }
+    if (course.assessment_days) {
+      extraDetailsHtml += `<div class="d-flex justify-content-between mb-2 small text-muted"><span>Assessments:</span><strong style="color:var(--text-primary);">${course.assessment_days}</strong></div>`;
+    }
+    if (course.custom_tag) {
+      extraDetailsHtml += `<div class="d-flex justify-content-between mb-2 small text-muted"><span>Special Tag:</span><strong style="color:var(--primary);">${course.custom_tag}</strong></div>`;
+    }
+
+    let objectiveHtml = '';
+    if (course.objective) {
+      objectiveHtml = `
+        <div class="mt-3 p-3 rounded-3" style="background: rgba(60, 189, 176, 0.03); border: 1px solid var(--border);">
+          <h6 class="fw-bold mb-2 small text-primary"><i class="fas fa-bullseye me-2"></i>Course Objective</h6>
+          <p class="text-muted small mb-0" style="line-height:1.5;">${course.objective}</p>
+        </div>
+      `;
+    }
+
+    let learningOutcomeHtml = '';
+    if (course.learning_outcome) {
+      learningOutcomeHtml = `
+        <div class="mt-3 p-3 rounded-3" style="background: rgba(16, 185, 129, 0.03); border: 1px solid var(--border);">
+          <h6 class="fw-bold mb-2 small text-success"><i class="fas fa-trophy me-2"></i>Learning Outcomes</h6>
+          <p class="text-muted small mb-0" style="line-height:1.5;">${course.learning_outcome}</p>
+        </div>
+      `;
+    }
+
+    let syllabusHtml = '';
+    if (modules && modules.length > 0) {
+      syllabusHtml = `
+        <hr style="border-color:var(--border); margin: 1.5rem 0;">
+        <h6 class="fw-bold mb-2 text-primary" style="font-size: 0.85rem;"><i class="fas fa-book-open me-2"></i>Syllabus & Sections</h6>
+        <div class="d-flex flex-column gap-2" style="max-height: 150px; overflow-y: auto;">
+          ${modules.map((m, idx) => `
+            <div class="p-2 rounded" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+              <div class="fw-bold small text-white" style="font-size: 0.75rem;">${idx + 1}. ${m.title}</div>
+              <div class="text-muted" style="font-size: 0.65rem;">${m.description || ''}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
     bodyEl.innerHTML = `
       <div class="row g-4">
         <div class="col-md-5">
@@ -438,27 +496,23 @@ async function showCourseDetails(courseId) {
               <span>Duration:</span>
               <strong style="color:var(--text-primary);">${course.duration_weeks || 12} weeks</strong>
             </div>
+            ${extraDetailsHtml}
+            ${objectiveHtml}
+            ${learningOutcomeHtml}
+            
             <hr style="border-color:var(--border); margin: 1.5rem 0;">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <span class="text-muted small">Course Fee:</span>
               <span class="fs-4 fw-bold text-success" style="font-family:'Outfit',sans-serif; font-weight:800;">₹${parseFloat(course.fees).toLocaleString('en-IN')}</span>
             </div>
             
-            <h6 class="fw-bold mb-2 text-primary" style="font-size: 0.85rem;"><i class="fas fa-book-open me-2"></i>Syllabus & Sections</h6>
-            <div class="d-flex flex-column gap-2" style="max-height: 150px; overflow-y: auto;">
-              ${modules.length ? modules.map((m, idx) => `
-                <div class="p-2 rounded" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
-                  <div class="fw-bold small text-white" style="font-size: 0.75rem;">${idx + 1}. ${m.title}</div>
-                  <div class="text-muted" style="font-size: 0.65rem;">${m.description || ''}</div>
-                </div>
-              `).join('') : '<p class="text-muted small">No chapters listed yet.</p>'}
-            </div>
+            ${syllabusHtml}
           </div>
         </div>
         
         <div class="col-md-7">
           <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-layer-group me-2 text-primary"></i>Available Batches</h6>
-          <div class="d-flex flex-column gap-3 batch-list" style="max-height: 380px; overflow-y: auto; padding-right: 4px;">
+          <div class="d-flex flex-column gap-3 batch-list" style="max-height: 520px; overflow-y: auto; padding-right: 4px;">
             ${batches.length ? batches.map(b => {
               const isEnrolled = myBatchIds.includes(b.id);
               const isFull = b.seats_filled >= b.capacity;
@@ -473,11 +527,52 @@ async function showCourseDetails(courseId) {
                 btnHtml = `<button class="btn btn-sm btn-spx w-100 py-2 rounded-2" style="font-weight:600;" onclick="showCheckout('${course.id}', '${b.id}', '${b.batch_name.replace(/'/g, "\\'")}', ${course.fees})">Select & Enroll</button>`;
               }
 
+              // Batch timeline and method
+              let batchTimelineHtml = '';
+              if (b.start_date || b.end_date) {
+                const sDate = b.start_date ? fmtDate(b.start_date) : '—';
+                const eDate = b.end_date ? fmtDate(b.end_date) : '—';
+                batchTimelineHtml = `<div><i class="far fa-calendar-check me-2 text-primary" style="width: 14px;"></i>Timeline: <strong>${sDate}</strong> to <strong>${eDate}</strong></div>`;
+              }
+              
+              let methodologyHtml = '';
+              if (b.teaching_method) {
+                methodologyHtml = `<div><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i>Methodology: <strong>${b.teaching_method}</strong></div>`;
+              }
+
+              let instructionsHtml = '';
+              if (b.batch_instructions) {
+                instructionsHtml = `
+                  <div class="p-2.5 rounded-3 mb-2 small text-muted" style="background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border); font-size: 0.72rem; line-height: 1.4;">
+                    <strong class="text-primary d-block mb-1"><i class="fas fa-info-circle me-1"></i>Batch Instructions & Policies:</strong>
+                    ${b.batch_instructions}
+                  </div>
+                `;
+              }
+
+              let plannerHtml = '';
+              if (b.planner_url) {
+                plannerHtml = `
+                  <div class="mb-3 text-end">
+                    <a href="${b.planner_url}" target="_blank" class="btn btn-sm btn-outline-primary px-3 py-1.5 fw-bold" style="font-size: 0.7rem;">
+                      <i class="fas fa-file-pdf me-1"></i>Download Batch Syllabus Planner
+                    </a>
+                  </div>
+                `;
+              }
+
+              const demoBadge = b.is_free_demo 
+                ? `<span class="badge bg-warning-subtle text-warning border px-2 py-1" style="font-size:0.65rem; border-color: currentColor !important; font-weight:600;"><i class="fas fa-gift me-1"></i>Free Demo Class Available</span>`
+                : '';
+
               return `
                 <div class="batch-card p-3 mb-3" style="background: var(--bg-dark-alt); border: 1px solid var(--border); border-radius: 14px;">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                      <h6 class="fw-bold mb-1" style="color:var(--text-primary);">${b.batch_name}</h6>
+                      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <h6 class="fw-bold mb-0" style="color:var(--text-primary);">${b.batch_name}</h6>
+                        ${demoBadge}
+                      </div>
                       <div class="text-muted" style="font-size: 0.75rem; margin-bottom: 2px;">
                         <i class="fas fa-user-tie me-1 text-primary"></i> Mentor: <strong style="color:var(--text-secondary);">${b.teacher_name || 'Expert'}</strong> (${b.teacher_level || 'Gold'} • <i class="fas fa-star text-warning"></i> ${parseFloat(b.teacher_rating || 5).toFixed(1)})
                       </div>
@@ -486,38 +581,43 @@ async function showCourseDetails(courseId) {
                       </button>
                     </div>
                     <span class="badge ${seatsLeft <= 5 ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'} px-2 py-1" style="font-size:0.7rem; font-weight:600; border: 1px solid currentColor;">
-                      ${seatsLeft} Seats Left
+                      ${seatsLeft} / ${b.capacity} Seats Left
                     </span>
                   </div>
                   
-                  <div class="small text-muted mb-3">
-                    <div class="mb-1"><i class="far fa-clock me-1 text-primary"></i> ${b.start_time.substr(0,5)} - ${b.end_time.substr(0,5)}</div>
-                    <div><i class="far fa-calendar-alt me-1 text-primary"></i> ${b.days_of_week.join(', ')}</div>
+                  <div class="small text-muted mb-3 d-flex flex-column gap-2" style="font-size: 0.76rem;">
+                    <div><i class="far fa-clock me-2 text-primary" style="width: 14px;"></i>Timings: <strong>${b.start_time.substr(0,5)} - ${b.end_time.substr(0,5)}</strong></div>
+                    <div><i class="far fa-calendar-alt me-2 text-primary" style="width: 14px;"></i>Schedule: <strong>${b.days_of_week.join(', ')}</strong></div>
+                    ${batchTimelineHtml}
+                    ${methodologyHtml}
                   </div>
                   
+                  ${instructionsHtml}
+                  ${plannerHtml}
+                  
                   <!-- Expandable Teacher Info Section -->
-                  <div id="teacher-profile-${b.id}" class="mt-3 pt-3 border-top" style="display: none; border-color: rgba(255, 255, 255, 0.08) !important;">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                      <img src="${b.teacher_photo || defaultAvatar}" class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover; border-color: rgba(60, 189, 176, 0.25) !important;" alt="${b.teacher_name}" onerror="this.src=defaultAvatar">
-                      <div>
-                        <div class="fw-bold text-white" style="font-size: 0.78rem;">${b.teacher_name}</div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary);"><span class="badge bg-primary-subtle text-primary py-0 px-2" style="font-size: 0.6rem; font-weight: 600;">${b.teacher_level || 'Gold'} Mentor</span></div>
-                      </div>
-                    </div>
-                    <p class="mb-2 text-secondary" style="font-size: 0.78rem; line-height: 1.5;">
-                      <strong style="color: var(--text-primary) !important;">Bio:</strong> ${b.teacher_bio || 'A verified expert educator committed to helping students achieve conceptual clarity and academic excellence.'}
-                    </p>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                      <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
-                        <i class="fas fa-graduation-cap text-primary me-1"></i>${b.teacher_qualification || 'Verified Mentor'}
-                      </span>
-                      <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
-                        <i class="fas fa-briefcase text-primary me-1"></i>${b.teacher_experience || 5}+ Yrs Exp
-                      </span>
-                      <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
-                        <i class="fas fa-book text-primary me-1"></i>${b.teacher_expertise || 'General'} Expert
-                      </span>
-                    </div>
+                  <div id="teacher-profile-${b.id}" class="mt-3 pt-3 border-top mb-3" style="display: none; border-color: rgba(255, 255, 255, 0.08) !important;">
+                     <div class="d-flex align-items-center gap-2 mb-2">
+                       <img src="${b.teacher_photo || defaultAvatar}" class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover; border-color: rgba(60, 189, 176, 0.25) !important;" alt="${b.teacher_name}" onerror="this.src=defaultAvatar">
+                       <div>
+                         <div class="fw-bold text-white" style="font-size: 0.78rem;">${b.teacher_name}</div>
+                         <div style="font-size: 0.68rem; color: var(--text-secondary);"><span class="badge bg-primary-subtle text-primary py-0 px-2" style="font-size: 0.65rem; font-weight: 600;">${b.teacher_level || 'Gold'} Mentor</span></div>
+                       </div>
+                     </div>
+                     <p class="mb-2 text-secondary" style="font-size: 0.78rem; line-height: 1.5;">
+                       <strong style="color: var(--text-primary) !important;">Bio:</strong> ${b.teacher_bio || 'A verified expert educator committed to helping students achieve conceptual clarity and academic excellence.'}
+                     </p>
+                     <div class="d-flex flex-wrap gap-2 mt-2">
+                       <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
+                         <i class="fas fa-graduation-cap text-primary me-1"></i>${b.teacher_qualification || 'Verified Mentor'}
+                       </span>
+                       <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
+                         <i class="fas fa-briefcase text-primary me-1"></i>${b.teacher_experience || 5}+ Yrs Exp
+                       </span>
+                       <span class="badge bg-dark-subtle text-secondary border px-2 py-1" style="font-size: 0.65rem; font-weight: 500; border-color: rgba(255, 255, 255, 0.08) !important;">
+                         <i class="fas fa-book text-primary me-1"></i>${b.teacher_expertise || 'General'} Expert
+                       </span>
+                     </div>
                   </div>
                   
                   <div class="mt-2">${btnHtml}</div>
@@ -531,8 +631,8 @@ async function showCourseDetails(courseId) {
 
     const modal = new bootstrap.Modal(document.getElementById('courseDetailsModal'));
     modal.show();
-  } catch(e) { 
-    showToast(e.message, 'error'); 
+  } catch(e) {
+    showToast(e.message, 'error');
   }
 }
 
@@ -660,30 +760,111 @@ async function renderMyBatches() {
   try {
     const batches = await api('/student/my-batches');
     document.getElementById('pageContent').innerHTML = `
-      <div class="row g-3">
+      <div class="row g-4">
         ${batches.map(b => `
-          <div class="col-lg-6">
-            <div class="spx-card">
-              <div class="d-flex align-items-start gap-3">
+          <div class="col-md-6 d-flex align-items-stretch">
+            <div class="spx-card w-100 d-flex flex-column justify-content-between">
+              <div class="d-flex align-items-start gap-3 mb-3">
                 <div style="width:50px;height:50px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📚</div>
-                <div class="flex-grow-1">
-                  <div class="fw-bold text-white">${b.course_title||b.batch_name}</div>
-                  <div class="text-muted small">${b.batch_name}</div>
-                  <div class="d-flex gap-3 mt-2 text-muted small">
-                    <span><i class="fas fa-user me-1"></i>${b.teacher_name||'—'}</span>
-                    <span><i class="fas fa-calendar me-1"></i>${(b.days_of_week||[]).join(', ')}</span>
-                    <span><i class="fas fa-clock me-1"></i>${b.start_time||''}</span>
-                  </div>
-                  <div class="mt-3 d-flex gap-2">
-                    <a href="/live" class="btn btn-sm btn-spx">Join Live</a>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="viewBatchDetails('${b.id}')">Materials</button>
+                <div>
+                  <div class="fw-bold text-white mb-1" style="font-size: 1rem;">${b.course_title||b.batch_name}</div>
+                  <div class="text-primary fw-semibold small mb-2"><i class="fas fa-tags me-1" style="font-size:0.7rem;"></i>${b.batch_name}</div>
+                  <div class="d-flex flex-column gap-2 text-muted" style="font-size: 0.78rem;">
+                    <span><i class="fas fa-user me-2 text-primary" style="width: 14px;"></i>${b.teacher_name||'—'}</span>
+                    <span><i class="fas fa-calendar me-2 text-primary" style="width: 14px;"></i>${(b.days_of_week||[]).join(', ')}</span>
+                    <span><i class="fas fa-clock me-2 text-primary" style="width: 14px;"></i>${b.start_time ? formatTime(b.start_time) : '—'}</span>
                   </div>
                 </div>
+              </div>
+              <div class="mt-auto pt-2">
+                <button class="btn btn-sm btn-spx w-100" onclick="viewBatchDetails('${b.id}')"><i class="fas fa-eye me-1"></i> View Batch Details</button>
               </div>
             </div>
           </div>`).join('') || '<div class="col-12 text-center text-muted py-5">No batches enrolled. <a onclick="navigateTo(\'courses\')" style="cursor:pointer;color:var(--primary)">Browse Courses</a></div>'}
       </div>`;
   } catch(e) { document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+}
+
+async function renderUpcomingClasses() {
+  loading();
+  try {
+    const batches = await api('/student/my-batches');
+    const allLiveClassesPromises = batches.map(async b => {
+      try {
+        const list = await api(`/student/batches/${b.id}/live-classes`);
+        return list.map(c => ({
+          ...c,
+          batchId: b.id,
+          courseName: b.course_title || 'General Course',
+          batchName: b.batch_name,
+          teacherName: c.teacher_name || b.teacher_name || 'Expert Educator'
+        }));
+      } catch (err) {
+        console.error(`Error loading classes for batch ${b.id}:`, err);
+        return [];
+      }
+    });
+
+    const results = await Promise.all(allLiveClassesPromises);
+    const upcoming = results.flat().filter(c => c.status === 'scheduled' || c.status === 'live');
+
+    // Sort by scheduled date and time
+    upcoming.sort((a, b) => {
+      const dateA = new Date(`${a.class_date.split('T')[0]}T${a.class_time}`);
+      const dateB = new Date(`${b.class_date.split('T')[0]}T${b.class_time}`);
+      return dateA - dateB;
+    });
+
+    document.getElementById('pageContent').innerHTML = `
+      <div class="row g-4">
+        ${upcoming.map(c => {
+          let badgeHtml = '';
+          let actionBtnHtml = '';
+          if (c.status === 'live') {
+            badgeHtml = `<span class="badge bg-danger text-white border-0 fw-semibold px-2.5 py-1 pulse-dot">LIVE</span>`;
+            actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-danger px-3 py-2 text-white fw-bold pulse-animation"><i class="fas fa-video me-1"></i> Join Live</a>`;
+          } else {
+            badgeHtml = `<span class="badge bg-primary-subtle text-primary px-2.5 py-1" style="font-size: 0.7rem; border: 1px solid currentColor;">Scheduled</span>`;
+            actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-outline-primary px-3 py-2 fw-bold"><i class="fas fa-video me-1"></i> Join Room</a>`;
+          }
+
+          return `
+            <div class="col-md-6 col-lg-4 d-flex align-items-stretch">
+              <div class="spx-card w-100 d-flex flex-column justify-content-between">
+                <div>
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <span class="badge bg-primary-subtle text-primary px-2.5 py-1" style="font-size: 0.7rem; border: 1px solid currentColor;">
+                      <i class="fas fa-calendar-alt me-1"></i>Upcoming Class
+                    </span>
+                    ${badgeHtml}
+                  </div>
+                  <h6 class="fw-bold text-white mb-2" style="font-size: 1rem;">${c.title || 'Untitled Lecture'}</h6>
+                  <div class="mb-3 d-flex flex-wrap gap-2">
+                    <span class="badge" style="font-size: 0.7rem; border-radius: 6px; background-color: rgba(60, 189, 176, 0.1) !important; color: #3CBDB0 !important; border: 1px solid rgba(60, 189, 176, 0.3) !important; padding: 5px 10px; font-weight: 600;">
+                      <i class="fas fa-graduation-cap me-1"></i>Course Name: ${c.courseName}
+                    </span>
+                    <span class="badge" style="font-size: 0.7rem; border-radius: 6px; background-color: rgba(168, 85, 247, 0.1) !important; color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3) !important; padding: 5px 10px; font-weight: 600;">
+                      <i class="fas fa-users me-1"></i>Batch Name: ${c.batchName}
+                    </span>
+                  </div>
+                  <div class="d-flex flex-column gap-2 text-muted mb-4" style="font-size: 0.78rem;">
+                    <span><i class="fas fa-user-chalkboard me-2 text-primary" style="width: 14px;"></i>Teacher Name: <strong class="text-white" style="color: var(--text-primary) !important;">${c.teacherName}</strong></span>
+                    <span><i class="far fa-calendar-alt me-2 text-primary" style="width: 14px;"></i>Date: ${fmtDate(c.class_date)}</span>
+                    <span><i class="far fa-clock me-2 text-primary" style="width: 14px;"></i>Time: ${formatTime(c.class_time)}</span>
+                  </div>
+                </div>
+                <div class="mt-auto pt-2">
+                  ${actionBtnHtml}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('') || `<div class="col-12 text-center text-muted py-5"><i class="fas fa-calendar-times mb-3 d-block text-primary" style="font-size: 2.5rem;"></i>No upcoming classes scheduled.</div>`}
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
 }
 
 // ── Attendance ────────────────────────────────────────────────
@@ -846,28 +1027,82 @@ async function renderReports() {
 }
 
 // ── Notifications ──────────────────────────────────────────────
+let currentNotificationLimit = 10;
+let cachedNotifications = [];
+
 async function renderNotifications() {
   loading();
   try {
     const notifs = await api('/student/notifications');
-    document.getElementById('pageContent').innerHTML = `
-      <div class="spx-card">
-        <h6 class="mb-4">Notifications</h6>
-        ${notifs.map(n => `
-          <div class="p-3 mb-2 rounded-3" style="background:var(--bg-dark);border:1px solid var(--border)">
-            <div class="d-flex align-items-start gap-3">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(60,189,176,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                <i class="fas ${n.type==='warning'?'fa-exclamation-triangle text-warning':n.type==='success'?'fa-check-circle text-success':'fa-bell'}" style="color:#3CBDB0"></i>
-              </div>
-              <div>
-                <div class="fw-semibold text-white small">${n.title}</div>
-                <div class="text-muted small">${n.message}</div>
-                <div class="text-muted" style="font-size:.7rem">${fmtDate(n.created_at)}</div>
-              </div>
-            </div>
-          </div>`).join('') || '<p class="text-muted text-center py-4">No notifications</p>'}
-      </div>`;
-  } catch(e) { document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
+    cachedNotifications = notifs;
+    currentNotificationLimit = 10; // reset limit
+    displayNotificationsList();
+  } catch(e) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function displayNotificationsList() {
+  const notifs = cachedNotifications;
+  const totalCount = notifs.length;
+  const visibleNotifs = notifs.slice(0, currentNotificationLimit);
+  
+  const notifsHtml = visibleNotifs.map(n => `
+    <div class="p-3 mb-2 rounded-3" style="background:var(--bg-dark);border:1px solid var(--border)">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div class="d-flex align-items-start gap-3">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(60,189,176,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="fas ${n.type==='warning'?'fa-exclamation-triangle text-warning':n.type==='success'?'fa-check-circle text-success':'fa-bell'}" style="color:#3CBDB0"></i>
+          </div>
+          <div>
+            <div class="fw-semibold text-white small">${n.title}</div>
+            <div class="text-muted small">${n.message}</div>
+            <div class="text-muted" style="font-size:.7rem">${fmtDate(n.created_at)}</div>
+          </div>
+        </div>
+        <button onclick="deleteNotification('${n.id}')" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" title="Delete Notification" style="font-size: 0.8rem;">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  const viewMoreBtn = (totalCount > currentNotificationLimit) 
+    ? `<div class="text-center mt-3">
+        <button onclick="loadMoreNotifications()" class="btn btn-sm btn-outline-primary px-4 py-2 fw-semibold">
+          <i class="fas fa-arrow-down me-1"></i> View More
+        </button>
+       </div>`
+    : '';
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="spx-card">
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <h6 class="mb-0 fw-bold">Notifications (Total: ${totalCount})</h6>
+      </div>
+      <div id="notificationsItemsContainer">
+        ${notifsHtml || '<p class="text-muted text-center py-4">No notifications</p>'}
+      </div>
+      ${viewMoreBtn}
+    </div>
+  `;
+}
+
+function loadMoreNotifications() {
+  currentNotificationLimit += 10;
+  displayNotificationsList();
+}
+
+async function deleteNotification(id) {
+  if (!confirm('Are you sure you want to delete this notification?')) return;
+  try {
+    await api(`/student/notifications/${id}`, { method: 'DELETE' });
+    showToast('Notification deleted successfully');
+    cachedNotifications = cachedNotifications.filter(n => n.id !== id);
+    displayNotificationsList();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
 }
 
 // ── Profile ────────────────────────────────────────────────────
@@ -1058,7 +1293,7 @@ async function renderParents() {
                         <button class="btn btn-sm btn-danger px-3" onclick="actionParentRequest(${r.link_id}, 'reject')">Reject</button>
                       ` : `
                         ${r.status === 'approved' ? `
-                          <button class="btn btn-sm btn-outline-danger" onclick="actionParentRequest(${r.link_id}, 'reject')">Revoke Access</button>
+                          <span class="text-success small fw-semibold"><i class="fas fa-lock me-1"></i>Permanent Access</span>
                         ` : `
                           <button class="btn btn-sm btn-outline-success" onclick="actionParentRequest(${r.link_id}, 'approve')">Allow Access</button>
                         `}
@@ -1087,7 +1322,48 @@ async function actionParentRequest(linkId, action) {
   }
 }
 
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  const hrs = parseInt(hours);
+  const ampm = hrs >= 12 ? 'PM' : 'AM';
+  const displayHrs = hrs % 12 || 12;
+  return `${displayHrs}:${minutes} ${ampm}`;
+}
+
 // ── Batch Details & Materials ──────────────────────────────────
+window.filterLiveClasses = function(status) {
+  // Update active class on filter buttons
+  const buttons = document.querySelectorAll('.btn-filter');
+  buttons.forEach(btn => {
+    if (btn.getAttribute('onclick').includes(`'${status}'`)) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  const cards = document.querySelectorAll('.live-class-card');
+  let visibleCount = 0;
+  cards.forEach(card => {
+    if (status === 'all' || card.getAttribute('data-status') === status) {
+      card.classList.remove('d-none');
+      visibleCount++;
+    } else {
+      card.classList.add('d-none');
+    }
+  });
+
+  const emptyEl = document.getElementById('noClassesMessage');
+  if (emptyEl) {
+    if (visibleCount === 0) {
+      emptyEl.classList.remove('d-none');
+    } else {
+      emptyEl.classList.add('d-none');
+    }
+  }
+};
+
 async function viewBatchDetails(batchId) {
   try {
     const myBatches = await api('/student/my-batches');
@@ -1097,9 +1373,10 @@ async function viewBatchDetails(batchId) {
       return;
     }
 
-    const [notes, modules] = await Promise.all([
+    const [notes, modules, liveClasses] = await Promise.all([
       api(`/student/batches/${batchId}/notes`),
-      api(`/courses/${batch.course_id}/modules`)
+      api(`/courses/${batch.course_id}/modules`),
+      api(`/student/batches/${batchId}/live-classes`)
     ]);
 
     const titleEl = document.getElementById('batchDetailsTitle');
@@ -1108,52 +1385,144 @@ async function viewBatchDetails(batchId) {
     titleEl.textContent = `${batch.course_title || batch.batch_name} — Details`;
 
     bodyEl.innerHTML = `
-      <div class="row g-4">
-        <!-- Left: Batch Info & Sections -->
-        <div class="col-md-6">
-          <div class="p-3 rounded-3 mb-3" style="background:var(--bg-card); border:1px solid var(--border);">
-            <h6 class="fw-bold text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Batch Information</h6>
-            <div class="d-flex flex-column gap-2 small text-muted">
-              <div>Mentor: <strong class="text-white">${batch.teacher_name || 'Expert Teacher'}</strong></div>
-              <div>Schedule: <strong class="text-white">${(batch.days_of_week || []).join(', ')}</strong></div>
-              <div>Time: <strong class="text-white">${batch.start_time ? batch.start_time.substr(0, 5) : ''} - ${batch.end_time ? batch.end_time.substr(0, 5) : ''}</strong></div>
+      <!-- Batch Summary Information -->
+      <div class="p-3 rounded-3 mb-4" style="background:var(--bg-card); border:1px solid var(--border);">
+        <div class="row g-3">
+          <div class="col-sm-4">
+            <small class="text-muted d-block" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Mentor</small>
+            <strong class="text-white small">${batch.teacher_name || 'Expert Teacher'}</strong>
+          </div>
+          <div class="col-sm-4">
+            <small class="text-muted d-block" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Days & Schedule</small>
+            <strong class="text-white small">${(batch.days_of_week || []).join(', ')}</strong>
+          </div>
+          <div class="col-sm-4">
+            <small class="text-muted d-block" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Time Slot</small>
+            <strong class="text-white small">${batch.start_time ? formatTime(batch.start_time) : ''} - ${batch.end_time ? formatTime(batch.end_time) : ''}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Navigation -->
+      <ul class="nav nav-tabs spx-nav-tabs mb-4" id="batchDetailsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="live-tab" data-bs-toggle="tab" data-bs-target="#live-panel" type="button" role="tab" aria-controls="live-panel" aria-selected="true">
+            <i class="fas fa-video me-2"></i>Live Classes Schedule
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="materials-tab" data-bs-toggle="tab" data-bs-target="#materials-panel" type="button" role="tab" aria-controls="materials-panel" aria-selected="false">
+            <i class="fas fa-book-open me-2"></i>Syllabus & Materials
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tab Panels -->
+      <div class="tab-content" id="batchDetailsTabContent">
+        <!-- Panel 1: Live Classes -->
+        <div class="tab-pane fade show active" id="live-panel" role="tabpanel" aria-labelledby="live-tab">
+          <!-- Filter Buttons -->
+          <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <h6 class="fw-bold mb-0" style="color:var(--text-primary);"><i class="fas fa-calendar-alt me-2 text-primary"></i>Live Sessions</h6>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary btn-filter active" onclick="filterLiveClasses('all')">All</button>
+              <button class="btn btn-sm btn-outline-danger btn-filter" onclick="filterLiveClasses('live')">Live</button>
+              <button class="btn btn-sm btn-outline-primary btn-filter" onclick="filterLiveClasses('scheduled')">Upcoming</button>
+              <button class="btn btn-sm btn-outline-secondary btn-filter" onclick="filterLiveClasses('ended')">Completed</button>
             </div>
           </div>
-          
-          <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-book-open me-2 text-primary"></i>Course Syllabus & Sections</h6>
-          <div class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto; padding-right: 4px;">
-            ${modules.length ? modules.map((m, idx) => `
-              <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
-                <div class="fw-bold text-white small mb-1">${idx + 1}. ${m.title}</div>
-                <div class="text-muted" style="font-size:0.75rem;">${m.description || ''}</div>
-              </div>
-            `).join('') : '<p class="text-muted small text-center py-3">No sections/modules uploaded for this course yet.</p>'}
+
+          <!-- Schedule List -->
+          <div class="d-flex flex-column gap-2" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
+            ${liveClasses.length ? liveClasses.map(c => {
+              let badgeHtml = '';
+              let actionBtnHtml = '';
+              if (c.status === 'live') {
+                badgeHtml = `<span class="badge bg-danger text-white border-0 fw-semibold px-2 py-1 pulse-dot">LIVE</span>`;
+                actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-danger px-3 py-1 text-white fw-bold pulse-animation" style="font-size: 0.75rem;"><i class="fas fa-video me-1"></i> Join Live</a>`;
+              } else if (c.status === 'scheduled') {
+                badgeHtml = `<span class="badge bg-primary-subtle text-primary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">Scheduled</span>`;
+                actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-outline-primary px-3 py-1 fw-bold" style="font-size: 0.75rem;"><i class="fas fa-video me-1"></i> Join Room</a>`;
+              } else {
+                badgeHtml = `<span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">Completed</span>`;
+                actionBtnHtml = `<span class="text-muted small">Ended</span>`;
+              }
+
+              return `
+                <div class="live-class-card p-3 rounded-3" data-status="${c.status}" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <div class="fw-bold text-white small mb-1">${c.title || 'Untitled Session'}</div>
+                      <div class="mb-2 d-flex flex-wrap gap-2">
+                        <span class="badge" style="font-size: 0.65rem; border-radius: 4px; background-color: rgba(60, 189, 176, 0.1) !important; color: #3CBDB0 !important; border: 1px solid rgba(60, 189, 176, 0.3) !important; padding: 3px 6px; font-weight: 600;">
+                          <i class="fas fa-graduation-cap me-1"></i>Course Name: ${batch.course_title || 'General Course'}
+                        </span>
+                        <span class="badge" style="font-size: 0.65rem; border-radius: 4px; background-color: rgba(168, 85, 247, 0.1) !important; color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3) !important; padding: 3px 6px; font-weight: 600;">
+                          <i class="fas fa-users me-1"></i>Batch Name: ${batch.batch_name}
+                        </span>
+                      </div>
+                      <div class="text-muted" style="font-size: 0.75rem;">
+                        <i class="far fa-calendar-alt me-1"></i>${fmtDate(c.class_date)} &nbsp;
+                        <i class="far fa-clock me-1"></i>${formatTime(c.class_time)}
+                      </div>
+                      <div class="text-muted mt-1" style="font-size: 0.75rem;">
+                        <i class="fas fa-user-chalkboard me-1 text-primary"></i>Teacher Name: <strong class="text-white" style="color: var(--text-primary) !important;">${c.teacher_name || batch.teacher_name || 'Expert Educator'}</strong>
+                      </div>
+                    </div>
+                    ${badgeHtml}
+                  </div>
+                  <div class="d-flex justify-content-end align-items-center mt-2">
+                    ${actionBtnHtml}
+                  </div>
+                </div>
+              `;
+            }).join('') : ''}
+            
+            <p class="text-muted small text-center py-4 ${liveClasses.length ? 'd-none' : ''}" id="noClassesMessage">
+              No live classes matching this filter.
+            </p>
           </div>
         </div>
 
-        <!-- Right: Study Materials -->
-        <div class="col-md-6" style="border-left: 1px solid var(--border);">
-          <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-file-alt me-2 text-primary"></i>Study Materials & Notes</h6>
-          <div class="d-flex flex-column gap-3" style="max-height: 380px; overflow-y: auto; padding-right: 4px;">
-            ${notes.length ? notes.map(n => `
-              <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <h6 class="fw-bold text-white small mb-1">${n.title}</h6>
-                    <div class="text-muted" style="font-size: 0.7rem;">${n.description || ''}</div>
+        <!-- Panel 2: Syllabus & Materials -->
+        <div class="tab-pane fade" id="materials-panel" role="tabpanel" aria-labelledby="materials-tab">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-book-open me-2 text-primary"></i>Course Syllabus & Sections</h6>
+              <div class="d-flex flex-column gap-2 mb-3" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
+                ${modules.length ? modules.map((m, idx) => `
+                  <div class="p-2 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                    <div class="fw-bold text-white" style="font-size:0.75rem;">${idx + 1}. ${m.title}</div>
+                    <div class="text-muted" style="font-size:0.7rem;">${m.description || ''}</div>
                   </div>
-                  <span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">
-                    ${(n.file_type || 'link').toUpperCase()}
-                  </span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                  <span class="text-muted" style="font-size: 0.65rem;">Uploaded: ${fmtDate(n.uploaded_at)}</span>
-                  <a href="${n.file_url}" target="_blank" class="btn btn-sm btn-spx py-1 px-3" style="font-size: 0.75rem;">
-                    <i class="fas fa-download me-1"></i> Access
-                  </a>
-                </div>
+                `).join('') : '<p class="text-muted small text-center py-3">No sections/modules uploaded for this course yet.</p>'}
               </div>
-            `).join('') : '<p class="text-muted small text-center py-4">No study materials shared for this batch yet.</p>'}
+            </div>
+
+            <div class="col-md-6" style="border-left: 1px solid var(--border);">
+              <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-file-alt me-2 text-primary"></i>Study Materials & Notes</h6>
+              <div class="d-flex flex-column gap-3" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
+                ${notes.length ? notes.map(n => `
+                  <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div>
+                        <h6 class="fw-bold text-white small mb-1">${n.title}</h6>
+                        <div class="text-muted" style="font-size: 0.7rem;">${n.description || ''}</div>
+                      </div>
+                      <span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">
+                        ${(n.file_type || 'link').toUpperCase()}
+                      </span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                      <span class="text-muted" style="font-size: 0.65rem;">Uploaded: ${fmtDate(n.uploaded_at)}</span>
+                      <a href="${n.file_url}" target="_blank" class="btn btn-sm btn-spx py-1 px-3" style="font-size: 0.75rem;">
+                        <i class="fas fa-download me-1"></i> Access
+                      </a>
+                    </div>
+                  </div>
+                `).join('') : '<p class="text-muted small text-center py-4">No study materials shared for this batch yet.</p>'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1165,6 +1534,7 @@ async function viewBatchDetails(batchId) {
     showToast(e.message, 'error');
   }
 }
+
 
 // ── Init ──────────────────────────────────────────────────────
 async function initApp() {
@@ -1233,5 +1603,19 @@ function toggleTeacherProfile(event, id) {
       el.style.display = 'none';
       event.target.innerHTML = '<i class="fas fa-info-circle me-1"></i>View Mentor Bio & Qualifications';
     }
+  }
+}
+
+async function joinLiveClass(batchId) {
+  try {
+    const activeClasses = await api('/live-classes/active');
+    const classForBatch = activeClasses.find(c => c.batch_id === batchId);
+    if (!classForBatch) {
+      showToast('No active live class for this batch at the moment.', 'warning');
+      return;
+    }
+    window.location.href = `/live/room.html?classId=${classForBatch.id}`;
+  } catch (err) {
+    showToast('Failed to check active classes: ' + err.message, 'error');
   }
 }

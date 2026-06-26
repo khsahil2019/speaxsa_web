@@ -152,9 +152,11 @@ async function loadTeachers() {
                  class="teacher-avatar-img" alt="${t.name}"
                  onerror="this.src='/uploads/profiles/teacher_sahil.png'">
           </div>
-          <div class="teacher-level-badge level-${(t.teacher_level || 'bronze').toLowerCase().replace(' ','-')}">
-            ${t.teacher_level || 'Bronze'}
+          ${t.teacher_level && t.teacher_level !== 'Without Slab' ? `
+          <div class="teacher-level-badge level-${t.teacher_level.toLowerCase().replace(' ','-')}">
+            ${t.teacher_level}
           </div>
+          ` : ''}
           <h5 class="fw-bold mb-2">${t.name}</h5>
           <div class="teacher-subject-tag">${t.subject_expertise || 'General'}</div>
           <div class="teacher-rating-box">

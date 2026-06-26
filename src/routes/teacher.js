@@ -61,7 +61,7 @@ router.get('/analytics', async (req, res) => {
       wallet: earnings.rows[0] || { total_earnings: 0, paid_earnings: 0, pending_earnings: 0, wallet_balance: 0 },
       upcomingClasses: parseInt(classes.rows[0]?.count) || 0,
       attendanceRate: attTotal > 0 ? parseFloat(((attPresent / attTotal) * 100).toFixed(1)) : 0,
-      level: level.rows[0]?.teacher_level || 'Bronze',
+      level: level.rows[0]?.teacher_level || null,
       rating: parseFloat(level.rows[0]?.rating || 5.0),
     });
   } catch (err) {
@@ -479,8 +479,17 @@ router.get('/live-classes', async (req, res) => {
 });
 
 router.post('/live-classes', async (req, res) => {
-  const { batchId, title, classDate, classTime } = req.body;
+  const { batchId, title, classDate, classTime, clientDateTime } = req.body;
   try {
+    // Validate future date/time (timezone aware via clientDateTime if provided)
+    const scheduledDateTime = clientDateTime ? new Date(clientDateTime) : new Date(`${classDate}T${classTime}`);
+    if (isNaN(scheduledDateTime.getTime())) {
+      return res.status(400).json({ error: 'Invalid class date or time format' });
+    }
+    if (scheduledDateTime <= new Date()) {
+      return res.status(400).json({ error: 'Class date and time must be scheduled in the future' });
+    }
+
     // SOP check
     const sop = await db.query("SELECT status, agreement_signed FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
     if (!sop.rows.length || sop.rows[0].status !== 'approved' || !sop.rows[0].agreement_signed) {
@@ -505,6 +514,18 @@ router.post('/live-classes', async (req, res) => {
     `, [id, batchId, req.user.id, title, classDate, classTime, channel]);
 
     await logAudit(req.user.id, 'CLASS_SCHEDULED', 'live_class', id, { title, batchId });
+
+    // Dispatch in-app notifications and email alerts to enrolled students asynchronously
+    const notificationService = require('../services/notification.service');
+    notificationService.notifyClassScheduled({
+      classId: id,
+      batchId,
+      title,
+      classDate,
+      classTime,
+      teacherId: req.user.id
+    }).catch(err => console.error('[NotificationService] notifyClassScheduled async failed:', err));
+
     res.status(201).json({ message: 'Class scheduled', classId: id, channel });
   } catch (err) {
     res.status(500).json({ error: err.message });

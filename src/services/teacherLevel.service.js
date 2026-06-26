@@ -90,11 +90,24 @@ function scoreTolevel(score) {
 
 async function updateTeacherLevel(teacherId, changedBy = null) {
   try {
+    const historyCheck = await db.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM batches WHERE teacher_id = $1) as batch_count,
+        (SELECT total_ratings FROM users WHERE id = $1) as rating_count
+    `, [teacherId]);
+    const batchCount = parseInt(historyCheck.rows[0]?.batch_count || 0);
+    const ratingCount = parseInt(historyCheck.rows[0]?.rating_count || 0);
+
+    if (batchCount === 0 && ratingCount === 0) {
+      console.log(`[TeacherLevel] Skipping level auto-calculation for ${teacherId}: No batches or ratings yet.`);
+      return { teacherId, level: null, score: 0, components: {}, changed: false };
+    }
+
     const { overallScore, components } = await calculateTeacherScore(teacherId);
     const newLevel = scoreTolevel(overallScore);
 
     const currentRes = await db.query('SELECT teacher_level FROM users WHERE id = $1', [teacherId]);
-    const currentLevel = currentRes.rows[0]?.teacher_level || 'Bronze';
+    const currentLevel = currentRes.rows[0]?.teacher_level;
 
     if (newLevel !== currentLevel) {
       await db.query('UPDATE users SET teacher_level = $1 WHERE id = $2', [newLevel, teacherId]);

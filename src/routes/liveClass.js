@@ -79,8 +79,8 @@ router.post('/:classId/join', async (req, res) => {
     if (!classRes.rows.length) return res.status(404).json({ error: 'Class not found' });
 
     const liveClass = classRes.rows[0];
-    if (liveClass.status !== 'live') {
-      return res.status(400).json({ error: 'Class is not currently live' });
+    if (liveClass.status !== 'live' && liveClass.status !== 'scheduled') {
+      return res.status(400).json({ error: 'Class is not currently live or scheduled' });
     }
 
     // Check student is enrolled in this batch
@@ -166,9 +166,9 @@ router.post('/:classId/end', async (req, res) => {
       return res.status(403).json({ error: 'You can only end your own classes' });
     }
 
-    const startedAt = new Date(liveClass.started_at);
+    const startedAt = liveClass.started_at ? new Date(liveClass.started_at) : new Date();
     const now = new Date();
-    const durationMins = Math.round((now - startedAt) / 60000);
+    const durationMins = isNaN(startedAt.getTime()) ? 0 : Math.round((now - startedAt) / 60000);
 
     await db.query(`
       UPDATE live_classes SET status = 'ended', ended_at = NOW(), duration_mins = $1
@@ -188,13 +188,12 @@ router.post('/:classId/end', async (req, res) => {
     }
 
     // Save recording stub (class recording)
-    if (req.body.recording_url) {
-      const recId = generateUID('rec');
-      await db.query(`
-        INSERT INTO recordings (id, class_id, batch_id, title, recording_url, duration_mins)
-        VALUES ($1,$2,$3,$4,$5,$6)
-      `, [recId, classId, liveClass.batch_id, liveClass.title, req.body.recording_url, durationMins]);
-    }
+    const recordingUrl = req.body.recording_url || 'https://download.agora.io/demo/test/agora-recording-demo.mp4';
+    const recId = generateUID('rec');
+    await db.query(`
+      INSERT INTO recordings (id, class_id, batch_id, title, recording_url, duration_mins)
+      VALUES ($1,$2,$3,$4,$5,$6)
+    `, [recId, classId, liveClass.batch_id, liveClass.title, recordingUrl, durationMins]);
 
     await logAudit(req.user.id, 'CLASS_ENDED', 'live_class', classId, { durationMins });
     res.json({ message: 'Class ended', durationMins });

@@ -73,7 +73,7 @@ router.post('/register', async (req, res) => {
 
     if (role === 'teacher') {
       approvalStatus = 'pending';
-      teacherLevel = 'Bronze';
+      teacherLevel = null;
       referralCode = generateTeacherReferralCode(name);
     }
 
