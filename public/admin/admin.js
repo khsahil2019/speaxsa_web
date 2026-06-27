@@ -366,7 +366,7 @@ async function renderDashboard() {
                   <span class="badge bg-danger-subtle text-danger p-1" style="font-size: 0.6rem;">🔴 LIVE</span>
                 </td>
                 <td class="text-end">
-                  <a href="/live/room.html?classId=${c.id}" target="_blank" class="btn btn-xs btn-spx py-1 px-2" style="font-size: 0.75rem; color: #ffffff !important;">
+                  <a href="/live/room.html?classId=${c.id}&role=admin" target="_blank" class="btn btn-xs btn-spx py-1 px-2" style="font-size: 0.75rem; color: #ffffff !important;">
                     <i class="fas fa-desktop me-1"></i>Monitor
                   </a>
                 </td>

@@ -10,6 +10,26 @@ const { JWT_SECRET } = require('../middleware/auth');
 
 router.use(authenticateToken);
 
+// ── Class Info (for local simulation UI) ─────────────────────
+router.get('/:classId/info', async (req, res) => {
+  const { classId } = req.params;
+  try {
+    const result = await db.query(`
+      SELECT lc.id, lc.title, lc.class_date, lc.class_time, lc.status,
+             u.name as teacher_name, u.photo_url as teacher_photo,
+             b.batch_name
+      FROM live_classes lc
+      LEFT JOIN users u ON u.id = lc.teacher_id
+      LEFT JOIN batches b ON b.id = lc.batch_id
+      WHERE lc.id = $1
+    `, [classId]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Class not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Generate Agora Token ──────────────────────────────────────
 router.post('/token', async (req, res) => {
   const { classId, role } = req.body; // role: 'publisher' or 'subscriber'
@@ -43,8 +63,8 @@ router.post('/:classId/start', async (req, res) => {
         return res.status(403).json({ error: 'SOP not approved or Digital Agreement not signed. Cannot start live class.' });
       }
 
-      // Check no simultaneous classes
-      const active = await db.query("SELECT id FROM live_classes WHERE teacher_id = $1 AND status = 'live'", [req.user.id]);
+      // Check no simultaneous classes (excluding the current class)
+      const active = await db.query("SELECT id FROM live_classes WHERE teacher_id = $1 AND status = 'live' AND id != $2", [req.user.id, classId]);
       if (active.rows.length > 0) {
         return res.status(400).json({ error: 'You already have a live class in progress' });
       }

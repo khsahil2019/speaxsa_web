@@ -244,6 +244,12 @@ function loading() {
 
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
 
+function fmtDateTime(dt) {
+  if (!dt) return '—';
+  const d = new Date(dt);
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
 // ── Dashboard ─────────────────────────────────────────────────
 async function renderHome() {
   loading();
@@ -822,10 +828,10 @@ async function renderUpcomingClasses() {
           let actionBtnHtml = '';
           if (c.status === 'live') {
             badgeHtml = `<span class="badge bg-danger text-white border-0 fw-semibold px-2.5 py-1 pulse-dot">LIVE</span>`;
-            actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-danger px-3 py-2 text-white fw-bold pulse-animation"><i class="fas fa-video me-1"></i> Join Live</a>`;
+            actionBtnHtml = `<a href="/live/room.html?classId=${c.id}&role=student" class="btn btn-sm btn-danger px-3 py-2 text-white fw-bold pulse-animation"><i class="fas fa-video me-1"></i> Join Live</a>`;
           } else {
             badgeHtml = `<span class="badge bg-primary-subtle text-primary px-2.5 py-1" style="font-size: 0.7rem; border: 1px solid currentColor;">Scheduled</span>`;
-            actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-outline-primary px-3 py-2 fw-bold"><i class="fas fa-video me-1"></i> Join Room</a>`;
+            actionBtnHtml = `<a href="/live/room.html?classId=${c.id}&role=student" class="btn btn-sm btn-outline-primary px-3 py-2 fw-bold"><i class="fas fa-video me-1"></i> Join Room</a>`;
           }
 
           return `
@@ -840,15 +846,15 @@ async function renderUpcomingClasses() {
                   </div>
                   <h6 class="fw-bold text-white mb-2" style="font-size: 1rem;">${c.title || 'Untitled Lecture'}</h6>
                   <div class="mb-3 d-flex flex-wrap gap-2">
-                    <span class="badge" style="font-size: 0.7rem; border-radius: 6px; background-color: rgba(60, 189, 176, 0.1) !important; color: #3CBDB0 !important; border: 1px solid rgba(60, 189, 176, 0.3) !important; padding: 5px 10px; font-weight: 600;">
+                    <span class="badge text-start" style="font-size: 0.7rem; border-radius: 6px; background-color: rgba(60, 189, 176, 0.1) !important; color: #3CBDB0 !important; border: 1px solid rgba(60, 189, 176, 0.3) !important; padding: 5px 10px; font-weight: 600; white-space: normal; line-height: 1.3;">
                       <i class="fas fa-graduation-cap me-1"></i>Course Name: ${c.courseName}
                     </span>
-                    <span class="badge" style="font-size: 0.7rem; border-radius: 6px; background-color: rgba(168, 85, 247, 0.1) !important; color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3) !important; padding: 5px 10px; font-weight: 600;">
+                    <span class="badge text-start" style="font-size: 0.7rem; border-radius: 6px; background-color: rgba(168, 85, 247, 0.1) !important; color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3) !important; padding: 5px 10px; font-weight: 600; white-space: normal; line-height: 1.3;">
                       <i class="fas fa-users me-1"></i>Batch Name: ${c.batchName}
                     </span>
                   </div>
                   <div class="d-flex flex-column gap-2 text-muted mb-4" style="font-size: 0.78rem;">
-                    <span><i class="fas fa-user-chalkboard me-2 text-primary" style="width: 14px;"></i>Teacher Name: <strong class="text-white" style="color: var(--text-primary) !important;">${c.teacherName}</strong></span>
+                    <span><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i>Teacher Name: <strong class="text-white" style="color: var(--text-primary) !important;">${c.teacherName}</strong></span>
                     <span><i class="far fa-calendar-alt me-2 text-primary" style="width: 14px;"></i>Date: ${fmtDate(c.class_date)}</span>
                     <span><i class="far fa-clock me-2 text-primary" style="width: 14px;"></i>Time: ${formatTime(c.class_time)}</span>
                   </div>
@@ -884,7 +890,7 @@ async function renderAttendance() {
         <h6 class="mb-3">Attendance Records</h6>
         <div style="overflow-x:auto">
         <table class="spx-table">
-          <thead><tr><th>Date</th><th>Class</th><th>Batch</th><th>Status</th><th>Duration</th></tr></thead>
+          <thead><tr><th>Date</th><th>Class</th><th>Batch</th><th>Status</th><th><i class="fas fa-sign-in-alt me-1 text-primary"></i>Join Time</th><th><i class="fas fa-sign-out-alt me-1 text-danger"></i>Exit Time</th><th>Duration</th></tr></thead>
           <tbody>
             ${records.map(r => `
               <tr>
@@ -892,8 +898,10 @@ async function renderAttendance() {
                 <td class="text-white">${r.class_title||'—'}</td>
                 <td>${r.batch_name||'—'}</td>
                 <td><span class="badge-${r.status||'absent'}">${r.status||'absent'}</span></td>
-                <td>${r.duration_mins||0} min</td>
-              </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">No attendance records</td></tr>'}
+                <td style="white-space:nowrap; color: #10B981; font-weight: 500;">${r.join_time ? fmtDateTime(r.join_time) : '<span class="text-muted small">—</span>'}</td>
+                <td style="white-space:nowrap; color: #EF4444; font-weight: 500;">${r.exit_time ? fmtDateTime(r.exit_time) : '<span class="text-muted small">—</span>'}</td>
+                <td>${r.duration_mins ? `<span class="badge" style="background:rgba(60,189,176,.12);color:#3CBDB0;border:1px solid rgba(60,189,176,.3);font-size:0.72rem;">${r.duration_mins} min</span>` : '<span class="text-muted small">—</span>'}</td>
+              </tr>`).join('') || '<tr><td colspan="7" class="text-center text-muted py-3">No attendance records</td></tr>'}
           </tbody>
         </table></div>
       </div>`;
@@ -1439,10 +1447,10 @@ async function viewBatchDetails(batchId) {
               let actionBtnHtml = '';
               if (c.status === 'live') {
                 badgeHtml = `<span class="badge bg-danger text-white border-0 fw-semibold px-2 py-1 pulse-dot">LIVE</span>`;
-                actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-danger px-3 py-1 text-white fw-bold pulse-animation" style="font-size: 0.75rem;"><i class="fas fa-video me-1"></i> Join Live</a>`;
+                actionBtnHtml = `<a href="/live/room.html?classId=${c.id}&role=student" class="btn btn-sm btn-danger px-3 py-1 text-white fw-bold pulse-animation" style="font-size: 0.75rem;"><i class="fas fa-video me-1"></i> Join Live</a>`;
               } else if (c.status === 'scheduled') {
                 badgeHtml = `<span class="badge bg-primary-subtle text-primary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">Scheduled</span>`;
-                actionBtnHtml = `<a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-outline-primary px-3 py-1 fw-bold" style="font-size: 0.75rem;"><i class="fas fa-video me-1"></i> Join Room</a>`;
+                actionBtnHtml = `<a href="/live/room.html?classId=${c.id}&role=student" class="btn btn-sm btn-outline-primary px-3 py-1 fw-bold" style="font-size: 0.75rem;"><i class="fas fa-video me-1"></i> Join Room</a>`;
               } else {
                 badgeHtml = `<span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">Completed</span>`;
                 actionBtnHtml = `<span class="text-muted small">Ended</span>`;
@@ -1614,7 +1622,7 @@ async function joinLiveClass(batchId) {
       showToast('No active live class for this batch at the moment.', 'warning');
       return;
     }
-    window.location.href = `/live/room.html?classId=${classForBatch.id}`;
+    window.location.href = `/live/room.html?classId=${classForBatch.id}&role=student`;
   } catch (err) {
     showToast('Failed to check active classes: ' + err.message, 'error');
   }

@@ -2396,7 +2396,7 @@ async function renderLiveClasses() {
                         ${c.status === 'scheduled' ? `
                           <button class="btn btn-sm btn-spx" onclick="startClass('${c.id}')">Start Class</button>
                         ` : c.status === 'live' ? `
-                          <a href="/live/room.html?classId=${c.id}" class="btn btn-sm btn-danger">Enter Room</a>
+                          <a href="/live/room.html?classId=${c.id}&role=teacher" class="btn btn-sm btn-danger">Enter Room</a>
                         ` : `
                           <span class="text-muted">Completed</span>
                         `}
@@ -2514,7 +2514,7 @@ async function scheduleClass(e) {
 async function startClass(classId) {
   try {
     showToast('Initializing classroom...', 'info');
-    window.location.href = `/live/room.html?classId=${classId}`;
+    window.location.href = `/live/room.html?classId=${classId}&role=teacher`;
   } catch (e) {
     showToast(e.message, 'error');
   }

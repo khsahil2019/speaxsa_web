@@ -489,14 +489,42 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Agora Web SDK -->
   <script src="https://download.agora.io/sdk/web/AgoraRTC_N-4.20.0.js"></script>
+  <!-- Socket.io client -->
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
     const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
     const urlParams = new URLSearchParams(window.location.search);
     const classId = urlParams.get('classId');
 
-    let token = localStorage.getItem('teacher_token') || localStorage.getItem('student_token') || localStorage.getItem('admin_token') || localStorage.getItem('speaxa_parent_token');
-    let user = JSON.parse(localStorage.getItem('teacher_user') || localStorage.getItem('student_user') || localStorage.getItem('admin_user') || localStorage.getItem('speaxa_parent_profile') || 'null');
+    const urlRole = urlParams.get('role');
+    const urlToken = urlParams.get('token');
+    const urlUserStr = urlParams.get('user');
+
+    let token = urlToken;
+    let user = null;
+    if (urlUserStr) {
+      try { user = JSON.parse(decodeURIComponent(urlUserStr)); } catch(e) {}
+    }
+
+    if (!token) {
+      if (urlRole === 'teacher') {
+        token = localStorage.getItem('teacher_token');
+        user = JSON.parse(localStorage.getItem('teacher_user') || 'null');
+      } else if (urlRole === 'student') {
+        token = localStorage.getItem('student_token');
+        user = JSON.parse(localStorage.getItem('student_user') || 'null');
+      } else if (urlRole === 'admin') {
+        token = localStorage.getItem('admin_token');
+        user = JSON.parse(localStorage.getItem('admin_user') || 'null');
+      } else if (urlRole === 'parent') {
+        token = localStorage.getItem('speaxa_parent_token');
+        user = JSON.parse(localStorage.getItem('speaxa_parent_profile') || 'null');
+      } else {
+        token = localStorage.getItem('teacher_token') || localStorage.getItem('student_token') || localStorage.getItem('admin_token') || localStorage.getItem('speaxa_parent_token');
+        user = JSON.parse(localStorage.getItem('teacher_user') || localStorage.getItem('student_user') || localStorage.getItem('admin_user') || localStorage.getItem('speaxa_parent_profile') || 'null');
+      }
+    }
 
     // ── Custom Centered Overlays Functions ──
     function showErrorOverlay(msg, title = 'Classroom Alert', actionText = 'Go Back', actionFn = null, showDismiss = true) {
@@ -569,6 +597,8 @@
       }
     } else {
       document.getElementById('btnHand').style.display = 'flex';
+      // Hide whiteboard button for students
+      document.getElementById('btnWhiteboard').style.display = 'none';
     }
 
     // Timer & Class Info
@@ -675,6 +705,8 @@
     let isAudioMuted = false;
     let isVideoMuted = false;
     let isScreenSharing = false;
+    let lastParticipants = [];
+    const peerConnections = {};
 
     // HTML5 Camera preview fallback to make live stream work look completely real-time
     async function startLocalCameraFallback(isAgoraFailed = false) {
@@ -708,15 +740,15 @@
             simStudent.id = 'player-container-simstudent';
             simStudent.className = "video-container";
             simStudent.innerHTML = `
-              <div class="user-label" id="label-simstudent">Sahil Khan (Student)</div>
+              <div class="user-label" id="label-simstudent">${user.name} (You)</div>
               <div id="player-simstudent" class="video-stream d-flex flex-column align-items-center justify-content-center" style="background: rgba(15,23,42,0.9); color: white;">
-                <img src="${defaultAvatar}" style="width:70px; height:70px; border-radius:50%; border:2px solid var(--primary); margin-bottom:10px; object-fit:cover;" onerror="this.src=defaultAvatar">
+                <img src="${user.photo_url || defaultAvatar}" style="width:70px; height:70px; border-radius:50%; border:2px solid var(--primary); margin-bottom:10px; object-fit:cover;" onerror="this.src=defaultAvatar">
                 <span class="badge bg-success-subtle text-success border border-success" style="font-size:0.7rem;"><i class="fas fa-microphone me-1 animate__animated animate__pulse animate__infinite"></i> Audio Connected</span>
               </div>
             `;
             document.getElementById("videoGrid").appendChild(simStudent);
           }
-          remoteUsers['simstudent'] = { name: 'Sahil Khan', role: 'student' };
+          remoteUsers['simstudent'] = { name: user.name, role: user.role };
           updateParticipantList();
         } else {
           // Student view camera stream
@@ -726,7 +758,7 @@
             studentContainer.id = 'player-container-student-local';
             studentContainer.className = "video-container";
             studentContainer.innerHTML = `
-              <div class="user-label">You (Student)</div>
+              <div class="user-label">You — ${user.name}</div>
               <div id="student-player-local" class="video-stream"></div>
             `;
             document.getElementById("videoGrid").appendChild(studentContainer);
@@ -742,19 +774,27 @@
           videoEl.style.transform = 'scaleX(-1)';
           studentPlayerEl.appendChild(videoEl);
 
-          // Simulated educator feed
+          // Simulated educator feed — fetch teacher name from class data
           const localPlayerEl = document.getElementById('local-player');
+          let simTeacherName = 'Your Educator';
+          try {
+            const classInfoRes = await fetch(`${API}/api/live-classes/${classId}/info`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (classInfoRes.ok) {
+              const classInfo = await classInfoRes.json();
+              simTeacherName = classInfo.teacher_name || simTeacherName;
+            }
+          } catch (_) { /* use default */ }
           localPlayerEl.innerHTML = `
             <div class="d-flex flex-column align-items-center justify-content-center h-100" style="background: rgba(15,23,42,0.9); padding: 20px; color:#fff;">
               <div style="position:relative; margin-bottom:15px;">
                 <img src="${defaultAvatar}" style="width: 100px; height: 100px; border-radius:50%; border:3px solid var(--primary); object-fit:cover;" onerror="this.src=defaultAvatar">
                 <div class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 20px; height: 20px; padding: 2px;"></div>
               </div>
-              <h6 class="fw-bold mb-1">Dr. Priya Sharma</h6>
+              <h6 class="fw-bold mb-1">${simTeacherName}</h6>
               <span class="badge bg-success-subtle text-success border border-success" style="font-size:0.75rem;"><i class="fas fa-signal me-1 animate__animated animate__flash animate__infinite"></i> Educator Stream Connected</span>
             </div>
           `;
-          document.getElementById('teacherLabel').textContent = `Teacher (Live Simulated)`;
+          document.getElementById('teacherLabel').textContent = `${simTeacherName} (Educator - Simulation)`;
         }
 
         // Reset toggles states
@@ -764,9 +804,206 @@
         document.getElementById('btnVideo').classList.remove('active');
 
         triggerToast(isAgoraFailed ? 'Running Classroom in Local Real-Time Simulation Mode' : 'Webcam preview active');
+        checkAndConnectWebRTC();
       } catch (err) {
-        console.error('Camera fallback error:', err);
-        triggerToast('Failed to access local webcam/microphone: ' + err.message);
+        console.warn('Webcam permission denied. Creating mock canvas video stream fallback.', err);
+        triggerToast('Camera access blocked. Starting in Mock Stream mode.');
+
+        // 1. Create a simulated live video feed using an HTML5 Canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        canvas.className = 'video-stream';
+        const ctx = canvas.getContext('2d');
+        
+        setInterval(() => {
+          ctx.fillStyle = '#0f172a'; // Deep dark background
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw teacher/student details
+          ctx.fillStyle = '#3CBDB0';
+          ctx.font = 'bold 24px Outfit, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(user.name, canvas.width / 2, canvas.height / 2 - 20);
+          
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '16px Inter, sans-serif';
+          ctx.fillText(`(Local Mock Stream — Camera Blocked)`, canvas.width / 2, canvas.height / 2 + 20);
+
+          // Pulsing status dot
+          ctx.fillStyle = (Date.now() % 1000 < 500) ? '#10b981' : '#374151';
+          ctx.beginPath();
+          ctx.arc(canvas.width / 2, canvas.height / 2 - 80, 12, 0, Math.PI * 2);
+          ctx.fill();
+        }, 100);
+
+        // Capture canvas as a MediaStream track (15 FPS)
+        const mockVideoStream = canvas.captureStream(15);
+        const mockVideoTrack = mockVideoStream.getVideoTracks()[0];
+
+        // 2. Create silent audio track fallback using Web Audio API
+        let mockAudioTrack = null;
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const dst = audioCtx.createMediaStreamDestination();
+          mockAudioTrack = dst.stream.getAudioTracks()[0];
+        } catch (e) {
+          console.warn('Silent audio creation failed:', e);
+        }
+
+        // Bundle into localStream
+        const tracks = [];
+        if (mockVideoTrack) tracks.push(mockVideoTrack);
+        if (mockAudioTrack) tracks.push(mockAudioTrack);
+        localStream = new MediaStream(tracks);
+
+        // Render locally
+        if (isTeacher) {
+          const localPlayerEl = document.getElementById('local-player');
+          localPlayerEl.innerHTML = '';
+          localPlayerEl.appendChild(canvas);
+          document.getElementById('teacherLabel').textContent = `${user.name} (Educator - Camera Blocked)`;
+        } else {
+          let studentContainer = document.getElementById('player-container-student-local');
+          if (!studentContainer) {
+            studentContainer = document.createElement("div");
+            studentContainer.id = 'player-container-student-local';
+            studentContainer.className = "video-container";
+            studentContainer.innerHTML = `
+              <div class="user-label">You — ${user.name} (Camera Blocked)</div>
+              <div id="student-player-local" class="video-stream"></div>
+            `;
+            document.getElementById("videoGrid").appendChild(studentContainer);
+          }
+          const studentPlayerEl = document.getElementById('student-player-local');
+          studentPlayerEl.innerHTML = '';
+          studentPlayerEl.appendChild(canvas);
+        }
+
+        // Trigger WebRTC connection establishment since localStream is now populated
+        checkAndConnectWebRTC();
+      }
+    }
+
+    async function initiatePeerConnection(targetSocketId) {
+      if (peerConnections[targetSocketId]) return;
+      console.log('[WebRTC] Initiating P2P connection to target socket:', targetSocketId);
+      
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+      peerConnections[targetSocketId] = pc;
+
+      // Add local stream tracks to WebRTC peer connection
+      if (localStream) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socket && socket.connected) {
+          socket.emit('webrtc-signal', {
+            targetSocketId,
+            signal: { type: 'candidate', candidate: event.candidate }
+          });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        console.log('[WebRTC] Track received from remote peer:', targetSocketId);
+        handleRemoteStream(targetSocketId, event.streams[0]);
+      };
+
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        if (socket && socket.connected) {
+          socket.emit('webrtc-signal', {
+            targetSocketId,
+            signal: { type: 'offer', sdp: pc.localDescription }
+          });
+        }
+      } catch (err) {
+        console.error('[WebRTC] Error creating offer:', err);
+      }
+    }
+
+    function handleRemoteStream(socketId, stream) {
+      // Find the participant details from our list
+      const p = lastParticipants.find(x => x.socketId === socketId) || { name: 'Participant', role: 'student' };
+      console.log(`[WebRTC] Handling stream for role: ${p.role}, name: ${p.name}`);
+
+      if (p.role === 'teacher') {
+        // For students: Render the teacher's WebRTC stream in the main video stage
+        const localPlayerEl = document.getElementById('local-player');
+        localPlayerEl.innerHTML = '';
+        const videoEl = document.createElement('video');
+        videoEl.srcObject = stream;
+        videoEl.autoplay = true;
+        videoEl.playsInline = true;
+        videoEl.className = 'video-stream';
+        localPlayerEl.appendChild(videoEl);
+        document.getElementById('teacherLabel').textContent = `${p.name} (Educator - Live)`;
+      } else {
+        // For teachers/admins/students: Render students stream in the grid slot
+        // Check if there is already a simulated placeholder and remove/replace it
+        const simStudent = document.getElementById('player-container-simstudent');
+        if (simStudent) {
+          simStudent.remove();
+        }
+
+        let playerContainer = document.getElementById(`player-container-${socketId}`);
+        if (!playerContainer) {
+          playerContainer = document.createElement("div");
+          playerContainer.id = `player-container-${socketId}`;
+          playerContainer.className = "video-container";
+          playerContainer.innerHTML = `
+            <div class="user-label">${p.name} (Student)</div>
+            <div id="player-${socketId}" class="video-stream"></div>
+          `;
+          document.getElementById("videoGrid").appendChild(playerContainer);
+        }
+        const playerEl = document.getElementById(`player-${socketId}`);
+        playerEl.innerHTML = '';
+        const videoEl = document.createElement('video');
+        videoEl.srcObject = stream;
+        videoEl.autoplay = true;
+        videoEl.playsInline = true;
+        videoEl.className = 'video-stream';
+        playerEl.appendChild(videoEl);
+      }
+    }
+
+    function checkAndConnectWebRTC() {
+      if (!socket || !socket.connected || !localStream) {
+        console.log('[WebRTC] Postponing connection: socket or local stream not ready yet.');
+        return;
+      }
+      if (agoraClient) return;
+
+      // Add local stream tracks to any existing PeerConnections that don't have senders yet (renegotiation)
+      for (const targetSocketId of Object.keys(peerConnections)) {
+        const pc = peerConnections[targetSocketId];
+        if (pc && pc.getSenders().length === 0) {
+          console.log('[WebRTC] Adding local tracks retroactively to peer connection:', targetSocketId);
+          localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+          pc.createOffer().then(offer => {
+            return pc.setLocalDescription(offer);
+          }).then(() => {
+            if (socket && socket.connected) {
+              socket.emit('webrtc-signal', {
+                targetSocketId,
+                signal: { type: 'offer', sdp: pc.localDescription }
+              });
+            }
+          }).catch(err => console.error('[WebRTC] Error renegotiating tracks:', err));
+        }
+      }
+
+      if (!isTeacher) {
+        const teacher = lastParticipants.find(p => p.role === 'teacher');
+        if (teacher && teacher.socketId !== socket.id) {
+          initiatePeerConnection(teacher.socketId);
+        }
       }
     }
 
@@ -784,11 +1021,31 @@
 
         if (!joinData.ok) {
           const err = await joinData.json();
+          // Surface token/auth errors with clear message
+          if (joinData.status === 401 || err.code === 'TOKEN_INVALID' || err.code === 'TOKEN_MISSING') {
+            throw new Error('Invalid or expired token');
+          }
           throw new Error(err.error || 'Failed to connect to class');
         }
 
         const credentials = await joinData.json();
-        
+
+        // ── Check if Agora is configured (credentials are real, not demo) ──
+        const isAgoraConfigured = credentials.rtc &&
+          credentials.rtc.appId &&
+          !credentials.rtc.appId.startsWith('demo_') &&
+          credentials.rtc.token &&
+          !credentials.rtc.token.startsWith('demo_') &&
+          !credentials.rtc.demo;
+
+        if (!isAgoraConfigured) {
+          // No real Agora credentials — go straight to local camera simulation
+          console.info('[Room] Agora not configured. Starting local camera simulation automatically.');
+          triggerToast('Local simulation mode — Agora not configured');
+          startLocalCameraFallback(true);
+          return;
+        }
+
         // Initialize AgoraRTC Client
         try {
           agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
@@ -827,8 +1084,9 @@
           }
         } catch (agoraErr) {
           console.warn('Agora connection failed. Falling back to local camera simulation:', agoraErr);
+          // Agora was configured but failed at runtime — show notice and fall back
           showErrorOverlay(
-            'Agora RTC service failed to establish connection. The classroom will run in Local Real-Time Simulation Mode with camera access.', 
+            'Agora RTC could not connect. The classroom will run in Local Simulation Mode with your camera.', 
             'Connection Notice', 
             'Enter Classroom', 
             function() { 
@@ -838,9 +1096,24 @@
             true
           );
         }
+
       } catch (err) {
         console.error(err);
-        showErrorOverlay(err.message, 'Classroom Alert', 'Go Back', function() { window.history.back(); }, false);
+        // Check if the error is a token expiry / auth issue
+        const msg = err.message || '';
+        if (msg.toLowerCase().includes('invalid or expired token') || msg.toLowerCase().includes('token') || msg.toLowerCase().includes('session')) {
+          // Determine the correct login page based on the stored user role
+          const redirectPortal = user && user.role === 'teacher' ? '/teacher' : '/student';
+          showErrorOverlay(
+            'Your session has expired or is invalid. Please log in again to join the classroom.',
+            'Session Expired',
+            'Go to Login',
+            function() { window.location.href = redirectPortal; },
+            false
+          );
+        } else {
+          showErrorOverlay(err.message, 'Classroom Alert', 'Go Back', function() { window.history.back(); }, false);
+        }
       }
     }
 
@@ -931,54 +1204,103 @@
           track.enabled = !track.enabled;
           isVideoMuted = !track.enabled;
           document.getElementById('btnVideo').classList.toggle('active', isVideoMuted);
-          triggerToast(isVideoMuted ? 'Camera Feed Off' : 'Camera Feed On');
-        }
-      }
-    });
-
-    // Screen Share
+              // Screen Share
     document.getElementById('btnScreen').addEventListener('click', async () => {
       if (!isTeacher) return triggerToast('Only educators can share screen.');
       
       try {
         if (!isScreenSharing) {
-          localTracks.screenTrack = await AgoraRTC.createScreenVideoTrack();
           if (agoraClient) {
+            localTracks.screenTrack = await AgoraRTC.createScreenVideoTrack();
             await agoraClient.unpublish(localTracks.videoTrack);
             await agoraClient.publish(localTracks.screenTrack);
+            localTracks.screenTrack.play('local-player');
+          } else {
+            // Standard browser screen sharing (WebRTC local simulation)
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            const screenTrack = screenStream.getVideoTracks()[0];
+            localTracks.screenTrack = screenStream;
+
+            // Render screen stream locally in teacher's viewport
+            const localPlayerEl = document.getElementById('local-player');
+            localPlayerEl.innerHTML = '';
+            const videoEl = document.createElement('video');
+            videoEl.srcObject = screenStream;
+            videoEl.autoplay = true;
+            videoEl.playsInline = true;
+            videoEl.className = 'video-stream';
+            localPlayerEl.appendChild(videoEl);
+
+            // Dynamically replace webcam track with screen track on WebRTC peer connections
+            for (const targetSocketId of Object.keys(peerConnections)) {
+              const pc = peerConnections[targetSocketId];
+              const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+              if (sender) {
+                sender.replaceTrack(screenTrack);
+              }
+            }
+
+            // Automatically clean up when user clicks "Stop Sharing" overlay
+            screenTrack.onended = () => {
+              stopScreenShare();
+            };
           }
           
-          localTracks.screenTrack.play('local-player');
           isScreenSharing = true;
           document.getElementById('btnScreen').classList.add('active');
           triggerToast('Screen Share Started');
-
-          localTracks.screenTrack.on("track-ended", () => {
-            stopScreenShare();
-          });
         } else {
           await stopScreenShare();
         }
       } catch (err) {
         console.error(err);
-        triggerToast('Failed to share screen.');
+        triggerToast('Failed to share screen: ' + err.message);
       }
     });
 
     async function stopScreenShare() {
       if (!localTracks.screenTrack) return;
-      if (agoraClient) {
-        await agoraClient.unpublish(localTracks.screenTrack);
-      }
-      localTracks.screenTrack.close();
-      localTracks.screenTrack = null;
       
-      if (agoraClient) {
-        await agoraClient.publish(localTracks.videoTrack);
-        localTracks.videoTrack.play('local-player');
-      } else {
-        startLocalCameraFallback(false);
+      try {
+        if (agoraClient) {
+          await agoraClient.unpublish(localTracks.screenTrack);
+          localTracks.screenTrack.close();
+          localTracks.screenTrack = null;
+          await agoraClient.publish(localTracks.videoTrack);
+          localTracks.videoTrack.play('local-player');
+        } else {
+          // Stop screen share tracks
+          localTracks.screenTrack.getTracks().forEach(track => track.stop());
+          localTracks.screenTrack = null;
+
+          // Re-render teacher webcam stream locally
+          const localPlayerEl = document.getElementById('local-player');
+          localPlayerEl.innerHTML = '';
+          if (localStream) {
+            const videoEl = document.createElement('video');
+            videoEl.srcObject = localStream;
+            videoEl.autoplay = true;
+            videoEl.playsInline = true;
+            videoEl.muted = true;
+            videoEl.className = 'video-stream';
+            videoEl.style.transform = 'scaleX(-1)';
+            localPlayerEl.appendChild(videoEl);
+
+            // Revert back to webcam track on WebRTC peer connections
+            const cameraTrack = localStream.getVideoTracks()[0];
+            for (const targetSocketId of Object.keys(peerConnections)) {
+              const pc = peerConnections[targetSocketId];
+              const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+              if (sender && cameraTrack) {
+                sender.replaceTrack(cameraTrack);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error stopping screen share:', err);
       }
+      
       isScreenSharing = false;
       document.getElementById('btnScreen').classList.remove('active');
       triggerToast('Screen Share Stopped');
@@ -1021,111 +1343,257 @@
       }, isTeacher || isAdmin ? 'End Live Class' : 'Leave Class');
     });
 
-    // ── Participants List ──────────────────────────────────────────
-    function updateParticipantList() {
-      const list = document.getElementById('participantsList');
-      const uCount = document.getElementById('userCount');
-      const count = Object.keys(remoteUsers).length + 1;
-      uCount.textContent = count;
+    // ── Socket.io real-time classroom hub ─────────────────────────
+    let socket = null;
 
-      list.innerHTML = `
-        <div class="list-group-item bg-transparent text-dark border-light px-0 d-flex justify-content-between align-items-center">
-          <div><i class="fas fa-user-circle text-primary me-2"></i><span>${user.name} (${user.role.toUpperCase()})</span></div>
-          <span class="badge bg-secondary">YOU</span>
-        </div>
-      ` + Object.keys(remoteUsers).map(uid => `
-        <div class="list-group-item bg-transparent text-dark border-light px-0 d-flex justify-content-between align-items-center">
-          <div><i class="fas fa-user-circle text-muted me-2"></i><span>Participant (${uid})</span></div>
-          <span class="badge bg-primary">Connected</span>
-        </div>
-      `).join('');
+    function initSocket() {
+      try {
+        socket = io({ auth: { token } });
+
+        socket.on('connect', () => {
+          console.log('[Socket] Connected:', socket.id);
+          socket.emit('join-class', { classId });
+          triggerToast('Classroom connected — real-time active');
+          checkAndConnectWebRTC();
+        });
+
+        socket.on('connect_error', (err) => {
+          console.warn('[Socket] Connection error:', err.message);
+          triggerToast('Real-time connection unavailable — chat may not sync');
+        });
+
+        // ── Participants ──────────────────────────────
+        socket.on('participants-update', (participants) => {
+          lastParticipants = participants;
+          renderParticipantList(participants);
+
+          // WebRTC auto-trigger: check and connect if socket and localStream are ready
+          checkAndConnectWebRTC();
+
+          // Clean up disconnected peer connections
+          const currentSocketIds = participants.map(p => p.socketId);
+          for (const targetSocketId of Object.keys(peerConnections)) {
+            if (!currentSocketIds.includes(targetSocketId)) {
+              console.log('[WebRTC] Cleaning up disconnected peer connection:', targetSocketId);
+              try {
+                peerConnections[targetSocketId].close();
+              } catch (_) {}
+              delete peerConnections[targetSocketId];
+              
+              // Remove student video player if it exists
+              const el = document.getElementById(`player-container-${targetSocketId}`);
+              if (el) el.remove();
+            }
+          }
+        });
+
+        // ── WebRTC Signaling ──────────────────────────
+        socket.on('webrtc-signal', async ({ senderSocketId, signal }) => {
+          let pc = peerConnections[senderSocketId];
+
+          if (signal.type === 'offer') {
+            if (!pc) {
+              pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+              });
+              peerConnections[senderSocketId] = pc;
+
+              if (localStream) {
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+              }
+
+              pc.onicecandidate = (event) => {
+                if (event.candidate && socket && socket.connected) {
+                  socket.emit('webrtc-signal', {
+                    targetSocketId: senderSocketId,
+                    signal: { type: 'candidate', candidate: event.candidate }
+                  });
+                }
+              };
+
+              pc.ontrack = (event) => {
+                console.log('[WebRTC] Track received from student offer:', senderSocketId);
+                handleRemoteStream(senderSocketId, event.streams[0]);
+              };
+            }
+
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              if (socket && socket.connected) {
+                socket.emit('webrtc-signal', {
+                  targetSocketId: senderSocketId,
+                  signal: { type: 'answer', sdp: pc.localDescription }
+                });
+              }
+            } catch (err) {
+              console.error('[WebRTC] Offer handling error:', err);
+            }
+
+          } else if (signal.type === 'answer') {
+            if (pc) {
+              try {
+                await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+              } catch (err) {
+                console.error('[WebRTC] Answer handling error:', err);
+              }
+            }
+          } else if (signal.type === 'candidate') {
+            if (pc) {
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+              } catch (err) {
+                console.error('[WebRTC] Candidate handling error:', err);
+              }
+            }
+          }
+        });
+
+        socket.on('user-joined', ({ name, role }) => {
+          triggerToast(`${name} (${role}) joined the class`);
+          appendSystemMessage(`${name} joined`);
+        });
+
+        socket.on('user-left', ({ name, role }) => {
+          triggerToast(`${name} left the class`);
+          appendSystemMessage(`${name} left`);
+        });
+
+        // ── Chat ──────────────────────────────────────
+        socket.on('chat-message', ({ socketId, sender, role, text }) => {
+          // Don't re-render your own message (already shown locally)
+          if (socket && socketId === socket.id) return;
+          appendChatMessage(sender, role, text, false);
+        });
+
+        // ── Whiteboard ───────────────────────────────
+        socket.on('board-draw', ({ x, y, start }) => {
+          if (start) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+          }
+          if (!isTeacher) toggleWhiteboard(true);
+        });
+
+        socket.on('board-clear', () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.beginPath();
+        });
+
+        // ── Raise hand ────────────────────────────────
+        socket.on('raise-hand', ({ name }) => {
+          triggerToast(`✋ ${name} raised their hand!`);
+          // Show indicator on teacher screen
+          const indicator = document.getElementById('raiseHandIndicator') || (() => {
+            const el = document.createElement('div');
+            el.id = 'raiseHandIndicator';
+            el.className = 'raise-hand-indicator';
+            el.innerHTML = `✋ ${name} raised hand`;
+            document.querySelector('.main-stage').appendChild(el);
+            setTimeout(() => el.remove(), 5000);
+            return el;
+          })();
+        });
+
+        // ── Polls ─────────────────────────────────────
+        socket.on('poll-launched', (poll) => {
+          renderActivePoll(poll);
+          triggerToast('📊 New poll launched!');
+        });
+
+      } catch(e) {
+        console.warn('[Socket] Could not initialize socket:', e.message);
+      }
     }
 
-    // ── Chat Relay (Simulated / LocalStorage relay) ────────────────
+    // ── Participant list renderer ──────────────────────────────
+    function renderParticipantList(participants) {
+      const list = document.getElementById('participantsList');
+      const uCount = document.getElementById('userCount');
+      uCount.textContent = participants.length;
+
+      const roleIcon = (role) => role === 'teacher' ? 'fa-chalkboard-teacher text-primary' : role === 'student' ? 'fa-user-graduate text-success' : 'fa-user-shield text-warning';
+      const roleBadge = (role) => role === 'teacher' ? 'bg-primary' : role === 'student' ? 'bg-success' : 'bg-warning';
+
+      list.innerHTML = participants.map(p => {
+        const isMe = socket && p.socketId === socket.id;
+        return `
+          <div class="list-group-item bg-transparent text-dark border-light px-0 d-flex justify-content-between align-items-center">
+            <div><i class="fas ${roleIcon(p.role)} me-2"></i><span class="fw-semibold">${p.name}</span><small class="text-muted ms-1">(${p.role})</small></div>
+            ${isMe ? '<span class="badge bg-secondary">YOU</span>' : `<span class="badge ${roleBadge(p.role)}">${p.role.toUpperCase()}</span>`}
+          </div>
+        `;
+      }).join('') || `
+        <div class="list-group-item bg-transparent text-dark border-light px-0 d-flex justify-content-between align-items-center">
+          <div><i class="fas fa-user-circle text-primary me-2"></i><span>${user.name} (${user.role})</span></div>
+          <span class="badge bg-secondary">YOU</span>
+        </div>
+      `;
+    }
+
+    // ── Chat helpers ───────────────────────────────────────────
+    function appendChatMessage(sender, role, text, isSelf = false) {
+      const chatBox = document.getElementById('chatMessages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'chat-msg';
+      if (isSelf) msgDiv.style.marginLeft = 'auto';
+      const roleColor = role === 'teacher' ? '#3CBDB0' : role === 'student' ? '#10B981' : '#F59E0B';
+      msgDiv.innerHTML = `
+        <div class="chat-msg-sender" style="color:${roleColor}">${sender} <small style="font-weight:400;font-size:0.65rem;opacity:.7">(${role || ''})</small></div>
+        <div class="chat-msg-text">${text}</div>
+      `;
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendSystemMessage(text) {
+      const chatBox = document.getElementById('chatMessages');
+      const el = document.createElement('div');
+      el.style.cssText = 'text-align:center;font-size:0.72rem;color:#94a3b8;padding:4px 0;';
+      el.textContent = text;
+      chatBox.appendChild(el);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // ── Chat Relay via Socket.io ───────────────────────────────
     function sendChatMessage() {
       const inp = document.getElementById('chatInput');
       const msg = inp.value.trim();
       if (!msg) return;
 
-      const chatBox = document.getElementById('chatMessages');
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'chat-msg';
-      msgDiv.innerHTML = `
-        <div class="chat-msg-sender">${user.name}</div>
-        <div class="chat-msg-text">${msg}</div>
-      `;
-      chatBox.appendChild(msgDiv);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      // Show own message immediately
+      appendChatMessage(user.name, user.role, msg, true);
       inp.value = '';
 
-      // Broadcast message to local storage channel relay
-      const channelMsg = {
-        sender: user.name,
-        text: msg,
-        classId: classId,
-        time: Date.now()
-      };
-      localStorage.setItem('speaxa_chat_message', JSON.stringify(channelMsg));
+      // Broadcast via socket (server will re-emit to everyone in room)
+      if (socket && socket.connected) {
+        socket.emit('chat-message', { classId, text: msg });
+      }
     }
 
-    // Listen to localstorage relay for simulated multinode communication
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'speaxa_chat_message') {
-        try {
-          const data = JSON.parse(e.newValue);
-          if (data && data.classId === classId && data.sender !== user.name) {
-            const chatBox = document.getElementById('chatMessages');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'chat-msg';
-            msgDiv.innerHTML = `
-              <div class="chat-msg-sender">${data.sender}</div>
-              <div class="chat-msg-text">${data.text}</div>
-            `;
-            chatBox.appendChild(msgDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-          }
-        } catch(e) {}
-      } else if (e.key === 'speaxa_board_point') {
-        try {
-          const data = JSON.parse(e.newValue);
-          if (data && data.classId === classId && !isTeacher) {
-            // Draw remote lines on student view
-            if (data.start) {
-              ctx.beginPath();
-              ctx.moveTo(data.x, data.y);
-            } else {
-              ctx.lineTo(data.x, data.y);
-              ctx.stroke();
-              ctx.beginPath();
-              ctx.moveTo(data.x, data.y);
-            }
-            toggleWhiteboard(true);
-          }
-        } catch(e) {}
-      } else if (e.key === 'speaxa_board_clear') {
-        try {
-          const data = JSON.parse(e.newValue);
-          if (data && data.classId === classId && !isTeacher) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.beginPath();
-          }
-        } catch(e) {}
-      } else if (e.key === 'speaxa_live_poll') {
-        try {
-          const data = JSON.parse(e.newValue);
-          if (data && data.classId === classId && !isTeacher) {
-            renderActivePoll(data);
-          }
-        } catch(e) {}
-      }
-    });
-
-    // Whiteboard drawing synchronization stubs
+    // Whiteboard relay via Socket.io
     function relayDrawPoint(x, y, start = false) {
-      localStorage.setItem('speaxa_board_point', JSON.stringify({ classId, x, y, start, time: Date.now() }));
+      if (socket && socket.connected) {
+        socket.emit('board-draw', { classId, x, y, start });
+      }
     }
     function relayClearBoard() {
-      localStorage.setItem('speaxa_board_clear', JSON.stringify({ classId, time: Date.now() }));
+      if (socket && socket.connected) {
+        socket.emit('board-clear', { classId });
+      }
+    }
+
+    // ── Participants List (local fallback if socket not ready) ──
+    function updateParticipantList() {
+      // Handled by socket participants-update event
+      // Initial render with just self
+      renderParticipantList([{ name: user.name, role: user.role, userId: user.id }]);
     }
 
     // ── Live Polls ────────────────────────────────────────────────
@@ -1136,35 +1604,27 @@
 
       if (!q || !o1 || !o2) return triggerToast('Fill in question and options');
 
-      const payload = {
-        question: q,
-        options: [o1, o2],
-        correct_option: 0
-      };
+      const payload = { question: q, options: [o1, o2], correct_option: 0 };
 
       try {
         const data = await fetch(`${API}/api/live-classes/${classId}/polls`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         const res = await data.json();
-        
-        triggerToast('Live Poll Launched!');
+
+        triggerToast('📊 Live Poll Launched!');
         document.getElementById('pollQuestion').value = '';
         document.getElementById('pollOpt1').value = '';
         document.getElementById('pollOpt2').value = '';
 
-        // Relay poll event
-        localStorage.setItem('speaxa_live_poll', JSON.stringify({
-          classId,
-          pollId: res.id,
-          question: q,
-          options: [o1, o2]
-        }));
+        const poll = { classId, pollId: res.id, question: q, options: [o1, o2] };
+
+        // Broadcast via socket.io to all students
+        if (socket && socket.connected) {
+          socket.emit('poll-launched', { classId, poll });
+        }
 
         loadActivePolls();
       } catch (e) {
@@ -1202,17 +1662,13 @@
         </div>
       `;
       switchSidebarTab('polls', document.querySelector('.sidebar-tab:nth-child(3)'));
-      triggerToast('New Live Poll Launched!');
     }
 
     async function respondToPoll(pollId, optIdx) {
       try {
         const data = await fetch(`${API}/api/live-classes/polls/${pollId}/respond`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ selected_option: optIdx })
         });
         const res = await data.json();
@@ -1222,12 +1678,23 @@
       }
     }
 
+    // Raise hand via socket
+    document.getElementById('btnHand').addEventListener('click', () => {
+      if (socket && socket.connected) {
+        socket.emit('raise-hand', { classId });
+        triggerToast('✋ Hand raised!');
+        document.getElementById('btnHand').classList.add('active');
+        setTimeout(() => document.getElementById('btnHand').classList.remove('active'), 5000);
+      }
+    });
+
     // Keyboard support for Chat
     document.getElementById('chatInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') sendChatMessage();
     });
 
     // Initialize Page
+    initSocket();
     initClassroom();
     loadActivePolls();
     updateParticipantList();
