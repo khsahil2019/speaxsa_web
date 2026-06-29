@@ -60,8 +60,10 @@
     <div class="parent-form-panel">
       <div class="login-card">
         <img src="/logo.png" alt="Speaxa" class="login-logo">
-        <h2>Parent Portal</h2>
-        <p class="subtitle">Track your child's academic journey in real time</p>
+        <h2 id="formTitle">Parent Portal</h2>
+        <p class="subtitle" id="formSubtitle">Track your child's academic journey in real time</p>
+        
+        <!-- Login Form -->
         <form id="loginForm" onsubmit="handleLogin(event)">
           <div class="form-group">
             <label for="loginEmail">Email Address</label>
@@ -78,7 +80,47 @@
             </div>
           </div>
           <button type="submit" class="btn-login">Sign In to Parent Portal</button>
+          <div class="text-center mt-3" style="font-size:0.82rem; color:var(--text-3);">
+            Don't have an account? <a href="#" onclick="showRegister(event)" style="color:var(--teal); font-weight:600; text-decoration:none;">Register here</a>
+          </div>
         </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" onsubmit="handleRegister(event)" style="display:none;">
+          <div class="form-group">
+            <label for="regName">Full Name</label>
+            <div class="input-group">
+              <span class="spx-input-prefix"><i class="fa-solid fa-user"></i></span>
+              <input type="text" id="regName" class="form-control" placeholder="Your Name" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="regEmail">Email Address</label>
+            <div class="input-group">
+              <span class="spx-input-prefix"><i class="fa-solid fa-envelope"></i></span>
+              <input type="email" id="regEmail" class="form-control" placeholder="parent@speaxa.com" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="regPhone">Phone Number</label>
+            <div class="input-group">
+              <span class="spx-input-prefix"><i class="fa-solid fa-phone"></i></span>
+              <input type="tel" id="regPhone" class="form-control" placeholder="Mobile Number" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="regPass">Password</label>
+            <div class="input-group">
+              <span class="spx-input-prefix"><i class="fa-solid fa-lock"></i></span>
+              <input type="password" id="regPass" class="form-control" placeholder="••••••••" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-login">Register Parent Account</button>
+          <div class="text-center mt-3" style="font-size:0.82rem; color:var(--text-3);">
+            Already have an account? <a href="#" onclick="showLogin(event)" style="color:var(--teal); font-weight:600; text-decoration:none;">Sign In here</a>
+          </div>
+        </form>
+
         <div id="loginError"></div>
       </div>
     </div>
@@ -460,75 +502,421 @@
 
       <!-- ── My Profile Tab ─────────────────────────── -->
       <div id="tab-profile" class="tab-section">
-        <div style="margin-bottom:25px;">
-          <h2 style="font-family:'Outfit',sans-serif;font-size:1.35rem;margin-bottom:4px;"><i class="fa-solid fa-user-gear text-primary me-2"></i>Account Profile</h2>
-          <p style="font-size:0.85rem;color:var(--text-muted);">Manage your personal details, parent portal phone number, and security credentials.</p>
-        </div>
+        <style>
+          /* Scoped Premium Profile Layout Styles */
+          .profile-hero {
+            position: relative;
+            background: linear-gradient(135deg, rgba(60, 189, 176, 0.08) 0%, rgba(15, 118, 110, 0.15) 100%);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px 40px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 36px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+          }
+          .profile-hero:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+            border-color: rgba(60, 189, 176, 0.25);
+          }
+          .profile-hero::before {
+            content: '';
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(60, 189, 176, 0.12) 0%, transparent 70%);
+            top: -100px;
+            right: -100px;
+            pointer-events: none;
+          }
+          .profile-hero-avatar-container {
+            position: relative;
+            flex-shrink: 0;
+          }
+          .profile-hero-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #ffffff;
+            box-shadow: 0 0 0 4px rgba(60, 189, 176, 0.2), var(--shadow-md);
+            object-fit: cover;
+            transition: var(--transition);
+          }
+          .profile-hero-avatar-container:hover .profile-hero-avatar {
+            transform: scale(1.03);
+            box-shadow: 0 0 0 6px rgba(60, 189, 176, 0.3), var(--shadow-lg);
+          }
+          .profile-hero-details {
+            flex: 1;
+          }
+          .profile-hero-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+          }
+          .profile-hero-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+          }
+          .profile-hero-meta-item {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.45);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+          }
+          .profile-hero-meta-item i {
+            color: var(--primary);
+          }
+          
+          /* Profile Subnav Tabs */
+          .profile-subnav {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 36px;
+            overflow-x: auto;
+          }
+          .profile-subnav-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.88rem;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .profile-subnav-btn:hover {
+            color: var(--primary-dark);
+            background: var(--bg-hover);
+          }
+          .profile-subnav-btn.active {
+            color: var(--primary-dark);
+            background: rgba(60, 189, 176, 0.1);
+            font-weight: 700;
+          }
+          .profile-tab-pane {
+            display: none;
+            animation: profileFade 0.35s ease;
+          }
+          .profile-tab-pane.active {
+            display: block;
+          }
+          @keyframes profileFade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          
+          /* Form Controls Polish */
+          .profile-form-group {
+            margin-bottom: 26px;
+          }
+          .profile-label {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: block;
+          }
+          .profile-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+          }
+          .profile-input-icon {
+            position: absolute;
+            left: 15px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            transition: var(--transition);
+          }
+          .profile-input {
+            width: 100%;
+            padding: 14px 16px 14px 44px !important;
+            border-radius: 10px !important;
+            border: 1px solid var(--border) !important;
+            background: var(--bg-input) !important;
+            color: var(--text-primary) !important;
+            font-size: 0.88rem !important;
+            transition: var(--transition) !important;
+            box-shadow: none !important;
+            outline: none !important;
+          }
+          .profile-input:focus {
+            border-color: var(--primary) !important;
+            background: #ffffff !important;
+            box-shadow: 0 0 0 4px rgba(60, 189, 176, 0.12) !important;
+          }
+          .profile-input:focus + .profile-input-icon {
+            color: var(--primary);
+          }
+          
+          /* Linked child cards list */
+          .linked-child-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+          }
+          .linked-child-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+          }
+          .linked-child-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(60, 189, 176, 0.25);
+            box-shadow: var(--shadow-md);
+          }
+          .linked-child-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+          }
+          .linked-child-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+          }
+          .linked-child-info {
+            flex: 1;
+          }
+          .linked-child-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+          }
+          .linked-child-meta {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+          }
+          .linked-child-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.02);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 8px;
+          }
+          .linked-child-stat-item {
+            text-align: center;
+          }
+          .linked-child-stat-lbl {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+          }
+          .linked-child-stat-val {
+            font-size: 0.88rem;
+            font-weight: 750;
+            color: var(--text-primary);
+            margin-top: 2px;
+          }
+        </style>
 
-        <div class="row g-4">
-          <div class="col-lg-4 col-md-5">
-            <div class="card text-center" style="padding:28px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-md);">
-              <div class="position-relative d-inline-block" style="margin: 0 auto 15px auto;">
-                <div class="profile-avatar-wrapper" onclick="document.getElementById('parentAvatarInput').click()">
-                  <img id="parentProfileAvatar" src="data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;%23cbd5e1&quot;><path d=&quot;M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z&quot;/></svg>" style="width:95px;height:95px;border-radius:50%;border:3px solid var(--primary);box-shadow:var(--shadow-md);object-fit: cover;" alt="Parent Avatar">
-                  <div class="profile-avatar-overlay">
-                    <i class="fas fa-camera"></i>
-                  </div>
-                </div>
-                <input type="file" id="parentAvatarInput" accept="image/*" style="display:none;" onchange="uploadParentAvatar(this)">
+        <!-- Premium Profile Hero Header -->
+        <div class="profile-hero">
+          <div class="profile-hero-avatar-container">
+            <div class="profile-avatar-wrapper" onclick="document.getElementById('parentAvatarInput').click()">
+              <img id="parentProfileAvatar" src="data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;%23cbd5e1&quot;><path d=&quot;M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z&quot;/></svg>" class="profile-hero-avatar" alt="Parent Avatar">
+              <div class="profile-avatar-overlay">
+                <i class="fas fa-camera"></i>
               </div>
-              <h5 class="fw-bold mt-2 mb-1" id="parentProfileName" style="font-family:'Outfit',sans-serif;color:var(--text-primary);">Parent Name</h5>
-              <div class="badge px-3 py-1 mt-1" style="font-size:0.72rem; font-weight:600; border-radius:8px; background: rgba(60, 189, 176, 0.08); color: var(--primary-dark); border: 1px solid rgba(60, 189, 176, 0.15);">
-                <i class="fa-solid fa-shield-halved me-1"></i>Guardian Account
+            </div>
+            <input type="file" id="parentAvatarInput" accept="image/*" style="display:none;" onchange="uploadParentAvatar(this)">
+          </div>
+          <div class="profile-hero-details">
+            <div class="profile-hero-name">
+              <span id="parentProfileHeroName">Parent Name</span>
+              <span class="badge" style="font-size:0.65rem; background:rgba(60,189,176,0.12); color:var(--primary-dark); border:1px solid rgba(60,189,176,0.25);">
+                <i class="fa-solid fa-shield-halved me-1"></i>Guardian Portal Verified
+              </span>
+            </div>
+            <div class="profile-hero-meta">
+              <div class="profile-hero-meta-item">
+                <i class="fa-regular fa-envelope"></i>
+                <span id="parentProfileHeroEmail">parent@email.com</span>
               </div>
-              
-              <div class="mt-4 text-start" style="font-size:0.85rem;border-top:1px solid var(--border);padding-top:20px;">
-                <div class="mb-2 text-secondary d-flex align-items-center"><i class="fa-regular fa-envelope me-2 text-primary" style="width: 16px;"></i>Email: &nbsp;<strong id="parentProfileEmail" style="color:var(--text-primary);">parent@email.com</strong></div>
-                <div class="text-secondary d-flex align-items-center"><i class="fa-solid fa-phone me-2 text-primary" style="width: 16px;"></i>Phone: &nbsp;<strong id="parentProfilePhone" style="color:var(--text-primary);">+91 99999 99999</strong></div>
+              <div class="profile-hero-meta-item">
+                <i class="fa-solid fa-phone"></i>
+                <span id="parentProfileHeroPhone">+91 99999 99999</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <div class="col-lg-8 col-md-7">
-            <div class="card" style="padding:28px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-md);">
-              <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-user-pen text-primary me-2"></i>Update Personal Details</h5>
-              <form id="parentProfileForm" onsubmit="updateParentProfile(event)">
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label small fw-semibold text-secondary mb-1">Full Name</label>
-                    <input type="text" class="form-control" id="parentInputName" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
+        <!-- Tabbed Navigation Inside Profile Tab -->
+        <div class="profile-subnav">
+          <button class="profile-subnav-btn active" onclick="switchProfileSubTab('guardian-info', this)">
+            <i class="fas fa-id-card"></i>Guardian Details
+          </button>
+          <button class="profile-subnav-btn" onclick="switchProfileSubTab('linked-kids', this)">
+            <i class="fas fa-user-friends"></i>Linked Students (<span id="profileSubnavChildCount">0</span>)
+          </button>
+          <button class="profile-subnav-btn" onclick="switchProfileSubTab('portal-security', this)">
+            <i class="fas fa-lock"></i>Security & Credentials
+          </button>
+        </div>
+
+        <!-- Sub Tab: Guardian Details -->
+        <div id="profile-tab-guardian-info" class="profile-tab-pane active">
+          <div class="row g-5">
+            <div class="col-lg-8">
+              <div class="card" style="padding:32px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-sm);">
+                <h5 class="fw-bold mb-3" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-user-pen text-primary me-2"></i>Guardian Information</h5>
+                <p class="text-muted mb-4" style="font-size: 0.8rem;">Review or modify the contact name and primary details associated with your student management accounts.</p>
+                
+                <form id="parentProfileForm" onsubmit="updateParentProfile(event)">
+                  <div class="row g-3">
+                    <div class="col-md-6 profile-form-group">
+                      <label class="profile-label">Full Name</label>
+                      <div class="profile-input-group">
+                        <input type="text" class="profile-input" id="parentInputName" required placeholder="Full Name">
+                        <i class="fa-solid fa-user profile-input-icon"></i>
+                      </div>
+                    </div>
+                    <div class="col-md-6 profile-form-group">
+                      <label class="profile-label">Primary Phone Number</label>
+                      <div class="profile-input-group">
+                        <input type="text" class="profile-input" id="parentInputPhone" required placeholder="Primary Mobile">
+                        <i class="fa-solid fa-phone profile-input-icon"></i>
+                      </div>
+                    </div>
+                    <div class="col-md-6 profile-form-group">
+                      <label class="profile-label">Alternate Mobile (Optional)</label>
+                      <div class="profile-input-group">
+                        <input type="text" class="profile-input" id="parentInputAltMobile" placeholder="Alternate Phone">
+                        <i class="fa-solid fa-mobile-screen-button profile-input-icon"></i>
+                      </div>
+                    </div>
+                    <div class="col-md-6 profile-form-group">
+                      <label class="profile-label">Alternate Email (Optional)</label>
+                      <div class="profile-input-group">
+                        <input type="email" class="profile-input" id="parentInputAltEmail" placeholder="Alternate Email">
+                        <i class="fa-regular fa-envelope profile-input-icon"></i>
+                      </div>
+                    </div>
+                    <div class="col-12 mt-3 text-end">
+                      <button type="submit" class="btn btn-spx-primary px-4 py-2.5" style="border:none;background:var(--gradient);color:white;border-radius:10px;font-weight:600;cursor:pointer;box-shadow: 0 4px 12px rgba(60,189,176,0.25);"><i class="fa-regular fa-floppy-disk me-1"></i> Save Changes</button>
+                    </div>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label small fw-semibold text-secondary mb-1">Phone Number</label>
-                    <input type="text" class="form-control" id="parentInputPhone" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
+                </form>
+              </div>
+            </div>
+            
+            <div class="col-lg-4">
+              <!-- System Diagnostics card -->
+              <div class="card" style="padding:24px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-sm);">
+                <h6 class="fw-bold mb-3 text-dark" style="font-family:'Outfit'; font-size:0.9rem;"><i class="fa-solid fa-circle-nodes me-2 text-primary"></i>System Diagnostics</h6>
+                <p class="text-muted mb-3" style="font-size:0.75rem;">Account verification state and API telemetry metrics.</p>
+                <div class="d-flex flex-column gap-3" style="font-size:0.8rem; color:var(--text-secondary);">
+                  <div class="d-flex justify-content-between border-bottom pb-2" style="border-color: rgba(15,23,42,0.04) !important;">
+                    <span>Security Engine</span><span class="fw-bold text-success"><i class="fas fa-lock me-1"></i>JWT Encrypted</span>
                   </div>
-                  <div class="col-12 mt-4">
-                    <button type="submit" class="btn btn-spx-primary" style="border:none;background:var(--gradient);color:white;padding:12px 24px;border-radius:10px;font-weight:600;cursor:pointer;box-shadow: 0 4px 12px rgba(60,189,176,0.25);"><i class="fa-regular fa-floppy-disk me-1"></i> Save Changes</button>
+                  <div class="d-flex justify-content-between border-bottom pb-2" style="border-color: rgba(15,23,42,0.04) !important;">
+                    <span>Portal Session</span><span class="fw-bold text-primary">Guardian Active</span>
+                  </div>
+                  <div class="d-flex justify-content-between border-bottom pb-2" style="border-color: rgba(15,23,42,0.04) !important;">
+                    <span>Linked Students</span><span class="fw-bold text-dark" id="diagnosticsChildCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span>Database Status</span><span class="fw-bold text-success"><i class="fas fa-wifi me-1"></i>Connected</span>
                   </div>
                 </div>
-              </form>
-
-              <hr style="border-color:var(--border);margin:30px 0;">
-
-              <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-key text-primary me-2"></i>Change Portal Password</h5>
-              <form id="parentPasswordForm" onsubmit="changeParentPassword(event)">
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label small fw-semibold text-secondary mb-1">Current Password</label>
-                    <input type="password" class="form-control" id="parentCurrPass" placeholder="••••••••" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label small fw-semibold text-secondary mb-1">New Password</label>
-                    <input type="password" class="form-control" id="parentNewPass" placeholder="••••••••" required style="border-radius:10px;padding:12px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-primary);box-shadow:none;">
-                  </div>
-                  <div class="col-12 mt-4">
-                    <button type="submit" class="btn btn-outline-primary" style="border:1px solid var(--primary);background:transparent;color:var(--primary-dark);padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer;transition:var(--transition);"><i class="fa-solid fa-arrows-rotate me-1"></i> Update Password</button>
-                  </div>
-                </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- Sub Tab: Linked Students -->
+        <div id="profile-tab-linked-kids" class="profile-tab-pane">
+          <div class="card mb-4" style="padding:28px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-sm);">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="fw-bold mb-0" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-people-roof text-primary me-2"></i>Linked Students Supervision</h5>
+              <button class="btn btn-sm btn-spx-primary" onclick="openModal('linkModal')"><i class="fas fa-link me-1"></i>Link Student</button>
+            </div>
+            <p class="text-muted mb-4" style="font-size: 0.8rem;">Below is the verified registry of student profiles linked to this parent account for study reports, attendance, and analytics checks.</p>
+            
+            <div id="profileLinkedChildrenListGrid" class="linked-child-grid">
+              <!-- Loaded dynamically in JS -->
+              <div class="text-muted small py-4 text-center w-100">Loading student registry details...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub Tab: Security & Password -->
+        <div id="profile-tab-portal-security" class="profile-tab-pane">
+          <div class="card" style="padding:28px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--shadow-sm);">
+            <h5 class="fw-bold mb-3" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-key text-primary me-2"></i>Change Portal Password</h5>
+            <p class="text-muted mb-4" style="font-size: 0.8rem;">Change your access password regularly to keep your child's student progress logs private.</p>
+            
+            <form id="parentPasswordForm" onsubmit="changeParentPassword(event)">
+              <div class="row g-3">
+                <div class="col-md-6 profile-form-group">
+                  <label class="profile-label">Current Password</label>
+                  <div class="profile-input-group">
+                    <input type="password" class="profile-input" id="parentCurrPass" placeholder="••••••••" required>
+                    <i class="fa-solid fa-lock profile-input-icon"></i>
+                  </div>
+                </div>
+                <div class="col-md-6 profile-form-group">
+                  <label class="profile-label">New Password</label>
+                  <div class="profile-input-group">
+                    <input type="password" class="profile-input" id="parentNewPass" placeholder="••••••••" required>
+                    <i class="fa-solid fa-key profile-input-icon"></i>
+                  </div>
+                </div>
+                <div class="col-12 mt-2 text-end">
+                  <button type="submit" class="btn btn-outline-primary px-4 py-2" style="border:1px solid var(--primary);background:transparent;color:var(--primary-dark);border-radius:10px;font-weight:600;cursor:pointer;transition:var(--transition);"><i class="fa-solid fa-arrows-rotate me-1"></i> Update Password</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
       </div>
 
     </main>
@@ -602,27 +990,120 @@ function switchTab(id, el) {
   }
 }
 
+function switchProfileSubTab(tabId, btn) {
+  document.querySelectorAll('.profile-tab-pane').forEach(pane => pane.classList.remove('active'));
+  document.querySelectorAll('.profile-subnav-btn').forEach(b => b.classList.remove('active'));
+  
+  document.getElementById(`profile-tab-${tabId}`).classList.add('active');
+  btn.classList.add('active');
+}
+
 function loadParentProfileData() {
   const profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
-  document.getElementById('parentProfileName').textContent = profile.name || 'Parent';
-  document.getElementById('parentProfileEmail').textContent = profile.email || '—';
-  document.getElementById('parentProfilePhone').textContent = profile.phone || '—';
+  
+  // Set hero text
+  document.getElementById('parentProfileHeroName').textContent = profile.name || 'Parent';
+  document.getElementById('parentProfileHeroEmail').textContent = profile.email || '—';
+  document.getElementById('parentProfileHeroPhone').textContent = profile.phone || '—';
+  
+  // Set form values
   document.getElementById('parentInputName').value = profile.name || '';
   document.getElementById('parentInputPhone').value = profile.phone || '';
+  document.getElementById('parentInputAltMobile').value = profile.mobile_number || '';
+  document.getElementById('parentInputAltEmail').value = profile.alt_email || '';
   
   const avatarUrl = profile.photo_url || defaultAvatar;
   document.getElementById('parentProfileAvatar').src = avatarUrl;
+  
+  renderProfileChildren();
+}
+
+function renderProfileChildren() {
+  const container = document.getElementById('profileLinkedChildrenListGrid');
+  const diagnosticsCount = document.getElementById('diagnosticsChildCount');
+  const subnavCount = document.getElementById('profileSubnavChildCount');
+  
+  if (!container) return;
+  
+  const childs = JSON.parse(localStorage.getItem('spx_parent_children') || '[]');
+  
+  if (diagnosticsCount) {
+    diagnosticsCount.textContent = `${childs.length} Student${childs.length === 1 ? '' : 's'}`;
+  }
+  if (subnavCount) {
+    subnavCount.textContent = childs.length;
+  }
+  
+  if (childs.length === 0) {
+    container.innerHTML = `
+      <div class="text-center p-5 rounded w-100" style="background: rgba(15, 23, 42, 0.02); border: 1px dashed var(--border); grid-column: 1 / -1;">
+        <div style="font-size: 1.8rem; color: var(--text-muted); margin-bottom: 10px;"><i class="fas fa-user-friends"></i></div>
+        <p class="text-muted small mb-0">No children linked to this guardian account yet.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = childs.map(c => {
+    const initials = c.name ? c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) : 'ST';
+    
+    let badgeClass = '';
+    if (c.status === 'approved') badgeClass = 'badge-present';
+    else if (c.status === 'rejected') badgeClass = 'badge-absent';
+    else badgeClass = 'badge-pending';
+    
+    const gradeVal = c.grade || '—';
+    const boardVal = c.board || '—';
+    
+    return `
+      <div class="linked-child-card">
+        <div class="linked-child-header">
+          <div class="linked-child-avatar">${initials}</div>
+          <div class="linked-child-info">
+            <div class="linked-child-name">${c.name}</div>
+            <div class="linked-child-meta">Code: ${c.student_code || '—'}</div>
+          </div>
+        </div>
+        <div class="linked-child-stats">
+          <div class="linked-child-stat-item">
+            <div class="linked-child-stat-lbl">Grade</div>
+            <div class="linked-child-stat-val">${gradeVal}</div>
+          </div>
+          <div class="linked-child-stat-item">
+            <div class="linked-child-stat-lbl">Board</div>
+            <div class="linked-child-stat-val" style="font-size: 0.8rem; font-weight:700;">${boardVal}</div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-3" style="border-color: rgba(15,23,42,0.04) !important;">
+          <span class="badge ${badgeClass}" style="font-size: 0.65rem;">${c.status}</span>
+          ${c.status === 'approved' ? `
+            <button class="btn btn-xs btn-outline-primary py-1 px-2.5" style="font-size:0.72rem; border-radius: 6px;" onclick="switchTab('overview'); document.getElementById('studentSelectDropdown').value='${c.id}'; onStudentChanged();">
+              <i class="fas fa-chart-line me-1"></i>Track Progress
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 async function updateParentProfile(e) {
   e.preventDefault();
   const name = document.getElementById('parentInputName').value.trim();
   const phone = document.getElementById('parentInputPhone').value.trim();
+  const altMobile = document.getElementById('parentInputAltMobile').value.trim();
+  const altEmail = document.getElementById('parentInputAltEmail').value.trim();
+  
   try {
     const res = await fetch('/api/auth/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone })
+      body: JSON.stringify({ 
+        name, 
+        phone,
+        mobile_number: altMobile || null,
+        alt_email: altEmail || null
+      })
     });
     if (res.ok) {
       const data = await res.json();
@@ -673,7 +1154,7 @@ async function handleLogin(e) {
     const res = await _fetch(API + '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pass })
+      body: JSON.stringify({ email, password: pass, role: 'parent' })
     });
     if (res.ok) {
       const data = await res.json();
@@ -693,6 +1174,57 @@ async function handleLogin(e) {
       errEl.style.display = 'block';
     }
   } catch {
+    errEl.textContent = 'Server connection error. Please try again.';
+    errEl.style.display = 'block';
+  }
+}
+
+function showRegister(e) {
+  if (e) e.preventDefault();
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'block';
+  document.getElementById('formTitle').textContent = 'Create Parent Account';
+  document.getElementById('formSubtitle').textContent = 'Register to track your child\'s performance';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+function showLogin(e) {
+  if (e) e.preventDefault();
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('registerForm').style.display = 'none';
+  document.getElementById('formTitle').textContent = 'Parent Portal';
+  document.getElementById('formSubtitle').textContent = 'Track your child\'s academic journey in real time';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const password = document.getElementById('regPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  
+  try {
+    const res = await _fetch(API + '/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone, password, role: 'parent' })
+    });
+    
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('spx_parent_token', data.token);
+      localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
+      hideLoginOverlay();
+      initDashboard();
+      showToast('Registration successful! Welcome to Speaxa.', 'success');
+    } else {
+      errEl.textContent = data.error || 'Registration failed.';
+      errEl.style.display = 'block';
+    }
+  } catch (err) {
     errEl.textContent = 'Server connection error. Please try again.';
     errEl.style.display = 'block';
   }

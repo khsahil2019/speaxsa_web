@@ -159,14 +159,24 @@ router.post('/register', async (req, res) => {
 
 // ── POST /api/auth/login ──────────────────────────────────────
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, role } = req.body;
   try {
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const result = await db.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found with this email' });
+    let queryText = 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)';
+    const queryParams = [email];
+
+    if (role) {
+      queryText += ' AND role = $2';
+      queryParams.push(role);
+    }
+
+    const result = await db.query(queryText, queryParams);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: role ? `User not found with this email registered as a ${role}` : 'User not found with this email' });
+    }
 
     let user = null;
     for (const row of result.rows) {

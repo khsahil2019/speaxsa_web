@@ -36,7 +36,7 @@ function switchTab(tab) {
 
 async function doLogin() {
   try {
-    const data = await (await fetch(`${API}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value }) })).json();
+    const data = await (await fetch(`${API}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value, role: 'student' }) })).json();
     if (data.error) throw new Error(data.error);
     saveAuth(data.token, data.user);
   } catch(e) { document.getElementById('loginError').textContent = e.message; document.getElementById('loginError').classList.remove('d-none'); }

@@ -811,7 +811,12 @@ async function viewTeacher(id) {
           </div>
           <hr style="border-color:var(--border)">
           <div class="row g-2 text-muted small">
-            <div class="col-12"><strong>Wallet:</strong></div>
+            <div class="col-12 d-flex justify-content-between align-items-center">
+              <strong>Wallet Earning Summary:</strong>
+              <button class="btn btn-xs btn-outline-primary py-0.5 px-2" style="font-size:0.7rem; border-radius:4px" onclick="viewTeacherStatement('${data.teacher?.id}')">
+                <i class="fas fa-wallet me-1"></i>View Earning Ledger
+              </button>
+            </div>
             <div class="col-4">Total: ${fmtCurrency(data.wallet?.total_earnings)}</div>
             <div class="col-4">Paid: ${fmtCurrency(data.wallet?.paid_earnings)}</div>
             <div class="col-4">Balance: ${fmtCurrency(data.wallet?.wallet_balance)}</div>
@@ -938,6 +943,137 @@ async function viewTeacher(id) {
       </div>`;
     formModal.show();
   } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function viewTeacherStatement(id) {
+  try {
+    const data = await apiGet(`/admin/teachers/${id}/wallet/statement`);
+    
+    // Create ledger modal dynamically if not exists
+    let ledgerModal = document.getElementById('ledgerModal');
+    if (!ledgerModal) {
+      ledgerModal = document.createElement('div');
+      ledgerModal.id = 'ledgerModal';
+      ledgerModal.className = 'modal fade';
+      ledgerModal.tabIndex = -1;
+      ledgerModal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+          <div class="modal-content spx-modal" style="background:#0f172a; border: 1px solid var(--border)">
+            <div class="modal-header border-0">
+              <h5 class="modal-title text-white fw-bold" id="ledgerModalTitle">Earning Statement & Ledger</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="ledgerModalBody"></div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(ledgerModal);
+    }
+
+    const bd = data.breakdown || {};
+    
+    document.getElementById('ledgerModalBody').innerHTML = `
+      <!-- Earnings Breakdown Tiles -->
+      <div class="row g-3 mb-4 text-white">
+        <div class="col-md-4 col-sm-6">
+          <div class="p-3 rounded border" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2) !important;">
+            <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-graduation-cap text-success me-1"></i>Course Share</div>
+            <h4 class="fw-bold mb-0 text-success">${fmtCurrency(bd.course_share || 0)}</h4>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="p-3 rounded border" style="background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.2) !important;">
+            <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-user-graduate text-purple me-1"></i>Student Referrals</div>
+            <h4 class="fw-bold mb-0" style="color: #a855f7;">${fmtCurrency(bd.student_referral || 0)}</h4>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="p-3 rounded border" style="background: rgba(99, 102, 241, 0.05); border-color: rgba(99, 102, 241, 0.2) !important;">
+            <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-chalkboard-teacher text-indigo me-1"></i>Teacher Referrals</div>
+            <h4 class="fw-bold mb-0" style="color: #6366f1;">${fmtCurrency(bd.teacher_referral || 0)}</h4>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="p-3 rounded border" style="background: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.2) !important;">
+            <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-trophy text-warning me-1"></i>Milestone Slabs</div>
+            <h4 class="fw-bold mb-0 text-warning">${fmtCurrency(bd.slab_reward || 0)}</h4>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="p-3 rounded border" style="background: rgba(236, 72, 153, 0.05); border-color: rgba(236, 72, 153, 0.2) !important;">
+            <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-award text-pink me-1"></i>Grooming Allowances</div>
+            <h4 class="fw-bold mb-0" style="color: #ec4899;">${fmtCurrency(bd.grooming_allowance || 0)}</h4>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+          <div class="p-3 rounded border" style="background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2) !important;">
+            <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-sign-out-alt text-danger me-1"></i>Payout Withdrawals</div>
+            <h4 class="fw-bold mb-0 text-danger">${fmtCurrency(bd.withdrawal || 0)}</h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statement Ledger Table -->
+      <h6 class="text-white fw-bold mb-3"><i class="fas fa-history me-1"></i>Detailed Transaction Statement Ledger</h6>
+      <div class="table-responsive">
+        <table class="table spx-table mb-0 text-white">
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Transaction Type</th>
+              <th>Details & Description</th>
+              <th class="text-end">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.statement.map(item => {
+              let typeBadge = '';
+              let amtColor = '';
+              let prefix = '+';
+              
+              if (item.type === 'course_share') {
+                typeBadge = `<span class="badge bg-success-subtle text-success border border-success">Course Share</span>`;
+                amtColor = 'text-success';
+              } else if (item.type === 'student_referral') {
+                typeBadge = `<span class="badge bg-purple-subtle text-purple border border-purple" style="color:#a855f7; border-color:#a855f7 !important;">Student Referral</span>`;
+                amtColor = 'text-success';
+              } else if (item.type === 'teacher_referral') {
+                typeBadge = `<span class="badge bg-indigo-subtle text-indigo border border-indigo" style="color:#6366f1; border-color:#6366f1 !important;">Teacher Referral</span>`;
+                amtColor = 'text-success';
+              } else if (item.type === 'slab_reward') {
+                typeBadge = `<span class="badge bg-warning-subtle text-warning border border-warning">Slab Milestone</span>`;
+                amtColor = 'text-success';
+              } else if (item.type === 'grooming_allowance') {
+                typeBadge = `<span class="badge bg-pink-subtle text-pink border border-pink" style="color:#ec4899; border-color:#ec4899 !important;">Grooming Allowance</span>`;
+                amtColor = 'text-success';
+              } else if (item.type === 'withdrawal') {
+                typeBadge = `<span class="badge bg-danger-subtle text-danger border border-danger">Withdrawal Payout</span>`;
+                amtColor = 'text-danger';
+                prefix = '-';
+              }
+
+              const desc = item.referred_user_name ? `${item.description} (User: ${item.referred_user_name})` : item.description;
+
+              return `
+                <tr>
+                  <td>${new Date(item.created_at).toLocaleString()}</td>
+                  <td>${typeBadge}</td>
+                  <td>${desc || '—'}</td>
+                  <td class="text-end fw-bold ${amtColor}">${prefix}${fmtCurrency(item.amount)}</td>
+                </tr>
+              `;
+            }).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No transactions found in ledger statement.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const bsModal = new bootstrap.Modal(ledgerModal);
+    bsModal.show();
+
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 async function setTeacherLevel(id) {

@@ -154,6 +154,40 @@ router.get('/teachers/:id', async (req, res) => {
   }
 });
 
+// GET /admin/teachers/:id/wallet/statement - Fetch statement history for a teacher
+router.get('/teachers/:id/wallet/statement', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const statementRes = await db.query(`
+      SELECT l.*, p.amount as payment_amount, u.name as referred_user_name
+      FROM teacher_wallet_ledger l
+      LEFT JOIN payments p ON p.id = l.payment_id
+      LEFT JOIN users u ON u.id = l.referred_user_id
+      WHERE l.teacher_id = $1
+      ORDER BY l.created_at DESC
+    `, [id]);
+
+    const breakdownRes = await db.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN type = 'course_share' THEN amount ELSE 0 END), 0) as course_share,
+        COALESCE(SUM(CASE WHEN type = 'student_referral' THEN amount ELSE 0 END), 0) as student_referral,
+        COALESCE(SUM(CASE WHEN type = 'teacher_referral' THEN amount ELSE 0 END), 0) as teacher_referral,
+        COALESCE(SUM(CASE WHEN type = 'grooming_allowance' THEN amount ELSE 0 END), 0) as grooming_allowance,
+        COALESCE(SUM(CASE WHEN type = 'slab_reward' THEN amount ELSE 0 END), 0) as slab_reward,
+        COALESCE(SUM(CASE WHEN type = 'withdrawal' THEN amount ELSE 0 END), 0) as withdrawal
+      FROM teacher_wallet_ledger
+      WHERE teacher_id = $1
+    `, [id]);
+
+    res.json({
+      statement: statementRes.rows,
+      breakdown: breakdownRes.rows[0] || {}
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/teachers/:id/approve', async (req, res) => {
   const { id } = req.params;
   try {

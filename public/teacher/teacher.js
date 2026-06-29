@@ -53,7 +53,7 @@ async function doLogin() {
     const data = await (await fetch(`${API}/auth/login`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ email: emailEl.value, password: passEl.value })
+      body: JSON.stringify({ email: emailEl.value, password: passEl.value, role: 'teacher' })
     })).json();
 
     if (data.error) throw new Error(data.error);
