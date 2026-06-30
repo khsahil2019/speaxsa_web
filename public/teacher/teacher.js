@@ -1688,13 +1688,13 @@ async function renderBatches() {
                   <input type="number" class="form-control spx-input" id="batchCapacity" value="${maxBatchCapacity}" max="${maxBatchCapacity}" oninput="updateBatchPreview()" required>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label mb-1">Learning Schedule / Syllabus Text</label>
-                  <textarea class="form-control spx-input" id="batchPlannerDesc" rows="4" placeholder="e.g. Week 1: Introduction to Mechanics&#10;Week 2: Newtons Laws of Motion" oninput="updateBatchPreview()"></textarea>
+                  <label class="spx-label mb-1">Learning Schedule / Syllabus Text *</label>
+                  <textarea class="form-control spx-input" id="batchPlannerDesc" rows="4" placeholder="e.g. Week 1: Introduction to Mechanics&#10;Week 2: Newtons Laws of Motion" oninput="updateBatchPreview()" required></textarea>
                   <div class="form-text text-muted small mt-1">Write out the weekly schedule details directly.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label">Upload Chapter-wise Course Planner (PDF/Doc)</label>
-                  <input type="file" class="form-control spx-input" id="batchPlanner" accept=".pdf,.doc,.docx">
+                  <label class="spx-label">Upload Chapter-wise Course Planner (PDF/Doc) *</label>
+                  <input type="file" class="form-control spx-input" id="batchPlanner" accept=".pdf,.doc,.docx" required>
                   <div class="form-text text-muted small mt-1">Or upload a syllabus document file if you have one.</div>
                 </div>
                 <div class="mb-3">
@@ -1703,9 +1703,14 @@ async function renderBatches() {
                   <textarea class="form-control spx-input" id="batchTeachingMethod" rows="3" placeholder="e.g. I focus heavily on interactive visual slides, followed by live coding and daily worksheets. I conduct doubt sessions every alternate day." required></textarea>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label mb-0">Important Batch Instructions / Prerequisites</label>
+                  <label class="spx-label mb-0">Important Batch Instructions / Prerequisites *</label>
                   <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Add any requirements, materials, prior knowledge or preparation instructions needed for this batch.</small>
-                  <textarea class="form-control spx-input" id="batchInstructions" rows="3" placeholder="e.g. Recommended for students with a basic understanding of quadratic equations. Must bring a notebook and laptop to classes."></textarea>
+                  <textarea class="form-control spx-input" id="batchInstructions" rows="3" placeholder="e.g. Recommended for students with a basic understanding of quadratic equations. Must bring a notebook and laptop to classes." required></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label mb-0">Upload Demo Video *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Upload a short video introducing yourself and the batch (MP4/WebM, Max 200MB).</small>
+                  <input type="file" class="form-control spx-input" id="batchDemoVideo" accept="video/mp4,video/webm" required>
                 </div>
                 <button type="submit" class="btn btn-spx w-100">Create Batch</button>
               </form>
@@ -1933,6 +1938,23 @@ async function createBatch(e) {
   const daysVal = document.getElementById('batchDays').value;
   const days_of_week = daysVal.split(',').map(s => s.trim()).filter(Boolean);
 
+  if (!daysVal || days_of_week.length === 0) {
+    showToast('Please select at least one Day of Week.', 'error');
+    return;
+  }
+
+  const plannerFile = document.getElementById('batchPlanner').files[0];
+  if (!plannerFile) {
+    showToast('Please upload a Chapter-wise Course Planner file.', 'error');
+    return;
+  }
+
+  const demoVideoFile = document.getElementById('batchDemoVideo').files[0];
+  if (!demoVideoFile) {
+    showToast('Please upload a Batch Demo Video.', 'error');
+    return;
+  }
+
   const formData = new FormData();
   formData.append('course_id', document.getElementById('batchCourse').value);
   formData.append('batch_name', document.getElementById('batchName').value);
@@ -1946,11 +1968,8 @@ async function createBatch(e) {
   formData.append('planner_desc', document.getElementById('batchPlannerDesc')?.value || '');
   formData.append('teaching_method', document.getElementById('batchTeachingMethod').value);
   formData.append('batch_instructions', document.getElementById('batchInstructions').value);
-
-  const plannerFile = document.getElementById('batchPlanner').files[0];
-  if (plannerFile) {
-    formData.append('planner', plannerFile);
-  }
+  formData.append('planner', plannerFile);
+  formData.append('demo_video', demoVideoFile);
 
   try {
     showToast('Creating batch & uploading planner...', 'info');
@@ -1973,6 +1992,7 @@ async function createBatch(e) {
     renderBatches();
   } catch (e) {
     showToast(e.message, 'error');
+    highlightFormFieldError(document.getElementById('batchForm'), e.message);
   }
 }
 
@@ -2138,9 +2158,9 @@ function initCourseFormModal() {
                   <textarea class="form-control" id="tCourseLearningOutcome" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" rows="2" placeholder="e.g. Students will be able to solve quadratic equations independently..." required></textarea>
                 </div>
                 <div class="col-md-12">
-                  <label class="form-label fw-semibold text-dark mb-0">Custom Badge / Tag Line</label>
-                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">A premium tag overlay to show on the course details card (optional).</small>
-                  <input class="form-control" id="tCourseCustomTag" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Designed by Priya Ma'am">
+                  <label class="form-label fw-semibold text-dark mb-0">Custom Badge / Tag Line *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">A premium tag overlay to show on the course details card.</small>
+                  <input class="form-control" id="tCourseCustomTag" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px;" placeholder="e.g. Designed by Priya Ma'am" required>
                 </div>
                 
                 <div class="col-12">
@@ -2250,15 +2270,27 @@ function editTeacherCourse(id) {
 
 async function handleSaveTeacherCourse(e) {
   e.preventDefault();
+  
+  const customTag = document.getElementById('tCourseCustomTag').value.trim();
+  if (!customTag) {
+    showToast('Custom Tag Line is required', 'error');
+    return;
+  }
+  
+  if (!_teacherCurrentThumbnailUrl) {
+    showToast('Course Thumbnail / Banner image is required', 'error');
+    return;
+  }
+
   const payload = {
     title: document.getElementById('tCourseTitle').value,
     subject: document.getElementById('tCourseSubject').value,
     grade: document.getElementById('tCourseGrade').value,
     board: document.getElementById('tCourseBoard').value,
     duration_weeks: parseInt(document.getElementById('tCourseLearningDuration').value) || 12,
-    custom_tag: document.getElementById('tCourseCustomTag').value,
+    custom_tag: customTag,
     description: document.getElementById('tCourseDesc').value,
-    thumbnail_url: _teacherCurrentThumbnailUrl || null,
+    thumbnail_url: _teacherCurrentThumbnailUrl,
     learning_duration: document.getElementById('tCourseLearningDuration').value,
     objective: document.getElementById('tCourseObjective').value,
     learning_outcome: document.getElementById('tCourseLearningOutcome').value,
@@ -2286,6 +2318,7 @@ async function handleSaveTeacherCourse(e) {
     renderCourses();
   } catch (err) {
     showToast(err.message, 'error');
+    highlightFormFieldError(document.getElementById('teacherCourseForm'), err.message);
   }
 }
 
@@ -2557,7 +2590,7 @@ async function renderAssignments() {
         <div class="col-lg-4">
           <div class="spx-card">
             <h6 class="mb-4 fw-bold">Create Assignment</h6>
-            <form onsubmit="createAssignment(event)">
+            <form id="assignmentForm" onsubmit="createAssignment(event)">
               <div class="mb-3">
                 <label class="spx-label">Select Batch</label>
                 <select class="form-select spx-input" id="assignBatch" required>
@@ -2570,8 +2603,8 @@ async function renderAssignments() {
                 <input class="form-control spx-input" id="assignTitle" placeholder="e.g. Homework 1: Friction Problems" required>
               </div>
               <div class="mb-3">
-                <label class="spx-label">Description</label>
-                <textarea class="form-control spx-input" id="assignDesc" rows="3"></textarea>
+                <label class="spx-label">Description *</label>
+                <textarea class="form-control spx-input" id="assignDesc" rows="3" required></textarea>
               </div>
               <div class="mb-3">
                 <label class="spx-label">Due Date</label>
@@ -2582,8 +2615,8 @@ async function renderAssignments() {
                 <input type="number" class="form-control spx-input" id="assignMax" value="100" required>
               </div>
               <div class="mb-3">
-                <label class="spx-label">File Attachment (PDF/Image)</label>
-                <input type="file" class="form-control spx-input" id="assignFile">
+                <label class="spx-label">File Attachment (PDF/Image) *</label>
+                <input type="file" class="form-control spx-input" id="assignFile" required>
               </div>
               <button type="submit" class="btn btn-spx w-100">Publish Assignment</button>
             </form>
@@ -2598,14 +2631,24 @@ async function renderAssignments() {
 
 async function createAssignment(e) {
   e.preventDefault();
+  const desc = document.getElementById('assignDesc').value.trim();
   const fileInput = document.getElementById('assignFile');
+  if (!desc) {
+    showToast('Description is required', 'error');
+    return;
+  }
+  if (!fileInput.files[0]) {
+    showToast('Please select a file to upload for the assignment', 'error');
+    return;
+  }
+
   const formData = new FormData();
   formData.append('batchId', document.getElementById('assignBatch').value);
   formData.append('title', document.getElementById('assignTitle').value);
-  formData.append('description', document.getElementById('assignDesc').value);
+  formData.append('description', desc);
   formData.append('due_date', document.getElementById('assignDue').value);
   formData.append('max_marks', document.getElementById('assignMax').value);
-  if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+  formData.append('file', fileInput.files[0]);
 
   try {
     showToast('Uploading attachment & publishing assignment...', 'info');
@@ -2620,6 +2663,7 @@ async function createAssignment(e) {
     renderAssignments();
   } catch (e) {
     showToast(e.message, 'error');
+    highlightFormFieldError(document.getElementById('assignmentForm'), e.message);
   }
 }
 
@@ -2940,23 +2984,23 @@ async function renderNotes() {
         <div class="col-lg-4">
           <div class="spx-card">
             <h6 class="mb-4 fw-bold">Publish Material</h6>
-            <form onsubmit="publishMaterial(event)">
+            <form id="notesForm" onsubmit="publishMaterial(event)">
               <div class="mb-3">
-                <label class="spx-label">Course Link (Optional)</label>
-                <select class="form-select spx-input" id="noteCourse">
-                  <option value="">None</option>
+                <label class="spx-label">Course Link *</label>
+                <select class="form-select spx-input" id="noteCourse" required>
+                  <option value="">Select Course</option>
                   ${courses.map(c => `<option value="${c.id}">${c.title}</option>`).join('')}
                 </select>
               </div>
               <div class="mb-3">
-                <label class="spx-label">Batch Link (Optional)</label>
-                <select class="form-select spx-input" id="noteBatch">
-                  <option value="">None</option>
+                <label class="spx-label">Batch Link *</label>
+                <select class="form-select spx-input" id="noteBatch" required>
+                  <option value="">Select Batch</option>
                   ${batches.map(b => `<option value="${b.id}">${b.batch_name}</option>`).join('')}
                 </select>
               </div>
               <div class="mb-3">
-                <label class="spx-label">Material Title</label>
+                <label class="spx-label">Material Title *</label>
                 <input class="form-control spx-input" id="noteTitle" placeholder="e.g. Electromagnetism Notes PDF" required>
               </div>
               <div class="mb-3">
@@ -3001,10 +3045,15 @@ async function publishMaterial(e) {
   e.preventDefault();
   const source = document.getElementById('noteUploadType').value;
   const fileInput = document.getElementById('noteFile');
+  const desc = document.getElementById('noteDesc').value.trim();
+  if (!desc) {
+    showToast('Description is required', 'error');
+    return;
+  }
 
   const formData = new FormData();
   formData.append('title', document.getElementById('noteTitle').value);
-  formData.append('description', document.getElementById('noteDesc').value);
+  formData.append('description', desc);
   formData.append('courseId', document.getElementById('noteCourse').value);
   formData.append('batchId', document.getElementById('noteBatch').value);
 
@@ -3030,6 +3079,7 @@ async function publishMaterial(e) {
     renderNotes();
   } catch (e) {
     showToast(e.message, 'error');
+    highlightFormFieldError(document.getElementById('notesForm'), e.message);
   }
 }
 
@@ -4291,6 +4341,110 @@ window.copyText = function(inputId, message) {
   copyText.setSelectionRange(0, 99999);
   navigator.clipboard.writeText(copyText.value);
   showToast(message, 'success');
+}
+
+function highlightFormFieldError(formElement, errorMessage) {
+  if (!formElement || !errorMessage) return;
+
+  // Clear existing errors
+  formElement.querySelectorAll('.spx-field-error').forEach(el => el.remove());
+  formElement.querySelectorAll('.spx-input-error').forEach(el => {
+    el.classList.remove('spx-input-error');
+    el.style.borderColor = '';
+    el.style.boxShadow = '';
+  });
+
+  const msg = errorMessage.toLowerCase();
+  let matchedInput = null;
+
+  const rules = [
+    { keys: ['course selection', 'course is required'], ids: ['batchCourse', 'noteCourse'] },
+    { keys: ['batch name'], ids: ['batchName'] },
+    { keys: ['subject'], ids: ['batchSubject', 'courseSubject', 'tCourseSubject'] },
+    { keys: ['start date'], ids: ['batchStartD'] },
+    { keys: ['end date'], ids: ['batchEndD'] },
+    { keys: ['start time'], ids: ['batchStartT'] },
+    { keys: ['end time'], ids: ['batchEndT'] },
+    { keys: ['days', 'day of week'], ids: ['batchDaysContainer'] },
+    { keys: ['capacity'], ids: ['batchCapacity'] },
+    { keys: ['planner desc', 'schedule', 'syllabus text'], ids: ['batchPlannerDesc'] },
+    { keys: ['planner file', 'planner document', 'planner upload'], ids: ['batchPlanner'] },
+    { keys: ['teaching method', 'style', 'methodology'], ids: ['batchTeachingMethod'] },
+    { keys: ['instructions', 'prerequisites'], ids: ['batchInstructions'] },
+    { keys: ['demo video'], ids: ['batchDemoVideo'] },
+    { keys: ['title'], ids: ['courseTitle', 'tCourseTitle', 'assignTitle', 'noteTitle'] },
+    { keys: ['description'], ids: ['courseDesc', 'tCourseDesc', 'assignDesc', 'noteDesc'] },
+    { keys: ['duration weeks'], ids: ['courseLearningDuration', 'tCourseLearningDuration'] },
+    { keys: ['grade'], ids: ['courseGrade', 'tCourseGrade'] },
+    { keys: ['board'], ids: ['courseBoard', 'tCourseBoard'] },
+    { keys: ['fees', 'fee'], ids: ['courseFees'] },
+    { keys: ['thumbnail', 'banner'], ids: ['courseFileInput', 'tCourseCustomTag'] },
+    { keys: ['badge', 'tag line'], ids: ['courseCustomTag', 'tCourseCustomTag'] },
+    { keys: ['objective'], ids: ['courseObjective', 'tCourseObjective'] },
+    { keys: ['outcome'], ids: ['courseLearningOutcome', 'tCourseLearningOutcome'] },
+    { keys: ['language'], ids: ['courseLanguageInstruction', 'tCourseLanguageInstruction'] },
+    { keys: ['daily class', 'daily duration'], ids: ['courseDailyClassDuration', 'tCourseDailyClassDuration'] },
+    { keys: ['assessment'], ids: ['courseAssessmentDays', 'tCourseAssessmentDays'] },
+    { keys: ['due date', 'due'], ids: ['assignDue'] },
+    { keys: ['marks'], ids: ['assignMax'] },
+    { keys: ['attachment', 'file upload'], ids: ['assignFile', 'noteFile'] }
+  ];
+
+  for (const rule of rules) {
+    if (rule.keys.some(k => msg.includes(k))) {
+      for (const id of rule.ids) {
+        const el = formElement.querySelector(`#${id}`);
+        if (el) {
+          matchedInput = el;
+          break;
+        }
+      }
+    }
+    if (matchedInput) break;
+  }
+
+  if (!matchedInput) {
+    const inputs = formElement.querySelectorAll('input, textarea, select');
+    for (const input of inputs) {
+      const id = input.id ? input.id.toLowerCase() : '';
+      const name = input.name ? input.name.toLowerCase() : '';
+      const placeholder = input.placeholder ? input.placeholder.toLowerCase() : '';
+      if (rules.some(r => r.keys.some(k => msg.includes(k) && (id.includes(k) || name.includes(k) || placeholder.includes(k))))) {
+        matchedInput = input;
+        break;
+      }
+    }
+  }
+
+  if (matchedInput) {
+    matchedInput.classList.add('spx-input-error');
+    matchedInput.style.borderColor = '#ef4444';
+    matchedInput.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.15)';
+
+    const errDiv = document.createElement('div');
+    errDiv.className = 'spx-field-error text-danger mt-1 small fw-semibold';
+    errDiv.style.color = '#ef4444';
+    errDiv.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${errorMessage}`;
+
+    if (matchedInput.nextSibling) {
+      matchedInput.parentNode.insertBefore(errDiv, matchedInput.nextSibling);
+    } else {
+      matchedInput.parentNode.appendChild(errDiv);
+    }
+
+    matchedInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const clearError = () => {
+      matchedInput.classList.remove('spx-input-error');
+      matchedInput.style.borderColor = '';
+      matchedInput.style.boxShadow = '';
+      errDiv.remove();
+      matchedInput.removeEventListener('input', clearError);
+      matchedInput.removeEventListener('change', clearError);
+    };
+    matchedInput.addEventListener('input', clearError);
+    matchedInput.addEventListener('change', clearError);
+  }
 }
 
 initApp();

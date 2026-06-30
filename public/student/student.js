@@ -559,10 +559,27 @@ async function showCourseDetails(courseId) {
               let plannerHtml = '';
               if (b.planner_url) {
                 plannerHtml = `
-                  <div class="mb-3 text-end">
-                    <a href="${b.planner_url}" target="_blank" class="btn btn-sm btn-outline-primary px-3 py-1.5 fw-bold" style="font-size: 0.7rem;">
-                      <i class="fas fa-file-pdf me-1"></i>Download Batch Syllabus Planner
-                    </a>
+                  <a href="${b.planner_url}" target="_blank" class="btn btn-sm btn-outline-primary px-3 py-1.5 fw-bold" style="font-size: 0.7rem;">
+                    <i class="fas fa-file-pdf me-1"></i>Download Syllabus Planner
+                  </a>
+                `;
+              }
+
+              let demoVideoHtml = '';
+              if (b.demo_video_url) {
+                demoVideoHtml = `
+                  <button class="btn btn-sm btn-outline-warning px-3 py-1.5 fw-bold" style="font-size: 0.7rem;" onclick="playBatchDemoVideo('${b.demo_video_url}', '${b.batch_name.replace(/'/g, "\\'")}', event)">
+                    <i class="fas fa-play-circle me-1"></i>Watch Demo Video
+                  </button>
+                `;
+              }
+
+              let actionsRowHtml = '';
+              if (plannerHtml || demoVideoHtml) {
+                actionsRowHtml = `
+                  <div class="mb-3 d-flex flex-wrap gap-2 justify-content-end">
+                    ${demoVideoHtml}
+                    ${plannerHtml}
                   </div>
                 `;
               }
@@ -599,7 +616,7 @@ async function showCourseDetails(courseId) {
                   </div>
                   
                   ${instructionsHtml}
-                  ${plannerHtml}
+                  ${actionsRowHtml}
                   
                   <!-- Expandable Teacher Info Section -->
                   <div id="teacher-profile-${b.id}" class="mt-3 pt-3 border-top mb-3" style="display: none; border-color: rgba(255, 255, 255, 0.08) !important;">
@@ -1392,6 +1409,17 @@ async function viewBatchDetails(batchId) {
 
     titleEl.textContent = `${batch.course_title || batch.batch_name} — Details`;
 
+    let demoVideoRowHtml = '';
+    if (batch.demo_video_url) {
+      demoVideoRowHtml = `
+        <div class="col-12 mt-2 pt-2 border-top" style="border-color: rgba(255,255,255,0.08) !important;">
+          <button class="btn btn-sm btn-outline-warning fw-bold px-3 py-1.5" onclick="playBatchDemoVideo('${batch.demo_video_url}', '${(batch.batch_name || batch.course_title).replace(/'/g, "\\'")}', event)" style="font-size: 0.72rem;">
+            <i class="fas fa-play-circle me-1"></i>Watch Batch Demo Video
+          </button>
+        </div>
+      `;
+    }
+
     bodyEl.innerHTML = `
       <!-- Batch Summary Information -->
       <div class="p-3 rounded-3 mb-4" style="background:var(--bg-card); border:1px solid var(--border);">
@@ -1408,6 +1436,7 @@ async function viewBatchDetails(batchId) {
             <small class="text-muted d-block" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Time Slot</small>
             <strong class="text-white small">${batch.start_time ? formatTime(batch.start_time) : ''} - ${batch.end_time ? formatTime(batch.end_time) : ''}</strong>
           </div>
+          ${demoVideoRowHtml}
         </div>
       </div>
 
@@ -1627,3 +1656,34 @@ async function joinLiveClass(batchId) {
     showToast('Failed to check active classes: ' + err.message, 'error');
   }
 }
+
+function playBatchDemoVideo(url, batchName, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const videoPlayer = document.getElementById('batchDemoVideoPlayer');
+  const videoTitle = document.getElementById('batchDemoVideoTitle');
+  if (videoPlayer && videoTitle) {
+    videoTitle.textContent = `${batchName} — Demo Video`;
+    videoPlayer.src = url;
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('batchDemoVideoModal'));
+    modal.show();
+    videoPlayer.play().catch(err => console.log('Autoplay blocked:', err));
+  }
+}
+
+function stopBatchDemoVideo() {
+  const videoPlayer = document.getElementById('batchDemoVideoPlayer');
+  if (videoPlayer) {
+    videoPlayer.pause();
+    videoPlayer.src = '';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modalEl = document.getElementById('batchDemoVideoModal');
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', stopBatchDemoVideo);
+  }
+});

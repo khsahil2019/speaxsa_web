@@ -224,6 +224,22 @@
         <!-- Dynamic content will be loaded here -->
       </div>
     </div>
+</div>
+
+<!-- Batch Demo Video Player Modal -->
+<div class="modal fade" id="batchDemoVideoModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#f8fafc; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="border-bottom:1px solid #334155; padding:16px 24px;">
+        <h5 class="modal-title fw-bold text-white" id="batchDemoVideoTitle">Batch Demo Video</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopBatchDemoVideo()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0 bg-black text-center d-flex align-items-center justify-content-center" style="min-height:350px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; overflow: hidden;">
+        <video id="batchDemoVideoPlayer" class="w-100" style="max-height: 500px; outline: none;" controls controlsList="nodownload">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
   </div>
 </div>
 

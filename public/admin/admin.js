@@ -1727,10 +1727,16 @@ function showCreateCourse() {
           <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">List the specific skills/knowledge students will acquire.</small>
           <textarea class="form-control spx-input" id="courseLearningOutcome" rows="2" placeholder="e.g. Students will be able to solve quadratic equations independently..." required></textarea>
         </div>
+
+        <div class="col-md-12">
+          <label class="spx-label mb-0">Custom Badge / Tag Line *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">A premium tag overlay to show on the course details card.</small>
+          <input class="form-control spx-input" id="courseCustomTag" placeholder="e.g. Designed by Priya Ma'am" required>
+        </div>
         
         <!-- Course Banner Image Upload -->
         <div class="col-12">
-          <label class="spx-label mb-0">Course Banner / Thumbnail</label>
+          <label class="spx-label mb-0">Course Banner / Thumbnail *</label>
           <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Upload a high-quality cover image for the course listing (Max 5MB).</small>
           <div class="course-upload-box position-relative d-flex flex-column align-items-center justify-content-center p-4 border border-dashed rounded text-center" style="min-height: 150px; cursor: pointer;" onclick="document.getElementById('courseFileInput').click()">
             <input type="file" id="courseFileInput" accept="image/*" class="d-none" onchange="handleCourseFileSelect(this)">
@@ -1765,6 +1771,15 @@ function showCreateCourse() {
 
 async function createCourse(e) {
   e.preventDefault();
+  const customTag = document.getElementById('courseCustomTag').value.trim();
+  if (!customTag) {
+    showToast('Custom Tag Line is required', 'error');
+    return;
+  }
+  if (!window._currentThumbnailUrl) {
+    showToast('Course Thumbnail / Banner image is required', 'error');
+    return;
+  }
   try {
     const data = await apiPost('/admin/courses', {
       title: document.getElementById('courseTitle').value,
@@ -1774,7 +1789,8 @@ async function createCourse(e) {
       duration_weeks: parseInt(document.getElementById('courseLearningDuration').value) || 12,
       fees: parseFloat(document.getElementById('courseFees').value),
       description: document.getElementById('courseDesc').value,
-      thumbnail_url: window._currentThumbnailUrl || null,
+      thumbnail_url: window._currentThumbnailUrl,
+      custom_tag: customTag,
       learning_duration: document.getElementById('courseLearningDuration').value,
       objective: document.getElementById('courseObjective').value,
       learning_outcome: document.getElementById('courseLearningOutcome').value,
@@ -1785,7 +1801,10 @@ async function createCourse(e) {
     showToast(data.message || 'Course created');
     formModal.hide();
     renderCourses();
-  } catch (err) { showToast(err.message, 'error'); }
+  } catch (err) {
+    showToast(err.message, 'error');
+    highlightFormFieldError(document.getElementById('courseForm'), err.message);
+  }
 }
 
 function editCourse(id) {
@@ -1865,10 +1884,16 @@ function editCourse(id) {
           <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">List the specific skills/knowledge students will acquire.</small>
           <textarea class="form-control spx-input" id="courseLearningOutcome" rows="2" placeholder="e.g. Students will be able to solve quadratic equations independently..." required>${course.learning_outcome || ''}</textarea>
         </div>
+
+        <div class="col-md-12">
+          <label class="spx-label mb-0">Custom Badge / Tag Line *</label>
+          <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">A premium tag overlay to show on the course details card.</small>
+          <input class="form-control spx-input" id="courseCustomTag" placeholder="e.g. Designed by Priya Ma'am" value="${course.custom_tag || ''}" required>
+        </div>
         
         <!-- Course Banner Image Upload -->
         <div class="col-12">
-          <label class="spx-label mb-0">Course Banner / Thumbnail</label>
+          <label class="spx-label mb-0">Course Banner / Thumbnail *</label>
           <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Upload a high-quality cover image for the course listing (Max 5MB).</small>
           <div class="course-upload-box position-relative d-flex flex-column align-items-center justify-content-center p-4 border border-dashed rounded text-center" style="min-height: 150px; cursor: pointer;" onclick="document.getElementById('courseFileInput').click()">
             <input type="file" id="courseFileInput" accept="image/*" class="d-none" onchange="handleCourseFileSelect(this)">
@@ -1903,6 +1928,15 @@ function editCourse(id) {
 
 async function updateCourse(e, id) {
   e.preventDefault();
+  const customTag = document.getElementById('courseCustomTag').value.trim();
+  if (!customTag) {
+    showToast('Custom Tag Line is required', 'error');
+    return;
+  }
+  if (!window._currentThumbnailUrl) {
+    showToast('Course Thumbnail / Banner image is required', 'error');
+    return;
+  }
   try {
     const data = await apiPut(`/admin/courses/${id}`, {
       title: document.getElementById('courseTitle').value,
@@ -1912,7 +1946,8 @@ async function updateCourse(e, id) {
       duration_weeks: parseInt(document.getElementById('courseLearningDuration').value) || 12,
       fees: parseFloat(document.getElementById('courseFees').value),
       description: document.getElementById('courseDesc').value,
-      thumbnail_url: window._currentThumbnailUrl || null,
+      thumbnail_url: window._currentThumbnailUrl,
+      custom_tag: customTag,
       learning_duration: document.getElementById('courseLearningDuration').value,
       objective: document.getElementById('courseObjective').value,
       learning_outcome: document.getElementById('courseLearningOutcome').value,
@@ -1923,7 +1958,10 @@ async function updateCourse(e, id) {
     showToast(data.message || 'Course updated');
     formModal.hide();
     renderCourses();
-  } catch (err) { showToast(err.message, 'error'); }
+  } catch (err) {
+    showToast(err.message, 'error');
+    highlightFormFieldError(document.getElementById('courseForm'), err.message);
+  }
 }
 
 async function uploadCourseThumbnail(file) {
@@ -3749,7 +3787,6 @@ async function saveAllowanceConfig(e, groupNameEncoded) {
     showToast(err.message, 'error');
   }
 }
-
 async function deleteAllowance(groupNameEncoded) {
   const groupName = decodeURIComponent(groupNameEncoded);
   if (!confirm(`Are you sure you want to delete allowance group "${groupName}"?`)) return;
@@ -3759,5 +3796,109 @@ async function deleteAllowance(groupNameEncoded) {
     renderRewards();
   } catch (err) {
     showToast(err.message, 'error');
+  }
+}
+
+function highlightFormFieldError(formElement, errorMessage) {
+  if (!formElement || !errorMessage) return;
+
+  // Clear existing errors
+  formElement.querySelectorAll('.spx-field-error').forEach(el => el.remove());
+  formElement.querySelectorAll('.spx-input-error').forEach(el => {
+    el.classList.remove('spx-input-error');
+    el.style.borderColor = '';
+    el.style.boxShadow = '';
+  });
+
+  const msg = errorMessage.toLowerCase();
+  let matchedInput = null;
+
+  const rules = [
+    { keys: ['course selection', 'course is required'], ids: ['batchCourse', 'noteCourse'] },
+    { keys: ['batch name'], ids: ['batchName'] },
+    { keys: ['subject'], ids: ['batchSubject', 'courseSubject', 'tCourseSubject'] },
+    { keys: ['start date'], ids: ['batchStartD'] },
+    { keys: ['end date'], ids: ['batchEndD'] },
+    { keys: ['start time'], ids: ['batchStartT'] },
+    { keys: ['end time'], ids: ['batchEndT'] },
+    { keys: ['days', 'day of week'], ids: ['batchDaysContainer'] },
+    { keys: ['capacity'], ids: ['batchCapacity'] },
+    { keys: ['planner desc', 'schedule', 'syllabus text'], ids: ['batchPlannerDesc'] },
+    { keys: ['planner file', 'planner document', 'planner upload'], ids: ['batchPlanner'] },
+    { keys: ['teaching method', 'style', 'methodology'], ids: ['batchTeachingMethod'] },
+    { keys: ['instructions', 'prerequisites'], ids: ['batchInstructions'] },
+    { keys: ['demo video'], ids: ['batchDemoVideo'] },
+    { keys: ['title'], ids: ['courseTitle', 'tCourseTitle', 'assignTitle', 'noteTitle'] },
+    { keys: ['description'], ids: ['courseDesc', 'tCourseDesc', 'assignDesc', 'noteDesc'] },
+    { keys: ['duration weeks'], ids: ['courseLearningDuration', 'tCourseLearningDuration'] },
+    { keys: ['grade'], ids: ['courseGrade', 'tCourseGrade'] },
+    { keys: ['board'], ids: ['courseBoard', 'tCourseBoard'] },
+    { keys: ['fees', 'fee'], ids: ['courseFees'] },
+    { keys: ['thumbnail', 'banner'], ids: ['courseFileInput', 'tCourseCustomTag'] },
+    { keys: ['badge', 'tag line'], ids: ['courseCustomTag', 'tCourseCustomTag'] },
+    { keys: ['objective'], ids: ['courseObjective', 'tCourseObjective'] },
+    { keys: ['outcome'], ids: ['courseLearningOutcome', 'tCourseLearningOutcome'] },
+    { keys: ['language'], ids: ['courseLanguageInstruction', 'tCourseLanguageInstruction'] },
+    { keys: ['daily class', 'daily duration'], ids: ['courseDailyClassDuration', 'tCourseDailyClassDuration'] },
+    { keys: ['assessment'], ids: ['courseAssessmentDays', 'tCourseAssessmentDays'] },
+    { keys: ['due date', 'due'], ids: ['assignDue'] },
+    { keys: ['marks'], ids: ['assignMax'] },
+    { keys: ['attachment', 'file upload'], ids: ['assignFile', 'noteFile'] }
+  ];
+
+  for (const rule of rules) {
+    if (rule.keys.some(k => msg.includes(k))) {
+      for (const id of rule.ids) {
+        const el = formElement.querySelector(`#${id}`);
+        if (el) {
+          matchedInput = el;
+          break;
+        }
+      }
+    }
+    if (matchedInput) break;
+  }
+
+  if (!matchedInput) {
+    const inputs = formElement.querySelectorAll('input, textarea, select');
+    for (const input of inputs) {
+      const id = input.id ? input.id.toLowerCase() : '';
+      const name = input.name ? input.name.toLowerCase() : '';
+      const placeholder = input.placeholder ? input.placeholder.toLowerCase() : '';
+      if (rules.some(r => r.keys.some(k => msg.includes(k) && (id.includes(k) || name.includes(k) || placeholder.includes(k))))) {
+        matchedInput = input;
+        break;
+      }
+    }
+  }
+
+  if (matchedInput) {
+    matchedInput.classList.add('spx-input-error');
+    matchedInput.style.borderColor = '#ef4444';
+    matchedInput.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.15)';
+
+    const errDiv = document.createElement('div');
+    errDiv.className = 'spx-field-error text-danger mt-1 small fw-semibold';
+    errDiv.style.color = '#ef4444';
+    errDiv.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${errorMessage}`;
+
+    if (matchedInput.nextSibling) {
+      matchedInput.parentNode.insertBefore(errDiv, matchedInput.nextSibling);
+    } else {
+      matchedInput.parentNode.appendChild(errDiv);
+    }
+
+    matchedInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const clearError = () => {
+      matchedInput.classList.remove('spx-input-error');
+      matchedInput.style.borderColor = '';
+      matchedInput.style.boxShadow = '';
+      errDiv.remove();
+      matchedInput.removeEventListener('input', clearError);
+      matchedInput.removeEventListener('change', clearError);
+    };
+    matchedInput.addEventListener('input', clearError);
+    matchedInput.addEventListener('change', clearError);
   }
 }

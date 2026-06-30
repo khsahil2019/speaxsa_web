@@ -619,13 +619,18 @@ async function showCourseDetails(courseId) {
                   <i class="fas fa-info-circle me-1"></i>View Mentor Bio & Qualifications
                 </button>
                 
-                ${b.planner_url ? `
-                  <div class="mt-2">
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  ${b.demo_video_url ? `
+                    <button class="btn btn-sm btn-outline-warning py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; border-radius: 6px;" onclick="playBatchDemoVideo('${b.demo_video_url}', '${b.batch_name.replace(/'/g, "\\'")}', event)">
+                      <i class="fas fa-play-circle"></i> Watch Demo Video
+                    </button>
+                  ` : ''}
+                  ${b.planner_url ? `
                     <a href="${b.planner_url}" target="_blank" class="btn btn-sm btn-outline-success py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; border-radius: 6px; text-decoration: none;">
                       <i class="fas fa-file-pdf"></i> View Chapter Planner
                     </a>
-                  </div>
-                ` : ''}
+                  ` : ''}
+                </div>
                 ${b.planner_desc ? `
                   <div class="mt-2 p-2 rounded text-secondary" style="background:#f8fafc; font-size:0.75rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid #e2e8f0; color: #475569 !important;">
                     <strong class="d-block mb-1 text-dark" style="font-weight: 700;"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
@@ -881,4 +886,35 @@ function toggleTeacherProfile(event, id) {
     }
   }
 }
+
+function playBatchDemoVideo(url, batchName, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const videoPlayer = document.getElementById('batchDemoVideoPlayer');
+  const videoTitle = document.getElementById('batchDemoVideoTitle');
+  if (videoPlayer && videoTitle) {
+    videoTitle.textContent = `${batchName} — Demo Video`;
+    videoPlayer.src = url;
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('batchDemoVideoModal'));
+    modal.show();
+    videoPlayer.play().catch(err => console.log('Autoplay blocked:', err));
+  }
+}
+
+function stopBatchDemoVideo() {
+  const videoPlayer = document.getElementById('batchDemoVideoPlayer');
+  if (videoPlayer) {
+    videoPlayer.pause();
+    videoPlayer.src = '';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const modalEl = document.getElementById('batchDemoVideoModal');
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', stopBatchDemoVideo);
+  }
+});
 

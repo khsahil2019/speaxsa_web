@@ -29,6 +29,19 @@ const assignUpload = multer({ storage: makeStorage('assignments'), limits: { fil
 const notesUpload = multer({ storage: makeStorage('notes'), limits: { fileSize: 50 * 1024 * 1024 } });
 const plannerUpload = multer({ storage: makeStorage('planners'), limits: { fileSize: 20 * 1024 * 1024 } });
 
+const batchStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const subdir = file.fieldname === 'demo_video' ? 'demo_videos' : 'planners';
+    const dir = path.join(__dirname, `../../public/uploads/${subdir}`);
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${req.user.id}_${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+const batchUpload = multer({ storage: batchStorage, limits: { fileSize: 250 * 1024 * 1024 } });
+
 
 // All teacher routes require authentication
 router.use(authenticateToken);
@@ -336,7 +349,7 @@ router.get('/batches', async (req, res) => {
   }
 });
 
-router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
+router.post('/batches', batchUpload.fields([{ name: 'planner', maxCount: 1 }, { name: 'demo_video', maxCount: 1 }]), async (req, res) => {
   const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, planner_desc, teaching_method, batch_instructions } = req.body;
   try {
     // Check SOP approval
@@ -344,6 +357,24 @@ router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
     if (!sop.rows.length || sop.rows[0].status !== 'approved' || !sop.rows[0].agreement_signed) {
       return res.status(403).json({ error: 'SOP and Agreement must be approved and signed before creating batches' });
     }
+
+    const plannerFile = req.files && req.files['planner'] ? req.files['planner'][0] : null;
+    const demoVideoFile = req.files && req.files['demo_video'] ? req.files['demo_video'][0] : null;
+
+    // Validate fields
+    if (!course_id || !course_id.trim()) return res.status(400).json({ error: 'Course selection is required' });
+    if (!batch_name || !batch_name.trim()) return res.status(400).json({ error: 'Batch Name is required' });
+    if (!subject || !subject.trim()) return res.status(400).json({ error: 'Subject is required' });
+    if (!start_date) return res.status(400).json({ error: 'Start Date is required' });
+    if (!end_date) return res.status(400).json({ error: 'End Date is required' });
+    if (!start_time) return res.status(400).json({ error: 'Start Time is required' });
+    if (!end_time) return res.status(400).json({ error: 'End Time is required' });
+    if (!capacity) return res.status(400).json({ error: 'Max Capacity is required' });
+    if (!planner_desc || !planner_desc.trim()) return res.status(400).json({ error: 'Learning Schedule / Syllabus Text is required' });
+    if (!teaching_method || !teaching_method.trim()) return res.status(400).json({ error: 'Way of Teaching / Teaching Methodology is required' });
+    if (!batch_instructions || !batch_instructions.trim()) return res.status(400).json({ error: 'Important Batch Instructions / Prerequisites are required' });
+    if (!plannerFile) return res.status(400).json({ error: 'Chapter-wise Course Planner file upload is required' });
+    if (!demoVideoFile) return res.status(400).json({ error: 'Batch Demo Video is required' });
 
     // Validate capacity
     const maxCapacity = await configService.getSetting('max_batch_capacity', 30);
@@ -359,8 +390,8 @@ router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
         days = days.split(',').map(d => d.trim()).filter(Boolean);
       }
     }
-    if (!Array.isArray(days)) {
-      days = [];
+    if (!Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ error: 'At least one day of the week must be selected' });
     }
 
     // Check for overlapping batches (same teacher, overlapping time on same days)
@@ -381,19 +412,20 @@ router.post('/batches', plannerUpload.single('planner'), async (req, res) => {
     const id = generateUID('batch');
     const channel = `speaxa_${id}`.replace(/[^a-zA-Z0-9_]/g, '_');
 
-    // Planner file info
-    const planner_url = req.file ? `/uploads/planners/${req.file.filename}` : null;
-    const planner_name = req.file ? req.file.originalname : null;
+    // File info
+    const planner_url = `/uploads/planners/${plannerFile.filename}`;
+    const planner_name = plannerFile.originalname;
+    const demo_video_url = `/uploads/demo_videos/${demoVideoFile.filename}`;
 
     await db.query(`
       INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14,$15,$16,$17)
+        start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, demo_video_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14,$15,$16,$17,$18)
     `, [id, course_id, req.user.id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc, teaching_method || null, batch_instructions || null]);
+        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, demo_video_url]);
 
-    await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id, has_planner: !!planner_url });
-    res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url });
+    await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id, has_planner: true, has_demo_video: true });
+    res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url, demo_video_url });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -591,9 +623,15 @@ router.get('/assignments', async (req, res) => {
 router.post('/assignments', assignUpload.single('file'), async (req, res) => {
   const { batchId, title, description, due_date, max_marks } = req.body;
   try {
-    if (!batchId || !title) return res.status(400).json({ error: 'batchId and title required' });
+    if (!batchId) return res.status(400).json({ error: 'Batch is required' });
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Assignment Title is required' });
+    if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' });
+    if (!due_date) return res.status(400).json({ error: 'Due Date is required' });
+    if (!max_marks) return res.status(400).json({ error: 'Max Marks is required' });
+    if (!req.file) return res.status(400).json({ error: 'File attachment upload is required' });
+
     const id = generateUID('asgn');
-    const fileUrl = req.file ? `/uploads/assignments/${req.file.filename}` : null;
+    const fileUrl = `/uploads/assignments/${req.file.filename}`;
     await db.query(`
       INSERT INTO assignments (id, batch_id, teacher_id, title, description, file_url, due_date, max_marks)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
@@ -718,8 +756,13 @@ router.get('/notes', async (req, res) => {
 router.post('/notes', notesUpload.single('file'), async (req, res) => {
   const { title, description, courseId, batchId } = req.body;
   try {
-    const id = generateUID('note');
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Material Title is required' });
+    if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' });
+
     const fileUrl = req.file ? `/uploads/notes/${req.file.filename}` : req.body.file_url;
+    if (!fileUrl || !fileUrl.trim()) return res.status(400).json({ error: 'File upload or External Web URL is required' });
+
+    const id = generateUID('note');
     const fileType = req.file ? path.extname(req.file.originalname).substr(1) : 'link';
     await db.query(`
       INSERT INTO study_materials (id, title, description, course_id, batch_id, teacher_id, file_url, file_type)
@@ -829,14 +872,28 @@ router.post('/courses', async (req, res) => {
   const { title, subject, description, duration_weeks, grade, board, thumbnail_url, custom_tag,
           learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
-    if (!title) return res.status(400).json({ error: 'Title is required' });
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Course Title is required' });
+    if (!subject || !subject.trim()) return res.status(400).json({ error: 'Subject is required' });
+    if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' });
+    if (!duration_weeks) return res.status(400).json({ error: 'Learning Duration Weeks is required' });
+    if (!grade || !grade.trim()) return res.status(400).json({ error: 'Grade is required' });
+    if (!board || !board.trim()) return res.status(400).json({ error: 'Board is required' });
+    if (!thumbnail_url || !thumbnail_url.trim()) return res.status(400).json({ error: 'Course Thumbnail / Banner is required' });
+    if (!custom_tag || !custom_tag.trim()) return res.status(400).json({ error: 'Custom Badge / Tag Line is required' });
+    if (!learning_duration || !learning_duration.trim()) return res.status(400).json({ error: 'Learning Duration is required' });
+    if (!objective || !objective.trim()) return res.status(400).json({ error: 'Objective is required' });
+    if (!learning_outcome || !learning_outcome.trim()) return res.status(400).json({ error: 'Learning Outcome is required' });
+    if (!language_instruction || !language_instruction.trim()) return res.status(400).json({ error: 'Language of Instruction is required' });
+    if (!daily_class_duration || !daily_class_duration.trim()) return res.status(400).json({ error: 'Daily Class Duration is required' });
+    if (!assessment_days || !assessment_days.trim()) return res.status(400).json({ error: 'Assessment Days is required' });
+
     const id = `course_${Date.now()}`;
     const result = await db.query(`
       INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by, custom_tag,
         learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, 'draft', $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *
-    `, [id, title, subject, description, parseInt(duration_weeks) || 12, grade, board, thumbnail_url || null, req.user.id, custom_tag || null,
-        learning_duration || null, objective || null, learning_outcome || null, language_instruction || null, daily_class_duration || null, assessment_days || null]);
+    `, [id, title, subject, description, parseInt(duration_weeks) || 12, grade, board, thumbnail_url, req.user.id, custom_tag,
+        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days]);
     
     await logAudit(req.user.id, 'TEACHER_COURSE_CREATED', 'course', id, { title });
     res.status(201).json({ message: 'Course draft created successfully', course: result.rows[0] });
@@ -857,22 +914,37 @@ router.put('/courses/:id', async (req, res) => {
       return res.status(400).json({ error: 'Only draft or rejected courses can be edited' });
     }
 
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Course Title is required' });
+    if (!subject || !subject.trim()) return res.status(400).json({ error: 'Subject is required' });
+    if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' });
+    if (!duration_weeks) return res.status(400).json({ error: 'Learning Duration Weeks is required' });
+    if (!grade || !grade.trim()) return res.status(400).json({ error: 'Grade is required' });
+    if (!board || !board.trim()) return res.status(400).json({ error: 'Board is required' });
+    if (!thumbnail_url || !thumbnail_url.trim()) return res.status(400).json({ error: 'Course Thumbnail / Banner is required' });
+    if (!custom_tag || !custom_tag.trim()) return res.status(400).json({ error: 'Custom Badge / Tag Line is required' });
+    if (!learning_duration || !learning_duration.trim()) return res.status(400).json({ error: 'Learning Duration is required' });
+    if (!objective || !objective.trim()) return res.status(400).json({ error: 'Objective is required' });
+    if (!learning_outcome || !learning_outcome.trim()) return res.status(400).json({ error: 'Learning Outcome is required' });
+    if (!language_instruction || !language_instruction.trim()) return res.status(400).json({ error: 'Language of Instruction is required' });
+    if (!daily_class_duration || !daily_class_duration.trim()) return res.status(400).json({ error: 'Daily Class Duration is required' });
+    if (!assessment_days || !assessment_days.trim()) return res.status(400).json({ error: 'Assessment Days is required' });
+
     const result = await db.query(`
       UPDATE courses SET 
-        title = COALESCE($1, title), 
-        subject = COALESCE($2, subject), 
-        description = COALESCE($3, description),
-        duration_weeks = COALESCE($4, duration_weeks), 
-        grade = COALESCE($5, grade), 
-        board = COALESCE($6, board),
-        thumbnail_url = COALESCE($7, thumbnail_url), 
-        custom_tag = COALESCE($8, custom_tag),
-        learning_duration = COALESCE($9, learning_duration),
-        objective = COALESCE($10, objective),
-        learning_outcome = COALESCE($11, learning_outcome),
-        language_instruction = COALESCE($12, language_instruction),
-        daily_class_duration = COALESCE($13, daily_class_duration),
-        assessment_days = COALESCE($14, assessment_days),
+        title = $1, 
+        subject = $2, 
+        description = $3,
+        duration_weeks = $4, 
+        grade = $5, 
+        board = $6,
+        thumbnail_url = $7, 
+        custom_tag = $8,
+        learning_duration = $9,
+        objective = $10,
+        learning_outcome = $11,
+        language_instruction = $12,
+        daily_class_duration = $13,
+        assessment_days = $14,
         status = 'draft',
         updated_at = NOW()
       WHERE id = $15 RETURNING *

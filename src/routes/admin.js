@@ -690,19 +690,34 @@ router.post('/courses/:id/toggle-featured', async (req, res) => {
 
 
 router.post('/courses', async (req, res) => {
-  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url,
+  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, custom_tag,
           learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
-    if (!title || !fees) return res.status(400).json({ error: 'title and fees are required' });
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Course Title is required' });
+    if (!subject || !subject.trim()) return res.status(400).json({ error: 'Subject is required' });
+    if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' });
+    if (!duration_weeks) return res.status(400).json({ error: 'Learning Duration Weeks is required' });
+    if (!grade || !grade.trim()) return res.status(400).json({ error: 'Grade is required' });
+    if (!board || !board.trim()) return res.status(400).json({ error: 'Board is required' });
+    if (fees === undefined || fees === null || isNaN(parseFloat(fees))) return res.status(400).json({ error: 'Course Fee is required and must be a valid number' });
+    if (!thumbnail_url || !thumbnail_url.trim()) return res.status(400).json({ error: 'Course Banner / Thumbnail is required' });
+    if (!custom_tag || !custom_tag.trim()) return res.status(400).json({ error: 'Custom Badge / Tag Line is required' });
+    if (!learning_duration || !learning_duration.trim()) return res.status(400).json({ error: 'Learning Duration is required' });
+    if (!objective || !objective.trim()) return res.status(400).json({ error: 'Objective is required' });
+    if (!learning_outcome || !learning_outcome.trim()) return res.status(400).json({ error: 'Learning Outcome is required' });
+    if (!language_instruction || !language_instruction.trim()) return res.status(400).json({ error: 'Language of Instruction is required' });
+    if (!daily_class_duration || !daily_class_duration.trim()) return res.status(400).json({ error: 'Daily Class Duration is required' });
+    if (!assessment_days || !assessment_days.trim()) return res.status(400).json({ error: 'Assessment Days is required' });
+
     const id = `course_${Date.now()}`;
     const result = await db.query(`
-      INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by,
+      INSERT INTO courses (id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, created_by, custom_tag,
         learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10,$11,$12,$13,$14,$15,$16) RETURNING *
-    `, [id, title, subject, description, duration_weeks || 12, grade, board, parseFloat(fees), thumbnail_url, req.user.id,
-        learning_duration || null, objective || null, learning_outcome || null, language_instruction || null, daily_class_duration || null, assessment_days || null]);
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'active',$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *
+    `, [id, title, subject, description, duration_weeks || 12, grade, board, parseFloat(fees), thumbnail_url, req.user.id, custom_tag,
+        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days]);
     await logAudit(req.user.id, 'COURSE_CREATED', 'course', id, { title });
-    res.status(201).json({ message: 'Course created', course: result.rows[0] });
+    res.status(201).json({ message: 'Course created successfully', course: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -710,18 +725,34 @@ router.post('/courses', async (req, res) => {
 
 router.put('/courses/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status,
+  const { title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, custom_tag,
           learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
+    if (!title || !title.trim()) return res.status(400).json({ error: 'Course Title is required' });
+    if (!subject || !subject.trim()) return res.status(400).json({ error: 'Subject is required' });
+    if (!description || !description.trim()) return res.status(400).json({ error: 'Description is required' });
+    if (!duration_weeks) return res.status(400).json({ error: 'Learning Duration Weeks is required' });
+    if (!grade || !grade.trim()) return res.status(400).json({ error: 'Grade is required' });
+    if (!board || !board.trim()) return res.status(400).json({ error: 'Board is required' });
+    if (fees === undefined || fees === null || isNaN(parseFloat(fees))) return res.status(400).json({ error: 'Course Fee is required' });
+    if (!thumbnail_url || !thumbnail_url.trim()) return res.status(400).json({ error: 'Course Banner / Thumbnail is required' });
+    if (!custom_tag || !custom_tag.trim()) return res.status(400).json({ error: 'Custom Badge / Tag Line is required' });
+    if (!learning_duration || !learning_duration.trim()) return res.status(400).json({ error: 'Learning Duration is required' });
+    if (!objective || !objective.trim()) return res.status(400).json({ error: 'Objective is required' });
+    if (!learning_outcome || !learning_outcome.trim()) return res.status(400).json({ error: 'Learning Outcome is required' });
+    if (!language_instruction || !language_instruction.trim()) return res.status(400).json({ error: 'Language of Instruction is required' });
+    if (!daily_class_duration || !daily_class_duration.trim()) return res.status(400).json({ error: 'Daily Class Duration is required' });
+    if (!assessment_days || !assessment_days.trim()) return res.status(400).json({ error: 'Assessment Days is required' });
+
     const result = await db.query(`
-      UPDATE courses SET title=COALESCE($2,title), subject=COALESCE($3,subject), description=COALESCE($4,description),
-        duration_weeks=COALESCE($5,duration_weeks), grade=COALESCE($6,grade), board=COALESCE($7,board),
-        fees=COALESCE($8,fees), thumbnail_url=COALESCE($9,thumbnail_url), status=COALESCE($10,status),
-        learning_duration=COALESCE($11,learning_duration), objective=COALESCE($12,objective), learning_outcome=COALESCE($13,learning_outcome),
-        language_instruction=COALESCE($14,language_instruction), daily_class_duration=COALESCE($15,daily_class_duration), assessment_days=COALESCE($16,assessment_days),
+      UPDATE courses SET title=$2, subject=$3, description=$4,
+        duration_weeks=$5, grade=$6, board=$7,
+        fees=$8, thumbnail_url=$9, status=COALESCE($10,status), custom_tag=$11,
+        learning_duration=$12, objective=$13, learning_outcome=$14,
+        language_instruction=$15, daily_class_duration=$16, assessment_days=$17,
         updated_at=NOW()
       WHERE id = $1 RETURNING *
-    `, [id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status,
+    `, [id, title, subject, description, duration_weeks, grade, board, fees, thumbnail_url, status, custom_tag,
         learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days]);
     if (!result.rows.length) return res.status(404).json({ error: 'Course not found' });
     await logAudit(req.user.id, 'COURSE_UPDATED', 'course', id, {});
