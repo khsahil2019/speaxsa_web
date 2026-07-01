@@ -161,6 +161,34 @@
     </div>
   </div>
 
+  <!-- ── Teacher Connect Chat Modal ─────────────────────────────── -->
+  <div class="modal" id="connectChatModal">
+    <div class="modal-box" style="max-width: 600px; padding: 0; display: flex; flex-direction: column; height: 80vh; max-height: 600px; overflow: hidden; border-radius: var(--radius-lg); border: 1px solid var(--border);">
+      <!-- Modal Header -->
+      <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(60,189,176,0.06), rgba(15,118,110,0.08)); flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div id="chatTeacherAvatar" class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%;">T</div>
+          <div>
+            <h4 id="chatTeacherName" style="font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 700; margin: 0; color: var(--text-primary);">Teacher Name</h4>
+            <p id="chatStudentSubtitle" style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">Query regarding Student</p>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal('connectChatModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Messages Body -->
+      <div id="chatMessagesBody" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: rgba(15, 23, 42, 0.01);">
+        <!-- Messages will load dynamically -->
+      </div>
+
+      <!-- Input Bar -->
+      <form id="chatMessageForm" onsubmit="sendChatMessage(event)" style="padding: 16px; border-top: 1px solid var(--border); background: var(--bg-sidebar); display: flex; gap: 10px; align-items: center; flex-shrink: 0;">
+        <input type="text" id="chatMessageInput" class="form-control" placeholder="Type your message regarding your child's progress..." required style="flex: 1; border-radius: var(--radius); padding: 12px 16px; background: white; border: 1px solid var(--border); font-size: 0.88rem; outline: none;">
+        <button type="submit" class="btn btn-primary" style="padding: 12px 20px; border-radius: var(--radius); font-size: 0.85rem;"><i class="fa-solid fa-paper-plane"></i> Send</button>
+      </form>
+    </div>
+  </div>
+
   <!-- ── Toast Container ─────────────────────────────────────────── -->
   <div id="toastContainer"></div>
 
@@ -940,6 +968,35 @@
               color: var(--text-primary);
               margin-top: 2px;
             }
+
+            /* Chat Bubbles Styles */
+            .chat-bubble {
+              max-width: 75%;
+              padding: 12px 16px;
+              border-radius: 14px;
+              font-size: 0.85rem;
+              line-height: 1.45;
+              word-wrap: break-word;
+              margin-bottom: 8px;
+              animation: spxBubbleFade 0.25s ease;
+            }
+            .chat-bubble.sent {
+              background: var(--gradient);
+              color: white;
+              border-bottom-right-radius: 4px;
+              box-shadow: 0 4px 12px rgba(60,189,176,0.18);
+            }
+            .chat-bubble.received {
+              background: white;
+              color: var(--text-primary);
+              border-bottom-left-radius: 4px;
+              border: 1px solid var(--border);
+              box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            }
+            @keyframes spxBubbleFade {
+              from { opacity: 0; transform: translateY(4px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
           </style>
 
           <!-- Premium Profile Hero Header -->
@@ -1416,6 +1473,115 @@
       }
     }
 
+    let activeChatTeacherId = null;
+    let activeChatStudentId = null;
+    let chatPollInterval = null;
+
+    window.openTeacherChat = function(teacherId, teacherName, studentId, studentName) {
+      activeChatTeacherId = teacherId;
+      activeChatStudentId = studentId;
+
+      document.getElementById('chatTeacherName').textContent = teacherName;
+      document.getElementById('chatStudentSubtitle').textContent = `Query regarding student: ${studentName}`;
+      
+      const initials = teacherName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+      document.getElementById('chatTeacherAvatar').textContent = initials;
+      
+      document.getElementById('chatMessagesBody').innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading conversation...</div>';
+      openModal('connectChatModal');
+
+      loadChatMessages();
+
+      // Clear existing interval just in case
+      if (chatPollInterval) clearInterval(chatPollInterval);
+      
+      // Poll for new messages every 4 seconds while modal is open
+      chatPollInterval = setInterval(() => {
+        const modal = document.getElementById('connectChatModal');
+        if (modal && modal.classList.contains('open')) {
+          loadChatMessages(true); // silent load (don't show spinner)
+        } else {
+          clearInterval(chatPollInterval);
+        }
+      }, 4000);
+    };
+
+    async function loadChatMessages(silent = false) {
+      if (!activeChatTeacherId || !activeChatStudentId) return;
+      try {
+        const res = await fetch(`/api/parent/connect/messages?teacherId=${activeChatTeacherId}&studentId=${activeChatStudentId}`);
+        if (res.ok) {
+          const messages = await res.json();
+          const body = document.getElementById('chatMessagesBody');
+          
+          if (messages.length === 0) {
+            body.innerHTML = `
+              <div class="text-center py-5 text-muted small">
+                <div style="font-size: 2rem; margin-bottom: 8px;"><i class="fa-regular fa-comments"></i></div>
+                No messages yet. Send a query to start the conversation with the mentor regarding your child.
+              </div>
+            `;
+            return;
+          }
+
+          const activeProfile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
+          const parentName = activeProfile.name || 'Parent';
+
+          body.innerHTML = messages.map(m => {
+            const isMe = m.sender_id === activeProfile.id || m.sender_role === 'parent';
+            const bubbleClass = isMe ? 'sent' : 'received';
+            const alignStyle = isMe ? 'align-self: flex-end;' : 'align-self: flex-start;';
+            const timeStr = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            return `
+              <div class="chat-bubble ${bubbleClass}" style="${alignStyle}">
+                <div style="font-weight: 700; font-size: 0.7rem; opacity: 0.85; margin-bottom: 4px;">
+                  ${isMe ? parentName : m.sender_name}
+                </div>
+                <div>${m.message}</div>
+                <div style="font-size: 0.6rem; opacity: 0.7; text-align: right; margin-top: 4px;">
+                  ${timeStr}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          // Scroll to bottom
+          body.scrollTop = body.scrollHeight;
+        }
+      } catch (err) {
+        console.error('Failed to load chat messages:', err);
+      }
+    }
+
+    window.sendChatMessage = async function(e) {
+      e.preventDefault();
+      const input = document.getElementById('chatMessageInput');
+      const message = input.value.trim();
+      if (!message || !activeChatTeacherId || !activeChatStudentId) return;
+
+      try {
+        const res = await fetch('/api/parent/connect/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacherId: activeChatTeacherId,
+            studentId: activeChatStudentId,
+            message
+          })
+        });
+        if (res.ok) {
+          input.value = '';
+          loadChatMessages();
+        } else {
+          const err = await res.json();
+          showToast(err.error || 'Failed to send message', 'danger');
+        }
+      } catch (err) {
+        showToast('Connection error', 'danger');
+      }
+    };
+
     // ── Login handler ──────────────────────────────────────────────────────────
     async function handleLogin(e) {
       e.preventDefault();
@@ -1799,6 +1965,11 @@
         </div>
       `;
         } else {
+          const childs = JSON.parse(localStorage.getItem('spx_parent_children') || '[]');
+          const activeStudentId = studentId;
+          const activeChild = childs.find(c => c.id === activeStudentId);
+          const studentName = activeChild ? activeChild.name : 'Student';
+
           const teachers = {};
           observations.forEach(o => {
             if (o.teacher_name) {
@@ -1841,7 +2012,7 @@
                 `).join('')}
               </div>
             ` : ''}
-            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="showToast('Message channel coming soon!','warning')">
+            <button class="btn btn-primary" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px;" onclick="openTeacherChat('${obs.teacher_id}', '${name.replace(/'/g, "\\'")}', '${activeStudentId}', '${studentName.replace(/'/g, "\\'")}')">
               <i class="fa-solid fa-envelope"></i> Message Teacher
             </button>
           </div>

@@ -1178,5 +1178,87 @@ router.get('/rewards', async (req, res) => {
   }
 });
 
+// ── Get Teacher Connect Conversations ─────────────────────────
+router.get('/connect/conversations', async (req, res) => {
+  try {
+    const result = await db.query(`
+      WITH ranked_chats AS (
+        SELECT chat.*,
+               ROW_NUMBER() OVER(PARTITION BY chat.parent_id, chat.student_id ORDER BY chat.created_at DESC) as rn
+        FROM parent_teacher_chats chat
+        WHERE chat.teacher_id = $1
+      )
+      SELECT rc.parent_id, rc.student_id, rc.message as last_message, rc.created_at as last_message_at,
+             parent.name as parent_name, parent.email as parent_email, parent.phone as parent_phone,
+             student.name as student_name, student.student_code as student_code, student.grade as student_grade, student.board as student_board
+      FROM ranked_chats rc
+      JOIN users parent ON parent.id = rc.parent_id
+      JOIN users student ON student.id = rc.student_id
+      WHERE rc.rn = 1
+      ORDER BY rc.created_at DESC
+    `, [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Get Teacher Connect Chat History ──────────────────────────
+router.get('/connect/messages', async (req, res) => {
+  const { parentId, studentId } = req.query;
+  if (!parentId || !studentId) {
+    return res.status(400).json({ error: 'parentId and studentId are required' });
+  }
+  try {
+    const messages = await db.query(`
+      SELECT chat.*, 
+             sender.name as sender_name, sender.role as sender_role
+      FROM parent_teacher_chats chat
+      JOIN users sender ON sender.id = chat.sender_id
+      WHERE chat.teacher_id = $1 AND chat.parent_id = $2 AND chat.student_id = $3
+      ORDER BY chat.created_at ASC
+    `, [req.user.id, parentId, studentId]);
+    res.json(messages.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Send Teacher Connect Message ──────────────────────────────
+router.post('/connect/messages', async (req, res) => {
+  const { parentId, studentId, message } = req.body;
+  if (!parentId || !studentId || !message) {
+    return res.status(400).json({ error: 'parentId, studentId, and message are required' });
+  }
+  try {
+    const result = await db.query(`
+      INSERT INTO parent_teacher_chats (parent_id, teacher_id, student_id, sender_id, message)
+      VALUES ($1, $2, $3, $2, $4)
+      RETURNING *
+    `, [parentId, req.user.id, studentId, message]);
+
+    // Also send an in-app notification to the parent
+    const teacherRes = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+    const studentRes = await db.query('SELECT name FROM users WHERE id = $1', [studentId]);
+    const teacherName = teacherRes.rows[0]?.name || 'Teacher';
+    const studentName = studentRes.rows[0]?.name || 'Student';
+
+    await db.query(`
+      INSERT INTO notifications (id, title, message, target_role, target_user, type, sent_by)
+      VALUES ($1, $2, $3, 'parent', $4, 'info', $5)
+    `, [
+      'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      `New Message from ${teacherName}`,
+      `Mentor ${teacherName} replied to your query regarding student ${studentName}: "${message.substring(0, 60)}${message.length > 60 ? '...' : ''}"`,
+      parentId,
+      req.user.id
+    ]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
 

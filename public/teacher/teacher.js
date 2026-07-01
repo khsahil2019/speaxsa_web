@@ -278,7 +278,7 @@ function navigateTo(page) {
   const titles = {
     home:'Dashboard', sop:'SOP Setup', courses:'My Courses', batches:'My Batches',
     liveclasses:'Live Classes', assignments:'Assignments', observations:'Observations',
-    attendance:'Attendance', notes:'Study Materials', earnings:'Earnings',
+    attendance:'Attendance', notes:'Study Materials', chats:'Parent Connect', earnings:'Earnings',
     referrals:'Referrals & Rewards',
     level:'My Level', certificates:'My Certificates', profile:'Profile'
   };
@@ -286,7 +286,7 @@ function navigateTo(page) {
   const renders = {
     home:renderHome, sop:renderSop, courses:renderCourses, batches:renderBatches,
     liveclasses:renderLiveClasses, assignments:renderAssignments, observations:renderObservations,
-    attendance:renderAttendance, notes:renderNotes, earnings:renderEarnings,
+    attendance:renderAttendance, notes:renderNotes, chats:renderChats, earnings:renderEarnings,
     referrals:renderReferrals,
     level:renderLevel, certificates:renderCertificates, profile:renderProfile
   };
@@ -4448,4 +4448,210 @@ function highlightFormFieldError(formElement, errorMessage) {
 }
 
 initApp();
+
+async function renderChats() {
+  loading();
+  try {
+    const res = await fetch(`${API}/teacher/connect/conversations`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const conversations = await res.json();
+    
+    document.getElementById('pageContent').innerHTML = `
+      <div class="row g-4" style="height: calc(100vh - 180px); max-height: 800px;">
+        <!-- Conversations List -->
+        <div class="col-lg-4 d-flex flex-column h-100">
+          <div class="card d-flex flex-column h-100 p-0" style="overflow: hidden; border: 1px solid var(--border); background: #ffffff;">
+            <div class="p-3 border-bottom" style="background: rgba(15,23,42,0.01);">
+              <h6 class="fw-bold mb-1">Parent Conversations</h6>
+              <p class="text-muted mb-0 small">Select a parent query thread to reply</p>
+            </div>
+            <div id="conversationsListBody" style="flex:1; overflow-y:auto;" class="list-group list-group-flush">
+              ${conversations.length === 0 ? `
+                <div class="text-center py-5 text-muted small">
+                  <div style="font-size: 2rem; margin-bottom: 8px;"><i class="fa-regular fa-comments"></i></div>
+                  No active parent connection queries yet.
+                </div>
+              ` : conversations.map(c => {
+                const initials = c.parent_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                const isActive = (window.teacherActiveParentId === c.parent_id && window.teacherActiveStudentId === c.student_id);
+                const activeClass = isActive ? 'active' : '';
+                const timeStr = c.last_message_at ? new Date(c.last_message_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+                
+                return `
+                  <a href="#" onclick="selectTeacherConversation(event, '${c.parent_id}', '${c.parent_name.replace(/'/g, "\\'")}', '${c.student_id}', '${c.student_name.replace(/'/g, "\\'")}')" class="list-group-item list-group-item-action ${activeClass} p-3 d-flex align-items-start gap-3" style="border-bottom: 1px solid var(--border); text-decoration: none;">
+                    <div class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--gradient); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">${initials}</div>
+                    <div class="flex-grow-1 min-w-0" style="text-align: left;">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-dark truncate" style="font-size: 0.88rem;">${c.parent_name}</strong>
+                        <span class="text-muted" style="font-size: 0.72rem;">${timeStr}</span>
+                      </div>
+                      <div class="text-muted small truncate mb-1" style="font-size:0.75rem;">
+                        Child: <strong>${c.student_name}</strong> (${c.student_grade} • ${c.student_code})
+                      </div>
+                      <div class="text-muted text-truncate" style="font-size: 0.75rem;">
+                        ${c.last_message || 'No messages yet'}
+                      </div>
+                    </div>
+                  </a>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat History Pane -->
+        <div class="col-lg-8 d-flex flex-column h-100" id="chatHistoryPane">
+          <div class="card d-flex flex-column h-100 p-0 align-items-center justify-content-center text-muted" style="border: 1px solid var(--border); background: #ffffff;">
+            <div style="font-size: 3rem; margin-bottom: 12px;"><i class="fa-regular fa-comments text-primary"></i></div>
+            <h5>Select a Conversation</h5>
+            <p class="small">Choose a parent query from the list to start chatting.</p>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+window.teacherActiveParentId = null;
+window.teacherActiveStudentId = null;
+let teacherChatInterval = null;
+
+window.selectTeacherConversation = function(event, parentId, parentName, studentId, studentName) {
+  if (event) {
+    event.preventDefault();
+  }
+  window.teacherActiveParentId = parentId;
+  window.teacherActiveStudentId = studentId;
+
+  // Render the chat history pane layout
+  const pane = document.getElementById('chatHistoryPane');
+  pane.innerHTML = `
+    <div class="card d-flex flex-column h-100 p-0" style="border: 1px solid var(--border); overflow: hidden; background: #ffffff;">
+      <!-- Header -->
+      <div class="p-3 border-bottom d-flex align-items-center justify-content-between" style="background: rgba(15,23,42,0.01); flex-shrink: 0; text-align: left;">
+        <div>
+          <h6 class="fw-bold mb-0">${parentName}</h6>
+          <p class="text-muted mb-0 small">Conversation regarding student: <strong>${studentName}</strong></p>
+        </div>
+      </div>
+
+      <!-- Messages body -->
+      <div id="teacherChatMessagesBody" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; background:rgba(15,23,42,0.01);">
+        <div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading chat history...</div>
+      </div>
+
+      <!-- Footer input -->
+      <form onsubmit="sendTeacherChatMessage(event)" style="padding:16px; border-top:1px solid var(--border); display:flex; gap:10px; align-items:center; flex-shrink:0;">
+        <input type="text" id="teacherChatMessageInput" class="form-control spx-input" placeholder="Type your reply regarding ${studentName}..." required style="flex:1; border-radius:10px;">
+        <button type="submit" class="btn btn-spx px-4" style="border-radius:10px;"><i class="fa-solid fa-paper-plane me-1"></i> Send</button>
+      </form>
+    </div>
+  `;
+
+  // Highlight active conversation item in the list
+  document.querySelectorAll('#conversationsListBody a').forEach(a => a.classList.remove('active'));
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add('active');
+  }
+
+  loadTeacherChatMessages();
+
+  // Clear existing polling interval
+  if (teacherChatInterval) clearInterval(teacherChatInterval);
+
+  // Poll for replies every 4 seconds while the dashboard is showing chats
+  teacherChatInterval = setInterval(() => {
+    const pane = document.getElementById('teacherChatMessagesBody');
+    const isShowingChats = document.querySelector('.nav-item.active')?.dataset.page === 'chats';
+    if (pane && isShowingChats) {
+      loadTeacherChatMessages(true); // silent fetch
+    } else {
+      clearInterval(teacherChatInterval);
+    }
+  }, 4000);
+};
+
+async function loadTeacherChatMessages(silent = false) {
+  if (!window.teacherActiveParentId || !window.teacherActiveStudentId) return;
+  try {
+    const res = await fetch(`${API}/teacher/connect/messages?parentId=${window.teacherActiveParentId}&studentId=${window.teacherActiveStudentId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const messages = await res.json();
+      const body = document.getElementById('teacherChatMessagesBody');
+      if (!body) return;
+
+      if (messages.length === 0) {
+        body.innerHTML = '<div class="text-center text-muted py-5 small">No messages in this chat.</div>';
+        return;
+      }
+
+      const activeProfile = JSON.parse(localStorage.getItem('spx_teacher_profile') || '{}');
+      const teacherName = activeProfile.name || 'Teacher';
+
+      body.innerHTML = messages.map(m => {
+        const isMe = m.sender_role === 'teacher';
+        const bubbleClass = isMe ? 'sent' : 'received';
+        const alignSelf = isMe ? 'align-self: flex-end;' : 'align-self: flex-start;';
+        
+        const bgColor = isMe ? 'background: var(--primary); color: white;' : 'background: #f1f5f9; color: var(--text-primary); border: 1px solid var(--border);';
+        const radiusStyle = isMe ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;';
+
+        const timeStr = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        return `
+          <div class="chat-bubble ${bubbleClass}" style="${alignSelf} ${bgColor} ${radiusStyle} max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 0.85rem; line-height: 1.45; word-wrap: break-word; margin-bottom: 8px; text-align: left;">
+            <div style="font-weight: 700; font-size: 0.7rem; opacity: 0.85; margin-bottom: 4px;">
+              ${isMe ? teacherName : m.sender_name}
+            </div>
+            <div>${m.message}</div>
+            <div style="font-size: 0.6rem; opacity: 0.7; text-align: right; margin-top: 4px;">
+              ${timeStr}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Scroll to bottom
+      body.scrollTop = body.scrollHeight;
+    }
+  } catch (e) {
+    console.error('Failed to load teacher messages:', e);
+  }
+}
+
+window.sendTeacherChatMessage = async function(e) {
+  if (e) e.preventDefault();
+  const input = document.getElementById('teacherChatMessageInput');
+  const message = input.value.trim();
+  if (!message || !window.teacherActiveParentId || !window.teacherActiveStudentId) return;
+
+  try {
+    const res = await fetch(`${API}/teacher/connect/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        parentId: window.teacherActiveParentId,
+        studentId: window.teacherActiveStudentId,
+        message
+      })
+    });
+    if (res.ok) {
+      input.value = '';
+      loadTeacherChatMessages();
+    } else {
+      const err = await res.json();
+      showToast(err.error || 'Failed to send message', 'error');
+    }
+  } catch (err) {
+    showToast('Connection error', 'error');
+  }
+};
 

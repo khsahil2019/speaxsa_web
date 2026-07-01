@@ -218,4 +218,80 @@ router.get('/notifications', async (req, res) => {
   }
 });
 
+// ── Get Teacher Connect Messages ──────────────────────────────
+router.get('/connect/messages', async (req, res) => {
+  const { teacherId, studentId } = req.query;
+  if (!teacherId || !studentId) {
+    return res.status(400).json({ error: 'teacherId and studentId are required' });
+  }
+  try {
+    // Verify student link
+    const link = await db.query(
+      'SELECT id FROM parent_student_links WHERE parent_id = $1 AND student_id = $2 AND status = \'approved\'',
+      [req.user.id, studentId]
+    );
+    if (!link.rows.length) {
+      return res.status(403).json({ error: 'Access denied. You are not linked to this student.' });
+    }
+
+    const messages = await db.query(`
+      SELECT chat.*, 
+             sender.name as sender_name, sender.role as sender_role
+      FROM parent_teacher_chats chat
+      JOIN users sender ON sender.id = chat.sender_id
+      WHERE chat.parent_id = $1 AND chat.teacher_id = $2 AND chat.student_id = $3
+      ORDER BY chat.created_at ASC
+    `, [req.user.id, teacherId, studentId]);
+
+    res.json(messages.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Send Teacher Connect Message ──────────────────────────────
+router.post('/connect/messages', async (req, res) => {
+  const { teacherId, studentId, message } = req.body;
+  if (!teacherId || !studentId || !message) {
+    return res.status(400).json({ error: 'teacherId, studentId, and message are required' });
+  }
+  try {
+    // Verify student link
+    const link = await db.query(
+      'SELECT id FROM parent_student_links WHERE parent_id = $1 AND student_id = $2 AND status = \'approved\'',
+      [req.user.id, studentId]
+    );
+    if (!link.rows.length) {
+      return res.status(403).json({ error: 'Access denied. You are not linked to this student.' });
+    }
+
+    const result = await db.query(`
+      INSERT INTO parent_teacher_chats (parent_id, teacher_id, student_id, sender_id, message)
+      VALUES ($1, $2, $3, $1, $4)
+      RETURNING *
+    `, [req.user.id, teacherId, studentId, message]);
+
+    // Also send an in-app notification to the teacher
+    const parentRes = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+    const studentRes = await db.query('SELECT name FROM users WHERE id = $1', [studentId]);
+    const parentName = parentRes.rows[0]?.name || 'Parent';
+    const studentName = studentRes.rows[0]?.name || 'Student';
+
+    await db.query(`
+      INSERT INTO notifications (id, title, message, target_role, target_user, type, sent_by)
+      VALUES ($1, $2, $3, 'teacher', $4, 'info', $5)
+    `, [
+      'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      `New Message from parent ${parentName}`,
+      `Parent ${parentName} sent a message regarding student ${studentName}: "${message.substring(0, 60)}${message.length > 60 ? '...' : ''}"`,
+      teacherId,
+      req.user.id
+    ]);
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

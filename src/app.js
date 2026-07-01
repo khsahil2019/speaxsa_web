@@ -245,6 +245,18 @@ db.query(`
     ('home_footer_play_store_url', 'https://play.google.com/store/apps/details?id=com.speaxa'),
     ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa')
   ON CONFLICT (key) DO NOTHING;
+
+  CREATE TABLE IF NOT EXISTS parent_teacher_chats (
+    id SERIAL PRIMARY KEY,
+    parent_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    teacher_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    is_read BOOLEAN DEFAULT false
+  );
+  CREATE INDEX IF NOT EXISTS idx_pt_chats_lookup ON parent_teacher_chats (parent_id, teacher_id, student_id);
 `).then(() => {
   console.log("PostgreSQL: Database self-healing migrations verified/created.");
 }).catch((err) => {

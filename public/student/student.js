@@ -833,9 +833,13 @@ async function renderUpcomingClasses() {
 
     // Sort by scheduled date and time
     upcoming.sort((a, b) => {
-      const dateA = new Date(`${a.class_date.split('T')[0]}T${a.class_time}`);
-      const dateB = new Date(`${b.class_date.split('T')[0]}T${b.class_time}`);
-      return dateA - dateB;
+      const getSafeDate = (c) => {
+        if (!c.class_date) return new Date(0);
+        const dateStr = typeof c.class_date === 'string' ? c.class_date.split('T')[0] : new Date(c.class_date).toISOString().split('T')[0];
+        const timeStr = c.class_time || '00:00:00';
+        return new Date(`${dateStr}T${timeStr}`);
+      };
+      return getSafeDate(a) - getSafeDate(b);
     });
 
     document.getElementById('pageContent').innerHTML = `
