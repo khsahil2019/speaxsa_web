@@ -910,8 +910,8 @@ router.put('/courses/:id', async (req, res) => {
     const courseCheck = await db.query('SELECT status, created_by FROM courses WHERE id = $1', [id]);
     if (!courseCheck.rows.length) return res.status(404).json({ error: 'Course not found' });
     if (courseCheck.rows[0].created_by !== req.user.id) return res.status(403).json({ error: 'Unauthorized to edit this course' });
-    if (!['draft', 'rejected'].includes(courseCheck.rows[0].status)) {
-      return res.status(400).json({ error: 'Only draft or rejected courses can be edited' });
+    if (!['draft', 'rejected', 'active', 'pending_approval'].includes(courseCheck.rows[0].status)) {
+      return res.status(400).json({ error: 'Only draft, rejected, active, or pending approval courses can be edited' });
     }
 
     if (!title || !title.trim()) return res.status(400).json({ error: 'Course Title is required' });

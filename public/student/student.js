@@ -9,9 +9,9 @@ const Toast = new bootstrap.Toast(document.getElementById('toastEl'), { delay: 3
 function showToast(msg, type = 'success') {
   const icons = { success:'fa-check-circle', error:'fa-exclamation-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
   const colors = { success:'#10B981', error:'#EF4444', warning:'#F59E0B', info:'#3CBDB0' };
-  document.getElementById('toastMsg').textContent = msg;
-  document.getElementById('toastIcon').className = `fas ${icons[type]}`;
-  document.getElementById('toastIcon').style.color = colors[type];
+  document.getElementById('toastMsg').textContent = (type === 'error' || type === 'danger') ? toFriendlyError(msg) : msg;
+  document.getElementById('toastIcon').className = `fas ${icons[type] || 'fa-info-circle'}`;
+  document.getElementById('toastIcon').style.color = colors[type] || '#3CBDB0';
   Toast.show();
 }
 
@@ -39,7 +39,7 @@ async function doLogin() {
     const data = await (await fetch(`${API}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value, role: 'student' }) })).json();
     if (data.error) throw new Error(data.error);
     saveAuth(data.token, data.user);
-  } catch(e) { document.getElementById('loginError').textContent = e.message; document.getElementById('loginError').classList.remove('d-none'); }
+  } catch(e) { document.getElementById('loginError').textContent = toFriendlyError(e.message); document.getElementById('loginError').classList.remove('d-none'); }
 }
 
 async function sendOTP() {
@@ -63,9 +63,11 @@ async function verifyOTP() {
   } catch(e) { showToast(e.message, 'error'); }
 }
 
+let _regOtpPending = null;
+
 async function doRegister() {
   try {
-    const data = await (await fetch(`${API}/auth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+    const payload = {
       name: document.getElementById('regName').value,
       email: document.getElementById('regEmail').value,
       phone: document.getElementById('regPhone').value,
@@ -74,10 +76,44 @@ async function doRegister() {
       board: document.getElementById('regBoard').value,
       referred_by_code: document.getElementById('regReferralCode') ? document.getElementById('regReferralCode').value.trim() : '',
       role: 'student',
-    }) })).json();
-    if (data.error) throw new Error(data.error);
+    };
+
+    if (_regOtpPending) {
+      payload.otp = _regOtpPending;
+    }
+
+    const data = await (await fetch(`${API}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })).json();
+
+    if (data.error) {
+      _regOtpPending = null;
+      throw new Error(data.error);
+    }
+
+    if (data.status === 'otp_sent') {
+      if (data.otp) {
+        showToast(`Dev OTP: ${data.otp}`, 'info');
+      }
+      const otpInput = prompt(data.message || 'Please enter the registration OTP sent to your phone/email:');
+      if (otpInput === null) {
+        _regOtpPending = null;
+        return;
+      }
+      _regOtpPending = otpInput.trim();
+      return doRegister();
+    }
+
+    _regOtpPending = null;
+    clearAutoSave('autosave_student_register');
     saveAuth(data.token, data.user);
-  } catch(e) { document.getElementById('registerError').textContent = e.message; document.getElementById('registerError').classList.remove('d-none'); }
+  } catch(e) {
+    _regOtpPending = null;
+    document.getElementById('registerError').textContent = toFriendlyError(e.message);
+    document.getElementById('registerError').classList.remove('d-none');
+  }
 }
 
 async function sendForgotOTP() {
@@ -456,7 +492,7 @@ async function showCourseDetails(courseId) {
       objectiveHtml = `
         <div class="mt-3 p-3 rounded-3" style="background: rgba(60, 189, 176, 0.03); border: 1px solid var(--border);">
           <h6 class="fw-bold mb-2 small text-primary"><i class="fas fa-bullseye me-2"></i>Course Objective</h6>
-          <p class="text-muted small mb-0" style="line-height:1.5;">${course.objective}</p>
+          <div class="text-muted small mb-0" style="line-height:1.5;">${formatRichText(course.objective)}</div>
         </div>
       `;
     }
@@ -466,7 +502,7 @@ async function showCourseDetails(courseId) {
       learningOutcomeHtml = `
         <div class="mt-3 p-3 rounded-3" style="background: rgba(16, 185, 129, 0.03); border: 1px solid var(--border);">
           <h6 class="fw-bold mb-2 small text-success"><i class="fas fa-trophy me-2"></i>Learning Outcomes</h6>
-          <p class="text-muted small mb-0" style="line-height:1.5;">${course.learning_outcome}</p>
+          <div class="text-muted small mb-0" style="line-height:1.5;">${formatRichText(course.learning_outcome)}</div>
         </div>
       `;
     }
@@ -480,7 +516,7 @@ async function showCourseDetails(courseId) {
           ${modules.map((m, idx) => `
             <div class="p-2 rounded" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
               <div class="fw-bold small text-white" style="font-size: 0.75rem;">${idx + 1}. ${m.title}</div>
-              <div class="text-muted" style="font-size: 0.65rem;">${m.description || ''}</div>
+              <div class="text-muted" style="font-size: 0.65rem;">${formatRichText(m.description) || ''}</div>
             </div>
           `).join('')}
         </div>
@@ -493,7 +529,7 @@ async function showCourseDetails(courseId) {
           <div class="p-4 rounded-3 shadow-sm" style="background:var(--bg-card); border:1px solid var(--border);">
             <span class="badge bg-primary mb-2 px-3 py-2 rounded-2" style="font-size:0.75rem; font-weight:600; letter-spacing:0.5px;">${course.subject}</span>
             <h4 class="fw-bold mb-3" style="color:var(--text-primary); font-family:'Outfit',sans-serif;">${course.title}</h4>
-            <p class="text-muted small mb-4" style="line-height:1.6;">${course.description || 'No description provided.'}</p>
+            <div class="text-muted small mb-4" style="line-height:1.6;">${formatRichText(course.description) || 'No description provided.'}</div>
             <div class="d-flex justify-content-between mb-2 small text-muted">
               <span>Grade & Board:</span>
               <strong style="color:var(--text-primary);">${course.grade} (${course.board})</strong>
@@ -543,7 +579,7 @@ async function showCourseDetails(courseId) {
               
               let methodologyHtml = '';
               if (b.teaching_method) {
-                methodologyHtml = `<div><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i>Methodology: <strong>${b.teaching_method}</strong></div>`;
+                methodologyHtml = `<div class="mt-2 p-2 rounded text-secondary small" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border);"><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i><strong>Methodology:</strong><div class="mt-1">${formatRichText(b.teaching_method)}</div></div>`;
               }
 
               let instructionsHtml = '';
@@ -551,7 +587,7 @@ async function showCourseDetails(courseId) {
                 instructionsHtml = `
                   <div class="p-2.5 rounded-3 mb-2 small text-muted" style="background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border); font-size: 0.72rem; line-height: 1.4;">
                     <strong class="text-primary d-block mb-1"><i class="fas fa-info-circle me-1"></i>Batch Instructions & Policies:</strong>
-                    ${b.batch_instructions}
+                    ${formatRichText(b.batch_instructions)}
                   </div>
                 `;
               }
@@ -1244,6 +1280,7 @@ async function renderProfile() {
           </div>
         </div>
       </div>`;
+      setupAutoSave('autosave_student_profile', ['profName', 'profPhone', 'profGrade', 'profBoard']);
   } catch(e) { document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
 }
 
@@ -1257,6 +1294,7 @@ async function updateProfile(e) {
       board: document.getElementById('profBoard').value,
     }) });
     if (data.error) throw new Error(data.error);
+    clearAutoSave('autosave_student_profile');
     showToast('Profile updated');
     updateCachedUser(data.user);
     if (user) {
@@ -1690,4 +1728,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (modalEl) {
     modalEl.addEventListener('hidden.bs.modal', stopBatchDemoVideo);
   }
+  setupAutoSave('autosave_student_register', [
+    'regName', 'regEmail', 'regPhone', 'regPassword', 'regGrade', 'regBoard', 'regReferralCode'
+  ]);
 });

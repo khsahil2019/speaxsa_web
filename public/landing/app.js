@@ -576,15 +576,15 @@ async function showCourseDetails(courseId) {
     document.getElementById('modalCourseBoard').textContent = course.board || 'CBSE';
     document.getElementById('modalCourseSubject').textContent = course.subject || 'Physics';
     document.getElementById('modalCourseDuration').textContent = `${course.duration_weeks || 12} Weeks`;
-    document.getElementById('modalCourseDesc').textContent = course.description || 'No description available.';
+    document.getElementById('modalCourseDesc').innerHTML = formatRichText(course.description) || 'No description available.';
     document.getElementById('modalCourseFees').textContent = `₹${parseFloat(course.fees).toLocaleString('en-IN')}`;
     
     document.getElementById('modalCourseLearningDuration').textContent = course.learning_duration || '—';
     document.getElementById('modalCourseLanguage').textContent = course.language_instruction || '—';
     document.getElementById('modalCourseDailyDuration').textContent = course.daily_class_duration || '—';
     document.getElementById('modalCourseAssessment').textContent = course.assessment_days || '—';
-    document.getElementById('modalCourseObjective').textContent = course.objective || '—';
-    document.getElementById('modalCourseOutcome').textContent = course.learning_outcome || '—';
+    document.getElementById('modalCourseObjective').innerHTML = formatRichText(course.objective) || '—';
+    document.getElementById('modalCourseOutcome').innerHTML = formatRichText(course.learning_outcome) || '—';
     
     // Fetch Batches
     const resBatches = await fetch(`/api/public/courses/${courseId}/batches`);

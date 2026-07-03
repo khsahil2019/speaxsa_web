@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Speaxa – Parent Portal</title>
+  <link rel="icon" type="image/png" href="/logo.png">
   <meta name="description"
     content="Speaxa Parent Portal – Monitor your child's academic progress, attendance, and performance in real time.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1246,6 +1247,8 @@
   </div>
   </div>
 
+  <script src="/utils-formatting.js"></script>
+  <script src="/utils-autosave.js"></script>
   <script>
     const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 
@@ -1295,7 +1298,8 @@
       const icons = { success: 'fa-circle-check', danger: 'fa-circle-xmark', warning: 'fa-triangle-exclamation' };
       const t = document.createElement('div');
       t.className = `toast toast-${type}`;
-      t.innerHTML = `<i class="fa-solid ${icons[type] || icons.success} toast-icon"></i><span>${msg}</span>`;
+      const displayText = (type === 'danger' || type === 'error' || type === 'warning') ? toFriendlyError(msg) : msg;
+      t.innerHTML = `<i class="fa-solid ${icons[type] || icons.success} toast-icon"></i><span>${displayText}</span>`;
       document.getElementById('toastContainer').appendChild(t);
       setTimeout(() => t.remove(), 3800);
     }
@@ -1336,11 +1340,11 @@
       document.getElementById('parentProfileHeroEmail').textContent = profile.email || '—';
       document.getElementById('parentProfileHeroPhone').textContent = profile.phone || '—';
 
-      // Set form values
       document.getElementById('parentInputName').value = profile.name || '';
       document.getElementById('parentInputPhone').value = profile.phone || '';
       document.getElementById('parentInputAltMobile').value = profile.mobile_number || '';
       document.getElementById('parentInputAltEmail').value = profile.alt_email || '';
+      setupAutoSave('autosave_parent_profile', ['parentInputName', 'parentInputPhone', 'parentInputAltMobile', 'parentInputAltEmail']);
 
       const avatarUrl = profile.photo_url || defaultAvatar;
       document.getElementById('parentProfileAvatar').src = avatarUrl;
@@ -1437,6 +1441,7 @@
         });
         if (res.ok) {
           const data = await res.json();
+          clearAutoSave('autosave_parent_profile');
           localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
           showToast('Profile updated successfully!', 'success');
           initDashboard();
@@ -1609,11 +1614,11 @@
           showToast('Welcome back! Signed in successfully.', 'success');
         } else {
           const err = await res.json();
-          errEl.textContent = err.error || 'Invalid credentials.';
+          errEl.textContent = toFriendlyError(err.error || 'Invalid credentials.');
           errEl.style.display = 'block';
         }
       } catch {
-        errEl.textContent = 'Server connection error. Please try again.';
+        errEl.textContent = toFriendlyError('Server connection error. Please try again.');
         errEl.style.display = 'block';
       }
     }
@@ -1636,8 +1641,10 @@
       document.getElementById('loginError').style.display = 'none';
     }
 
+    let _pRegOtpPending = null;
+
     async function handleRegister(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
       const name = document.getElementById('regName').value.trim();
       const email = document.getElementById('regEmail').value.trim();
       const phone = document.getElementById('regPhone').value.trim();
@@ -1646,25 +1653,47 @@
       errEl.style.display = 'none';
 
       try {
+        const payload = { name, email, phone, password, role: 'parent' };
+        if (_pRegOtpPending) {
+          payload.otp = _pRegOtpPending;
+        }
+
         const res = await _fetch(API + '/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, phone, password, role: 'parent' })
+          body: JSON.stringify(payload)
         });
 
         const data = await res.json();
         if (res.ok) {
+          if (data.status === 'otp_sent') {
+            if (data.otp) {
+              showToast(`Dev OTP: ${data.otp}`, 'info');
+            }
+            const otpInput = prompt(data.message || 'Please enter the registration OTP sent to your phone/email:');
+            if (otpInput === null) {
+              _pRegOtpPending = null;
+              return;
+            }
+            _pRegOtpPending = otpInput.trim();
+            return handleRegister();
+          }
+
+          _pRegOtpPending = null;
+          clearAutoSave('autosave_parent_register');
           localStorage.setItem('spx_parent_token', data.token);
           localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
           hideLoginOverlay();
           initDashboard();
           showToast('Registration successful! Welcome to Speaxa.', 'success');
         } else {
-          errEl.textContent = data.error || 'Registration failed.';
+          _pRegOtpPending = null;
+          errEl.textContent = toFriendlyError(data.error || 'Registration failed.');
           errEl.style.display = 'block';
         }
       } catch (err) {
-        errEl.textContent = 'Server connection error. Please try again.';
+        _pRegOtpPending = null;
+        errEl.textContent = toFriendlyError('Server connection error. Please try again.');
         errEl.style.display = 'block';
       }
     }
@@ -1842,9 +1871,10 @@
         setMetric('metCommunication', 'barCommunication', rating.communication);
 
         // AI Insight
-        document.getElementById('aiInsightText').textContent = (ov.recentReports && ov.recentReports.length > 0 && ov.recentReports[0].remarks)
+        const remarksVal = (ov.recentReports && ov.recentReports.length > 0 && ov.recentReports[0].remarks)
           ? ov.recentReports[0].remarks
           : 'No specific monthly report remarks recorded yet. Daily behavior metrics indicate stable performance trends.';
+        document.getElementById('aiInsightText').innerHTML = formatRichText(remarksVal);
       }
 
       // ── Attendance ─────────────────────────────────────────
@@ -2326,6 +2356,7 @@
 
     // ── Boot ───────────────────────────────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', async () => {
+      setupAutoSave('autosave_parent_register', ['regName', 'regEmail', 'regPhone', 'regPass']);
       const token = localStorage.getItem('spx_parent_token');
       if (!token) { showLoginOverlay(); return; }
 

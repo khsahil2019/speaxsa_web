@@ -775,7 +775,7 @@ function openUserDetailsModal(id) {
       </div>
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Phone Number</span>
-        <strong style="font-size:13px;">${user.phone || 'No phone'}</strong>
+        <strong style="font-size:13px;">${user.phone || '—'}</strong>
       </div>
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Plain Password</span>
@@ -791,11 +791,11 @@ function openUserDetailsModal(id) {
     html += `
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Class / Standard</span>
-        <strong style="font-size:13px;">${user.qualification || 'Not set'}</strong>
+        <strong style="font-size:13px;">${user.qualification || '—'}</strong>
       </div>
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Academic Board</span>
-        <strong style="font-size:13px;">${user.board || 'Not set'}</strong>
+        <strong style="font-size:13px;">${user.board || '—'}</strong>
       </div>
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px; grid-column: span 2;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Learning Streak</span>
@@ -806,7 +806,7 @@ function openUserDetailsModal(id) {
     html += `
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Tutor Qualification</span>
-        <strong style="font-size:13px;">${user.qualification || 'Not set'}</strong>
+        <strong style="font-size:13px;">${user.qualification || '—'}</strong>
       </div>
       <div class="detail-card" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:12px;">
         <span class="text-secondary" style="font-size:11px; display:block; margin-bottom:4px;">Tutor Experience</span>
@@ -1013,7 +1013,7 @@ function renderTeachers(filter = 'all') {
           </div>
           <div class="detail-row">
             <span class="detail-label">Phone:</span>
-            <span class="detail-val">${t.phone || 'No phone'}</span>
+            <span class="detail-val">${t.phone || '—'}</span>
           </div>
         </div>
         <div class="teacher-actions">
@@ -1101,7 +1101,7 @@ function renderDirectory(searchQuery = '') {
         <td>
           <div style="display:flex; flex-direction:column;">
             <span>${user.email}</span>
-            <span class="text-secondary" style="font-size:11px;">${user.phone || 'No phone'}</span>
+            <span class="text-secondary" style="font-size:11px;">${user.phone || '—'}</span>
             <span style="font-size:11px; color:#E11D48; margin-top:3px; font-weight:600;"><i class="fa-solid fa-key" style="margin-right:3px;"></i>Pass: ${user.password_plain || 'speaxa123'}</span>
           </div>
         </td>
@@ -1429,7 +1429,7 @@ async function showTeacherDetails(id) {
     <div style="display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--border); padding-top:16px;">
       <div style="display:flex; justify-content:space-between; font-size:13px;">
         <span class="text-secondary">Phone Number:</span>
-        <strong>${teacher.phone || 'Not Specified'}</strong>
+        <strong>${teacher.phone || '—'}</strong>
       </div>
       <div style="display:flex; justify-content:space-between; font-size:13px;">
         <span class="text-secondary">Qualification:</span>
@@ -1437,7 +1437,7 @@ async function showTeacherDetails(id) {
       </div>
       <div style="display:flex; justify-content:space-between; font-size:13px;">
         <span class="text-secondary">Years of Experience:</span>
-        <strong>${teacher.experience_years} years</strong>
+        <strong>${teacher.experience_years} Years</strong>
       </div>
     </div>
   `;

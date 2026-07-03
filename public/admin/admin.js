@@ -74,7 +74,7 @@ async function handleLogin(e) {
     showApp();
     navigateTo('dashboard');
   } catch (err) {
-    errEl.textContent = err.message;
+    errEl.textContent = toFriendlyError(err.message);
     errEl.classList.remove('d-none');
   } finally {
     btn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login as Admin';
@@ -130,9 +130,9 @@ async function apiPut(path, body) { return apiPost(path, body, 'PUT'); }
 function showToast(msg, type = 'success') {
   const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
   const colors = { success: '#10B981', error: '#EF4444', warning: '#F59E0B', info: '#3CBDB0' };
-  document.getElementById('toastMsg').textContent = msg;
-  document.getElementById('toastIcon').className = `fas ${icons[type]}`;
-  document.getElementById('toastIcon').style.color = colors[type];
+  document.getElementById('toastMsg').textContent = (type === 'error' || type === 'danger') ? toFriendlyError(msg) : msg;
+  document.getElementById('toastIcon').className = `fas ${icons[type] || 'fa-info-circle'}`;
+  document.getElementById('toastIcon').style.color = colors[type] || '#3CBDB0';
   document.getElementById('toastEl').className = `toast ${type}`;
   Toast.show();
 }
@@ -1767,6 +1767,11 @@ function showCreateCourse() {
     </form>`;
   document.getElementById('courseForm').onsubmit = createCourse;
   formModal.show();
+  setupAutoSave('autosave_admin_course_create', [
+    'courseTitle', 'courseSubject', 'courseGrade', 'courseBoard', 'courseFees',
+    'courseLearningDuration', 'courseLanguageInstruction', 'courseDailyClassDuration', 'courseAssessmentDays',
+    'courseObjective', 'courseLearningOutcome', 'courseCustomTag', 'courseDesc'
+  ], 'formModal');
 }
 
 async function createCourse(e) {
@@ -1799,6 +1804,7 @@ async function createCourse(e) {
       assessment_days: document.getElementById('courseAssessmentDays').value
     });
     showToast(data.message || 'Course created');
+    clearAutoSave('autosave_admin_course_create');
     formModal.hide();
     renderCourses();
   } catch (err) {
@@ -1924,6 +1930,11 @@ function editCourse(id) {
     </form>`;
   document.getElementById('courseForm').onsubmit = (e) => updateCourse(e, id);
   formModal.show();
+  setupAutoSave('autosave_admin_course_edit_' + id, [
+    'courseTitle', 'courseSubject', 'courseGrade', 'courseBoard', 'courseFees',
+    'courseLearningDuration', 'courseLanguageInstruction', 'courseDailyClassDuration', 'courseAssessmentDays',
+    'courseObjective', 'courseLearningOutcome', 'courseCustomTag', 'courseDesc'
+  ], 'formModal');
 }
 
 async function updateCourse(e, id) {
@@ -1956,6 +1967,7 @@ async function updateCourse(e, id) {
       assessment_days: document.getElementById('courseAssessmentDays').value
     });
     showToast(data.message || 'Course updated');
+    clearAutoSave('autosave_admin_course_edit_' + id);
     formModal.hide();
     renderCourses();
   } catch (err) {
@@ -2787,12 +2799,12 @@ async function refreshSOPModal(teacherId) {
           ${avatar(t.photo_url, t.name, 60)}
           <div>
             <h5 class="fw-bold text-white mb-1" style="font-family: 'Outfit';">${t.name}</h5>
-            <div class="text-secondary small mb-1"><i class="far fa-envelope me-1"></i>${t.email} | <i class="fas fa-phone-alt me-1"></i>${t.phone || 'No Phone'} | Mobile: ${t.mobile_number || '—'} | Alt Email: ${t.alt_email || '—'}</div>
+            <div class="text-secondary small mb-1"><i class="far fa-envelope me-1"></i>${t.email} | <i class="fas fa-phone-alt me-1"></i>${t.phone || '—'} | Mobile: ${t.mobile_number || '—'} | Alt Email: ${t.alt_email || '—'}</div>
             <div class="text-secondary small mb-1">
               LinkedIn: ${t.social_links?.linkedin ? `<a href="${t.social_links.linkedin}" target="_blank" class="text-primary text-decoration-none fw-semibold">${t.social_links.linkedin}</a>` : '—'} |
               Twitter/Social: ${t.social_links?.twitter ? `<a href="${t.social_links.twitter}" target="_blank" class="text-primary text-decoration-none fw-semibold">${t.social_links.twitter}</a>` : '—'}
             </div>
-            <div class="text-secondary small"><i class="fas fa-graduation-cap me-1"></i>Highest Qualification: <strong class="text-white">${t.qualification || 'Not provided'}</strong></div>
+            <div class="text-secondary small"><i class="fas fa-graduation-cap me-1"></i>Highest Qualification: <strong class="text-white">${t.qualification || '—'}</strong></div>
           </div>
         </div>
 
@@ -2819,7 +2831,7 @@ async function refreshSOPModal(teacherId) {
                 } else if (item.type === 'text') {
                   dataHtml = hasItem ? 
                     `<span class="fw-semibold text-dark">${item.val}</span>` : 
-                    `<span class="text-muted small">Not provided</span>`;
+                    `<span class="text-muted small">—</span>`;
                 } else if (item.type === 'html') {
                   dataHtml = item.val;
                 }
@@ -3834,7 +3846,7 @@ function highlightFormFieldError(formElement, errorMessage) {
     { keys: ['grade'], ids: ['courseGrade', 'tCourseGrade'] },
     { keys: ['board'], ids: ['courseBoard', 'tCourseBoard'] },
     { keys: ['fees', 'fee'], ids: ['courseFees'] },
-    { keys: ['thumbnail', 'banner'], ids: ['courseFileInput', 'tCourseCustomTag'] },
+    { keys: ['thumbnail', 'banner'], ids: ['courseFileInput'] },
     { keys: ['badge', 'tag line'], ids: ['courseCustomTag', 'tCourseCustomTag'] },
     { keys: ['objective'], ids: ['courseObjective', 'tCourseObjective'] },
     { keys: ['outcome'], ids: ['courseLearningOutcome', 'tCourseLearningOutcome'] },

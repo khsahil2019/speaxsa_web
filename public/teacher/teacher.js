@@ -9,14 +9,14 @@ let Toast = toastEl ? new bootstrap.Toast(toastEl, { delay: 3000 }) : null;
 
 function showToast(msg, type = 'success') {
   if (!Toast) {
-    alert(msg);
+    alert((type === 'error' || type === 'danger') ? toFriendlyError(msg) : msg);
     return;
   }
   const icons = { success:'fa-check-circle', error:'fa-exclamation-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
   const colors = { success:'#10B981', error:'#EF4444', warning:'#F59E0B', info:'#3CBDB0' };
-  document.getElementById('toastMsg').textContent = msg;
-  document.getElementById('toastIcon').className = `fas ${icons[type]}`;
-  document.getElementById('toastIcon').style.color = colors[type];
+  document.getElementById('toastMsg').textContent = (type === 'error' || type === 'danger') ? toFriendlyError(msg) : msg;
+  document.getElementById('toastIcon').className = `fas ${icons[type] || 'fa-info-circle'}`;
+  document.getElementById('toastIcon').style.color = colors[type] || '#3CBDB0';
   Toast.show();
 }
 
@@ -60,7 +60,7 @@ async function doLogin() {
     saveAuth(data.token, data.user);
   } catch(e) {
     const errEl = document.getElementById('loginError');
-    errEl.textContent = e.message;
+    errEl.textContent = toFriendlyError(e.message);
     errEl.classList.remove('d-none');
   }
 }
@@ -93,18 +93,42 @@ async function doRegister() {
       throw new Error('Please fill all required fields');
     }
 
+    if (window._tRegOtpPending) {
+      payload.otp = window._tRegOtpPending;
+    }
+
     const data = await (await fetch(`${API}/auth/register`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     })).json();
 
-    if (data.error) throw new Error(data.error);
+    if (data.error) {
+      window._tRegOtpPending = null;
+      throw new Error(data.error);
+    }
+
+    if (data.status === 'otp_sent') {
+      if (data.otp) {
+        showToast(`Dev OTP: ${data.otp}`, 'info');
+      }
+      const otpInput = prompt(data.message || 'Please enter the registration OTP sent to your phone/email:');
+      if (otpInput === null) {
+        window._tRegOtpPending = null;
+        return;
+      }
+      window._tRegOtpPending = otpInput.trim();
+      return doRegister();
+    }
+
+    window._tRegOtpPending = null;
+    clearAutoSave('autosave_teacher_register');
     showToast('Registration successful! Please login.', 'success');
     switchTab('login');
   } catch(e) {
+    window._tRegOtpPending = null;
     const errEl = document.getElementById('registerError');
-    errEl.textContent = e.message;
+    errEl.textContent = toFriendlyError(e.message);
     errEl.classList.remove('d-none');
   }
 }
@@ -1576,9 +1600,9 @@ async function renderBatches() {
                         </span>
                       </div>
                       ${b.planner_desc ? `
-                        <div class="mt-2 p-2 rounded text-secondary" style="background:rgba(255,255,255,0.02); font-size:0.78rem; white-space: pre-wrap; line-height: 1.4; border: 1px solid rgba(255,255,255,0.03);">
+                        <div class="mt-2 p-2 rounded text-secondary" style="background:rgba(255,255,255,0.02); font-size:0.78rem; line-height: 1.4; border: 1px solid rgba(255,255,255,0.03);">
                           <strong class="text-white d-block mb-1"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
-                          ${b.planner_desc}
+                          <div>${formatRichText(b.planner_desc)}</div>
                         </div>
                       ` : ''}
                     </div>
@@ -1719,6 +1743,11 @@ async function renderBatches() {
         </div>
       `;
       updateBatchPreview();
+      setupAutoSave('autosave_teacher_batch', [
+        'batchCourse', 'batchName', 'batchSubject', 'batchStartD', 'batchEndD',
+        'batchStartT', 'batchEndT', 'batchCapacity', 'batchPlannerDesc',
+        'batchTeachingMethod', 'batchInstructions'
+      ]);
     }
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
@@ -1819,7 +1848,7 @@ function updateBatchPreview() {
           </span>
         </div>
       </div>
-      <p class="text-muted small mb-3">${window._selectedCourse.description || 'No description available for this course.'}</p>
+      <div class="text-muted small mb-3">${formatRichText(window._selectedCourse.description) || 'No description available for this course.'}</div>
       
       <div class="row mb-4 text-muted small g-3">
         <div class="col-6">
@@ -1848,7 +1877,7 @@ function updateBatchPreview() {
             <div class="p-2 mb-2 rounded border" style="background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.05) !important;">
               <div class="small fw-bold text-white-50" style="font-size: 9px;">MODULE ${idx + 1}</div>
               <div class="small text-white fw-semibold mb-1">${m.title}</div>
-              <div class="text-muted" style="font-size: 11px;">${m.description || ''}</div>
+              <div class="text-muted" style="font-size: 11px;">${formatRichText(m.description) || ''}</div>
             </div>
           `).join('') : '<p class="text-muted small">No modules created for this course yet.</p>'
         }
@@ -1983,6 +2012,7 @@ async function createBatch(e) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
+    clearAutoSave('autosave_teacher_batch');
     showToast(data.message || 'Batch created successfully!');
     // Switch tab to list
     window._batchActiveTab = 'list';
@@ -2034,15 +2064,19 @@ async function renderCourses() {
 
         // Action buttons
         let actionsHtml = '';
-        if (['draft', 'rejected'].includes(c.status)) {
+        if (['draft', 'rejected', 'active', 'pending_approval'].includes(c.status)) {
           actionsHtml = `
             <button class="btn btn-xs btn-outline-secondary me-2 px-3 py-1" style="font-size:0.75rem;" onclick="editTeacherCourse('${c.id}')"><i class="fas fa-edit me-1"></i>Edit</button>
-            <button class="btn btn-xs btn-spx px-3 py-1" style="font-size:0.75rem;" onclick="submitTeacherCourseForApproval('${c.id}')"><i class="fas fa-paper-plane me-1"></i>Submit</button>
           `;
-        } else if (c.status === 'pending_approval') {
-          actionsHtml = `<span class="text-muted small"><i class="fas fa-clock me-1"></i>Pending Review</span>`;
-        } else if (c.status === 'active') {
-          actionsHtml = `<span class="text-success small fw-semibold"><i class="fas fa-check-circle me-1"></i>Live</span>`;
+          if (['draft', 'rejected'].includes(c.status)) {
+            actionsHtml += `
+              <button class="btn btn-xs btn-spx px-3 py-1" style="font-size:0.75rem;" onclick="submitTeacherCourseForApproval('${c.id}')"><i class="fas fa-paper-plane me-1"></i>Submit</button>
+            `;
+          } else if (c.status === 'pending_approval') {
+            actionsHtml += `<span class="text-muted small"><i class="fas fa-clock me-1"></i>Pending Review</span>`;
+          } else if (c.status === 'active') {
+            actionsHtml += `<span class="text-success small fw-semibold"><i class="fas fa-check-circle me-1"></i>Live</span>`;
+          }
         }
 
         return `
@@ -2224,12 +2258,26 @@ function showCreateCourseModal() {
   
   const myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('courseFormModal'));
   myModal.show();
+  setupAutoSave('autosave_teacher_course_create', [
+    'tCourseTitle', 'tCourseSubject', 'tCourseGrade', 'tCourseBoard',
+    'tCourseLearningDuration', 'tCourseLanguageInstruction',
+    'tCourseDailyClassDuration', 'tCourseAssessmentDays',
+    'tCourseObjective', 'tCourseLearningOutcome', 'tCourseCustomTag', 'tCourseDesc'
+  ], 'courseFormModal');
 }
 
 function editTeacherCourse(id) {
-  initCourseFormModal();
   const course = (window._teacherCourses || []).find(c => c.id === id);
   if (!course) return showToast('Course not found', 'error');
+
+  if (['active', 'pending_approval'].includes(course.status)) {
+    const msg = course.status === 'active'
+      ? 'Warning: This course is currently APPROVED & LIVE. Editing it will revert its status back to DRAFT, making it invisible to students until you resubmit and get Admin approval again.\n\nDo you want to proceed?'
+      : 'Warning: This course is currently PENDING APPROVAL. Editing it will revert its status back to DRAFT, and you will need to resubmit it for review.\n\nDo you want to proceed?';
+    if (!confirm(msg)) return;
+  }
+
+  initCourseFormModal();
 
   _teacherActiveCourseId = id;
   _teacherCurrentThumbnailUrl = course.thumbnail_url || '';
@@ -2266,6 +2314,12 @@ function editTeacherCourse(id) {
 
   const myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('courseFormModal'));
   myModal.show();
+  setupAutoSave('autosave_teacher_course_edit_' + id, [
+    'tCourseTitle', 'tCourseSubject', 'tCourseGrade', 'tCourseBoard',
+    'tCourseLearningDuration', 'tCourseLanguageInstruction',
+    'tCourseDailyClassDuration', 'tCourseAssessmentDays',
+    'tCourseObjective', 'tCourseLearningOutcome', 'tCourseCustomTag', 'tCourseDesc'
+  ], 'courseFormModal');
 }
 
 async function handleSaveTeacherCourse(e) {
@@ -2313,6 +2367,11 @@ async function handleSaveTeacherCourse(e) {
       });
     }
 
+    if (_teacherActiveCourseId) {
+      clearAutoSave('autosave_teacher_course_edit_' + _teacherActiveCourseId);
+    } else {
+      clearAutoSave('autosave_teacher_course_create');
+    }
     showToast(data.message || 'Course saved successfully!');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('courseFormModal')).hide();
     renderCourses();
@@ -2573,7 +2632,7 @@ async function renderAssignments() {
                   <div>
                     <h6 class="text-white fw-bold mb-1">${a.title}</h6>
                     <div class="text-muted small">${a.batch_name || 'Batch'} • Due: ${fmtDate(a.due_date)}</div>
-                    <p class="text-muted small mt-2 mb-0">${a.description || ''}</p>
+                    <div class="text-muted small mt-2 mb-0">${formatRichText(a.description) || ''}</div>
                     ${a.file_url ? `<a href="${a.file_url}" target="_blank" class="d-inline-block mt-2 small text-primary"><i class="fas fa-file-pdf"></i> View Attachment</a>` : ''}
                   </div>
                   <div>
@@ -2971,7 +3030,7 @@ async function renderNotes() {
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
                     <h6 class="text-white fw-bold mb-1">${n.title}</h6>
-                    <div class="text-muted small">${n.description || ''}</div>
+                    <div class="text-muted small">${formatRichText(n.description) || ''}</div>
                     <div class="text-muted" style="font-size:.7rem;margin-top:4px;">Uploaded: ${fmtDate(n.uploaded_at)} • Type: <strong>${n.file_type.toUpperCase()}</strong></div>
                   </div>
                   <a href="${n.file_url}" target="_blank" class="btn btn-sm btn-spx"><i class="fas fa-external-link-alt"></i> Access</a>
@@ -3436,6 +3495,10 @@ async function renderProfile() {
         </div>
       </div>
     `;
+    setupAutoSave('autosave_teacher_profile', [
+      'profName', 'profPhone', 'profAltEmail', 'profMobileNumber',
+      'profLinkedIn', 'profTwitter', 'profQual', 'profExp', 'profLang', 'profYrs', 'profBio'
+    ]);
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
@@ -3466,6 +3529,7 @@ async function updateProfile(e) {
     });
 
     if (data.error) throw new Error(data.error);
+    clearAutoSave('autosave_teacher_profile');
     showToast('Profile updated successfully!');
     updateCachedUser(data.user);
     showApp();
@@ -4378,7 +4442,7 @@ function highlightFormFieldError(formElement, errorMessage) {
     { keys: ['grade'], ids: ['courseGrade', 'tCourseGrade'] },
     { keys: ['board'], ids: ['courseBoard', 'tCourseBoard'] },
     { keys: ['fees', 'fee'], ids: ['courseFees'] },
-    { keys: ['thumbnail', 'banner'], ids: ['courseFileInput', 'tCourseCustomTag'] },
+    { keys: ['thumbnail', 'banner'], ids: ['tCourseFileInput'] },
     { keys: ['badge', 'tag line'], ids: ['courseCustomTag', 'tCourseCustomTag'] },
     { keys: ['objective'], ids: ['courseObjective', 'tCourseObjective'] },
     { keys: ['outcome'], ids: ['courseLearningOutcome', 'tCourseLearningOutcome'] },
@@ -4654,4 +4718,9 @@ window.sendTeacherChatMessage = async function(e) {
     showToast('Connection error', 'error');
   }
 };
+
+setupAutoSave('autosave_teacher_register', [
+  'regName', 'regEmail', 'regPhone', 'regPassword', 'regAltEmail', 'regMobileNumber',
+  'regLinkedIn', 'regTwitter', 'regQualification', 'regSubjects', 'regExp', 'regLanguages', 'regReferralCode'
+]);
 

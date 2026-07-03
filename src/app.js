@@ -304,6 +304,8 @@ if (process.env.NODE_ENV !== 'test') {
 // ── Static Files ──────────────────────────────────────────────
 app.use('/logo.png', (req, res) => res.sendFile(path.join(__dirname, '../public/logo.png')));
 app.use('/admin/logo.png', (req, res) => res.sendFile(path.join(__dirname, '../public/logo.png')));
+app.use('/utils-formatting.js', (req, res) => res.sendFile(path.join(__dirname, '../public/utils-formatting.js')));
+app.use('/utils-autosave.js', (req, res) => res.sendFile(path.join(__dirname, '../public/utils-autosave.js')));
 app.use(express.static(path.join(__dirname, '../public/landing')));
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
 app.use('/teacher', express.static(path.join(__dirname, '../public/teacher')));

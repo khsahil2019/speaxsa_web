@@ -62,6 +62,24 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // Registration OTP Verification
+    const { otp } = req.body;
+    if (!otp) {
+      const { otp: generatedOtp } = await createOTP(phone, 'register');
+      await sendOTPSms(phone, generatedOtp, 'register');
+      await sendOTPEmail(email, generatedOtp, 'register');
+      return res.status(200).json({
+        status: 'otp_sent',
+        message: 'A verification OTP has been sent to your phone and email. Please enter it to complete registration.',
+        ...(process.env.NODE_ENV !== 'production' && { otp: generatedOtp })
+      });
+    }
+
+    const otpVerification = await verifyOTP(phone, otp, 'register');
+    if (!otpVerification.valid) {
+      return res.status(400).json({ error: 'Invalid or expired registration OTP. Please request a new one.' });
+    }
+
     const id = generateUID(role.substr(0, 3));
     const passwordHash = hashPassword(password);
     const photoUrl = null;
