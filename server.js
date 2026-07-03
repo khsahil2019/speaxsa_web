@@ -20,6 +20,8 @@ const io = new SocketIO(server, {
       'http://localhost:5001',
       'http://localhost:5002',
       'https://speaxa.com',
+      'https://speaxa.in',
+      'https://www.speaxa.in',
     ],
     methods: ['GET', 'POST'],
   },

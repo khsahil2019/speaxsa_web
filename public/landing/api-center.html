@@ -645,11 +645,11 @@
 
           <!-- Section 5 -->
           <h4 class="text-primary mt-5 mb-3"><i class="fas fa-tools me-2"></i>5. Base URL Configuration (Important)</h4>
-          <p>By default, the SPEAXA portals use **relative base URLs** (`const API = '/api';` defined at the top of client files). This is a best practice because **relative paths resolve automatically** to the host domain they are served from. However, if you are splitting client assets onto a separate CDN and hosting the API server on a subdomain (like `api.speaxa.com`), you must change the base URLs in the frontend files:</p>
+          <p>By default, the SPEAXA portals use **relative base URLs** (`const API = '/api';` defined at the top of client files). This is a best practice because **relative paths resolve automatically** to the host domain they are served from. However, if you are splitting client assets onto a separate CDN and hosting the API server on a subdomain (like `api.speaxa.in` or `api.speaxa.com`), you must change the base URLs in the frontend files:</p>
           
           <div class="guide-block">
             <span class="guide-comment">// Locate and edit this variable at the top of client JS files:</span><br>
-            <span class="guide-keyword">const</span> <span class="guide-string">API</span> = <span class="guide-string">'https://api.speaxa.com/api'</span>; <span class="guide-comment">// Point to absolute VPS domain</span>
+            <span class="guide-keyword">const</span> <span class="guide-string">API</span> = <span class="guide-string">'https://api.speaxa.in/api'</span>; // Point to absolute VPS domain
           </div>
 
           <p>Verify and edit the constant definition in the following files:</p>
@@ -673,7 +673,7 @@
           <div class="guide-block">
             server {<br>
             &nbsp;&nbsp;&nbsp;&nbsp;listen 80;<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;server_name <span class="guide-string">speaxa.com www.speaxa.com</span>;<br><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;server_name <span class="guide-string">speaxa.in www.speaxa.in speaxa.com www.speaxa.com</span>;<br><br>
             &nbsp;&nbsp;&nbsp;&nbsp;<span class="guide-comment"># Route APIs to port 5001</span><br>
             &nbsp;&nbsp;&nbsp;&nbsp;location /api {<br>
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proxy_pass http://localhost:5001;<br>
@@ -701,8 +701,8 @@
           <div class="guide-block">
             <span class="guide-comment"># Install Certbot libraries</span><br>
             <span class="guide-keyword">sudo apt install</span> certbot python3-certbot-nginx -y<br><br>
-            <span class="guide-comment"># Generate certificates (follow automated logs prompt inputs)</span><br>
-            <span class="guide-keyword">sudo certbot</span> --nginx -d <span class="guide-string">speaxa.com</span> -d <span class="guide-string">www.speaxa.com</span>
+            <span class="guide-comment">// Generate certificates (follow automated logs prompt inputs)</span><br>
+            <span class="guide-keyword">sudo certbot</span> --nginx -d <span class="guide-string">speaxa.in</span> -d <span class="guide-string">www.speaxa.in</span> -d <span class="guide-string">speaxa.com</span> -d <span class="guide-string">www.speaxa.com</span>
           </div>
 
           <!-- Section 8 -->
