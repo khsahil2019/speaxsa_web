@@ -200,6 +200,7 @@ CREATE TABLE batches (
   teaching_method TEXT,
   batch_instructions TEXT,
   is_free_demo    BOOLEAN DEFAULT false,
+  demo_video_url  TEXT,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
