@@ -6,6 +6,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { hashPassword, sanitizeUser } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
 const configService = require('../services/SystemConfigService');
+const OTPService = require('../services/OTPService');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
@@ -47,6 +48,7 @@ router.get('/settings/public', async (req, res) => {
       support_phone: settings.support_phone || '+91 9999 999 999',
       support_hours: settings.support_hours || 'Mon–Sat: 8 AM – 8 PM IST',
       max_batch_capacity: settings.max_batch_capacity || 30,
+      require_registration_otp: settings.require_registration_otp !== undefined ? (String(settings.require_registration_otp) === 'true' || settings.require_registration_otp === true) : true,
     };
     for (const [key, value] of Object.entries(settings)) {
       if (key.startsWith('home_')) {
@@ -91,6 +93,51 @@ router.post('/settings', async (req, res) => {
     }
     await logAudit(req.user.id, 'SETTINGS_UPDATED', 'platform', 'settings', { keys: Object.keys(settings) });
     res.json({ message: 'Settings updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── OTP Gateway Testing & Audit Routes ─────────────────────────
+router.post('/otp/test-sms', async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Phone number is required' });
+  try {
+    const { otp, tokenId } = await OTPService.createOTP(phone, 'test_sms');
+    const dispatch = await OTPService.sendOTPSms(phone, otp, 'test_sms', tokenId);
+    res.json({
+      message: dispatch.sent ? 'Test SMS processed successfully' : 'Test SMS dispatch failed',
+      phone,
+      otp,
+      dispatch
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/otp/test-email', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email address is required' });
+  try {
+    const { otp, tokenId } = await OTPService.createOTP(email, 'test_email');
+    const dispatch = await OTPService.sendOTPEmail(email, otp, 'test_email', tokenId);
+    res.json({
+      message: dispatch.sent ? 'Test Email processed successfully' : 'Test Email dispatch failed',
+      email,
+      otp,
+      dispatch
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/otp/logs', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '50', 10);
+    const logs = await OTPService.getOTPLogs(limit);
+    res.json(logs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

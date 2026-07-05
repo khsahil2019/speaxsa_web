@@ -243,8 +243,31 @@ db.query(`
     ('home_footer_youtube', 'https://youtube.com/speaxa'),
     ('home_footer_twitter', 'https://twitter.com/speaxa'),
     ('home_footer_play_store_url', 'https://play.google.com/store/apps/details?id=com.speaxa'),
-    ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa')
+    ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa'),
+    ('sms_provider', 'dev'),
+    ('email_provider', 'smtp'),
+    ('msg91_auth_key', ''),
+    ('msg91_template_id', ''),
+    ('msg91_sender_id', 'SPXSA'),
+    ('twilio_account_sid', ''),
+    ('twilio_auth_token', ''),
+    ('twilio_from_phone', ''),
+    ('fast2sms_api_key', ''),
+    ('fast2sms_route', 'otp'),
+    ('fast2sms_sender_id', 'SPXSA'),
+    ('custom_sms_url', ''),
+    ('custom_sms_method', 'GET'),
+    ('custom_sms_headers', '{}'),
+    ('custom_sms_body', '{}'),
+    ('otp_expiry_minutes', '5'),
+    ('otp_length', '6'),
+    ('dev_otp_in_response', 'true'),
+    ('master_otp', '')
   ON CONFLICT (key) DO NOTHING;
+
+  ALTER TABLE otp_tokens ADD COLUMN IF NOT EXISTS delivery_method VARCHAR(50);
+  ALTER TABLE otp_tokens ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(50) DEFAULT 'pending';
+  ALTER TABLE otp_tokens ADD COLUMN IF NOT EXISTS delivery_error TEXT;
 
   CREATE TABLE IF NOT EXISTS parent_teacher_chats (
     id SERIAL PRIMARY KEY,

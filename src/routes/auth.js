@@ -62,22 +62,31 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Registration OTP Verification
+    // Registration OTP Verification (Managed via Admin Settings)
+    const requireOtp = await SystemConfigService.getSetting('require_registration_otp', true);
+    const requireOtpBool = String(requireOtp) === 'true' || requireOtp === true;
+
     const { otp } = req.body;
-    if (!otp) {
-      const { otp: generatedOtp } = await createOTP(phone, 'register');
-      await sendOTPSms(phone, generatedOtp, 'register');
-      await sendOTPEmail(email, generatedOtp, 'register');
+    if (requireOtpBool && !otp) {
+      const { otp: generatedOtp, tokenId } = await createOTP(phone, 'register');
+      await sendOTPSms(phone, generatedOtp, 'register', tokenId);
+      await sendOTPEmail(email, generatedOtp, 'register', tokenId);
+      
+      const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
+      const showDevOtp = String(devOtpSetting) === 'true';
+
       return res.status(200).json({
         status: 'otp_sent',
         message: 'A verification OTP has been sent to your phone and email. Please enter it to complete registration.',
-        ...(process.env.NODE_ENV !== 'production' && { otp: generatedOtp })
+        ...(showDevOtp && { otp: generatedOtp })
       });
     }
 
-    const otpVerification = await verifyOTP(phone, otp, 'register');
-    if (!otpVerification.valid) {
-      return res.status(400).json({ error: 'Invalid or expired registration OTP. Please request a new one.' });
+    if (requireOtpBool && otp) {
+      const otpVerification = await verifyOTP(phone, otp, 'register');
+      if (!otpVerification.valid) {
+        return res.status(400).json({ error: 'Invalid or expired registration OTP. Please request a new one.' });
+      }
     }
 
     const id = generateUID(role.substr(0, 3));
@@ -241,19 +250,21 @@ router.post('/send-otp', async (req, res) => {
     }
     const user = result.rows[0];
 
-    const { otp } = await createOTP(input, purpose);
+    const { otp, tokenId } = await createOTP(input, purpose);
     let sentInfo;
     if (isEmail) {
-      sentInfo = await sendOTPEmail(user.email, otp, purpose);
+      sentInfo = await sendOTPEmail(user.email, otp, purpose, tokenId);
     } else {
-      sentInfo = await sendOTPSms(user.phone, otp, purpose);
+      sentInfo = await sendOTPSms(user.phone, otp, purpose, tokenId);
     }
+
+    const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
+    const showDevOtp = String(devOtpSetting) === 'true';
 
     res.json({
       message: `OTP sent to ${input}`,
       method: sentInfo.method,
-      // Only return OTP in development for testing
-      ...(process.env.NODE_ENV !== 'production' && { otp }),
+      ...(showDevOtp && { otp }),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -314,16 +325,19 @@ router.post('/forgot-password', async (req, res) => {
     }
     const user = result.rows[0];
 
-    const { otp } = await createOTP(input, 'forgot_password');
+    const { otp, tokenId } = await createOTP(input, 'forgot_password');
     if (isEmail) {
-      await sendOTPEmail(user.email, otp, 'forgot_password');
+      await sendOTPEmail(user.email, otp, 'forgot_password', tokenId);
     } else {
-      await sendOTPSms(user.phone, otp, 'forgot_password');
+      await sendOTPSms(user.phone, otp, 'forgot_password', tokenId);
     }
+
+    const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
+    const showDevOtp = String(devOtpSetting) === 'true';
 
     res.json({
       message: 'Password reset OTP sent successfully',
-      ...(process.env.NODE_ENV !== 'production' && { otp }),
+      ...(showDevOtp && { otp }),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

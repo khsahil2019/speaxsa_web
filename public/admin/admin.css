@@ -1747,3 +1747,22 @@ select.spx-input option {
   padding-left: 36px !important;
   width: 100%;
 }
+
+/* OTP Gateway Diagnostic Log Terminal */
+.otp-log-terminal {
+  background: #0f172a;
+  color: #38bdf8;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 0.82rem;
+  padding: 14px 18px;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.otp-log-terminal .log-success { color: #4ade80; }
+.otp-log-terminal .log-error { color: #f87171; }
+.otp-log-terminal .log-info { color: #38bdf8; }
+.otp-log-terminal .log-warn { color: #fbbf24; }
