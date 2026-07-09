@@ -1235,41 +1235,24 @@ router.post('/courses/:id/approve', async (req, res) => {
 
     if (course.email) {
       try {
-        const settingsRes = await db.query(
-          "SELECT key, value FROM platform_settings WHERE key IN ('smtp_host','smtp_port','smtp_user','smtp_pass','platform_name')"
-        );
-        const settings = {};
-        settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
-
-        if (settings.smtp_host && settings.smtp_user) {
-          const nodemailer = require('nodemailer');
-          const transporter = nodemailer.createTransport({
-            host: settings.smtp_host,
-            port: parseInt(settings.smtp_port || '587'),
-            secure: parseInt(settings.smtp_port || '587') === 465,
-            auth: { user: settings.smtp_user, pass: settings.smtp_pass },
-          });
-
-          const platformName = settings.platform_name || 'Speaxa';
-          await transporter.sendMail({
-            from: `"${platformName}" <${settings.smtp_user}>`,
-            to: course.email,
-            subject: `Course Approved: ${course.title}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #3CBDB0;">${platformName}</h2>
-                <p>Hello <strong>${course.name}</strong>,</p>
-                <p>We are excited to inform you that your course <strong>"${course.title}"</strong> has been approved by the Admin and is now published live on the platform!</p>
-                <p>You can check the course status and start managing study batches in your teacher dashboard.</p>
-                <br>
-                <small style="color: #999;">This is an automated notification. Please do not reply directly to this email.</small>
-              </div>
-            `
-          });
-          console.log(`[Admin Approval Email] Sent to teacher ${course.email} for course "${course.title}"`);
-        } else {
-          console.log(`[Admin Approval Email Fallback] Email: ${course.email} | Message: Course "${course.title}" approved.`);
-        }
+        const { sendEmail } = require('../services/EmailService');
+        const platformName = 'Speaxa';
+        await sendEmail({
+          to: course.email,
+          subject: `Course Approved: ${course.title}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #3CBDB0;">${platformName}</h2>
+              <p>Hello <strong>${course.name}</strong>,</p>
+              <p>We are excited to inform you that your course <strong>"${course.title}"</strong> has been approved by the Admin and is now published live on the platform!</p>
+              <p>You can check the course status and start managing study batches in your teacher dashboard.</p>
+              <br>
+              <small style="color: #999;">This is an automated notification. Please do not reply directly to this email.</small>
+            </div>
+          `,
+          type: 'notification'
+        });
+        console.log(`[Admin Approval Email] Sent to teacher ${course.email} for course "${course.title}"`);
       } catch (mailErr) {
         console.error('[Admin Approval Email Error]:', mailErr.message);
       }
@@ -1304,45 +1287,28 @@ router.post('/courses/:id/reject', async (req, res) => {
 
     if (course.email) {
       try {
-        const settingsRes = await db.query(
-          "SELECT key, value FROM platform_settings WHERE key IN ('smtp_host','smtp_port','smtp_user','smtp_pass','platform_name')"
-        );
-        const settings = {};
-        settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
-
-        if (settings.smtp_host && settings.smtp_user) {
-          const nodemailer = require('nodemailer');
-          const transporter = nodemailer.createTransport({
-            host: settings.smtp_host,
-            port: parseInt(settings.smtp_port || '587'),
-            secure: parseInt(settings.smtp_port || '587') === 465,
-            auth: { user: settings.smtp_user, pass: settings.smtp_pass },
-          });
-
-          const platformName = settings.platform_name || 'Speaxa';
-          await transporter.sendMail({
-            from: `"${platformName}" <${settings.smtp_user}>`,
-            to: course.email,
-            subject: `Course Status Update: ${course.title}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #EF4444;">${platformName} Update</h2>
-                <p>Hello <strong>${course.name}</strong>,</p>
-                <p>Your course <strong>"${course.title}"</strong> has been reviewed. Unfortunately, it does not meet our guidelines at this time and has been rejected.</p>
-                <div style="background: #FEE2E2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                  <strong>Reason for Rejection:</strong><br>
-                  ${reason || 'Does not meet platform guidelines.'}
-                </div>
-                <p>You can modify the course in your dashboard and re-submit it for approval.</p>
-                <br>
-                <small style="color: #999;">This is an automated notification. Please do not reply directly to this email.</small>
+        const { sendEmail } = require('../services/EmailService');
+        const platformName = 'Speaxa';
+        await sendEmail({
+          to: course.email,
+          subject: `Course Status Update: ${course.title}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #EF4444;">${platformName} Update</h2>
+              <p>Hello <strong>${course.name}</strong>,</p>
+              <p>Your course <strong>"${course.title}"</strong> has been reviewed. Unfortunately, it does not meet our guidelines at this time and has been rejected.</p>
+              <div style="background: #FEE2E2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <strong>Reason for Rejection:</strong><br>
+                ${reason || 'Does not meet platform guidelines.'}
               </div>
-            `
-          });
-          console.log(`[Admin Rejection Email] Sent to teacher ${course.email} for course "${course.title}"`);
-        } else {
-          console.log(`[Admin Rejection Email Fallback] Email: ${course.email} | Reason: ${reason}`);
-        }
+              <p>You can modify the course in your dashboard and re-submit it for approval.</p>
+              <br>
+              <small style="color: #999;">This is an automated notification. Please do not reply directly to this email.</small>
+            </div>
+          `,
+          type: 'notification'
+        });
+        console.log(`[Admin Rejection Email] Sent to teacher ${course.email} for course "${course.title}"`);
       } catch (mailErr) {
         console.error('[Admin Rejection Email Error]:', mailErr.message);
       }
@@ -1767,6 +1733,108 @@ router.post('/payouts/:id/pay-razorpay', async (req, res) => {
       razorpay_payout_id: result.razorpayPayoutId,
       status: result.status
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Email Manager endpoints ───────────────────────────────────
+router.get('/emails/logs', async (req, res) => {
+  const limit = parseInt(req.query.limit || '50', 10);
+  const offset = parseInt(req.query.offset || '0', 10);
+  try {
+    const logsRes = await db.query(
+      `SELECT * FROM email_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+    const countRes = await db.query(`SELECT COUNT(*) as total FROM email_logs`);
+    res.json({
+      logs: logsRes.rows,
+      total: parseInt(countRes.rows[0].total || 0, 10),
+      limit,
+      offset
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/emails/campaigns', async (req, res) => {
+  const limit = parseInt(req.query.limit || '50', 10);
+  try {
+    const campaignsRes = await db.query(
+      `SELECT c.*, u.name as sender_name 
+       FROM email_campaigns c 
+       LEFT JOIN users u ON u.id = c.sent_by 
+       ORDER BY c.created_at DESC 
+       LIMIT $1`,
+      [limit]
+    );
+    res.json(campaignsRes.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/emails/send', async (req, res) => {
+  const { targetRole, targetEmail, subject, body } = req.body;
+  if (!subject || !body) {
+    return res.status(400).json({ error: 'Subject and body are required' });
+  }
+
+  try {
+    const { sendEmail } = require('../services/EmailService');
+    let recipients = [];
+
+    if (targetRole === 'custom' && targetEmail) {
+      recipients = [{ email: targetEmail.trim(), name: 'User' }];
+    } else {
+      let usersQuery = '';
+      let queryParams = [];
+
+      if (targetRole === 'all') {
+        usersQuery = "SELECT email, name FROM users WHERE email IS NOT NULL AND email != '' AND is_disabled = false";
+      } else if (['teacher', 'student', 'parent'].includes(targetRole)) {
+        usersQuery = "SELECT email, name FROM users WHERE email IS NOT NULL AND email != '' AND is_disabled = false AND role = $1";
+        queryParams.push(targetRole);
+      } else {
+        return res.status(400).json({ error: 'Invalid target role selection' });
+      }
+
+      const usersRes = await db.query(usersQuery, queryParams);
+      recipients = usersRes.rows;
+    }
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ error: 'No recipients found matching the filter' });
+    }
+
+    // Create the email campaign log
+    const campaignId = 'ecamp_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    await db.query(`
+      INSERT INTO email_campaigns (id, subject, body, target_role, recipient_count, sent_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [campaignId, subject, body, targetRole === 'custom' ? targetEmail : targetRole, recipients.length, req.user.id]);
+
+    // Send emails in background
+    res.json({ message: `Dispatching emails to ${recipients.length} recipients...`, campaignId });
+
+    // Background process
+    (async () => {
+      for (const recipient of recipients) {
+        let personalizedBody = body.replace(/{NAME}/g, recipient.name);
+        await sendEmail({
+          to: recipient.email,
+          subject,
+          html: personalizedBody,
+          type: 'advertisement'
+        });
+      }
+      console.log(`[Email Campaign] Dispatched campaign ${campaignId} to ${recipients.length} recipients.`);
+    })().catch(err => {
+      console.error(`[Email Campaign Error] Campaign ${campaignId} background send failed:`, err.message);
+    });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

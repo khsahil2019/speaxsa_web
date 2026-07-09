@@ -280,6 +280,27 @@ db.query(`
     is_read BOOLEAN DEFAULT false
   );
   CREATE INDEX IF NOT EXISTS idx_pt_chats_lookup ON parent_teacher_chats (parent_id, teacher_id, student_id);
+
+  CREATE TABLE IF NOT EXISTS email_logs (
+    id VARCHAR(100) PRIMARY KEY,
+    recipient_email VARCHAR(200) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    status VARCHAR(30) DEFAULT 'sent',
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS email_campaigns (
+    id VARCHAR(100) PRIMARY KEY,
+    subject VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    target_role VARCHAR(50) NOT NULL,
+    recipient_count INT DEFAULT 0,
+    sent_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
 `).then(() => {
   console.log("PostgreSQL: Database self-healing migrations verified/created.");
 }).catch((err) => {

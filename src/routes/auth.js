@@ -62,30 +62,40 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Registration OTP Verification (Managed via Admin Settings)
+    // Registration OTP Verification (Managed via Admin Settings - Email Only)
     const requireOtp = await SystemConfigService.getSetting('require_registration_otp', true);
     const requireOtpBool = String(requireOtp) === 'true' || requireOtp === true;
 
-    const { otp } = req.body;
-    if (requireOtpBool && !otp) {
-      const { otp: generatedOtp, tokenId } = await createOTP(phone, 'register');
-      await sendOTPSms(phone, generatedOtp, 'register', tokenId);
-      await sendOTPEmail(email, generatedOtp, 'register', tokenId);
-      
-      const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
-      const showDevOtp = String(devOtpSetting) === 'true';
+    let { otp, emailOtp } = req.body;
+    const verificationOtp = emailOtp || otp;
 
-      return res.status(200).json({
-        status: 'otp_sent',
-        message: 'A verification OTP has been sent to your phone and email. Please enter it to complete registration.',
-        ...(showDevOtp && { otp: generatedOtp })
-      });
-    }
+    if (requireOtpBool) {
+      if (!verificationOtp) {
+        const { otp: emailOtpVal, tokenId: emailTokenId } = await createOTP(email, 'register_email');
 
-    if (requireOtpBool && otp) {
-      const otpVerification = await verifyOTP(phone, otp, 'register');
-      if (!otpVerification.valid) {
-        return res.status(400).json({ error: 'Invalid or expired registration OTP. Please request a new one.' });
+        await sendOTPEmail(email, emailOtpVal, 'register_email', emailTokenId);
+
+        const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
+        const showDevOtp = String(devOtpSetting) === 'true';
+
+        return res.status(200).json({
+          status: 'otp_sent',
+          message: 'Verification code has been sent to your email. Please enter it to complete registration.',
+          ...(showDevOtp && { otp_email: emailOtpVal, otp: emailOtpVal })
+        });
+      } else {
+        // Verify email OTP (with legacy fallback check)
+        const emailVerification = await verifyOTP(email, verificationOtp, 'register_email');
+        let emailValid = emailVerification.valid;
+        if (!emailValid) {
+          const legacyEmailVerification = await verifyOTP(email, verificationOtp, 'register');
+          if (legacyEmailVerification.valid) {
+            emailValid = true;
+          }
+        }
+        if (!emailValid) {
+          return res.status(400).json({ error: 'Invalid or expired email OTP. Please request a new one.' });
+        }
       }
     }
 
@@ -240,6 +250,10 @@ router.post('/send-otp', async (req, res) => {
     if (!input) return res.status(400).json({ error: 'Email or phone identifier is required' });
 
     const isEmail = input.includes('@');
+    if (purpose === 'login' && !isEmail) {
+      return res.status(400).json({ error: 'OTP Login via mobile number is disabled. Please login using Email & Password.' });
+    }
+
     let query = isEmail 
       ? 'SELECT id, name, email, phone FROM users WHERE LOWER(email) = LOWER($1)' 
       : 'SELECT id, name, email, phone FROM users WHERE phone = $1';
@@ -278,10 +292,14 @@ router.post('/verify-otp', async (req, res) => {
   try {
     if (!input || !otp) return res.status(400).json({ error: 'Identifier and OTP are required' });
 
+    const isEmail = input.includes('@');
+    if (purpose === 'login' && !isEmail) {
+      return res.status(400).json({ error: 'OTP Login via mobile number is disabled. Please login using Email & Password.' });
+    }
+
     const { valid, error } = await verifyOTP(input, otp, purpose);
     if (!valid) return res.status(400).json({ error });
 
-    const isEmail = input.includes('@');
     let query = isEmail 
       ? 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)' 
       : 'SELECT * FROM users WHERE phone = $1';
@@ -497,6 +515,42 @@ router.post('/logout', authenticateToken, async (req, res) => {
   try {
     await logAudit(req.user.id, 'LOGOUT', 'user', req.user.id, {}, { ip: req.ip });
     res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/profile/send-phone-otp ───────────────────
+router.post('/profile/send-phone-otp', authenticateToken, async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Phone number is required' });
+  try {
+    const { otp, tokenId } = await createOTP(phone, 'verify_phone');
+    const sentInfo = await sendOTPSms(phone, otp, 'verify_phone', tokenId);
+    
+    const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
+    const showDevOtp = String(devOtpSetting) === 'true';
+
+    res.json({
+      message: `Verification code sent to ${phone}`,
+      method: sentInfo.method,
+      ...(showDevOtp && { otp }),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/auth/profile/verify-phone-otp ─────────────────
+router.post('/profile/verify-phone-otp', authenticateToken, async (req, res) => {
+  const { phone, otp } = req.body;
+  if (!phone || !otp) return res.status(400).json({ error: 'Phone number and OTP are required' });
+  try {
+    const { valid, error } = await verifyOTP(phone, otp, 'verify_phone');
+    if (!valid) return res.status(400).json({ error });
+
+    await db.query('UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2', [phone, req.user.id]);
+    res.json({ message: 'Mobile number verified and updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

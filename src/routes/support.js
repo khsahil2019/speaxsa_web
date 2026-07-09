@@ -113,53 +113,37 @@ router.post('/:id/reply', authenticateToken, async (req, res) => {
         }
 
         if (recipientEmail) {
-          const settingsRes = await db.query(
-            "SELECT key, value FROM platform_settings WHERE key IN ('smtp_host','smtp_port','smtp_user','smtp_pass','platform_name')"
-          );
-          const settings = {};
-          settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
-
-          if (settings.smtp_host && settings.smtp_user) {
-            const transporter = nodemailer.createTransport({
-              host: settings.smtp_host,
-              port: parseInt(settings.smtp_port || '587'),
-              secure: parseInt(settings.smtp_port || '587') === 465,
-              auth: { user: settings.smtp_user, pass: settings.smtp_pass },
-            });
-
-            const platformName = settings.platform_name || 'SPEAXA';
-            await transporter.sendMail({
-              from: `"${platformName} Support" <${settings.smtp_user}>`,
-              to: recipientEmail,
-              subject: `Reply to your inquiry: ${ticket.subject}`,
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                  <div style="background-color: #3CBDB0; padding: 24px; text-align: center;">
-                    <h2 style="color: #ffffff; margin: 0; font-family: 'Outfit', sans-serif;">${platformName} Support</h2>
-                  </div>
-                  <div style="padding: 30px; color: #333333; line-height: 1.6;">
-                    <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${recipientName},</p>
-                    <p>We have received a reply from our support team regarding your inquiry: <strong>"${ticket.subject}"</strong></p>
-                    
-                    <div style="background-color: #f9fafb; border-left: 4px solid #3CBDB0; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                      <p style="margin: 0; font-weight: bold; color: #4b5563; font-size: 14px;">Support Reply:</p>
-                      <p style="margin: 8px 0 0 0; font-style: italic; color: #1f2937;">${message}</p>
-                    </div>
-
-                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 0;">If you have further questions, please do not hesitate to contact us.</p>
-                  </div>
-                  <div style="background-color: #f3f4f6; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
-                    &copy; 2026 ${platformName}. All rights reserved.
-                  </div>
+          const { sendEmail } = require('../services/EmailService');
+          const platformName = 'SPEAXA';
+          const htmlBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+              <div style="background-color: #3CBDB0; padding: 24px; text-align: center;">
+                <h2 style="color: #ffffff; margin: 0; font-family: 'Outfit', sans-serif;">${platformName} Support</h2>
+              </div>
+              <div style="padding: 30px; color: #333333; line-height: 1.6;">
+                <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${recipientName},</p>
+                <p>We have received a reply from our support team regarding your inquiry: <strong>"${ticket.subject}"</strong></p>
+                
+                <div style="background-color: #f9fafb; border-left: 4px solid #3CBDB0; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                  <p style="margin: 0; font-weight: bold; color: #4b5563; font-size: 14px;">Support Reply:</p>
+                  <p style="margin: 8px 0 0 0; font-style: italic; color: #1f2937;">${message}</p>
                 </div>
-              `,
-            });
-            console.log(`[Support Mail] Reply sent successfully to ${recipientEmail}`);
-          } else {
-            console.log(`========================================`);
-            console.log(`[Support Mail Simulation] To: ${recipientEmail} | Reply: ${message}`);
-            console.log(`========================================`);
-          }
+
+                <p style="font-size: 14px; color: #6b7280; margin-bottom: 0;">If you have further questions, please do not hesitate to contact us.</p>
+              </div>
+              <div style="background-color: #f3f4f6; padding: 16px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
+                &copy; 2026 ${platformName}. All rights reserved.
+              </div>
+            </div>
+          `;
+
+          await sendEmail({
+            to: recipientEmail,
+            subject: `Reply to your inquiry: ${ticket.subject}`,
+            html: htmlBody,
+            type: 'support'
+          });
+          console.log(`[Support Mail] Reply sent successfully to ${recipientEmail}`);
         }
       } catch (mailError) {
         console.error('[Support Mail Error] Failed to send email:', mailError.message);

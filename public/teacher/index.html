@@ -128,14 +128,21 @@
             <div class="badge bg-light text-primary border px-3 py-1 rounded-pill d-inline-block mb-2 font-semibold" style="font-size:0.8rem;">
               <i class="fas fa-shield-alt me-1"></i> Verification Required
             </div>
-            <h4 class="fw-bold mb-1">Verify Registration OTP</h4>
-            <p class="text-muted small mb-0" id="regOtpInstruction">We've sent a 6-digit verification code to your phone and email.</p>
+            <h4 class="fw-bold mb-1">Verify Registration</h4>
+            <p class="text-muted small mb-0" id="regOtpInstruction">We've sent a verification code to your email.</p>
           </div>
-          <div class="mb-3">
-            <label class="spx-label">Enter 6-Digit Code</label>
+          <div class="mb-3 d-none">
+            <label class="spx-label">Mobile OTP Code</label>
             <div class="input-group">
               <span class="input-group-text spx-input-prefix"><i class="fas fa-key"></i></span>
-              <input class="form-control spx-input text-center font-monospace fw-bold" id="regOtpInput" maxlength="6" placeholder="• • • • • •" style="letter-spacing:4px; font-size:1.2rem;">
+              <input class="form-control spx-input text-center font-monospace fw-bold" id="regPhoneOtpInput" value="111111" maxlength="6" placeholder="• • • • • •" style="letter-spacing:4px; font-size:1.2rem;">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="spx-label">Email OTP Code</label>
+            <div class="input-group">
+              <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
+              <input class="form-control spx-input text-center font-monospace fw-bold" id="regEmailOtpInput" maxlength="6" placeholder="• • • • • •" style="letter-spacing:4px; font-size:1.2rem;">
             </div>
           </div>
           <div id="registerOtpError" class="alert alert-danger d-none small"></div>

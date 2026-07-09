@@ -185,6 +185,7 @@ function navigateTo(page) {
     refunds:'Refunds', sop:'SOP Review',
     coupons:'Coupon Management', notifications:'Send Notifications',
     settings:'Platform Settings', auditlogs:'Audit Logs', support:'Connect Queries',
+    mailmanager:'Mail Manager',
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   document.getElementById('pageBreadcrumb').textContent = `Admin / ${titles[page] || page}`;
@@ -197,6 +198,7 @@ function navigateTo(page) {
     refunds: renderRefunds, sop: renderSOP,
     coupons: renderCoupons, notifications: renderNotifications,
     settings: renderSettings, auditlogs: renderAuditLogs, support: renderSupport,
+    mailmanager: renderMailManager,
   };
 
   const render = renders[page];
@@ -3098,320 +3100,355 @@ async function renderSettings() {
 
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
-        <!-- Column 1: General Platform & Registration OTP Policy -->
-        <div class="col-lg-4">
-          <div class="spx-card mb-4">
-            <h6 class="mb-4"><i class="fas fa-sliders-h me-2 text-primary"></i>Platform Settings</h6>
-            <form onsubmit="saveSettings(event)">
-              ${[
-                {key:'platform_name', label:'Platform Name', type:'text'},
-                {key:'logo_text', label:'Logo Text', type:'text'},
-                {key:'support_email', label:'Support Email', type:'email'},
-                {key:'support_phone', label:'Support Phone', type:'text'},
-                {key:'support_hours', label:'Support Hours', type:'text'},
-                {key:'announcement', label:'Announcement Banner', type:'text'},
-                {key:'max_batch_capacity', label:'Max Batch Capacity', type:'number'},
-              ].map(f => `
-                <div class="mb-3">
-                  <label class="spx-label">${f.label}</label>
-                  <input class="form-control spx-input" type="${f.type}" id="setting_${f.key}" value="${settings[f.key]||''}">
-                </div>`).join('')}
-              <button type="submit" class="btn btn-spx w-100">Save Platform Settings</button>
-            </form>
-          </div>
-
-          <!-- Registration OTP Enforcement Card -->
-          <div class="spx-card border border-primary border-opacity-25" style="background: linear-gradient(135deg, rgba(13,122,109,0.08), rgba(8,84,75,0.03));">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h6 class="mb-0 text-white"><i class="fas fa-shield-alt text-primary me-2"></i>Registration OTP Policy</h6>
-              <span class="badge ${String(settings.require_registration_otp) !== 'false' ? 'bg-success' : 'bg-warning'} px-2.5 py-1">
-                ${String(settings.require_registration_otp) !== 'false' ? 'REQUIRED (ON)' : 'OPTIONAL (OFF)'}
-              </span>
-            </div>
-            <p class="text-muted small mb-3">
-              Control whether new students & teachers must verify OTP via SMS/Email during account sign up.
-            </p>
-            <form onsubmit="saveOtpRequirementSetting(event)">
-              <div class="mb-3">
-                <label class="spx-label text-white">Require Registration OTP</label>
-                <select class="form-select spx-input" id="setting_require_registration_otp">
-                  <option value="true" ${String(settings.require_registration_otp) !== 'false' ? 'selected' : ''}>Enabled (Require OTP Verification)</option>
-                  <option value="false" ${String(settings.require_registration_otp) === 'false' ? 'selected' : ''}>Disabled (Direct Registration without OTP)</option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn-spx w-100"><i class="fas fa-save me-1"></i>Save Registration Policy</button>
-            </form>
-          </div>
-
-          <!-- Level-Wise Teacher Payout Share -->
-          <div class="spx-card mt-4">
-            <h6 class="mb-4"><i class="fas fa-percentage me-2 text-primary"></i>Teacher Payout Share (%)</h6>
-            <form onsubmit="saveLevelPayouts(event)">
-              ${[
-                {key:'payout_pct_Junior_Teacher', label:'Junior Teacher Share (%)', default:'50.00'},
-                {key:'payout_pct_Assistant_Teacher', label:'Assistant Teacher Share (%)', default:'55.00'},
-                {key:'payout_pct_Senior_Teacher', label:'Senior Teacher Share (%)', default:'60.00'},
-                {key:'payout_pct_Executive_Teacher', label:'Executive Teacher Share (%)', default:'65.00'},
-                {key:'payout_pct_Lecturer', label:'Lecturer Share (%)', default:'70.00'},
-                {key:'payout_pct_Professor', label:'Professor Share (%)', default:'75.00'},
-                {key:'payout_pct_Senior_Professor', label:'Senior Professor Share (%)', default:'80.00'},
-                {key:'payout_pct_HOD', label:'HOD Share (%)', default:'85.00'},
-                {key:'payout_pct_Dean', label:'Dean Share (%)', default:'90.00'},
-              ].map(f => `
-                <div class="mb-3">
-                  <label class="spx-label">${f.label}</label>
-                  <input class="form-control spx-input" type="number" step="0.01" min="0" max="100" id="setting_${f.key}" value="${settings[f.key]||f.default}">
-                </div>`).join('')}
-              <button type="submit" class="btn btn-spx w-100">Save Level Payouts</button>
-            </form>
+        <!-- Settings Sidebar tabs -->
+        <div class="col-md-3">
+          <div class="nav flex-column nav-pills border rounded p-2 bg-light shadow-sm" id="settingsTabs" role="tablist">
+            <button class="nav-link active text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-general" data-bs-toggle="pill" data-bs-target="#pane-general" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-sliders-h me-2"></i>Platform General</button>
+            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-reg-payouts" data-bs-toggle="pill" data-bs-target="#pane-reg-payouts" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-percentage me-2"></i>Registration & Payouts</button>
+            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-gateways" data-bs-toggle="pill" data-bs-target="#pane-gateways" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-paper-plane me-2"></i>OTP Gateways</button>
+            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-tester" data-bs-toggle="pill" data-bs-target="#pane-tester" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-vial me-2"></i>Gateway Tester</button>
+            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-credentials" data-bs-toggle="pill" data-bs-target="#pane-credentials" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-key me-2"></i>API Credentials</button>
+            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0" id="tab-logs" data-bs-toggle="pill" data-bs-target="#pane-logs" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-history me-2"></i>OTP Audit Logs</button>
           </div>
         </div>
 
-        <!-- Column 2: Complete OTP & Gateway Service System -->
-        <div class="col-lg-5">
-          <div class="spx-card mb-4 border border-info border-opacity-25">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h6 class="mb-0"><i class="fas fa-paper-plane me-2 text-info"></i>OTP & Gateway Services</h6>
-              <span class="badge bg-info text-dark">Ready-Made System</span>
-            </div>
-            <p class="text-muted small mb-3">
-              Configure, manage, and switch SMS and Email OTP dispatch providers dynamically for the platform.
-            </p>
-
-            <form onsubmit="saveOtpSystemSettings(event)">
-              <!-- SMS Provider Selection -->
-              <div class="mb-3">
-                <label class="spx-label">Active SMS Provider</label>
-                <select class="form-select spx-input" id="setting_sms_provider" onchange="onSmsProviderChange()">
-                  <option value="dev" ${smsProv === 'dev' ? 'selected' : ''}>Development / Console Mode (Free, test mode)</option>
-                  <option value="msg91" ${smsProv === 'msg91' ? 'selected' : ''}>MSG91 Gateway (India & Global)</option>
-                  <option value="twilio" ${smsProv === 'twilio' ? 'selected' : ''}>Twilio SMS Gateway (Global)</option>
-                  <option value="fast2sms" ${smsProv === 'fast2sms' ? 'selected' : ''}>Fast2SMS Gateway (India)</option>
-                  <option value="custom" ${smsProv === 'custom' ? 'selected' : ''}>Custom HTTP REST Gateway (Generic API)</option>
-                </select>
-              </div>
-
-              <!-- MSG91 Dynamic Fields -->
-              <div id="fields_msg91" class="otp-provider-fields ${smsProv === 'msg91' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
-                <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>MSG91 Credentials</h6>
-                <div class="mb-2">
-                  <label class="spx-label small">MSG91 Auth Key</label>
-                  <input type="password" class="form-control spx-input form-control-sm" id="setting_msg91_auth_key" value="${settings.msg91_auth_key||''}" placeholder="e.g. 3847291Axyz...">
-                </div>
-                <div class="mb-2">
-                  <label class="spx-label small">MSG91 DLT Template ID</label>
-                  <input type="text" class="form-control spx-input form-control-sm" id="setting_msg91_template_id" value="${settings.msg91_template_id||''}" placeholder="e.g. 64a8b2910...">
-                </div>
-                <div>
-                  <label class="spx-label small">Sender ID / Header</label>
-                  <input type="text" class="form-control spx-input form-control-sm" id="setting_msg91_sender_id" value="${settings.msg91_sender_id||'SPXSA'}" placeholder="e.g. SPXSA">
-                </div>
-              </div>
-
-              <!-- Twilio Dynamic Fields -->
-              <div id="fields_twilio" class="otp-provider-fields ${smsProv === 'twilio' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(59,130,246,0.03);">
-                <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-sms me-1"></i>Twilio Credentials</h6>
-                <div class="mb-2">
-                  <label class="spx-label small">Account SID</label>
-                  <input type="text" class="form-control spx-input form-control-sm" id="setting_twilio_account_sid" value="${settings.twilio_account_sid||''}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxx">
-                </div>
-                <div class="mb-2">
-                  <label class="spx-label small">Auth Token</label>
-                  <input type="password" class="form-control spx-input form-control-sm" id="setting_twilio_auth_token" value="${settings.twilio_auth_token||''}" placeholder="••••••••••••••••">
-                </div>
-                <div>
-                  <label class="spx-label small">From Phone Number</label>
-                  <input type="text" class="form-control spx-input form-control-sm" id="setting_twilio_from_phone" value="${settings.twilio_from_phone||''}" placeholder="+18005550199">
-                </div>
-              </div>
-
-              <!-- Fast2SMS Dynamic Fields -->
-              <div id="fields_fast2sms" class="otp-provider-fields ${smsProv === 'fast2sms' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(245,158,11,0.03);">
-                <h6 class="small fw-bold text-warning mb-2"><i class="fas fa-bolt me-1"></i>Fast2SMS Credentials</h6>
-                <div class="mb-2">
-                  <label class="spx-label small">Fast2SMS API Key</label>
-                  <input type="password" class="form-control spx-input form-control-sm" id="setting_fast2sms_api_key" value="${settings.fast2sms_api_key||''}" placeholder="API Key">
-                </div>
-                <div class="mb-2">
-                  <label class="spx-label small">Route</label>
-                  <select class="form-select spx-input form-control-sm" id="setting_fast2sms_route">
-                    <option value="otp" ${settings.fast2sms_route === 'otp' ? 'selected' : ''}>OTP Route</option>
-                    <option value="dlt" ${settings.fast2sms_route === 'dlt' ? 'selected' : ''}>DLT Route</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Custom REST API Dynamic Fields -->
-              <div id="fields_custom" class="otp-provider-fields ${smsProv === 'custom' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(139,92,246,0.03);">
-                <h6 class="small fw-bold text-purple mb-2"><i class="fas fa-code me-1"></i>Custom HTTP REST Gateway</h6>
-                <p class="text-muted extra-small mb-2">Supported Placeholders: <code>{PHONE}</code>, <code>{FORMATTED_PHONE}</code>, <code>{OTP}</code>, <code>{PURPOSE}</code></p>
-                <div class="mb-2">
-                  <label class="spx-label small">Endpoint URL</label>
-                  <input type="text" class="form-control spx-input form-control-sm" id="setting_custom_sms_url" value="${settings.custom_sms_url||''}" placeholder="https://api.gateway.com/send?mobile={FORMATTED_PHONE}&otp={OTP}">
-                </div>
-                <div class="mb-2">
-                  <label class="spx-label small">HTTP Method</label>
-                  <select class="form-select spx-input form-control-sm" id="setting_custom_sms_method">
-                    <option value="GET" ${(settings.custom_sms_method||'GET') === 'GET' ? 'selected' : ''}>GET</option>
-                    <option value="POST" ${settings.custom_sms_method === 'POST' ? 'selected' : ''}>POST</option>
-                  </select>
-                </div>
-                <div class="mb-2">
-                  <label class="spx-label small">Headers (JSON format)</label>
-                  <input type="text" class="form-control spx-input form-control-sm" id="setting_custom_sms_headers" value="${settings.custom_sms_headers||'{}'}" placeholder='{"Authorization": "Bearer TOKEN"}'>
-                </div>
-                <div>
-                  <label class="spx-label small">POST Body Template (JSON)</label>
-                  <textarea class="form-control spx-input form-control-sm" id="setting_custom_sms_body" rows="2" placeholder='{"to": "{PHONE}", "code": "{OTP}"}'>${settings.custom_sms_body||'{}'}</textarea>
-                </div>
-              </div>
-
-              <!-- Email Provider Selection -->
-              <div class="mb-3">
-                <label class="spx-label">Active Email Provider</label>
-                <select class="form-select spx-input" id="setting_email_provider">
-                  <option value="smtp" ${emailProv === 'smtp' ? 'selected' : ''}>SMTP Mail Server (Nodemailer)</option>
-                  <option value="dev" ${emailProv === 'dev' ? 'selected' : ''}>Development / Console Mode</option>
-                </select>
-              </div>
-
-              <!-- General OTP Policy Rules -->
-              <div class="p-3 mb-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
-                <h6 class="small fw-bold mb-3"><i class="fas fa-sliders-h me-1 text-primary"></i>OTP Expiry & Dev Rules</h6>
-                <div class="row g-2 mb-2">
-                  <div class="col-6">
-                    <label class="spx-label small">OTP Expiry (Mins)</label>
-                    <input type="number" class="form-control spx-input form-control-sm" id="setting_otp_expiry_minutes" value="${settings.otp_expiry_minutes||'5'}">
+        <!-- Settings Panes -->
+        <div class="col-md-9">
+          <div class="tab-content" id="settingsTabContent">
+            <!-- Pane 1: Platform General -->
+            <div class="tab-pane fade show active" id="pane-general" role="tabpanel">
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <div class="spx-card">
+                    <h6 class="mb-4"><i class="fas fa-sliders-h me-2 text-primary"></i>Platform Settings</h6>
+                    <form onsubmit="saveSettings(event)">
+                      ${[
+                        {key:'platform_name', label:'Platform Name', type:'text'},
+                        {key:'logo_text', label:'Logo Text', type:'text'},
+                        {key:'support_email', label:'Support Email', type:'email'},
+                        {key:'support_phone', label:'Support Phone', type:'text'},
+                        {key:'support_hours', label:'Support Hours', type:'text'},
+                        {key:'announcement', label:'Announcement Banner', type:'text'},
+                        {key:'max_batch_capacity', label:'Max Batch Capacity', type:'number'},
+                      ].map(f => `
+                        <div class="mb-3">
+                          <label class="spx-label">${f.label}</label>
+                          <input class="form-control spx-input" type="${f.type}" id="setting_${f.key}" value="${settings[f.key]||''}">
+                        </div>`).join('')}
+                      <button type="submit" class="btn btn-spx w-100">Save Platform Settings</button>
+                    </form>
                   </div>
-                  <div class="col-6">
-                    <label class="spx-label small">OTP Digits</label>
-                    <select class="form-select spx-input form-control-sm" id="setting_otp_length">
-                      <option value="6" ${(settings.otp_length||'6') === '6' ? 'selected' : ''}>6 Digits (Standard)</option>
-                      <option value="4" ${settings.otp_length === '4' ? 'selected' : ''}>4 Digits</option>
+                </div>
+                <div class="col-md-6">
+                  <div class="spx-card">
+                    <h6 class="mb-3"><i class="fas fa-desktop me-2 text-primary"></i>Homepage CMS</h6>
+                    <form onsubmit="saveHomepageSettings(event)">
+                      ${[
+                        {key:'home_hero_badge', label:'Hero Badge text'},
+                        {key:'home_hero_title', label:'Hero Main Title'},
+                        {key:'home_hero_desc', label:'Hero Description', type:'textarea'},
+                        {key:'home_hero_cta_primary', label:'Primary CTA Button Text'},
+                        {key:'home_hero_cta_secondary', label:'Secondary CTA Button Text'},
+                        {key:'home_footer_phone', label:'Footer Support Phone'},
+                        {key:'home_footer_email', label:'Footer Support Email'},
+                      ].map(f => `
+                        <div class="mb-2">
+                          <label class="spx-label small">${f.label}</label>
+                          ${f.type === 'textarea' ? `
+                            <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${settings[f.key]||''}</textarea>
+                          ` : `
+                            <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${settings[f.key]||''}">
+                          `}
+                        </div>`).join('')}
+                      <button type="submit" class="btn btn-spx btn-sm w-100 mt-2">Save Homepage CMS</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pane 2: Registration & Payouts -->
+            <div class="tab-pane fade" id="pane-reg-payouts" role="tabpanel">
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <div class="spx-card border border-primary border-opacity-25" style="background: linear-gradient(135deg, rgba(13,122,109,0.08), rgba(8,84,75,0.03));">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                      <h6 class="mb-0 text-white"><i class="fas fa-shield-alt text-primary me-2"></i>Registration OTP Policy</h6>
+                      <span class="badge ${String(settings.require_registration_otp) !== 'false' ? 'bg-success' : 'bg-warning'} px-2.5 py-1">
+                        ${String(settings.require_registration_otp) !== 'false' ? 'REQUIRED (ON)' : 'OPTIONAL (OFF)'}
+                      </span>
+                    </div>
+                    <p class="text-muted small mb-3">
+                      Control whether new students & teachers must verify OTP via SMS/Email during account sign up.
+                    </p>
+                    <form onsubmit="saveOtpRequirementSetting(event)">
+                      <div class="mb-3">
+                        <label class="spx-label text-white">Require Registration OTP</label>
+                        <select class="form-select spx-input" id="setting_require_registration_otp">
+                          <option value="true" ${String(settings.require_registration_otp) !== 'false' ? 'selected' : ''}>Enabled (Require OTP Verification)</option>
+                          <option value="false" ${String(settings.require_registration_otp) === 'false' ? 'selected' : ''}>Disabled (Direct Registration without OTP)</option>
+                        </select>
+                      </div>
+                      <button type="submit" class="btn btn-spx w-100"><i class="fas fa-save me-1"></i>Save Registration Policy</button>
+                    </form>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="spx-card">
+                    <h6 class="mb-4"><i class="fas fa-percentage me-2 text-primary"></i>Teacher Payout Share (%)</h6>
+                    <form onsubmit="saveLevelPayouts(event)">
+                      <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                        ${[
+                          {key:'payout_pct_Junior_Teacher', label:'Junior Teacher Share (%)', default:'50.00'},
+                          {key:'payout_pct_Assistant_Teacher', label:'Assistant Teacher Share (%)', default:'55.00'},
+                          {key:'payout_pct_Senior_Teacher', label:'Senior Teacher Share (%)', default:'60.00'},
+                          {key:'payout_pct_Executive_Teacher', label:'Executive Teacher Share (%)', default:'65.00'},
+                          {key:'payout_pct_Lecturer', label:'Lecturer Share (%)', default:'70.00'},
+                          {key:'payout_pct_Professor', label:'Professor Share (%)', default:'75.00'},
+                          {key:'payout_pct_Senior_Professor', label:'Senior Professor Share (%)', default:'80.00'},
+                          {key:'payout_pct_HOD', label:'HOD Share (%)', default:'85.00'},
+                          {key:'payout_pct_Dean', label:'Dean Share (%)', default:'90.00'},
+                        ].map(f => `
+                          <div class="mb-3">
+                            <label class="spx-label">${f.label}</label>
+                            <input class="form-control spx-input" type="number" step="0.01" min="0" max="100" id="setting_${f.key}" value="${settings[f.key]||f.default}">
+                          </div>`).join('')}
+                      </div>
+                      <button type="submit" class="btn btn-spx w-100 mt-3">Save Level Payouts</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pane 3: OTP Gateways -->
+            <div class="tab-pane fade" id="pane-gateways" role="tabpanel">
+              <div class="spx-card border border-info border-opacity-25">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h6 class="mb-0"><i class="fas fa-paper-plane me-2 text-info"></i>OTP & Gateway Services</h6>
+                  <span class="badge bg-info text-dark">Ready-Made System</span>
+                </div>
+                <p class="text-muted small mb-3">
+                  Configure, manage, and switch SMS and Email OTP dispatch providers dynamically for the platform.
+                </p>
+                <form onsubmit="saveOtpSystemSettings(event)">
+                  <div class="mb-3">
+                    <label class="spx-label">Active SMS Provider</label>
+                    <select class="form-select spx-input" id="setting_sms_provider" onchange="onSmsProviderChange()">
+                      <option value="dev" ${smsProv === 'dev' ? 'selected' : ''}>Development / Console Mode (Free, test mode)</option>
+                      <option value="msg91" ${smsProv === 'msg91' ? 'selected' : ''}>MSG91 Gateway (India & Global)</option>
+                      <option value="twilio" ${smsProv === 'twilio' ? 'selected' : ''}>Twilio SMS Gateway (Global)</option>
+                      <option value="fast2sms" ${smsProv === 'fast2sms' ? 'selected' : ''}>Fast2SMS Gateway (India)</option>
+                      <option value="custom" ${smsProv === 'custom' ? 'selected' : ''}>Custom HTTP REST Gateway (Generic API)</option>
                     </select>
                   </div>
-                </div>
-                <div class="mb-2">
-                  <label class="spx-label small">Return Dev OTP in API Response</label>
-                  <select class="form-select spx-input form-control-sm" id="setting_dev_otp_in_response">
-                    <option value="true" ${String(settings.dev_otp_in_response) !== 'false' ? 'selected' : ''}>Enabled (Returns OTP in JSON response for test/toast UI)</option>
-                    <option value="false" ${String(settings.dev_otp_in_response) === 'false' ? 'selected' : ''}>Disabled (Strict Prod Mode: send via gateway only)</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="spx-label small">Master Test OTP (Bypass Code)</label>
-                  <input type="text" class="form-control spx-input form-control-sm" id="setting_master_otp" value="${settings.master_otp||''}" placeholder="Optional master code e.g. 999999">
-                </div>
+                  <div class="mb-3">
+                    <label class="spx-label">Active Email Provider</label>
+                    <select class="form-select spx-input" id="setting_email_provider">
+                      <option value="smtp" ${emailProv === 'smtp' ? 'selected' : ''}>SMTP Mail Server (Nodemailer)</option>
+                      <option value="dev" ${emailProv === 'dev' ? 'selected' : ''}>Development / Console Mode (Free, test/console logs)</option>
+                    </select>
+                  </div>
+                  <!-- MSG91 Dynamic Fields -->
+                  <div id="fields_msg91" class="otp-provider-fields ${smsProv === 'msg91' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
+                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>MSG91 Credentials</h6>
+                    <div class="mb-2">
+                      <label class="spx-label small">MSG91 Auth Key</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_auth_key" value="${settings.msg91_auth_key||''}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">MSG91 Template ID</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_template_id" value="${settings.msg91_template_id||''}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">MSG91 Sender ID (6 chars)</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_sender_id" value="${settings.msg91_sender_id||''}">
+                    </div>
+                  </div>
+                  <!-- Twilio Dynamic Fields -->
+                  <div id="fields_twilio" class="otp-provider-fields ${smsProv === 'twilio' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
+                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Twilio Credentials</h6>
+                    <div class="mb-2">
+                      <label class="spx-label small">Twilio Account SID</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_account_sid" value="${settings.twilio_account_sid||''}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">Twilio Auth Token</label>
+                      <input class="form-control spx-input form-control-sm" type="password" id="setting_twilio_auth_token" value="${settings.twilio_auth_token||''}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">Twilio From Phone Number</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_from_phone" value="${settings.twilio_from_phone||''}">
+                    </div>
+                  </div>
+                  <!-- Fast2SMS Dynamic Fields -->
+                  <div id="fields_fast2sms" class="otp-provider-fields ${smsProv === 'fast2sms' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
+                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Fast2SMS Credentials</h6>
+                    <div class="mb-2">
+                      <label class="spx-label small">Fast2SMS Authorization API Key</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_api_key" value="${settings.fast2sms_api_key||''}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">Fast2SMS Route (e.g. dlt or v3)</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_route" value="${settings.fast2sms_route||''}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">Sender ID (DLT Registered)</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_sender_id" value="${settings.fast2sms_sender_id||''}">
+                    </div>
+                  </div>
+                  <!-- Custom HTTP Gateway -->
+                  <div id="fields_custom" class="otp-provider-fields ${smsProv === 'custom' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
+                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-cog me-1"></i>Custom API Endpoint Config</h6>
+                    <div class="mb-2">
+                      <label class="spx-label small">Gateway Request URL</label>
+                      <input class="form-control spx-input form-control-sm" type="url" id="setting_custom_sms_url" value="${settings.custom_sms_url||''}" placeholder="https://api.mygateway.com/send?to={PHONE}&msg={MSG}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">Request Method</label>
+                      <select class="form-select spx-input form-control-sm" id="setting_custom_sms_method">
+                        <option value="GET" ${settings.custom_sms_method === 'GET' ? 'selected' : ''}>GET Request</option>
+                        <option value="POST" ${settings.custom_sms_method === 'POST' ? 'selected' : ''}>POST Request</option>
+                      </select>
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">HTTP Headers JSON (Optional)</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_headers" value="${settings.custom_sms_headers||''}" placeholder='{"Authorization": "Bearer key"}'>
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">HTTP Body Template JSON (Optional)</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_body" value="${settings.custom_sms_body||''}" placeholder='{"to": "{PHONE}", "text": "{MSG}"}'>
+                    </div>
+                  </div>
+                  <hr>
+                  <div class="row">
+                    <div class="col-md-6 mb-2">
+                      <label class="spx-label">OTP Expiry (Minutes)</label>
+                      <input class="form-control spx-input" type="number" id="setting_otp_expiry_minutes" value="${settings.otp_expiry_minutes||'8'}" required>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                      <label class="spx-label">OTP Length (Digits)</label>
+                      <input class="form-control spx-input" type="number" id="setting_otp_length" value="${settings.otp_length||'6'}" required>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                      <label class="spx-label">Master/Backdoor OTP Code</label>
+                      <input class="form-control spx-input" type="text" id="setting_master_otp" value="${settings.master_otp||''}" placeholder="e.g. 999999 (Overrides check)">
+                    </div>
+                    <div class="col-md-6 mb-2">
+                      <label class="spx-label">Dev OTP In Response</label>
+                      <select class="form-select spx-input" id="setting_dev_otp_in_response">
+                        <option value="true" ${String(settings.dev_otp_in_response) === 'true' ? 'selected' : ''}>Yes (Show OTP for development ease)</option>
+                        <option value="false" ${String(settings.dev_otp_in_response) === 'false' ? 'selected' : ''}>No (Prod mode, hide OTP)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-spx w-100 mt-3">Save OTP Settings</button>
+                </form>
               </div>
-
-              <button type="submit" class="btn btn-spx w-100"><i class="fas fa-save me-1"></i>Save OTP Gateway Settings</button>
-            </form>
-          </div>
-
-          <!-- Live Gateway Diagnostic Tester Card -->
-          <div class="spx-card mb-4">
-            <h6 class="mb-3"><i class="fas fa-vial me-2 text-warning"></i>Live Gateway Tester</h6>
-            <p class="text-muted small mb-3">Test active SMS or Email dispatch in real-time with detailed status output.</p>
-            
-            <!-- SMS Test Form -->
-            <form onsubmit="runSmsTest(event)" class="mb-3 p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
-              <label class="spx-label small fw-bold"><i class="fas fa-mobile-alt me-1 text-primary"></i>Test SMS Gateway</label>
-              <div class="input-group input-group-sm mb-2">
-                <input type="text" class="form-control spx-input" id="test_sms_phone" placeholder="Enter phone e.g. 9876543210" required>
-                <button type="submit" class="btn btn-spx"><i class="fas fa-paper-plane me-1"></i>Send Test SMS</button>
-              </div>
-              <div id="sms_test_output" class="otp-log-terminal d-none mt-2"></div>
-            </form>
-
-            <!-- Email Test Form -->
-            <form onsubmit="runEmailTest(event)" class="p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
-              <label class="spx-label small fw-bold"><i class="fas fa-envelope me-1 text-info"></i>Test Email Gateway (SMTP)</label>
-              <div class="input-group input-group-sm mb-2">
-                <input type="email" class="form-control spx-input" id="test_email_address" placeholder="Enter email address" required>
-                <button type="submit" class="btn btn-outline-info"><i class="fas fa-paper-plane me-1"></i>Send Test Email</button>
-              </div>
-              <div id="email_test_output" class="otp-log-terminal d-none mt-2"></div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Column 3: API Credentials, Audit Logs & CMS -->
-        <div class="col-lg-3">
-          <div class="spx-card mb-4">
-            <h6 class="mb-3"><i class="fas fa-key me-2 text-primary"></i>API Credentials</h6>
-            <form onsubmit="saveAPICredentials(event)">
-              ${[
-                {key:'razorpay_key_id', label:'Razorpay Key ID'},
-                {key:'razorpay_key_secret', label:'Razorpay Secret'},
-                {key:'agora_app_id', label:'Agora App ID'},
-                {key:'agora_app_certificate', label:'Agora App Certificate'},
-                {key:'smtp_host', label:'SMTP Host'},
-                {key:'smtp_port', label:'SMTP Port'},
-                {key:'smtp_user', label:'SMTP Username'},
-                {key:'smtp_pass', label:'SMTP Password', hidden:true},
-              ].map(f => `
-                <div class="mb-2">
-                  <label class="spx-label small">${f.label}</label>
-                  <input class="form-control spx-input form-control-sm" type="${f.hidden?'password':'text'}" id="cred_${f.key}" value="${settings[f.key]||''}" placeholder="${f.hidden?'••••••••':''}">
-                </div>`).join('')}
-              <button type="submit" class="btn btn-spx btn-sm w-100 mt-2">Save Credentials</button>
-            </form>
-          </div>
-
-          <div class="spx-card" style="max-height:60vh; overflow-y:auto; padding-right:10px;">
-            <h6 class="mb-3"><i class="fas fa-desktop me-2 text-primary"></i>Homepage CMS</h6>
-            <form onsubmit="saveHomepageSettings(event)">
-              ${[
-                {key:'home_hero_badge', label:'Hero Badge text'},
-                {key:'home_hero_title', label:'Hero Main Title'},
-                {key:'home_hero_desc', label:'Hero Description', type:'textarea'},
-                {key:'home_hero_cta_primary', label:'Primary CTA Button Text'},
-                {key:'home_hero_cta_secondary', label:'Secondary CTA Button Text'},
-                {key:'home_footer_phone', label:'Footer Support Phone'},
-                {key:'home_footer_email', label:'Footer Support Email'},
-              ].map(f => `
-                <div class="mb-2">
-                  <label class="spx-label small">${f.label}</label>
-                  ${f.type === 'textarea' ? `
-                    <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${settings[f.key]||''}</textarea>
-                  ` : `
-                    <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${settings[f.key]||''}">
-                  `}
-                </div>`).join('')}
-              <button type="submit" class="btn btn-spx btn-sm w-100 mt-2">Save Homepage CMS</button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Full Width: Live OTP Audit & Dispatch Log Table -->
-        <div class="col-12 mt-4">
-          <div class="spx-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h6 class="mb-0"><i class="fas fa-history me-2 text-primary"></i>Recent OTP Tokens & Delivery Audit Logs</h6>
-              <button onclick="loadOtpAuditLogs()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt me-1"></i>Refresh Logs</button>
             </div>
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
-                <thead class="table-light">
-                  <tr>
-                    <th>Identifier (Phone/Email)</th>
-                    <th>OTP Code</th>
-                    <th>Purpose</th>
-                    <th>Delivery Method</th>
-                    <th>Delivery Status</th>
-                    <th>State</th>
-                    <th>Created At</th>
-                  </tr>
-                </thead>
-                <tbody id="otpLogsTableBody">
-                  <tr><td colspan="7" class="text-center py-3 text-muted">Loading logs...</td></tr>
-                </tbody>
-              </table>
+
+            <!-- Pane 4: Live Gateway Tester -->
+            <div class="tab-pane fade" id="pane-tester" role="tabpanel">
+              <div class="spx-card mb-4 border border-info border-opacity-25">
+                <h6 class="mb-3 text-info"><i class="fas fa-vial me-2"></i>Live Gateway Tester</h6>
+                <p class="text-muted small mb-3">Execute diagnostic test dispatches to verify external API integration.</p>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <form onsubmit="runSmsTest(event)" class="p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); height:100%;">
+                      <label class="spx-label small fw-bold"><i class="fas fa-sms me-1 text-info"></i>Test SMS Gateway</label>
+                      <div class="input-group input-group-sm mb-2">
+                        <input type="text" class="form-control spx-input" id="test_sms_phone" placeholder="Enter mobile number" required>
+                        <button type="submit" class="btn btn-outline-info"><i class="fas fa-paper-plane me-1"></i>Send Test SMS</button>
+                      </div>
+                      <div id="sms_test_output" class="otp-log-terminal d-none mt-2"></div>
+                    </form>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <form onsubmit="runEmailTest(event)" class="p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); height:100%;">
+                      <label class="spx-label small fw-bold"><i class="fas fa-envelope me-1 text-info"></i>Test Email Gateway (SMTP)</label>
+                      <div class="input-group input-group-sm mb-2">
+                        <input type="email" class="form-control spx-input" id="test_email_address" placeholder="Enter email address" required>
+                        <button type="submit" class="btn btn-outline-info"><i class="fas fa-paper-plane me-1"></i>Send Test Email</button>
+                      </div>
+                      <div id="email_test_output" class="otp-log-terminal d-none mt-2"></div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pane 5: API Credentials -->
+            <div class="tab-pane fade" id="pane-credentials" role="tabpanel">
+              <div class="spx-card mb-4">
+                <h6 class="mb-3"><i class="fas fa-key me-2 text-primary"></i>API Credentials</h6>
+                <form onsubmit="saveAPICredentials(event)">
+                  ${[
+                    {key:'razorpay_key_id', label:'Razorpay Key ID'},
+                    {key:'razorpay_key_secret', label:'Razorpay Secret'},
+                    {key:'agora_app_id', label:'Agora App ID'},
+                    {key:'agora_app_certificate', label:'Agora App Certificate'},
+                    {key:'smtp_host', label:'SMTP Host'},
+                    {key:'smtp_port', label:'SMTP Port'},
+                    {key:'smtp_user', label:'SMTP Username'},
+                    {key:'smtp_pass', label:'SMTP Password', hidden:true},
+                    {key:'smtp_from_email', label:'SMTP From Email (e.g. info@speaxa.com)'},
+                  ].map(f => `
+                    <div class="mb-2">
+                      <label class="spx-label small">${f.label}</label>
+                      <input class="form-control spx-input form-control-sm" type="${f.hidden?'password':'text'}" id="cred_${f.key}" value="${settings[f.key]||''}" placeholder="${f.hidden?'••••••••':''}">
+                    </div>`).join('')}
+                  <button type="submit" class="btn btn-spx w-100 mt-3">Save Credentials</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Pane 6: OTP Audit Logs -->
+            <div class="tab-pane fade" id="pane-logs" role="tabpanel">
+              <div class="spx-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h6 class="mb-0"><i class="fas fa-history me-2 text-primary"></i>Recent OTP Tokens & Delivery Audit Logs</h6>
+                  <button onclick="loadOtpAuditLogs()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt me-1"></i>Refresh Logs</button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Identifier (Phone/Email)</th>
+                        <th>OTP Code</th>
+                        <th>Purpose</th>
+                        <th>Delivery Method</th>
+                        <th>Delivery Status</th>
+                        <th>State</th>
+                        <th>Created At</th>
+                      </tr>
+                    </thead>
+                    <tbody id="otpLogsTableBody">
+                      <tr><td colspan="7" class="text-center py-3 text-muted">Loading logs...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+    `;
 
-      </div>`;
+    // Dynamic styling updates for active links in settings vertical tabs
+    const settingsTabButtons = document.querySelectorAll('#settingsTabs button');
+    settingsTabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        settingsTabButtons.forEach(b => {
+          b.style.color = '#aaa';
+          b.style.background = 'transparent';
+        });
+        btn.style.color = '#fff';
+        btn.style.background = '#0d7a6d';
+      });
+    });
+    // Set initial active button styling
+    document.getElementById('tab-general').style.color = '#fff';
+    document.getElementById('tab-general').style.background = '#0d7a6d';
 
     loadOtpAuditLogs();
   } catch (err) {
@@ -3577,7 +3614,7 @@ async function saveLevelPayouts(e) {
 
 async function saveAPICredentials(e) {
   e.preventDefault();
-  const keys = ['razorpay_key_id','razorpay_key_secret','agora_app_id','agora_app_certificate','smtp_host','smtp_port','smtp_user','smtp_pass'];
+  const keys = ['razorpay_key_id','razorpay_key_secret','agora_app_id','agora_app_certificate','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email'];
   const body = {};
   keys.forEach(k => { const v = document.getElementById(`cred_${k}`)?.value; if (v) body[k] = v; });
   try { const d = await apiPost('/admin/settings',body); showToast(d.message||'API credentials saved'); }
@@ -4249,4 +4286,361 @@ function highlightFormFieldError(formElement, errorMessage) {
     matchedInput.addEventListener('input', clearError);
     matchedInput.addEventListener('change', clearError);
   }
+}
+
+// ── Mail Manager (Campaign & Email logs with Quill WYSIWYG) ───
+let campaignQuill = null;
+
+async function renderMailManager() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="spx-card mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h5 class="mb-1"><i class="fas fa-envelope-open-text me-2 text-primary"></i>Mail Manager</h5>
+          <p class="text-muted small mb-0">Compose campaigns, view transmission logs, and audit automated communications.</p>
+        </div>
+      </div>
+      
+      <!-- Nav Tabs -->
+      <ul class="nav nav-tabs border-bottom mb-4" id="mailManagerTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active py-2.5 px-4 small fw-semibold text-decoration-none border-0" id="send-campaign-tab" data-bs-toggle="tab" data-bs-target="#send-campaign" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-paper-plane me-2"></i>Send Email Campaign</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link py-2.5 px-4 small fw-semibold text-decoration-none border-0" id="campaign-history-tab" data-bs-toggle="tab" data-bs-target="#campaign-history" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-history me-2"></i>Broadcast History</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link py-2.5 px-4 small fw-semibold text-decoration-none border-0" id="email-logs-tab" data-bs-toggle="tab" data-bs-target="#email-logs" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-list-ul me-2"></i>All Email Logs</button>
+        </li>
+      </ul>
+
+      <!-- Tab Content -->
+      <div class="tab-content" id="mailManagerTabContent">
+        <!-- Tab 1: Send Campaign -->
+        <div class="tab-pane fade show active" id="send-campaign" role="tabpanel">
+          <div class="row g-4">
+            <!-- Composer -->
+            <div class="col-lg-7">
+              <form id="campaignForm" onsubmit="sendCampaignMail(event)">
+                <div class="mb-3">
+                  <label class="spx-label">Target Audience</label>
+                  <select class="form-select spx-input" id="campaignTargetRole" onchange="toggleCustomEmailField()" required>
+                    <option value="all">All Enrolled Users (Students, Teachers, Parents)</option>
+                    <option value="student">Students Only</option>
+                    <option value="teacher">Teachers Only</option>
+                    <option value="parent">Parents Only</option>
+                    <option value="custom">Specific Custom Email</option>
+                  </select>
+                </div>
+                <div class="mb-3 d-none" id="customEmailGroup">
+                  <label class="spx-label">Recipient Email Address</label>
+                  <input type="email" class="form-control spx-input" id="campaignTargetEmail" placeholder="e.g. student@gmail.com">
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Subject</label>
+                  <input type="text" class="form-control spx-input" id="campaignSubject" placeholder="e.g. Important Platform Update: New Features Added!" oninput="updateMailPreviewFromQuill()" required>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Email Body (Rich text format)</label>
+                  <p class="text-muted extra-small mb-2">Tip: Use the toolbar to format, insert links, or upload/paste photos. Use <code>{NAME}</code> for recipient name.</p>
+                  <!-- Quill Editor element -->
+                  <div id="campaignEditor" style="height: 320px; background: white; border-radius: 8px;"></div>
+                </div>
+                <button type="submit" class="btn btn-spx w-100 py-3" id="sendCampaignBtn">
+                  <i class="fas fa-paper-plane me-2"></i>Broadcast Email Campaign
+                </button>
+              </form>
+            </div>
+
+            <!-- Previewer -->
+            <div class="col-lg-5">
+              <div class="rounded border p-3 bg-light h-100 d-flex flex-column" style="min-height: 500px;">
+                <h6 class="small fw-bold text-muted mb-3"><i class="fas fa-eye me-1"></i>Live Campaign Preview</h6>
+                <div class="border rounded bg-white p-3 flex-grow-1 overflow-auto" id="mailLivePreview" style="max-height: 500px; min-height: 350px;">
+                  <div class="text-center text-muted p-5">
+                    <i class="fas fa-edit fa-3x mb-3 text-opacity-25"></i>
+                    <p class="mb-0">Start composing your email campaign on the left to see its preview in real-time.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Broadcast History -->
+        <div class="tab-pane fade" id="campaign-history" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-hover spx-table">
+              <thead>
+                <tr>
+                  <th>Subject</th>
+                  <th>Target Audience</th>
+                  <th>Recipients</th>
+                  <th>Sent By</th>
+                  <th>Date & Time</th>
+                </tr>
+              </thead>
+              <tbody id="campaignHistoryTableBody">
+                <tr><td colspan="5" class="text-center py-4">Loading campaign history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 3: All Email Logs -->
+        <div class="tab-pane fade" id="email-logs" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-hover spx-table">
+              <thead>
+                <tr>
+                  <th>Recipient</th>
+                  <th>Subject</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Date & Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="emailLogsTableBody">
+                <tr><td colspan="6" class="text-center py-4">Loading email logs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <button class="btn btn-sm btn-outline-secondary" id="prevEmailLogsBtn" onclick="loadEmailLogsPage(-1)" disabled>Previous</button>
+            <span class="small text-muted" id="emailLogsPaginationText">Page 1</span>
+            <button class="btn btn-sm btn-outline-secondary" id="nextEmailLogsBtn" onclick="loadEmailLogsPage(1)" disabled>Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Dynamic styling updates for active links in tabs
+  const tabButtons = document.querySelectorAll('#mailManagerTabs button');
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabButtons.forEach(b => b.style.color = '#aaa');
+      btn.style.color = '#0d7a6d';
+    });
+  });
+  document.getElementById('send-campaign-tab').style.color = '#0d7a6d';
+
+  // Initialize Quill Editor
+  campaignQuill = new Quill('#campaignEditor', {
+    theme: 'snow',
+    placeholder: 'Write your email campaign content here... You can format text, add photos, and insert {NAME} placeholders.',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link', 'image'],
+        ['clean']
+      ]
+    }
+  });
+
+  campaignQuill.on('text-change', () => {
+    updateMailPreviewFromQuill();
+  });
+
+  // Bind events & Load data
+  toggleCustomEmailField();
+  
+  // Tab change triggers data load
+  document.getElementById('campaign-history-tab').addEventListener('shown.bs.tab', loadCampaignHistory);
+  document.getElementById('email-logs-tab').addEventListener('shown.bs.tab', () => loadEmailLogs(0));
+}
+
+function toggleCustomEmailField() {
+  const role = document.getElementById('campaignTargetRole').value;
+  const customEmailGroup = document.getElementById('customEmailGroup');
+  const targetEmailInput = document.getElementById('campaignTargetEmail');
+  if (role === 'custom') {
+    customEmailGroup.classList.remove('d-none');
+    targetEmailInput.required = true;
+  } else {
+    customEmailGroup.classList.add('d-none');
+    targetEmailInput.required = false;
+  }
+}
+
+function updateMailPreviewFromQuill() {
+  if (!campaignQuill) return;
+  const subject = document.getElementById('campaignSubject').value || '(No Subject)';
+  const body = campaignQuill.root.innerHTML;
+  
+  if (campaignQuill.getText().trim().length === 0 && body.indexOf('<img') === -1) {
+    document.getElementById('mailLivePreview').innerHTML = `
+      <div class="text-center text-muted p-5">
+        <i class="fas fa-edit fa-3x mb-3 text-opacity-25"></i>
+        <p class="mb-0">Start composing your email campaign on the left to see its preview in real-time.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const platformName = 'Speaxa';
+  const formattedBody = body.replace(/{NAME}/g, 'John Doe');
+
+  document.getElementById('mailLivePreview').innerHTML = `
+    <div style="font-family: Arial, sans-serif; font-size:14px; line-height:1.5; color:#333; max-width: 100%;">
+      <div style="background: #f8fafc; padding: 12px; border-bottom:1px solid #eee; margin-bottom: 20px; font-size:12px; border-radius: 4px;">
+        <strong>Subject:</strong> ${subject}
+      </div>
+      <div style="padding: 10px;">
+        ${formattedBody}
+      </div>
+      <hr style="border:0; border-top:1px solid #eee; margin:30px 0 10px 0;">
+      <div style="text-align:center; font-size:11px; color:#999;">
+        This email was broadcasted via ${platformName} Admin Portal.
+      </div>
+    </div>
+  `;
+}
+
+async function sendCampaignMail(e) {
+  e.preventDefault();
+  if (!campaignQuill) return;
+
+  const btn = document.getElementById('sendCampaignBtn');
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Broadcasting campaign...';
+  btn.disabled = true;
+
+  const targetRole = document.getElementById('campaignTargetRole').value;
+  const targetEmail = document.getElementById('campaignTargetEmail').value;
+  const subject = document.getElementById('campaignSubject').value;
+  const body = campaignQuill.root.innerHTML;
+
+  try {
+    const res = await apiPost('/admin/emails/send', { targetRole, targetEmail, subject, body });
+    showToast(res.message || 'Campaign broadcast initiated successfully!', 'success');
+    
+    // Clear form
+    document.getElementById('campaignSubject').value = '';
+    campaignQuill.setContents([]);
+    updateMailPreviewFromQuill();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
+  }
+}
+
+async function loadCampaignHistory() {
+  const tbody = document.getElementById('campaignHistoryTableBody');
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading campaigns...</td></tr>';
+  
+  try {
+    const campaigns = await apiGet('/admin/emails/campaigns');
+    if (campaigns.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No campaigns found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = campaigns.map(c => `
+      <tr>
+        <td class="fw-semibold">${escapeHtml(c.subject)}</td>
+        <td><span class="badge bg-secondary">${c.target_role}</span></td>
+        <td>${c.recipient_count} users</td>
+        <td>${escapeHtml(c.sender_name || 'Admin')}</td>
+        <td class="small text-muted">${new Date(c.created_at).toLocaleString('en-IN')}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">${err.message}</td></tr>`;
+  }
+}
+
+let emailLogsOffset = 0;
+const emailLogsLimit = 15;
+
+async function loadEmailLogs(offset = 0) {
+  emailLogsOffset = offset;
+  const tbody = document.getElementById('emailLogsTableBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading logs...</td></tr>';
+
+  try {
+    const data = await apiGet(`/admin/emails/logs?limit=${emailLogsLimit}&offset=${emailLogsOffset}`);
+    const logs = data.logs;
+    const total = data.total;
+
+    if (logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No email logs found.</td></tr>';
+      document.getElementById('prevEmailLogsBtn').disabled = true;
+      document.getElementById('nextEmailLogsBtn').disabled = true;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td class="small font-monospace">${escapeHtml(l.recipient_email)}</td>
+        <td>${escapeHtml(l.subject)}</td>
+        <td><span class="badge bg-light text-dark border">${l.type}</span></td>
+        <td>
+          <span class="badge ${l.status === 'sent' ? 'bg-success' : 'bg-danger'}">
+            ${l.status.toUpperCase()}
+          </span>
+          ${l.error_message ? `<div class="extra-small text-danger mt-1" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(l.error_message)}">${escapeHtml(l.error_message)}</div>` : ''}
+        </td>
+        <td class="small text-muted">${new Date(l.created_at).toLocaleString('en-IN')}</td>
+        <td>
+          <button class="btn btn-sm btn-icon" onclick="viewMailLogBody('${l.id}')" title="View Email Body"><i class="fas fa-eye"></i></button>
+        </td>
+      </tr>
+    `).join('');
+
+    // Update Pagination
+    const currentPage = Math.floor(emailLogsOffset / emailLogsLimit) + 1;
+    const totalPages = Math.ceil(total / emailLogsLimit);
+    document.getElementById('emailLogsPaginationText').textContent = `Page ${currentPage} of ${totalPages}`;
+    document.getElementById('prevEmailLogsBtn').disabled = emailLogsOffset === 0;
+    document.getElementById('nextEmailLogsBtn').disabled = emailLogsOffset + emailLogsLimit >= total;
+
+    // Save logs on window for modal lookup
+    window._cachedEmailLogs = logs;
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">${err.message}</td></tr>`;
+  }
+}
+
+async function loadEmailLogsPage(direction) {
+  const newOffset = emailLogsOffset + (direction * emailLogsLimit);
+  if (newOffset >= 0) {
+    loadEmailLogs(newOffset);
+  }
+}
+
+function viewMailLogBody(logId) {
+  const log = window._cachedEmailLogs?.find(l => l.id === logId);
+  if (!log) return;
+
+  const modalBody = document.getElementById('formModalBody');
+  document.getElementById('formModalTitle').textContent = `Email Content: ${log.subject}`;
+  
+  modalBody.innerHTML = `
+    <div class="mb-3 pb-3 border-bottom small">
+      <div><strong>To:</strong> ${escapeHtml(log.recipient_email)}</div>
+      <div><strong>Date:</strong> ${new Date(log.created_at).toLocaleString('en-IN')}</div>
+      <div><strong>Type:</strong> <span class="badge bg-light text-dark border">${log.type}</span></div>
+      <div><strong>Status:</strong> <span class="badge ${log.status === 'sent' ? 'bg-success' : 'bg-danger'}">${log.status.toUpperCase()}</span></div>
+      ${log.error_message ? `<div class="text-danger mt-1"><strong>Error:</strong> ${escapeHtml(log.error_message)}</div>` : ''}
+    </div>
+    <div class="border rounded bg-white p-3 overflow-auto" style="max-height: 400px; color:#333;">
+      ${log.body}
+    </div>
+  `;
+  
+  formModal.show();
+}
+
+// Simple HTML escaping helper if not defined
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }

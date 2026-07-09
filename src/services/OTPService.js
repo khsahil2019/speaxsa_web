@@ -19,8 +19,9 @@ async function getOTPConfig() {
         'twilio_account_sid', 'twilio_auth_token', 'twilio_from_phone',
         'fast2sms_api_key', 'fast2sms_route', 'fast2sms_sender_id',
         'custom_sms_url', 'custom_sms_method', 'custom_sms_headers', 'custom_sms_body',
-        'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'platform_name',
-        'otp_expiry_minutes', 'otp_length', 'dev_otp_in_response', 'master_otp'
+        'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_email', 'platform_name',
+        'otp_expiry_minutes', 'otp_length', 'dev_otp_in_response', 'master_otp',
+        'otp_email_subject', 'otp_email_html', 'otp_sms_template'
       )`
     );
     const config = {};
@@ -137,45 +138,51 @@ async function sendOTPEmail(email, otp, purpose = 'login', tokenId = null) {
   let result = { sent: false, method: provider, error: null };
 
   try {
-    if (provider === 'smtp' && config.smtp_host && config.smtp_user) {
-      const transporter = nodemailer.createTransport({
-        host: config.smtp_host,
-        port: parseInt(config.smtp_port || '587', 10),
-        secure: parseInt(config.smtp_port || '587', 10) === 465,
-        auth: { user: config.smtp_user, pass: config.smtp_pass },
-      });
+    const platformName = config.platform_name || 'SPEAXA';
+    const expiryMins = config.otp_expiry_minutes || '5';
 
-      const platformName = config.platform_name || 'SPEAXA';
-      const subject = purpose === 'forgot_password'
-        ? `${platformName} — Password Reset Verification Code`
-        : `${platformName} — Your Verification Code`;
+    let subject = config.otp_email_subject || (
+      purpose === 'forgot_password'
+        ? '{PLATFORM} — Password Reset Verification Code'
+        : '{PLATFORM} — Your Verification Code: {OTP}'
+    );
 
-      await transporter.sendMail({
-        from: `"${platformName}" <${config.smtp_user}>`,
-        to: email,
-        subject,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
-            <h2 style="color: #0d7a6d; margin-top: 0;">${platformName}</h2>
-            <p style="font-size: 15px; color: #334155;">Your verification code for <strong>${purpose}</strong> is:</p>
-            <div style="background: #f1f5f9; padding: 18px; text-align: center; border-radius: 8px; margin: 20px 0;">
-              <h1 style="letter-spacing: 8px; color: #0d7a6d; font-size: 38px; margin: 0; font-family: monospace;">${otp}</h1>
-            </div>
-            <p style="font-size: 13px; color: #64748b;">This verification code is valid for ${config.otp_expiry_minutes || 5} minutes. Please do not share it with anyone.</p>
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-            <small style="color: #94a3b8; font-size: 11px;">If you did not request this code, please ignore this message.</small>
-          </div>
-        `,
-      });
+    subject = subject
+      .replace(/{PLATFORM}/g, platformName)
+      .replace(/{OTP}/g, otp)
+      .replace(/{PURPOSE}/g, purpose)
+      .replace(/{EXPIRY}/g, expiryMins)
+      .replace(/{EMAIL}/g, email);
 
-      result = { sent: true, method: 'smtp' };
-    } else {
-      // Dev Mode / Console fallback
-      console.log(`========================================`);
-      console.log(`[OTP Email (Dev Mode)] Email: ${email} | OTP: ${otp} | Purpose: ${purpose}`);
-      console.log(`========================================`);
-      result = { sent: true, method: 'dev_console', message: 'Logged to console in Dev Mode' };
-    }
+    let htmlTemplate = config.otp_email_html || `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+        <h2 style="color: #0d7a6d; margin-top: 0;">{PLATFORM}</h2>
+        <p style="font-size: 15px; color: #334155;">Your verification code for <strong>{PURPOSE}</strong> is:</p>
+        <div style="background: #f1f5f9; padding: 18px; text-align: center; border-radius: 8px; margin: 20px 0;">
+          <h1 style="letter-spacing: 8px; color: #0d7a6d; font-size: 38px; margin: 0; font-family: monospace;">{OTP}</h1>
+        </div>
+        <p style="font-size: 13px; color: #64748b;">This verification code is valid for {EXPIRY} minutes. Please do not share it with anyone.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+        <small style="color: #94a3b8; font-size: 11px;">If you did not request this code, please ignore this message.</small>
+      </div>
+    `;
+
+    htmlTemplate = htmlTemplate
+      .replace(/{PLATFORM}/g, platformName)
+      .replace(/{OTP}/g, otp)
+      .replace(/{PURPOSE}/g, purpose)
+      .replace(/{EXPIRY}/g, expiryMins)
+      .replace(/{EMAIL}/g, email);
+
+    const { sendEmail } = require('./EmailService');
+    const mailResult = await sendEmail({
+      to: email,
+      subject,
+      html: htmlTemplate,
+      type: 'otp'
+    });
+
+    result = { sent: mailResult.sent, method: mailResult.sent ? 'smtp' : provider, error: mailResult.error || null };
   } catch (err) {
     console.error('[OTPService] Email send failed:', err.message);
     result = { sent: false, method: provider, error: err.message };

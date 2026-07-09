@@ -85,8 +85,11 @@ async function doRegister() {
       throw new Error('Please fill all required fields');
     }
 
-    if (_regOtpPending) {
-      payload.otp = _regOtpPending;
+    if (window._regPhoneOtpPending) {
+      payload.phoneOtp = window._regPhoneOtpPending;
+    }
+    if (window._regEmailOtpPending) {
+      payload.emailOtp = window._regEmailOtpPending;
     }
 
     const data = await (await fetch(`${API}/auth/register`, {
@@ -105,23 +108,20 @@ async function doRegister() {
       } else {
         throw new Error(data.error);
       }
-      _regOtpPending = null;
+      window._regPhoneOtpPending = null;
+      window._regEmailOtpPending = null;
       return;
     }
 
     if (data.status === 'otp_sent') {
-      if (data.otp) {
-        showToast(`Dev OTP: ${data.otp}`, 'info');
-        const otpInputEl = document.getElementById('regOtpInput');
-        if (otpInputEl) otpInputEl.value = data.otp;
-      }
       document.getElementById('registerSection').classList.add('d-none');
       document.getElementById('registerOtpSection').classList.remove('d-none');
-      document.getElementById('regOtpInstruction').textContent = data.message || `Code sent to ${payload.phone} & ${payload.email}`;
+      document.getElementById('regOtpInstruction').textContent = data.message || `Code sent to ${payload.email}`;
       return;
     }
 
-    _regOtpPending = null;
+    window._regPhoneOtpPending = null;
+    window._regEmailOtpPending = null;
     clearAutoSave('autosave_student_register');
     if (data.token) {
       saveAuth(data.token, data.user);
@@ -130,7 +130,8 @@ async function doRegister() {
       switchTab('login');
     }
   } catch(e) {
-    _regOtpPending = null;
+    window._regPhoneOtpPending = null;
+    window._regEmailOtpPending = null;
     const errEl = document.getElementById('registerError');
     if (errEl) {
       errEl.textContent = toFriendlyError(e.message);
@@ -140,29 +141,32 @@ async function doRegister() {
 }
 
 async function submitRegisterOtp() {
-  const otpVal = document.getElementById('regOtpInput').value.trim();
+  const emailOtpVal = document.getElementById('regEmailOtpInput').value.trim();
   const otpErr = document.getElementById('registerOtpError');
   if (otpErr) otpErr.classList.add('d-none');
-  if (!otpVal || otpVal.length < 4) {
+  if (!emailOtpVal || emailOtpVal.length < 4) {
     if (otpErr) {
-      otpErr.textContent = 'Please enter the 6-digit verification code';
+      otpErr.textContent = 'Please enter your Email verification code';
       otpErr.classList.remove('d-none');
     }
     return;
   }
-  _regOtpPending = otpVal;
+  window._regPhoneOtpPending = null;
+  window._regEmailOtpPending = emailOtpVal;
   doRegister();
 }
 
 function cancelRegisterOtp() {
-  _regOtpPending = null;
+  window._regPhoneOtpPending = null;
+  window._regEmailOtpPending = null;
   document.getElementById('registerOtpSection').classList.add('d-none');
   document.getElementById('registerSection').classList.remove('d-none');
 }
 
 async function resendRegisterOtp() {
-  _regOtpPending = null;
-  showToast('Resending verification code...', 'info');
+  window._regPhoneOtpPending = null;
+  window._regEmailOtpPending = null;
+  showToast('Resending verification codes...', 'info');
   doRegister();
 }
 

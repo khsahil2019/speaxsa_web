@@ -1670,7 +1670,7 @@
             if (data.otp) {
               showToast(`Dev OTP: ${data.otp}`, 'info');
             }
-            const otpInput = prompt(data.message || 'Please enter the registration OTP sent to your phone/email:');
+            const otpInput = prompt(data.message || 'Please enter the registration OTP sent to your email:');
             if (otpInput === null) {
               _pRegOtpPending = null;
               return;
