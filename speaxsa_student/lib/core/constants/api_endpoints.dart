@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
-  // Base URLs — In debug mode, uses localhost which reaches the Mac
-  // via USB tunnel (adb reverse tcp:5002 tcp:5002).
-  // No WiFi IP needed — works reliably over USB cable.
-  static const String localAndroidBaseUrl = 'http://localhost:5002/api';
+  // Base URLs — In debug mode, uses the Mac's IP on the mobile hotspot network
+  // (10.149.11.237) so the phone can connect directly to the laptop.
+  static const String localAndroidBaseUrl = 'http://10.149.11.237:5002/api';
   static const String localIosBaseUrl = 'http://localhost:5002/api';
   static const String productionBaseUrl = 'https://speaxa.in/api';
 
@@ -17,7 +16,7 @@ class ApiEndpoints {
     return productionBaseUrl;
   }
 
-  static const String localAndroidSocketUrl = 'http://localhost:5002';
+  static const String localAndroidSocketUrl = 'http://10.149.11.237:5002';
   static const String localIosSocketUrl = 'http://localhost:5002';
   static const String productionSocketUrl = 'https://speaxa.in';
 
@@ -63,6 +62,8 @@ class ApiEndpoints {
   static const String studentNotifications = '/student/notifications';
   static const String parentRequests = '/student/parent-requests';
   static const String respondParentRequest = '/student/respond-parent-request';
+  static String studentBatchNotes(String batchId) => '/student/batches/$batchId/notes';
+  static String courseModules(String courseId) => '/courses/$courseId/modules';
   
   // Teacher Endpoints
   static const String teacherDashboard = '/teacher/dashboard';

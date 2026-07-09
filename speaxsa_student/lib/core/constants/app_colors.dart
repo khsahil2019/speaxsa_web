@@ -45,6 +45,23 @@ class AppColors {
     end: Alignment.bottomRight,
   );
   
+  // Indigo Accent
+  static const Color indigoAccent = Color(0xFF4F46E5);
+  static const Color indigoLight = Color(0xFF818CF8);
+  
+  static const LinearGradient indigoGradient = LinearGradient(
+    colors: [Color(0xFF4F46E5), Color(0xFF818CF8)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  
+  // Mixed Hero Gradients (Matching onboarding colors)
+  static const LinearGradient tealIndigoGradient = LinearGradient(
+    colors: [Color(0xFF0D9488), Color(0xFF4F46E5)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
@@ -53,7 +70,7 @@ class AppColors {
   );
   
   static const LinearGradient heroGradient = LinearGradient(
-    colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
+    colors: [Color(0xFF0D9488), Color(0xFF4F46E5)], // Indigo and Teal gradient to look extremely premium!
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

@@ -212,7 +212,10 @@ router.post('/login', async (req, res) => {
 
     const result = await db.query(queryText, queryParams);
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: role ? `User not found with this email registered as a ${role}` : 'User not found with this email' });
+      const errMsg = role === 'student' 
+        ? 'This email is not registered with us as a student'
+        : (role ? `User not found with this email registered as a ${role}` : 'User not found with this email');
+      return res.status(404).json({ error: errMsg });
     }
 
     let user = null;

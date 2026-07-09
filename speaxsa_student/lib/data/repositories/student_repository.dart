@@ -94,4 +94,14 @@ class StudentRepository {
     final response = await _apiClient.get(ApiEndpoints.studentRecordings);
     return (response as List).map((e) => RecordingModel.fromJson(e)).toList();
   }
+
+  Future<List<dynamic>> getBatchNotes(String batchId) async {
+    final response = await _apiClient.get(ApiEndpoints.studentBatchNotes(batchId));
+    return response as List;
+  }
+
+  Future<List<dynamic>> getCourseModules(String courseId) async {
+    final response = await _apiClient.get(ApiEndpoints.courseModules(courseId));
+    return response as List;
+  }
 }

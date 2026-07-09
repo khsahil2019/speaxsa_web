@@ -1,21 +1,27 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../data/models/batch_model.dart';
+import '../../../data/models/course_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/models/attendance_model.dart';
 import '../../../data/models/assignment_model.dart';
 import '../../../data/models/report_model.dart';
 import '../../../data/models/live_class_model.dart';
 import '../../../data/models/recording_model.dart';
 import '../../../data/repositories/student_repository.dart';
+import '../../../data/repositories/auth_repository.dart';
 
 class StudentDashboardController extends GetxController with WidgetsBindingObserver {
   final StudentRepository _studentRepository = StudentRepository();
+  final AuthRepository _authRepository = AuthRepository();
 
   final RxInt selectedIndex = 0.obs;
   final RxBool isLoading = true.obs;
   final RxString errorMessage = ''.obs;
 
   final RxList<BatchModel> myBatches = <BatchModel>[].obs;
+  final RxList<CourseModel> courses = <CourseModel>[].obs;
   final RxList<BatchModel> availableBatches = <BatchModel>[].obs;
   final Rx<AttendanceData?> attendanceData = Rx<AttendanceData?>(null);
   final RxList<AssignmentModel> assignments = <AssignmentModel>[].obs;
@@ -50,50 +56,96 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
       isLoading.value = true;
       errorMessage.value = '';
 
-      final results = await Future.wait([
-        _studentRepository.getMyBatches(),
-        _studentRepository.getAttendance(),
-        _studentRepository.getAssignments(),
-        _studentRepository.getReports(),
-        _studentRepository.getParentRequests(),
-        _studentRepository.getBatches(),
-        _studentRepository.getRecordings(),
-      ]);
+      // Fetch each endpoint individually with try-catch to be fully resilient to hotspot concurrent connection drops
+      try {
+        final res = await _studentRepository.getMyBatches();
+        myBatches.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading myBatches: $e');
+      }
 
-      myBatches.value = results[0] as List<BatchModel>;
-      attendanceData.value = results[1] as AttendanceData;
-      assignments.value = results[2] as List<AssignmentModel>;
-      reports.value = results[3] as List<MonthlyReportModel>;
-      parentRequests.value = results[4] as List<dynamic>;
-      availableBatches.value = results[5] as List<BatchModel>;
-      recordings.value = results[6] as List<RecordingModel>;
+      try {
+        final res = await _studentRepository.getAttendance();
+        attendanceData.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading attendance: $e');
+      }
 
-      debugPrint('[Dashboard] Loaded ${myBatches.length} enrolled batches, ${availableBatches.length} available batches');
+      try {
+        final res = await _studentRepository.getAssignments();
+        assignments.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading assignments: $e');
+      }
 
-      // Dynamically fetch live/scheduled classes for all enrolled batches in parallel
+      try {
+        final res = await _studentRepository.getReports();
+        reports.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading reports: $e');
+      }
+
+      try {
+        final res = await _studentRepository.getParentRequests();
+        parentRequests.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading parentRequests: $e');
+      }
+
+      try {
+        final res = await _studentRepository.getBatches();
+        availableBatches.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading availableBatches: $e');
+      }
+
+      try {
+        final res = await _studentRepository.getRecordings();
+        recordings.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading recordings: $e');
+      }
+
+      try {
+        final res = await _studentRepository.getCourses();
+        courses.value = res;
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading courses: $e');
+      }
+
+      try {
+        final updatedUser = await _authRepository.fetchProfile();
+        AuthService.to.updateUserProfile(updatedUser);
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading profile: $e');
+      }
+
+      debugPrint('[Dashboard] Loaded ${myBatches.length} enrolled batches, ${courses.length} courses, ${availableBatches.length} available batches');
+
+      // Dynamically fetch live/scheduled classes for all enrolled batches sequentially to prevent port socket drops
       final upcomingClassesList = <LiveClassModel>[];
       if (myBatches.isNotEmpty) {
-        final liveClassesResponses = await Future.wait(
-          myBatches.map((b) => _studentRepository.getLiveClassesForBatch(b.id))
-        );
-        for (int i = 0; i < myBatches.length; i++) {
-          final batch = myBatches[i];
-          final classes = liveClassesResponses[i];
-          for (final c in classes) {
-            if (c.status == 'scheduled' || c.status == 'live') {
-              upcomingClassesList.add(LiveClassModel(
-                id: c.id,
-                batchId: c.batchId,
-                teacherId: c.teacherId,
-                title: c.title,
-                classDate: c.classDate,
-                classTime: c.classTime,
-                status: c.status,
-                agoraChannel: c.agoraChannel,
-                teacherName: c.teacherName ?? batch.teacherName,
-                batchName: batch.batchName,
-              ));
+        for (final batch in myBatches) {
+          try {
+            final classes = await _studentRepository.getLiveClassesForBatch(batch.id);
+            for (final c in classes) {
+              if (c.status == 'scheduled' || c.status == 'live') {
+                upcomingClassesList.add(LiveClassModel(
+                  id: c.id,
+                  batchId: c.batchId,
+                  teacherId: c.teacherId,
+                  title: c.title,
+                  classDate: c.classDate,
+                  classTime: c.classTime,
+                  status: c.status,
+                  agoraChannel: c.agoraChannel,
+                  teacherName: c.teacherName ?? batch.teacherName,
+                  batchName: batch.batchName,
+                ));
+              }
             }
+          } catch (e) {
+            debugPrint('[Dashboard] Error loading live classes for batch ${batch.id}: $e');
           }
         }
       }
@@ -120,9 +172,9 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
     }
   }
 
-  Future<void> enrollInBatch(String batchId) async {
+  Future<void> enrollInBatch(String batchId, {String? paymentId}) async {
     try {
-      await _studentRepository.enrollInBatch(batchId);
+      await _studentRepository.enrollInBatch(batchId, paymentId: paymentId);
       Get.snackbar('Enrolled', 'Successfully enrolled in batch!', backgroundColor: Get.theme.primaryColor, colorText: Get.theme.colorScheme.onPrimary);
       loadDashboardData();
     } catch (e) {
