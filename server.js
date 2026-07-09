@@ -137,7 +137,17 @@ io.on('connection', (socket) => {
 app.set('io', io);
 
 // ── Start Server ──────────────────────────────────────────────
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
+  // Detect local network IP for mobile device testing
+  const os = require('os');
+  const nets = os.networkInterfaces();
+  let localIP = 'unknown';
+  for (const iface of Object.values(nets)) {
+    for (const net of iface) {
+      if (net.family === 'IPv4' && !net.internal) { localIP = net.address; break; }
+    }
+    if (localIP !== 'unknown') break;
+  }
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║       SPEAXA EdTech Platform — API Server v2.0.0       ║
@@ -145,7 +155,8 @@ server.listen(PORT, () => {
 ║  Status:    Running                                      ║
 ║  Port:      ${String(PORT).padEnd(44)}║
 ║  Env:       ${String(process.env.NODE_ENV || 'development').padEnd(44)}║
-║  URL:       http://localhost:${String(PORT).padEnd(33)}║
+║  Local:     http://localhost:${String(PORT).padEnd(33)}║
+║  Network:   http://${localIP}:${String(PORT).padEnd(30)}║
 ║  Sockets:   Enabled (Socket.io classroom hub)           ║
 ╚══════════════════════════════════════════════════════════╝
   `);

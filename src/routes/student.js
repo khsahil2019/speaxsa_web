@@ -87,6 +87,7 @@ router.get('/my-batches', async (req, res) => {
       WHERE bs.student_id = $1 AND bs.status = 'active'
       ORDER BY bs.enrolled_at DESC
     `, [req.user.id]);
+    console.log(`[my-batches] user=${req.user.id} returned ${result.rows.length} batches:`, result.rows.map(r => r.batch_name));
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
