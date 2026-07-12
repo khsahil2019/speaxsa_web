@@ -591,13 +591,16 @@ CREATE TABLE fcm_tokens (
 -- 23. OTP TOKENS (With TTL)
 -- ============================================================
 CREATE TABLE otp_tokens (
-  id          SERIAL PRIMARY KEY,
-  identifier  VARCHAR(200) NOT NULL, -- email or phone
-  otp         VARCHAR(10) NOT NULL,
-  purpose     VARCHAR(50) DEFAULT 'login', -- login, forgot_password
-  expires_at  TIMESTAMPTZ NOT NULL,
-  used        BOOLEAN DEFAULT false,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id              SERIAL PRIMARY KEY,
+  identifier      VARCHAR(200) NOT NULL, -- email or phone
+  otp             VARCHAR(10) NOT NULL,
+  purpose         VARCHAR(50) DEFAULT 'login', -- login, forgot_password
+  expires_at      TIMESTAMPTZ NOT NULL,
+  used            BOOLEAN DEFAULT false,
+  delivery_method VARCHAR(50),
+  delivery_status VARCHAR(50) DEFAULT 'pending',
+  delivery_error  TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================================
