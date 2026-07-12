@@ -172,18 +172,23 @@ async function sendEmail({ to, subject, html, type = 'custom' }) {
   } catch (err) {
     console.error('[EmailService] Failed to send email:', err);
     
+    let loggedError = err.message;
+    if (loggedError.includes('525 5.7.1') || loggedError.toLowerCase().includes('unauthorized ip')) {
+      loggedError += ' | TIP: Your Brevo account settings block SMTP connections from this server\'s IP. Go to Brevo Settings > Security > Authorized IPs to whitelist this IP or disable restrictions. Alternatively, generate a Brevo API Key (prefixed with xkeysib-) and set it as SMTP Password to bypass SMTP entirely via HTTP REST API.';
+    }
+
     // Log failure in database
     try {
       const logId = 'mlog_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
       await db.query(`
         INSERT INTO email_logs (id, recipient_email, subject, body, type, status, error_message)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [logId, to, subject, html, type, 'failed', err.message]);
+      `, [logId, to, subject, html, type, 'failed', loggedError]);
     } catch (dbErr) {
       console.error('[EmailService] Failed to insert failed email log:', dbErr.message);
     }
 
-    return { sent: false, error: err.message };
+    return { sent: false, error: loggedError };
   }
 }
 

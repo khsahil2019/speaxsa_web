@@ -19,6 +19,7 @@ async function getOTPConfig() {
         'twilio_account_sid', 'twilio_auth_token', 'twilio_from_phone',
         'fast2sms_api_key', 'fast2sms_route', 'fast2sms_sender_id',
         'custom_sms_url', 'custom_sms_method', 'custom_sms_headers', 'custom_sms_body',
+        'twofactor_api_key', 'twofactor_template_name',
         'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_email', 'platform_name',
         'otp_expiry_minutes', 'otp_length', 'dev_otp_in_response', 'master_otp',
         'otp_email_subject', 'otp_email_html', 'otp_sms_template'
@@ -99,6 +100,8 @@ async function sendOTPSms(phone, otp, purpose = 'login', tokenId = null) {
       result = await dispatchTwilio(config, formattedPhone, phone, otp, purpose);
     } else if (provider === 'fast2sms') {
       result = await dispatchFast2SMS(config, formattedPhone, otp, purpose);
+    } else if (provider === '2factor' || provider === 'twofactor') {
+      result = await dispatch2Factor(config, formattedPhone, phone, otp, purpose);
     } else if (provider === 'custom') {
       result = await dispatchCustomGateway(config, formattedPhone, phone, otp, purpose);
     } else {
@@ -393,6 +396,41 @@ async function dispatchCustomGateway(config, formattedPhone, rawPhone, otp, purp
     req.on('error', err => resolve({ sent: false, method: 'custom_api', error: err.message }));
     if (bodyString) req.write(bodyString);
     req.end();
+  });
+}
+
+// 2Factor Provider
+async function dispatch2Factor(config, formattedPhone, rawPhone, otp, purpose) {
+  const apiKey = config.twofactor_api_key || process.env.TWOFACTOR_API_KEY;
+  const templateName = config.twofactor_template_name || process.env.TWOFACTOR_TEMPLATE_NAME;
+
+  if (!apiKey) {
+    throw new Error('2Factor API Key missing in settings');
+  }
+
+  const cleanPhone = formattedPhone; // contains 91 prefix
+  let url = `https://2factor.in/API/V1/${apiKey}/SMS/${cleanPhone}/${otp}`;
+  if (templateName && templateName.trim().length > 0) {
+    url += `/${encodeURIComponent(templateName)}`;
+  }
+
+  return new Promise((resolve) => {
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const resp = JSON.parse(data);
+          if (resp.Status === 'Success') {
+            resolve({ sent: true, method: '2factor', response: resp.Details });
+          } else {
+            resolve({ sent: false, method: '2factor', error: resp.Details || JSON.stringify(resp) });
+          }
+        } catch {
+          resolve({ sent: false, method: '2factor', error: 'Invalid JSON response from 2Factor' });
+        }
+      });
+    }).on('error', err => resolve({ sent: false, method: '2factor', error: err.message }));
   });
 }
 

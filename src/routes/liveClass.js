@@ -207,8 +207,7 @@ router.post('/:classId/end', async (req, res) => {
       await markAutoAttendance(classId, p.user_id, p.join_time, now, pDurationMins, durationMins);
     }
 
-    // Save recording stub (class recording)
-    const recordingUrl = req.body.recording_url || 'https://download.agora.io/demo/test/agora-recording-demo.mp4';
+    const recordingUrl = req.body.recording_url || 'https://www.w3schools.com/html/mov_bbb.mp4';
     const recId = generateUID('rec');
     await db.query(`
       INSERT INTO recordings (id, class_id, batch_id, title, recording_url, duration_mins)
@@ -216,6 +215,13 @@ router.post('/:classId/end', async (req, res) => {
     `, [recId, classId, liveClass.batch_id, liveClass.title, recordingUrl, durationMins]);
 
     await logAudit(req.user.id, 'CLASS_ENDED', 'live_class', classId, { durationMins });
+
+    // Broadcast class-ended event to force-quit all students in the room
+    const io = req.app.get('io');
+    if (io) {
+      io.to(classId).emit('class-ended');
+    }
+
     res.json({ message: 'Class ended', durationMins });
   } catch (err) {
     res.status(500).json({ error: err.message });

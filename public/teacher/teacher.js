@@ -405,7 +405,7 @@ async function renderHome() {
         <div class="alert alert-${n.type === 'warning' ? 'danger' : 'info'} alert-dismissible fade show d-flex align-items-center gap-3 p-3 mb-3 border-0 shadow-sm" role="alert" style="background: rgba(${n.type === 'warning' ? '239, 68, 68' : '59, 130, 246'}, 0.08); color: var(--text-primary); border-left: 4px solid ${n.type === 'warning' ? '#EF4444' : '#3B82F6'} !important;">
           <div style="font-size: 20px;">${n.type === 'warning' ? '⚠️' : 'ℹ️'}</div>
           <div class="flex-grow-1">
-            <h6 class="fw-bold mb-1 small text-white">${n.title}</h6>
+            <h6 class="fw-bold mb-1 small text-dark">${n.title}</h6>
             <div class="small text-muted">${n.message}</div>
           </div>
           <button type="button" class="btn-close" style="filter: invert(1);" onclick="dismissTeacherNotification('${n.id}')" aria-label="Close"></button>
@@ -466,7 +466,7 @@ async function renderHome() {
               <div class="d-flex align-items-center gap-3 p-3 mb-2 rounded-3" style="background:rgba(255,255,255,.02);border:1px solid var(--border)">
                 <div style="width:44px;height:44px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📚</div>
                 <div class="flex-grow-1">
-                  <div class="fw-semibold text-white small">${b.batch_name}</div>
+                  <div class="fw-semibold text-dark small">${b.batch_name}</div>
                   <div class="text-muted" style="font-size:.75rem">${b.course_title || ''} • ${(b.days_of_week||[]).join(', ')} at ${b.start_time}</div>
                 </div>
                 <div>
@@ -480,7 +480,7 @@ async function renderHome() {
             <h6 class="mb-3 fw-bold">Educator Level</h6>
             <div class="text-center p-3 rounded" style="background:rgba(255,255,255,.02)">
               <div class="display-5 text-warning mb-2"><i class="fas fa-medal"></i></div>
-              <h5 class="text-white fw-bold mb-1">${analytics.level === 'Without Slab' || !analytics.level ? 'Without Slab' : `${analytics.level} Mentor`}</h5>
+              <h5 class="text-dark fw-bold mb-1">${analytics.level === 'Without Slab' || !analytics.level ? 'Without Slab' : `${analytics.level} Mentor`}</h5>
               <p class="text-muted small mb-0">Engagement score based on attendance, student ratings & homework submission feedback.</p>
             </div>
           </div>
@@ -1605,7 +1605,7 @@ async function renderBatches() {
     // Build the sub-tab bar
     const tabHeaderHtml = `
       <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom" style="border-color: var(--border) !important;">
-        <h5 class="fw-bold text-white mb-0" style="font-family: 'Outfit', sans-serif;">Study Batches</h5>
+        <h5 class="fw-bold text-dark mb-0" style="font-family: 'Outfit', sans-serif;">Study Batches</h5>
         <div class="d-flex gap-2">
           <button class="btn btn-sm ${window._batchActiveTab === 'list' ? 'btn-spx' : 'btn-outline-secondary'}" onclick="switchBatchTab('list')">
             <i class="fas fa-list me-1"></i> My Batches
@@ -1629,7 +1629,7 @@ async function renderBatches() {
                   <div class="d-flex align-items-start gap-3">
                     <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📚</div>
                     <div class="flex-grow-1">
-                      <h6 class="text-white fw-bold mb-1">${b.batch_name}</h6>
+                      <h6 class="text-dark fw-bold mb-1">${b.batch_name}</h6>
                       <div class="text-muted small">${b.course_title || 'Course'}</div>
                       <div class="d-flex flex-wrap gap-3 mt-2 text-muted small">
                         <span><i class="fas fa-users me-1"></i>${b.enrolled_count || 0} / ${b.capacity} Students</span>
@@ -1646,7 +1646,7 @@ async function renderBatches() {
                       </div>
                       ${b.planner_desc ? `
                         <div class="mt-2 p-2 rounded text-secondary" style="background:rgba(255,255,255,0.02); font-size:0.78rem; line-height: 1.4; border: 1px solid rgba(255,255,255,0.03);">
-                          <strong class="text-white d-block mb-1"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
+                          <strong class="text-dark d-block mb-1"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
                           <div>${formatRichText(b.planner_desc)}</div>
                         </div>
                       ` : ''}
@@ -1850,7 +1850,7 @@ function updateBatchPreview() {
     container.innerHTML = `
       <div class="spx-card text-center py-5 border-dashed" style="border: 2px dashed var(--border) !important; background: transparent; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px;">
         <div style="font-size: 40px; opacity: 0.5;" class="mb-3">👉</div>
-        <h6 class="text-white fw-bold">Select a Course</h6>
+        <h6 class="text-dark fw-bold">Select a Course</h6>
         <p class="text-muted small mb-0 mx-auto" style="max-width: 320px;">
           Please choose a course in the form to preview the syllabus modules, course information, and your live batch card mockup.
         </p>
@@ -1887,7 +1887,7 @@ function updateBatchPreview() {
       <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom" style="border-color: var(--border) !important;">
         <img src="${window._selectedCourse.thumbnail_url || '/logo.png'}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);" onerror="this.src='/logo.png'">
         <div>
-          <h6 class="text-white fw-bold mb-1">${window._selectedCourse.title}</h6>
+          <h6 class="text-dark fw-bold mb-1">${window._selectedCourse.title}</h6>
           <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 11px;">
             ${window._selectedCourse.grade} • ${window._selectedCourse.board}
           </span>
@@ -1897,16 +1897,16 @@ function updateBatchPreview() {
       
       <div class="row mb-4 text-muted small g-3">
         <div class="col-6">
-          <span class="d-block text-white-50 small" style="font-size: 9px; letter-spacing: 0.5px;">SUBJECT</span>
-          <span class="text-white fw-semibold"><i class="fas fa-book-open me-1 text-primary"></i> ${window._selectedCourse.subject}</span>
+          <span class="d-block text-muted small" style="font-size: 9px; letter-spacing: 0.5px;">SUBJECT</span>
+          <span class="text-dark fw-semibold"><i class="fas fa-book-open me-1 text-primary"></i> ${window._selectedCourse.subject}</span>
         </div>
         <div class="col-6">
-          <span class="d-block text-white-50 small" style="font-size: 9px; letter-spacing: 0.5px;">DURATION</span>
-          <span class="text-white fw-semibold"><i class="fas fa-calendar-alt me-1 text-primary"></i> ${window._selectedCourse.duration_weeks} Weeks</span>
+          <span class="d-block text-muted small" style="font-size: 9px; letter-spacing: 0.5px;">DURATION</span>
+          <span class="text-dark fw-semibold"><i class="fas fa-calendar-alt me-1 text-primary"></i> ${window._selectedCourse.duration_weeks} Weeks</span>
         </div>
         <div class="col-12 mt-2">
-          <span class="d-block text-white-50 small" style="font-size: 9px; letter-spacing: 0.5px;">COURSE FEES</span>
-          <span class="text-white fw-semibold"><i class="fas fa-rupee-sign me-1 text-primary"></i> ₹${window._selectedCourse.fees}</span>
+          <span class="d-block text-muted small" style="font-size: 9px; letter-spacing: 0.5px;">COURSE FEES</span>
+          <span class="text-dark fw-semibold"><i class="fas fa-rupee-sign me-1 text-primary"></i> ₹${window._selectedCourse.fees}</span>
         </div>
       </div>
       
@@ -1921,7 +1921,7 @@ function updateBatchPreview() {
           window._selectedCourseModules.map((m, idx) => `
             <div class="p-2 mb-2 rounded border" style="background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.05) !important;">
               <div class="small fw-bold text-white-50" style="font-size: 9px;">MODULE ${idx + 1}</div>
-              <div class="small text-white fw-semibold mb-1">${m.title}</div>
+              <div class="small text-dark fw-semibold mb-1">${m.title}</div>
               <div class="text-muted" style="font-size: 11px;">${formatRichText(m.description) || ''}</div>
             </div>
           `).join('') : '<p class="text-muted small">No modules created for this course yet.</p>'
@@ -1932,13 +1932,13 @@ function updateBatchPreview() {
 
   const batchPreviewCardHtml = `
     <div class="spx-card" style="background: linear-gradient(135deg, rgba(13, 110, 253, 0.03) 0%, rgba(0, 0, 0, 0) 100%); border-left: 4px solid var(--primary, #0d6efd) !important;">
-      <h6 class="text-white fw-bold mb-3 small" style="letter-spacing: 0.5px; font-size: 11px; text-transform: uppercase;">Live Batch Card Preview</h6>
+      <h6 class="text-dark fw-bold mb-3 small" style="letter-spacing: 0.5px; font-size: 11px; text-transform: uppercase;">Live Batch Card Preview</h6>
       
       <div class="p-4 rounded-3 text-start" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); box-shadow: 0 8px 32px 0 rgba(0,0,0,0.2);">
         <div class="d-flex justify-content-between align-items-start mb-3">
           <div>
             <span class="badge bg-success text-white mb-2" style="font-size: 10px; font-weight: 500; letter-spacing: 0.5px;">LIVE PREVIEW</span>
-            <h5 class="text-white fw-bold mb-1">${batchNameVal || 'Physics Core Morning'}</h5>
+            <h5 class="text-dark fw-bold mb-1">${batchNameVal || 'Physics Core Morning'}</h5>
             <p class="text-muted small mb-0">${batchSubjectVal || 'Physics'}</p>
           </div>
           <div style="font-size: 32px;">📚</div>
@@ -1946,16 +1946,16 @@ function updateBatchPreview() {
         
         <div class="d-flex flex-column gap-2 text-muted small border-top pt-3 mt-3" style="border-color: rgba(255, 255, 255, 0.05) !important;">
           <div>
-            <i class="fas fa-calendar-day me-2 text-success" style="width: 16px;"></i>Days: <strong class="text-white">${batchDaysVal || 'Monday, Wednesday, Friday'}</strong>
+            <i class="fas fa-calendar-day me-2 text-success" style="width: 16px;"></i>Days: <strong class="text-dark">${batchDaysVal || 'Monday, Wednesday, Friday'}</strong>
           </div>
           <div>
-            <i class="fas fa-clock me-2 text-success" style="width: 16px;"></i>Time: <strong class="text-white">${timeStr}</strong>
+            <i class="fas fa-clock me-2 text-success" style="width: 16px;"></i>Time: <strong class="text-dark">${timeStr}</strong>
           </div>
           <div>
-            <i class="fas fa-calendar-alt me-2 text-success" style="width: 16px;"></i>Duration: <strong class="text-white">${dateStr}</strong>
+            <i class="fas fa-calendar-alt me-2 text-success" style="width: 16px;"></i>Duration: <strong class="text-dark">${dateStr}</strong>
           </div>
           <div>
-            <i class="fas fa-users me-2 text-success" style="width: 16px;"></i>Max Capacity: <strong class="text-white">${batchCapacityVal || 30} students</strong>
+            <i class="fas fa-users me-2 text-success" style="width: 16px;"></i>Max Capacity: <strong class="text-dark">${batchCapacityVal || 30} students</strong>
           </div>
         </div>
       </div>
@@ -2080,7 +2080,7 @@ async function renderCourses() {
 
     let coursesHtml = `
       <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom" style="border-color: var(--border) !important;">
-        <h5 class="fw-bold text-white mb-0" style="font-family: 'Outfit', sans-serif;">My Courses</h5>
+        <h5 class="fw-bold text-dark mb-0" style="font-family: 'Outfit', sans-serif;">My Courses</h5>
         <button class="btn btn-sm btn-spx" onclick="showCreateCourseModal()">
           <i class="fas fa-plus me-1"></i> New Course Draft
         </button>
@@ -2132,7 +2132,7 @@ async function renderCourses() {
                   ${c.thumbnail_url ? '' : '<span style="font-size: 2.5rem;">📖</span>'}
                   <span class="badge ${status.class} position-absolute top-0 end-0 m-2" style="font-size:0.7rem; border-radius: 6px;">${status.label}</span>
                 </div>
-                <h6 class="text-white fw-bold mb-1">${c.title}</h6>
+                <h6 class="text-dark fw-bold mb-1">${c.title}</h6>
                 ${customTagHtml}
                 <div class="d-flex flex-wrap gap-2 mb-3">
                   <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.subject || 'General'}</span>
@@ -2143,7 +2143,7 @@ async function renderCourses() {
                 <p class="text-muted small" style="line-height:1.5; font-size:0.8rem;">${(c.description || 'No description provided.').substr(0, 100)}${c.description?.length > 100 ? '...' : ''}</p>
               </div>
               <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center" style="border-color: var(--border) !important;">
-                <span class="fw-bold text-white">₹${fees}</span>
+                <span class="fw-bold text-dark">₹${fees}</span>
                 <div class="d-flex align-items-center">
                   ${actionsHtml}
                 </div>
@@ -2675,7 +2675,7 @@ async function renderAssignments() {
               <div class="p-3 mb-3 rounded-3" style="background:rgba(255,255,255,.01);border:1px solid var(--border)">
                 <div class="d-flex align-items-start justify-content-between">
                   <div>
-                    <h6 class="text-white fw-bold mb-1">${a.title}</h6>
+                    <h6 class="text-dark fw-bold mb-1">${a.title}</h6>
                     <div class="text-muted small">${a.batch_name || 'Batch'} • Due: ${fmtDate(a.due_date)}</div>
                     <div class="text-muted small mt-2 mb-0">${formatRichText(a.description) || ''}</div>
                     ${a.file_url ? `<a href="${a.file_url}" target="_blank" class="d-inline-block mt-2 small text-primary"><i class="fas fa-file-pdf"></i> View Attachment</a>` : ''}
@@ -2855,7 +2855,7 @@ async function renderObservations() {
               <div class="p-3 mb-3 rounded-3" style="background:rgba(255,255,255,.01);border:1px solid var(--border)">
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
-                    <h6 class="text-white fw-bold mb-1">${o.student_name}</h6>
+                    <h6 class="text-dark fw-bold mb-1">${o.student_name}</h6>
                     <div class="text-muted" style="font-size:.75rem">Date: ${fmtDate(o.observation_date)}</div>
                     <div class="d-flex gap-3 mt-2 flex-wrap text-muted small">
                       <span>Curiosity: <strong>${o.curiosity}/100</strong></span>
@@ -3023,7 +3023,7 @@ async function renderAttendance() {
                   ${attendance.map(a => `
                     <tr data-batch-id="${a.batch_id}">
                       <td>${fmtDate(a.attendance_date)}</td>
-                      <td class="text-white fw-semibold">${a.student_name}</td>
+                      <td class="text-dark fw-semibold">${a.student_name}</td>
                       <td><code>${a.batch_id}</code></td>
                       <td><span class="badge ${a.status === 'present' ? 'bg-success' : a.status === 'late' ? 'bg-warning' : 'bg-danger'}">${a.status.toUpperCase()}</span></td>
                       <td>${a.join_time ? new Date(a.join_time).toLocaleTimeString() : '—'}</td>
@@ -3074,7 +3074,7 @@ async function renderNotes() {
               <div class="p-3 mb-3 rounded-3" style="background:rgba(255,255,255,.01);border:1px solid var(--border)">
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
-                    <h6 class="text-white fw-bold mb-1">${n.title}</h6>
+                    <h6 class="text-dark fw-bold mb-1">${n.title}</h6>
                     <div class="text-muted small">${formatRichText(n.description) || ''}</div>
                     <div class="text-muted" style="font-size:.7rem;margin-top:4px;">Uploaded: ${fmtDate(n.uploaded_at)} • Type: <strong>${n.file_type.toUpperCase()}</strong></div>
                   </div>
@@ -3200,7 +3200,7 @@ async function renderEarnings() {
         <div class="col-lg-5">
           <div class="spx-card text-center mb-4">
             <h5 class="text-muted mb-2">Wallet Balance</h5>
-            <div class="display-6 fw-bold text-white mb-4">₹${parseFloat(wallet.wallet_balance).toLocaleString('en-IN')}</div>
+            <div class="display-6 fw-bold text-dark mb-4">₹${parseFloat(wallet.wallet_balance).toLocaleString('en-IN')}</div>
             <div class="row g-2 mb-4">
               <div class="col-6 border-end border-secondary">
                 <div class="text-success fw-bold">₹${parseFloat(wallet.paid_earnings).toLocaleString('en-IN')}</div>
@@ -3273,7 +3273,7 @@ async function renderEarnings() {
                   ${history.map(h => `
                     <tr>
                       <td>${fmtDate(h.requested_at)}</td>
-                      <td class="text-white fw-bold">₹${parseFloat(h.amount).toLocaleString('en-IN')}</td>
+                      <td class="text-dark fw-bold">₹${parseFloat(h.amount).toLocaleString('en-IN')}</td>
                       <td>${h.upi_id ? `UPI: ${h.upi_id}` : h.bank_account ? `<span style="font-size:0.75rem;">${h.bank_account}</span>` : 'Manual'}</td>
                       <td>
                         <span class="badge ${
@@ -3349,17 +3349,17 @@ async function renderLevel() {
           <div class="spx-card text-center">
             <h6 class="text-muted mb-2">My Current Level</h6>
             <div class="display-4 text-warning mb-2"><i class="fas fa-medal"></i></div>
-            <h4 class="text-white fw-bold mb-1">${data.level || 'Without Slab'}</h4>
+            <h4 class="text-dark fw-bold mb-1">${data.level || 'Without Slab'}</h4>
             <div class="text-muted small">Current Rating: <strong>${parseFloat(data.rating).toFixed(2)}</strong></div>
             
             <hr style="border-color:var(--border);margin:20px 0">
             
             <h6 class="fw-bold mb-3">Milestone Progress</h6>
             <div style="text-align:left;" class="small text-muted">
-              <div class="d-flex justify-content-between mb-1"><span>Target Class Attendance:</span><strong class="text-white">90%+</strong></div>
-              <div class="d-flex justify-content-between mb-1"><span>Target Student Rating:</span><strong class="text-white">4.5+</strong></div>
-              <div class="d-flex justify-content-between mb-1"><span>Classes Held (this month):</span><strong class="text-white">${data.sessions_count || 0}</strong></div>
-              <div class="d-flex justify-content-between"><span>Active Students:</span><strong class="text-white">${data.active_students || 0}</strong></div>
+              <div class="d-flex justify-content-between mb-1"><span>Target Class Attendance:</span><strong class="text-dark">90%+</strong></div>
+              <div class="d-flex justify-content-between mb-1"><span>Target Student Rating:</span><strong class="text-dark">4.5+</strong></div>
+              <div class="d-flex justify-content-between mb-1"><span>Classes Held (this month):</span><strong class="text-dark">${data.sessions_count || 0}</strong></div>
+              <div class="d-flex justify-content-between"><span>Active Students:</span><strong class="text-dark">${data.active_students || 0}</strong></div>
             </div>
           </div>
         </div>
@@ -3381,7 +3381,7 @@ async function renderLevel() {
                   ${(data.history || []).map(h => `
                     <tr>
                       <td>${fmtDate(h.changed_at)}</td>
-                      <td class="text-white fw-bold">${h.level}</td>
+                      <td class="text-dark fw-bold">${h.level}</td>
                       <td>${h.previous_level || '—'}</td>
                       <td>${h.reason || 'Auto calculation update'}</td>
                     </tr>
@@ -4175,13 +4175,13 @@ async function renderReferrals() {
             <div class="row g-2 mb-3">
               <div class="col-6">
                 <div class="p-3 rounded" style="background:var(--bg-dark); border:1px solid var(--border)">
-                  <div class="text-white fw-bold fs-5">${stats.total_referred_students}</div>
+                  <div class="text-dark fw-bold fs-5">${stats.total_referred_students}</div>
                   <div class="text-muted" style="font-size:0.7rem;">Students Referred</div>
                 </div>
               </div>
               <div class="col-6">
                 <div class="p-3 rounded" style="background:var(--bg-dark); border:1px solid var(--border)">
-                  <div class="text-white fw-bold fs-5">${stats.total_referred_teachers} / ${maxCap}</div>
+                  <div class="text-dark fw-bold fs-5">${stats.total_referred_teachers} / ${maxCap}</div>
                   <div class="text-muted" style="font-size:0.7rem;">Teachers Referred</div>
                 </div>
               </div>
@@ -4272,7 +4272,7 @@ async function renderReferrals() {
                   <tr style="${cumulativeRevenue >= s.target ? 'background:rgba(60,189,176,0.02);' : ''}">
                     <td><strong>${s.name}</strong></td>
                     <td>₹${s.target.toLocaleString('en-IN')}</td>
-                    <td class="text-white fw-bold">₹${s.reward.toLocaleString('en-IN')}</td>
+                    <td class="text-dark fw-bold">₹${s.reward.toLocaleString('en-IN')}</td>
                     <td>${s.item}</td>
                     <td><span class="text-muted">${allowanceText}</span></td>
                     <td>
@@ -4340,7 +4340,7 @@ async function renderReferrals() {
                       <td>
                         <div class="d-flex align-items-center gap-2">
                           <img src="${t.photo_url || defaultAvatar}" class="rounded-circle" style="width:24px; height:24px; object-fit:cover;" onerror="this.src=defaultAvatar">
-                          <span class="text-white">${t.name}</span>
+                          <span class="text-dark">${t.name}</span>
                         </div>
                       </td>
                       <td>${fmtDate(t.created_at)}</td>
@@ -4380,7 +4380,7 @@ async function renderReferrals() {
                       <td>
                         <div class="d-flex align-items-center gap-2">
                           <img src="${s.photo_url || defaultAvatar}" class="rounded-circle" style="width:24px; height:24px; object-fit:cover;" onerror="this.src=defaultAvatar">
-                          <span class="text-white">${s.name}</span>
+                          <span class="text-dark">${s.name}</span>
                         </div>
                       </td>
                       <td>${fmtDate(s.created_at)}</td>

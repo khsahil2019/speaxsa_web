@@ -960,10 +960,10 @@ async function viewTeacherStatement(id) {
       ledgerModal.tabIndex = -1;
       ledgerModal.innerHTML = `
         <div class="modal-dialog modal-dialog-centered modal-xl">
-          <div class="modal-content spx-modal" style="background:#0f172a; border: 1px solid var(--border)">
-            <div class="modal-header border-0">
-              <h5 class="modal-title text-white fw-bold" id="ledgerModalTitle">Earning Statement & Ledger</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <div class="modal-content spx-modal">
+            <div class="modal-header">
+              <h5 class="modal-title fw-bold" id="ledgerModalTitle" style="color: var(--text-primary);"><i class="fas fa-wallet me-2 text-primary"></i>Earning Statement & Ledger</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="ledgerModalBody"></div>
           </div>
@@ -976,7 +976,7 @@ async function viewTeacherStatement(id) {
     
     document.getElementById('ledgerModalBody').innerHTML = `
       <!-- Earnings Breakdown Tiles -->
-      <div class="row g-3 mb-4 text-white">
+      <div class="row g-3 mb-4">
         <div class="col-md-4 col-sm-6">
           <div class="p-3 rounded border" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2) !important;">
             <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-graduation-cap text-success me-1"></i>Course Share</div>
@@ -998,7 +998,7 @@ async function viewTeacherStatement(id) {
         <div class="col-md-4 col-sm-6">
           <div class="p-3 rounded border" style="background: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.2) !important;">
             <div class="text-muted small mb-1 fw-semibold"><i class="fas fa-trophy text-warning me-1"></i>Milestone Slabs</div>
-            <h4 class="fw-bold mb-0 text-warning">${fmtCurrency(bd.slab_reward || 0)}</h4>
+            <h4 class="fw-bold mb-0" style="color: #d97706;">${fmtCurrency(bd.slab_reward || 0)}</h4>
           </div>
         </div>
         <div class="col-md-4 col-sm-6">
@@ -1016,9 +1016,9 @@ async function viewTeacherStatement(id) {
       </div>
 
       <!-- Statement Ledger Table -->
-      <h6 class="text-white fw-bold mb-3"><i class="fas fa-history me-1"></i>Detailed Transaction Statement Ledger</h6>
+      <h6 class="fw-bold mb-3" style="color: var(--text-primary);"><i class="fas fa-history me-1 text-primary"></i>Detailed Transaction Statement Ledger</h6>
       <div class="table-responsive">
-        <table class="table spx-table mb-0 text-white">
+        <table class="table spx-table mb-0">
           <thead>
             <tr>
               <th>Date & Time</th>
@@ -3239,6 +3239,7 @@ async function renderSettings() {
                       <option value="msg91" ${smsProv === 'msg91' ? 'selected' : ''}>MSG91 Gateway (India & Global)</option>
                       <option value="twilio" ${smsProv === 'twilio' ? 'selected' : ''}>Twilio SMS Gateway (Global)</option>
                       <option value="fast2sms" ${smsProv === 'fast2sms' ? 'selected' : ''}>Fast2SMS Gateway (India)</option>
+                      <option value="2factor" ${smsProv === '2factor' ? 'selected' : ''}>2Factor SMS Gateway (India)</option>
                       <option value="custom" ${smsProv === 'custom' ? 'selected' : ''}>Custom HTTP REST Gateway (Generic API)</option>
                     </select>
                   </div>
@@ -3295,6 +3296,18 @@ async function renderSettings() {
                     <div class="mb-2">
                       <label class="spx-label small">Sender ID (DLT Registered)</label>
                       <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_sender_id" value="${settings.fast2sms_sender_id||''}">
+                    </div>
+                  </div>
+                  <!-- 2Factor Dynamic Fields -->
+                  <div id="fields_2factor" class="otp-provider-fields ${smsProv === '2factor' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
+                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>2Factor Credentials</h6>
+                    <div class="mb-2">
+                      <label class="spx-label small">2Factor API Key</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_api_key" value="${settings.twofactor_api_key||''}">
+                    </div>
+                    <div class="mb-2">
+                      <label class="spx-label small">Template Name (Optional)</label>
+                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_template_name" value="${settings.twofactor_template_name||''}" placeholder="e.g. MyOTPTemplate">
                     </div>
                   </div>
                   <!-- Custom HTTP Gateway -->
@@ -3387,6 +3400,8 @@ async function renderSettings() {
                     {key:'razorpay_key_secret', label:'Razorpay Secret'},
                     {key:'agora_app_id', label:'Agora App ID'},
                     {key:'agora_app_certificate', label:'Agora App Certificate'},
+                    {key:'agora_customer_id', label:'Agora Customer ID'},
+                    {key:'agora_customer_secret', label:'Agora Customer Secret', hidden:true},
                     {key:'smtp_host', label:'SMTP Host'},
                     {key:'smtp_port', label:'SMTP Port'},
                     {key:'smtp_user', label:'SMTP Username'},
@@ -3470,6 +3485,7 @@ async function saveOtpSystemSettings(e) {
     'msg91_auth_key', 'msg91_template_id', 'msg91_sender_id',
     'twilio_account_sid', 'twilio_auth_token', 'twilio_from_phone',
     'fast2sms_api_key', 'fast2sms_route', 'fast2sms_sender_id',
+    'twofactor_api_key', 'twofactor_template_name',
     'custom_sms_url', 'custom_sms_method', 'custom_sms_headers', 'custom_sms_body',
     'otp_expiry_minutes', 'otp_length', 'dev_otp_in_response', 'master_otp'
   ];
@@ -3614,7 +3630,7 @@ async function saveLevelPayouts(e) {
 
 async function saveAPICredentials(e) {
   e.preventDefault();
-  const keys = ['razorpay_key_id','razorpay_key_secret','agora_app_id','agora_app_certificate','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email'];
+  const keys = ['razorpay_key_id','razorpay_key_secret','agora_app_id','agora_app_certificate','agora_customer_id','agora_customer_secret','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email'];
   const body = {};
   keys.forEach(k => { const v = document.getElementById(`cred_${k}`)?.value; if (v) body[k] = v; });
   try { const d = await apiPost('/admin/settings',body); showToast(d.message||'API credentials saved'); }

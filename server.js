@@ -6,6 +6,7 @@ app.set('trust proxy', 1);
 const cron = require('node-cron');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('./src/middleware/auth');
+const db = require('./src/db');
 
 const PORT = process.env.PORT || 5001;
 
@@ -122,6 +123,85 @@ io.on('connection', (socket) => {
         // Broadcast updated participant list
         io.to(classId).emit('participants-update', Object.values(classRooms[classId]));
         socket.to(classId).emit('user-left', { name: leaving.name, role: leaving.role });
+
+        // If the leaving user was a student, mark exit and run auto-attendance after a 10s grace period (for reloads/reconnects)
+        if (leaving.role === 'student') {
+          setTimeout(async () => {
+            // Verify they didn't reconnect in the meantime
+            const stillConnected = classRooms[classId] && 
+              Object.values(classRooms[classId]).some(p => p.userId === leaving.userId);
+            
+            if (!stillConnected) {
+              console.log(`[Socket] Student ${leaving.name} left class ${classId}. Recording exit & auto-attendance.`);
+              try {
+                // Find current active session
+                const sessionRes = await db.query(`
+                  SELECT * FROM class_participants 
+                  WHERE class_id = $1 AND user_id = $2 AND exit_time IS NULL
+                `, [classId, leaving.userId]);
+
+                if (sessionRes.rows.length > 0) {
+                  const s = sessionRes.rows[0];
+                  const joinTime = new Date(s.join_time);
+                  const exitTime = new Date();
+                  const durationMins = Math.max(1, Math.round((exitTime - joinTime) / 60000));
+
+                  // Update exit time & duration
+                  await db.query(`
+                    UPDATE class_participants 
+                    SET exit_time = NOW(), duration_mins = $1 
+                    WHERE id = $2
+                  `, [durationMins, s.id]);
+
+                  // Fetch class metadata
+                  const classRes = await db.query('SELECT * FROM live_classes WHERE id = $1', [classId]);
+                  const liveClass = classRes.rows[0];
+                  if (liveClass) {
+                    const classDuration = liveClass.duration_mins || 60;
+                    const scheduledStart = liveClass.started_at ? new Date(liveClass.started_at) : joinTime;
+                    const lateThreshold = 10; // minutes
+                    const halfThreshold = 0.5; // 50%
+
+                    const minutesLate = Math.max(0, Math.round((joinTime - scheduledStart) / 60000));
+                    const attendancePct = classDuration > 0 ? durationMins / classDuration : 0;
+
+                    let status = 'absent';
+                    if (attendancePct >= halfThreshold) {
+                      if (minutesLate > lateThreshold) status = 'late';
+                      else status = 'present';
+                    } else if (durationMins > 0) {
+                      status = 'half';
+                    }
+
+                    // Check if attendance row already exists
+                    const existingAtt = await db.query(`
+                      SELECT id FROM attendance WHERE class_id = $1 AND student_id = $2
+                    `, [classId, leaving.userId]);
+
+                    if (existingAtt.rows.length > 0) {
+                      await db.query(`
+                        UPDATE attendance 
+                        SET exit_time = NOW(), duration_mins = $1, status = $2, attendance_date = CURRENT_DATE
+                        WHERE id = $3
+                      `, [durationMins, status, existingAtt.rows[0].id]);
+                    } else {
+                      const attId = 'att_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                      const dateStr = new Date().toISOString().split('T')[0];
+                      await db.query(`
+                        INSERT INTO attendance (id, class_id, batch_id, student_id, teacher_id, join_time, exit_time,
+                          duration_mins, class_duration_mins, status, attendance_date)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                      `, [attId, classId, liveClass.batch_id, leaving.userId, liveClass.teacher_id,
+                          joinTime, exitTime, durationMins, classDuration, status, dateStr]);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('[Socket] Auto-attendance disconnect hook error:', err.message);
+              }
+            }
+          }, 10000); // 10s grace period for client network fluctuations / page refreshes
+        }
 
         if (Object.keys(classRooms[classId]).length === 0) {
           delete classRooms[classId];

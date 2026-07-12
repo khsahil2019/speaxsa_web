@@ -71,25 +71,60 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 16px;
+      padding: 16px 16px 88px 16px;
       gap: 16px;
       position: relative;
     }
 
     /* Video Layout */
-    .video-grid {
+    .video-grid-container {
       flex: 1;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      display: flex;
+      flex-direction: column;
       gap: 16px;
-      min-height: 200px;
-      border-radius: 12px;
+      height: 100%;
+      width: 100%;
+      position: relative;
     }
 
-    .video-container {
+    .presenter-stage {
+      flex: 1;
+      width: 100%;
       background-color: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+    }
+
+    .student-streams-row {
+      display: flex;
+      flex-direction: row;
+      gap: 16px;
+      overflow-x: auto;
+      padding: 6px 0;
+      min-height: 150px;
+      max-height: 170px;
+      width: 100%;
+      align-items: center;
+      scrollbar-width: thin;
+    }
+
+    .student-streams-row:empty {
+      display: none !important;
+    }
+
+    .student-streams-row .video-container {
+      width: 220px;
+      height: 140px;
+      flex-shrink: 0;
+      border-radius: 10px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
       position: relative;
       overflow: hidden;
       display: flex;
@@ -105,16 +140,16 @@
 
     .user-label {
       position: absolute;
-      bottom: 12px;
-      left: 12px;
+      bottom: 8px;
+      left: 8px;
       background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(8px);
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
       color: #FFF;
-      border: 1px solid rgba(255, 255, 255, 0.05);
       z-index: 10;
+      pointer-events: none;
     }
 
     /* Whiteboard layer */
@@ -145,6 +180,23 @@
       border-bottom: 1px solid #E2E8F0;
     }
 
+    .color-dot:hover {
+      transform: scale(1.18);
+      opacity: 0.9;
+    }
+    
+    .color-dot.active {
+      box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--primary) !important;
+    }
+
+    .size-btn {
+      transition: all 0.15s ease;
+    }
+
+    .size-btn:hover {
+      background-color: rgba(0, 0, 0, 0.1) !important;
+    }
+
     .whiteboard-canvas {
       flex: 1;
       width: 100%;
@@ -156,16 +208,23 @@
 
     /* Control Bar */
     .control-bar {
-      background-color: var(--bg-sidebar);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px 24px;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(15, 23, 42, 0.85) !important;
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 12px 28px;
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      z-index: 90;
+      gap: 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      width: max-content;
+      max-width: 90vw;
     }
 
     .control-btn {
@@ -353,6 +412,51 @@
         transform: scale(1);
       }
     }
+
+    @media (max-width: 768px) {
+      body {
+        height: auto;
+        overflow-y: auto;
+      }
+      .classroom-body {
+        flex-direction: column;
+        overflow: visible;
+        height: auto;
+      }
+      .main-stage {
+        padding: 10px;
+        min-height: 400px;
+      }
+      .presenter-stage {
+        min-height: 200px;
+      }
+      .student-streams-row {
+        min-height: 110px;
+        max-height: 120px;
+      }
+      .student-streams-row .video-container {
+        width: 150px;
+        height: 100px;
+      }
+      .classroom-sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        height: 400px;
+      }
+      .control-bar {
+        padding: 10px;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .control-btn {
+        width: 40px;
+        height: 40px;
+      }
+      .control-btn-danger {
+        padding: 0 12px;
+      }
+    }
   </style>
 </head>
 
@@ -413,20 +517,41 @@
     <!-- Main Stage (Videos / Whiteboard) -->
     <div class="main-stage">
 
-      <!-- Video Streams Grid -->
-      <div class="video-grid" id="videoGrid">
-        <!-- Teacher video stream -->
-        <div class="video-container" id="teacherVideoContainer">
+      <!-- Video Streams Container (Presenter top, Students horizontal row below) -->
+      <div class="video-grid-container" id="videoGrid">
+        <!-- Teacher video stream (Full Screen / Presenter) -->
+        <div class="presenter-stage" id="teacherVideoContainer">
           <div class="user-label" id="teacherLabel">Teacher (Off)</div>
           <div id="local-player" class="video-stream"></div>
         </div>
+        <!-- Student video streams (Thumbnail Row Below) -->
+        <div class="student-streams-row" id="studentVideosRow"></div>
       </div>
 
       <!-- Whiteboard (Overlaid when active) -->
       <div class="whiteboard-container" id="whiteboardContainer">
         <div class="whiteboard-header">
-          <div class="d-flex align-items-center gap-2">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
             <strong class="text-dark"><i class="fas fa-palette me-2"></i>Interactive Whiteboard</strong>
+            
+            <!-- Color Selector Group -->
+            <div id="whiteboardControls" class="d-flex align-items-center gap-2 bg-light p-1 rounded-2 border border-light" style="font-size:0.8rem;">
+              <span class="text-muted small me-1">Color:</span>
+              <button class="btn btn-sm p-0.5 rounded-circle border-0 color-dot active" data-color="#0F172A" style="width:20px; height:20px; background-color:#0F172A; border:2px solid transparent; transition: transform 0.2s;" title="Black"></button>
+              <button class="btn btn-sm p-0.5 rounded-circle border-0 color-dot" data-color="#EF4444" style="width:20px; height:20px; background-color:#EF4444; border:2px solid transparent; transition: transform 0.2s;" title="Red"></button>
+              <button class="btn btn-sm p-0.5 rounded-circle border-0 color-dot" data-color="#3B82F6" style="width:20px; height:20px; background-color:#3B82F6; border:2px solid transparent; transition: transform 0.2s;" title="Blue"></button>
+              <button class="btn btn-sm p-0.5 rounded-circle border-0 color-dot" data-color="#10B981" style="width:20px; height:20px; background-color:#10B981; border:2px solid transparent; transition: transform 0.2s;" title="Green"></button>
+              <button class="btn btn-sm p-0 rounded btn-outline-secondary border-0 d-flex align-items-center justify-content-center color-dot" data-color="eraser" style="width:22px; height:22px; transition: transform 0.2s;" title="Eraser"><i class="fas fa-eraser" style="font-size:0.75rem;"></i></button>
+            </div>
+
+            <!-- Brush Size Group -->
+            <div id="whiteboardBrushControls" class="d-flex align-items-center gap-1.5 bg-light p-1 rounded-2 border border-light" style="font-size:0.8rem;">
+              <span class="text-muted small me-1">Size:</span>
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 size-btn active" data-size="3" style="font-size:0.7rem; font-weight:600; background:rgba(0,0,0,0.05); padding: 2px 6px;">Thin</button>
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 size-btn" data-size="6" style="font-size:0.7rem; font-weight:600; background:rgba(0,0,0,0.05); padding: 2px 6px;">Medium</button>
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 size-btn" data-size="12" style="font-size:0.7rem; font-weight:600; background:rgba(0,0,0,0.05); padding: 2px 6px;">Thick</button>
+            </div>
+
             <button class="btn btn-sm btn-outline-danger" id="btnClearBoard">Clear Board</button>
           </div>
           <button class="btn-close" onclick="toggleWhiteboard(false)"></button>
@@ -670,14 +795,62 @@
     const ctx = canvas.getContext('2d');
     let drawing = false;
 
+    // Brush styling selections
+    let currentStrokeColor = '#0F172A';
+    let currentLineWidth = 3;
+    let isEraserMode = false;
+
     function resizeCanvas() {
       const parent = canvas.parentElement;
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight - 50;
-      ctx.lineWidth = 3;
       ctx.lineCap = 'round';
-      ctx.strokeStyle = '#0F172A';
+      ctx.lineJoin = 'round';
+      updateContextStyles();
     }
+
+    function updateContextStyles() {
+      ctx.lineWidth = currentLineWidth;
+      ctx.strokeStyle = isEraserMode ? '#FFFFFF' : currentStrokeColor;
+    }
+
+    // Color dot button selectors
+    document.querySelectorAll('.color-dot').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-dot').forEach(b => {
+          b.classList.remove('active');
+          b.style.transform = '';
+          b.style.borderColor = 'transparent';
+        });
+        btn.classList.add('active');
+        btn.style.transform = 'scale(1.15)';
+        btn.style.borderColor = 'var(--primary)';
+        const color = btn.getAttribute('data-color');
+        if (color === 'eraser') {
+          isEraserMode = true;
+        } else {
+          isEraserMode = false;
+          currentStrokeColor = color;
+        }
+        updateContextStyles();
+      });
+    });
+
+    // Brush size button selectors
+    document.querySelectorAll('.size-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.size-btn').forEach(b => {
+          b.classList.remove('active');
+          b.style.background = 'rgba(0,0,0,0.05)';
+          b.style.color = '';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'var(--primary)';
+        btn.style.color = '#FFFFFF';
+        currentLineWidth = parseInt(btn.getAttribute('data-size')) || 3;
+        updateContextStyles();
+      });
+    });
 
     canvas.addEventListener('mousedown', (e) => {
       if (!isTeacher) return;
@@ -685,6 +858,7 @@
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      updateContextStyles();
       ctx.beginPath();
       ctx.moveTo(x, y);
       relayDrawPoint(x, y, true);
@@ -695,7 +869,7 @@
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-
+      updateContextStyles();
       ctx.lineTo(x, y);
       ctx.stroke();
       ctx.beginPath();
@@ -746,6 +920,7 @@
     let isScreenSharing = false;
     let lastParticipants = [];
     const peerConnections = {};
+    let isMockStream = false;
 
     // HTML5 Camera preview fallback to make live stream work look completely real-time
     async function startLocalCameraFallback(isAgoraFailed = false) {
@@ -755,9 +930,14 @@
         }
 
         localStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720, facingMode: "user" },
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user"
+          },
           audio: true
         });
+        isMockStream = false;
 
         if (isTeacher) {
           const localPlayerEl = document.getElementById('local-player');
@@ -785,7 +965,7 @@
                 <span class="badge bg-success-subtle text-success border border-success" style="font-size:0.7rem;"><i class="fas fa-microphone me-1 animate__animated animate__pulse animate__infinite"></i> Audio Connected</span>
               </div>
             `;
-            document.getElementById("videoGrid").appendChild(simStudent);
+            document.getElementById("studentVideosRow").appendChild(simStudent);
           }
           remoteUsers['simstudent'] = { name: user.name, role: user.role };
           updateParticipantList();
@@ -800,7 +980,7 @@
               <div class="user-label">You — ${user.name}</div>
               <div id="student-player-local" class="video-stream"></div>
             `;
-            document.getElementById("videoGrid").appendChild(studentContainer);
+            document.getElementById("studentVideosRow").appendChild(studentContainer);
           }
           const studentPlayerEl = document.getElementById('student-player-local');
           studentPlayerEl.innerHTML = '';
@@ -847,6 +1027,7 @@
       } catch (err) {
         console.warn('Webcam permission denied. Creating mock canvas video stream fallback.', err);
         triggerToast('Camera access blocked. Starting in Mock Stream mode.');
+        isMockStream = true;
 
         // 1. Create a simulated live video feed using an HTML5 Canvas
         const canvas = document.createElement('canvas');
@@ -855,25 +1036,78 @@
         canvas.className = 'video-stream';
         const ctx = canvas.getContext('2d');
 
+        // 1.5. Show camera permission warning banner at top of screen
+        if (!document.getElementById('cameraBlockedBanner')) {
+          const banner = document.createElement('div');
+          banner.id = 'cameraBlockedBanner';
+          banner.className = 'alert alert-warning text-center fw-semibold mb-0 py-2.5';
+          banner.style.borderRadius = '0';
+          banner.style.fontSize = '0.85rem';
+          banner.style.border = 'none';
+          banner.style.borderBottom = '1px solid rgba(0,0,0,0.05)';
+          banner.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i> Camera Access is Blocked or occupied! If you are on a laptop/mobile, click the camera icon in your browser URL bar, change permission to "Allow", and refresh. (Note: Only one browser tab can hold the webcam lock at a time).`;
+          document.body.insertBefore(banner, document.body.firstChild);
+        }
+
+        let angle = 0;
         setInterval(() => {
-          ctx.fillStyle = '#0f172a'; // Deep dark background
+          // Gradient background
+          const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          grad.addColorStop(0, '#0f172a');
+          grad.addColorStop(1, '#1e293b');
+          ctx.fillStyle = grad;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          // Draw teacher/student details
+          // Animated grid lines
+          ctx.strokeStyle = 'rgba(60, 189, 176, 0.05)';
+          ctx.lineWidth = 1;
+          for (let i = 0; i < canvas.width; i += 40) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, canvas.height);
+            ctx.stroke();
+          }
+          for (let j = 0; j < canvas.height; j += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, j);
+            ctx.lineTo(canvas.width, j);
+            ctx.stroke();
+          }
+
+          // Bouncing/rotating orb representing live status
+          angle += 0.05;
+          const x = canvas.width / 2 + Math.cos(angle) * 50;
+          const y = canvas.height / 2 - 85 + Math.sin(angle) * 15;
+
+          const orbGrad = ctx.createRadialGradient(x, y, 2, x, y, 15);
+          orbGrad.addColorStop(0, '#3CBDB0');
+          orbGrad.addColorStop(1, 'rgba(60, 189, 176, 0)');
+          ctx.fillStyle = orbGrad;
+          ctx.beginPath();
+          ctx.arc(x, y, 20, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Live animated audio/video waves at the bottom
+          ctx.fillStyle = 'rgba(60, 189, 176, 0.15)';
+          for (let k = 0; k < 10; k++) {
+            const h = 15 + Math.sin(angle + k) * 12;
+            ctx.fillRect(100 + k * 45, canvas.height - 70 - h, 30, h);
+          }
+
+          // User Name Title
           ctx.fillStyle = '#3CBDB0';
-          ctx.font = 'bold 24px Outfit, sans-serif';
+          ctx.font = 'bold 26px Outfit, sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText(user.name, canvas.width / 2, canvas.height / 2 - 20);
 
+          // Details text
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = '600 15px Inter, sans-serif';
+          ctx.fillText(`Webcam blocked by browser or in use by another tab`, canvas.width / 2, canvas.height / 2 + 20);
+          
           ctx.fillStyle = '#94a3b8';
-          ctx.font = '16px Inter, sans-serif';
-          ctx.fillText(`(Local Mock Stream — Camera Blocked)`, canvas.width / 2, canvas.height / 2 + 20);
-
-          // Pulsing status dot
-          ctx.fillStyle = (Date.now() % 1000 < 500) ? '#10b981' : '#374151';
-          ctx.beginPath();
-          ctx.arc(canvas.width / 2, canvas.height / 2 - 80, 12, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.font = '12px Inter, sans-serif';
+          ctx.fillText(`To view actual live feeds, allow camera permissions and test on separate devices`, canvas.width / 2, canvas.height / 2 + 50);
         }, 100);
 
         // Capture canvas as a MediaStream track (15 FPS)
@@ -912,7 +1146,7 @@
               <div class="user-label">You — ${user.name} (Camera Blocked)</div>
               <div id="student-player-local" class="video-stream"></div>
             `;
-            document.getElementById("videoGrid").appendChild(studentContainer);
+            document.getElementById("studentVideosRow").appendChild(studentContainer);
           }
           const studentPlayerEl = document.getElementById('student-player-local');
           studentPlayerEl.innerHTML = '';
@@ -999,7 +1233,7 @@
             <div class="user-label">${p.name} (Student)</div>
             <div id="player-${socketId}" class="video-stream"></div>
           `;
-          document.getElementById("videoGrid").appendChild(playerContainer);
+          document.getElementById("studentVideosRow").appendChild(playerContainer);
         }
         const playerEl = document.getElementById(`player-${socketId}`);
         playerEl.innerHTML = '';
@@ -1038,12 +1272,15 @@
         }
       }
 
-      if (!isTeacher) {
-        const teacher = lastParticipants.find(p => p.role === 'teacher');
-        if (teacher && teacher.socketId !== socket.id) {
-          initiatePeerConnection(teacher.socketId);
+      // Connect to all other participants in the room in full-mesh WebRTC mode
+      lastParticipants.forEach(p => {
+        if (p.socketId !== socket.id) {
+          // Rule: the one with the lexicographically smaller socket ID initiates the connection
+          if (socket.id < p.socketId) {
+            initiatePeerConnection(p.socketId);
+          }
         }
-      }
+      });
     }
 
     async function initClassroom() {
@@ -1100,7 +1337,7 @@
             credentials.rtc.appId,
             credentials.channel,
             credentials.rtc.token,
-            credentials.uid
+            String(credentials.uid)
           );
 
           triggerToast(`Connected to Agora stream: ${credentials.channel}`);
@@ -1123,17 +1360,8 @@
           }
         } catch (agoraErr) {
           console.warn('Agora connection failed. Falling back to local camera simulation:', agoraErr);
-          // Agora was configured but failed at runtime — show notice and fall back
-          showErrorOverlay(
-            'Agora RTC could not connect. The classroom will run in Local Simulation Mode with your camera.',
-            'Connection Notice',
-            'Enter Classroom',
-            function () {
-              dismissErrorOverlay();
-              startLocalCameraFallback(true);
-            },
-            true
-          );
+          triggerToast('Running in Local Simulation Mode');
+          startLocalCameraFallback(true);
         }
 
       } catch (err) {
@@ -1170,7 +1398,7 @@
             <div class="user-label" id="label-${uid}">Student (${uid})</div>
             <div id="player-${uid}" class="video-stream"></div>
           `;
-          document.getElementById("videoGrid").appendChild(playerContainer);
+          document.getElementById("studentVideosRow").appendChild(playerContainer);
         }
         user.videoTrack.play(`player-${uid}`);
       }
@@ -1225,6 +1453,12 @@
 
     // Toggle Video
     document.getElementById('btnVideo').addEventListener('click', async () => {
+      if (isMockStream) {
+        // Currently in camera blocked/simulation mode — try requesting permissions again!
+        triggerToast('Requesting camera permissions...');
+        await startLocalCameraFallback(false);
+        return;
+      }
       if (localTracks.videoTrack) {
         if (!isVideoMuted) {
           await localTracks.videoTrack.setMuted(true);
@@ -1406,6 +1640,13 @@
                 triggerToast('Real-time connection unavailable — chat may not sync');
               });
 
+              socket.on('class-ended', () => {
+                triggerToast('This live class has been ended by the educator.');
+                setTimeout(() => {
+                  window.history.back();
+                }, 3000);
+              });
+
               // ── Participants ──────────────────────────────
               socket.on('participants-update', (participants) => {
                 lastParticipants = participants;
@@ -1512,7 +1753,9 @@
               });
 
               // ── Whiteboard ───────────────────────────────
-              socket.on('board-draw', ({ x, y, start }) => {
+              socket.on('board-draw', ({ x, y, start, color, size }) => {
+                ctx.strokeStyle = color || '#0F172A';
+                ctx.lineWidth = size || 3;
                 if (start) {
                   ctx.beginPath();
                   ctx.moveTo(x, y);
@@ -1624,7 +1867,8 @@
           // Whiteboard relay via Socket.io
           function relayDrawPoint(x, y, start = false) {
             if (socket && socket.connected) {
-              socket.emit('board-draw', { classId, x, y, start });
+              const activeColor = isEraserMode ? '#FFFFFF' : currentStrokeColor;
+              socket.emit('board-draw', { classId, x, y, start, color: activeColor, size: currentLineWidth });
             }
           }
           function relayClearBoard() {

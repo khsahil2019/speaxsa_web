@@ -414,7 +414,7 @@ async function renderHome() {
               <div class="d-flex align-items-center gap-3 p-3 mb-2 rounded-3" style="background:var(--bg-dark);border:1px solid var(--border)">
                 <div style="width:44px;height:44px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📚</div>
                 <div class="flex-grow-1">
-                  <div class="fw-semibold text-white small">${b.course_title||b.batch_name}</div>
+                  <div class="fw-semibold text-dark small">${b.course_title||b.batch_name}</div>
                   <div class="text-muted" style="font-size:.75rem">${b.teacher_name||''} • ${(b.days_of_week||[]).join(', ')} ${b.start_time||''}</div>
                 </div>
                 <div style="width:110px; text-align:right; flex-shrink:0;">
@@ -431,7 +431,7 @@ async function renderHome() {
             </div>
             ${notifs.slice(0,5).map(n => `
               <div class="mb-3 p-2 rounded" style="background:var(--bg-dark)">
-                <div class="fw-semibold small text-white">${n.title}</div>
+                <div class="fw-semibold small text-dark">${n.title}</div>
                 <div class="text-muted" style="font-size:.75rem">${n.message?.substr(0,80)}${n.message?.length>80?'...':''}</div>
               </div>`).join('') || '<p class="text-muted small">No notifications</p>'}
           </div>
@@ -490,7 +490,7 @@ function renderCoursesGrid(q = '') {
             <span style="font-size:.7rem;background:rgba(60,189,176,.15);color:#3CBDB0;border-radius:6px;padding:2px 8px">${c.subject||'General'}</span>
             <span style="font-size:.7rem;background:rgba(16,185,129,.15);color:#10B981;border-radius:6px;padding:2px 8px">${c.grade||''}</span>
           </div>
-          <div class="fw-bold text-white mb-1">${c.title}</div>
+          <div class="fw-bold text-dark mb-1">${c.title}</div>
           <p class="text-muted" style="font-size:.8rem;margin:0">${(c.description||'').substr(0,60)}...</p>
           <div class="d-flex align-items-center justify-content-between mt-3">
             <span style="font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:800;color:#3CBDB0">₹${parseFloat(c.fees||0).toLocaleString('en-IN')}</span>
@@ -955,7 +955,7 @@ async function renderUpcomingClasses() {
                     </span>
                     ${badgeHtml}
                   </div>
-                  <h6 class="fw-bold text-white mb-2" style="font-size: 1rem;">${c.title || 'Untitled Lecture'}</h6>
+                  <h6 class="fw-bold text-dark mb-2" style="font-size: 1rem;">${c.title || 'Untitled Lecture'}</h6>
                   <div class="mb-3 d-flex flex-wrap gap-2">
                     <span class="badge text-start" style="font-size: 0.7rem; border-radius: 6px; background-color: rgba(60, 189, 176, 0.1) !important; color: #3CBDB0 !important; border: 1px solid rgba(60, 189, 176, 0.3) !important; padding: 5px 10px; font-weight: 600; white-space: normal; line-height: 1.3;">
                       <i class="fas fa-graduation-cap me-1"></i>Course Name: ${c.courseName}
@@ -965,7 +965,7 @@ async function renderUpcomingClasses() {
                     </span>
                   </div>
                   <div class="d-flex flex-column gap-2 text-muted mb-4" style="font-size: 0.78rem;">
-                    <span><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i>Teacher Name: <strong class="text-white" style="color: var(--text-primary) !important;">${c.teacherName}</strong></span>
+                    <span><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i>Teacher Name: <strong class="text-dark" style="color: var(--text-primary) !important;">${c.teacherName}</strong></span>
                     <span><i class="far fa-calendar-alt me-2 text-primary" style="width: 14px;"></i>Date: ${fmtDate(c.class_date)}</span>
                     <span><i class="far fa-clock me-2 text-primary" style="width: 14px;"></i>Time: ${formatTime(c.class_time)}</span>
                   </div>
@@ -1093,10 +1093,10 @@ async function renderRecordings() {
                   ${r.thumbnail_url ? '' : '<i class="fas fa-play-circle"></i>'}
                 </div>
                 <div class="flex-grow-1">
-                  <div class="fw-bold text-white">${r.title||r.class_title||'Recording'}</div>
+                  <div class="fw-bold text-dark">${r.title||r.class_title||'Recording'}</div>
                   <div class="text-muted small">${r.batch_name||'—'} • ${fmtDate(r.recorded_at||r.class_date)} • ${r.duration_mins||0} min</div>
                 </div>
-                <a href="${r.recording_url}" target="_blank" class="btn btn-sm btn-spx">Watch</a>
+                <button onclick="playBatchDemoVideo('${r.recording_url}', '${r.title || r.class_title || 'Lecture Recording'}')" class="btn btn-sm btn-spx">Watch</button>
               </div>
             </div>
           </div>`).join('') || '<div class="col-12 text-center text-muted py-5">No recordings available</div>'}
@@ -1116,7 +1116,7 @@ async function renderReports() {
             <div class="spx-card">
               <div class="d-flex align-items-center justify-content-between mb-4">
                 <div>
-                  <div class="fw-bold text-white">${r.batch_name||'—'}</div>
+                  <div class="fw-bold text-dark">${r.batch_name||'—'}</div>
                   <div class="text-muted small">${r.report_month} • Teacher: ${r.teacher_name||'—'}</div>
                 </div>
                 <div class="grade-badge" style="background:rgba(60,189,176,.15);color:#3CBDB0">${r.overall_grade||'—'}</div>
@@ -1585,7 +1585,7 @@ async function viewBatchDetails(batchId) {
                 <div class="live-class-card p-3 rounded-3" data-status="${c.status}" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                      <div class="fw-bold text-white small mb-1">${c.title || 'Untitled Session'}</div>
+                      <div class="fw-bold text-dark small mb-1">${c.title || 'Untitled Session'}</div>
                       <div class="mb-2 d-flex flex-wrap gap-2">
                         <span class="badge" style="font-size: 0.65rem; border-radius: 4px; background-color: rgba(60, 189, 176, 0.1) !important; color: #3CBDB0 !important; border: 1px solid rgba(60, 189, 176, 0.3) !important; padding: 3px 6px; font-weight: 600;">
                           <i class="fas fa-graduation-cap me-1"></i>Course Name: ${batch.course_title || 'General Course'}
@@ -1599,7 +1599,7 @@ async function viewBatchDetails(batchId) {
                         <i class="far fa-clock me-1"></i>${formatTime(c.class_time)}
                       </div>
                       <div class="text-muted mt-1" style="font-size: 0.75rem;">
-                        <i class="fas fa-user-chalkboard me-1 text-primary"></i>Teacher Name: <strong class="text-white" style="color: var(--text-primary) !important;">${c.teacher_name || batch.teacher_name || 'Expert Educator'}</strong>
+                        <i class="fas fa-user-chalkboard me-1 text-primary"></i>Teacher Name: <strong class="text-dark" style="color: var(--text-primary) !important;">${c.teacher_name || batch.teacher_name || 'Expert Educator'}</strong>
                       </div>
                     </div>
                     ${badgeHtml}
@@ -1625,7 +1625,7 @@ async function viewBatchDetails(batchId) {
               <div class="d-flex flex-column gap-2 mb-3" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
                 ${modules.length ? modules.map((m, idx) => `
                   <div class="p-2 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
-                    <div class="fw-bold text-white" style="font-size:0.75rem;">${idx + 1}. ${m.title}</div>
+                    <div class="fw-bold text-dark" style="font-size:0.75rem;">${idx + 1}. ${m.title}</div>
                     <div class="text-muted" style="font-size:0.7rem;">${m.description || ''}</div>
                   </div>
                 `).join('') : '<p class="text-muted small text-center py-3">No sections/modules uploaded for this course yet.</p>'}
@@ -1639,7 +1639,7 @@ async function viewBatchDetails(batchId) {
                   <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                       <div>
-                        <h6 class="fw-bold text-white small mb-1">${n.title}</h6>
+                        <h6 class="fw-bold text-dark small mb-1">${n.title}</h6>
                         <div class="text-muted" style="font-size: 0.7rem;">${n.description || ''}</div>
                       </div>
                       <span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">
