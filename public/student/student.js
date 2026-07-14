@@ -15,13 +15,34 @@ function showToast(msg, type = 'success') {
   Toast.show();
 }
 
+async function parseFetchResponse(res) {
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
+  const contentType = res.headers.get("content-type");
+  const isJson = contentType && contentType.indexOf("application/json") !== -1;
+  
+  if (!res.ok) {
+    if (isJson) {
+      const err = await res.json();
+      throw new Error(err.error || 'Request failed');
+    } else {
+      const text = await res.text();
+      throw new Error(`Server error (${res.status}): ${text.slice(0, 100)}...`);
+    }
+  }
+  
+  if (isJson) {
+    return res.json();
+  } else {
+    return { message: await res.text() };
+  }
+}
+
 async function api(path, opts = {}) {
   const res = await fetch(`${API}${path}`, {
     ...opts,
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
   });
-  if (res.status === 401) { logout(); throw new Error('Session expired'); }
-  return res.json();
+  return parseFetchResponse(res);
 }
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -1758,22 +1779,26 @@ function playBatchDemoVideo(url, batchName, event) {
     event.preventDefault();
     event.stopPropagation();
   }
-  const videoPlayer = document.getElementById('batchDemoVideoPlayer');
-  const videoTitle = document.getElementById('batchDemoVideoTitle');
-  if (videoPlayer && videoTitle) {
-    videoTitle.textContent = `${batchName} — Demo Video`;
-    videoPlayer.src = url;
-    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('batchDemoVideoModal'));
-    modal.show();
-    videoPlayer.play().catch(err => console.log('Autoplay blocked:', err));
-  }
+  if (!url) return;
+
+  const formattedUrl = (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) 
+    ? url 
+    : '/' + url;
+
+  window.open(formattedUrl, '_blank');
 }
 
 function stopBatchDemoVideo() {
   const videoPlayer = document.getElementById('batchDemoVideoPlayer');
+  const videoIframe = document.getElementById('batchDemoVideoIframe');
   if (videoPlayer) {
     videoPlayer.pause();
     videoPlayer.src = '';
+    videoPlayer.style.display = 'none';
+  }
+  if (videoIframe) {
+    videoIframe.src = '';
+    videoIframe.style.display = 'none';
   }
 }
 

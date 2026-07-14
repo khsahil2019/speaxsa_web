@@ -152,7 +152,7 @@ async function loadTeachers() {
                  class="teacher-avatar-img" alt="${t.name}"
                  onerror="this.src='/uploads/profiles/teacher_sahil.png'">
           </div>
-          ${t.teacher_level && t.teacher_level !== 'Without Slab' ? `
+          ${t.teacher_level && t.teacher_level !== 'New Joiner' ? `
           <div class="teacher-level-badge level-${t.teacher_level.toLowerCase().replace(' ','-')}">
             ${t.teacher_level}
           </div>
@@ -892,22 +892,26 @@ function playBatchDemoVideo(url, batchName, event) {
     event.preventDefault();
     event.stopPropagation();
   }
-  const videoPlayer = document.getElementById('batchDemoVideoPlayer');
-  const videoTitle = document.getElementById('batchDemoVideoTitle');
-  if (videoPlayer && videoTitle) {
-    videoTitle.textContent = `${batchName} — Demo Video`;
-    videoPlayer.src = url;
-    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('batchDemoVideoModal'));
-    modal.show();
-    videoPlayer.play().catch(err => console.log('Autoplay blocked:', err));
-  }
+  if (!url) return;
+
+  const formattedUrl = (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) 
+    ? url 
+    : '/' + url;
+
+  window.open(formattedUrl, '_blank');
 }
 
 function stopBatchDemoVideo() {
   const videoPlayer = document.getElementById('batchDemoVideoPlayer');
+  const videoIframe = document.getElementById('batchDemoVideoIframe');
   if (videoPlayer) {
     videoPlayer.pause();
     videoPlayer.src = '';
+    videoPlayer.style.display = 'none';
+  }
+  if (videoIframe) {
+    videoIframe.src = '';
+    videoIframe.style.display = 'none';
   }
 }
 

@@ -350,7 +350,7 @@ router.get('/batches', async (req, res) => {
 });
 
 router.post('/batches', batchUpload.fields([{ name: 'planner', maxCount: 1 }, { name: 'demo_video', maxCount: 1 }]), async (req, res) => {
-  const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, planner_desc, teaching_method, batch_instructions } = req.body;
+  const { course_id, batch_name, subject, start_date, end_date, start_time, end_time, days_of_week, capacity, planner_desc, teaching_method, batch_instructions, demo_video_url } = req.body;
   try {
     // Check SOP approval
     const sop = await db.query("SELECT status, agreement_signed FROM teacher_sop WHERE teacher_id = $1", [req.user.id]);
@@ -371,10 +371,18 @@ router.post('/batches', batchUpload.fields([{ name: 'planner', maxCount: 1 }, { 
     if (!end_time) return res.status(400).json({ error: 'End Time is required' });
     if (!capacity) return res.status(400).json({ error: 'Max Capacity is required' });
     if (!planner_desc || !planner_desc.trim()) return res.status(400).json({ error: 'Learning Schedule / Syllabus Text is required' });
-    if (!teaching_method || !teaching_method.trim()) return res.status(400).json({ error: 'Way of Teaching / Teaching Methodology is required' });
+    if (!teaching_method || !teaching_method.trim()) return res.status(400).json({ error: 'Way of Teaching / Way of teaching / Teaching Methodology is required' });
     if (!batch_instructions || !batch_instructions.trim()) return res.status(400).json({ error: 'Important Batch Instructions / Prerequisites are required' });
     if (!plannerFile) return res.status(400).json({ error: 'Chapter-wise Course Planner file upload is required' });
-    if (!demoVideoFile) return res.status(400).json({ error: 'Batch Demo Video is required' });
+
+    let final_demo_video_url = '';
+    if (demoVideoFile) {
+      final_demo_video_url = `/uploads/demo_videos/${demoVideoFile.filename}`;
+    } else if (demo_video_url && demo_video_url.trim()) {
+      final_demo_video_url = demo_video_url.trim();
+    } else {
+      return res.status(400).json({ error: 'Batch Demo Video file or Video Link URL is required' });
+    }
 
     // Validate capacity
     const maxCapacity = await configService.getSetting('max_batch_capacity', 30);
@@ -415,17 +423,16 @@ router.post('/batches', batchUpload.fields([{ name: 'planner', maxCount: 1 }, { 
     // File info
     const planner_url = `/uploads/planners/${plannerFile.filename}`;
     const planner_name = plannerFile.originalname;
-    const demo_video_url = `/uploads/demo_videos/${demoVideoFile.filename}`;
 
     await db.query(`
       INSERT INTO batches (id, course_id, teacher_id, batch_name, subject, start_date, end_date,
         start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, demo_video_url)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14,$15,$16,$17,$18)
     `, [id, course_id, req.user.id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, demo_video_url]);
+        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, final_demo_video_url]);
 
     await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id, has_planner: true, has_demo_video: true });
-    res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url, demo_video_url });
+    res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url, demo_video_url: final_demo_video_url });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

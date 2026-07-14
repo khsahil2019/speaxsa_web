@@ -68,7 +68,7 @@ router.post('/create-order', async (req, res) => {
 
     // Resolve teacher's level and retrieve their level-wise payout share percentage
     const teacherRes = await db.query("SELECT teacher_level FROM users WHERE id = $1", [b.teacher_id]);
-    const teacherLevel = teacherRes.rows[0]?.teacher_level || 'Without Slab';
+    const teacherLevel = teacherRes.rows[0]?.teacher_level || 'New Joiner';
     const levelKey = `payout_pct_${teacherLevel.replace(' ', '_')}`;
 
     // Map default fallback rates per level
@@ -82,7 +82,7 @@ router.post('/create-order', async (req, res) => {
       'Senior Professor': 80.0,
       'HOD': 85.0,
       'Dean': 90.0,
-      'Without Slab': 50.0,
+      'New Joiner': 50.0,
       'Bronze': 50.0,
       'Silver': 60.0,
       'Gold': 70.0,

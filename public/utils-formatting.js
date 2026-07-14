@@ -191,3 +191,39 @@ window.toFriendlyError = function(rawMessage) {
   // Fallback if no specific rule matched: clean up raw casing or return as is
   return rawMessage.charAt(0).toUpperCase() + rawMessage.slice(1);
 };
+
+// ── Global Fetch Interceptor to Prevent 'Unexpected token' JSON Parse Crashes ──
+if (typeof Response !== 'undefined' && Response.prototype && Response.prototype.json) {
+  const originalJson = Response.prototype.json;
+  Response.prototype.json = async function() {
+    const contentType = this.headers.get("content-type");
+    const isJson = contentType && contentType.indexOf("application/json") !== -1;
+
+    if (!this.ok) {
+      if (this.status === 401) {
+        if (typeof logout === 'function') logout();
+        if (typeof handleLogout === 'function') handleLogout();
+      }
+      if (this.status === 413) {
+        throw new Error("File is too large. Maximum permitted size is 20MB for documents and 200MB for video proofs.");
+      }
+      if (isJson) {
+        const err = await originalJson.call(this);
+        throw new Error(err.error || 'Request failed');
+      } else {
+        const text = await this.text();
+        throw new Error(`Server error (${this.status}): ${text.slice(0, 100) || 'Internal Server Error'}...`);
+      }
+    }
+
+    if (!isJson) {
+      const text = await this.text();
+      if (this.status === 413) {
+        throw new Error("File is too large. Maximum permitted size is 20MB for documents and 200MB for video proofs.");
+      }
+      throw new Error(`Server returned invalid response formatting (${this.status}): ${text.slice(0, 100)}...`);
+    }
+
+    return originalJson.call(this);
+  };
+}

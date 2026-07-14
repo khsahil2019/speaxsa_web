@@ -20,17 +20,37 @@ function showToast(msg, type = 'success') {
   Toast.show();
 }
 
+async function parseFetchResponse(res) {
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
+  const contentType = res.headers.get("content-type");
+  const isJson = contentType && contentType.indexOf("application/json") !== -1;
+  
+  if (!res.ok) {
+    if (res.status === 413) {
+      throw new Error("File is too large. Maximum permitted size is 20MB for documents and 200MB for video proofs.");
+    }
+    if (isJson) {
+      const err = await res.json();
+      throw new Error(err.error || 'Request failed');
+    } else {
+      const text = await res.text();
+      throw new Error(`Server error (${res.status}): ${text.slice(0, 100)}...`);
+    }
+  }
+  
+  if (isJson) {
+    return res.json();
+  } else {
+    return { message: await res.text() };
+  }
+}
+
 async function api(path, opts = {}) {
   const res = await fetch(`${API}${path}`, {
     ...opts,
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
   });
-  if (res.status === 401) { logout(); throw new Error('Session expired'); }
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Request failed');
-  }
-  return res.json();
+  return parseFetchResponse(res);
 }
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -307,7 +327,7 @@ function showApp() {
     document.getElementById('avatarSidebar').src = av;
     document.getElementById('avatarHeader').src = av;
     document.getElementById('nameSidebar').textContent = user.name;
-    document.getElementById('levelSidebar').textContent = user.teacher_level || 'Without Slab';
+    document.getElementById('levelSidebar').textContent = user.teacher_level || 'New Joiner';
   }
   checkSopStatus();
 }
@@ -426,7 +446,7 @@ async function renderHome() {
             <div class="col-md-6 col-lg-3">
               <div class="p-3 rounded-3 h-100" style="background: var(--bg-card); border: 1px solid var(--border);">
                 <strong class="text-primary d-block mb-1">1. Video SOP Setup</strong>
-                You start at <strong>Without Slab</strong>. Fill out details in <strong>Profile</strong>, upload 5 required SOP video links in <strong>SOP Setup</strong>, and submit for Admin approval.
+                You start at <strong>New Joiner</strong>. Fill out details in <strong>Profile</strong>, upload 5 required SOP video links in <strong>SOP Setup</strong>, and submit for Admin approval.
               </div>
             </div>
             <div class="col-md-6 col-lg-3">
@@ -480,7 +500,7 @@ async function renderHome() {
             <h6 class="mb-3 fw-bold">Educator Level</h6>
             <div class="text-center p-3 rounded" style="background:rgba(255,255,255,.02)">
               <div class="display-5 text-warning mb-2"><i class="fas fa-medal"></i></div>
-              <h5 class="text-dark fw-bold mb-1">${analytics.level === 'Without Slab' || !analytics.level ? 'Without Slab' : `${analytics.level} Mentor`}</h5>
+               <h5 class="text-dark fw-bold mb-1">${analytics.level === 'New Joiner' || !analytics.level ? 'New Joiner' : `${analytics.level} Mentor`}</h5>
               <p class="text-muted small mb-0">Engagement score based on attendance, student ratings & homework submission feedback.</p>
             </div>
           </div>
@@ -1266,6 +1286,14 @@ async function autoUploadDoc(input, docType) {
   const file = input.files[0];
   if (!file) return;
 
+  // Max 20MB client-side check
+  const maxDocSize = 20 * 1024 * 1024;
+  if (file.size > maxDocSize) {
+    showToast(`File "${file.name}" is too large. Maximum size allowed for KYC documents is 20MB.`, 'error');
+    input.value = '';
+    return;
+  }
+
   const spinner = document.getElementById(`spinner_kyc_${docType}`);
   if (spinner) spinner.classList.remove('d-none');
 
@@ -1280,7 +1308,7 @@ async function autoUploadDoc(input, docType) {
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData,
     });
-    const data = await res.json();
+    const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast(`${docType.toUpperCase()} uploaded successfully!`);
     renderSop();
@@ -1306,7 +1334,7 @@ async function saveDocLink(docType) {
       },
       body: JSON.stringify({ doc_type: docType, link }),
     });
-    const data = await res.json();
+    const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast(`${docType.toUpperCase()} link saved successfully!`);
     renderSop();
@@ -1318,6 +1346,14 @@ async function saveDocLink(docType) {
 async function autoUploadSopVideo(input, fieldId) {
   const file = input.files[0];
   if (!file) return;
+
+  // Max 200MB client-side check
+  const maxVideoSize = 200 * 1024 * 1024;
+  if (file.size > maxVideoSize) {
+    showToast(`File "${file.name}" is too large. Maximum size allowed for video evidence is 200MB.`, 'error');
+    input.value = '';
+    return;
+  }
 
   const spinner = document.getElementById(`spinner_sop_${fieldId}`);
   if (spinner) spinner.classList.remove('d-none');
@@ -1332,7 +1368,7 @@ async function autoUploadSopVideo(input, fieldId) {
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData,
     });
-    const data = await res.json();
+    const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast(`${fieldId.replace('_',' ')} uploaded successfully!`);
     renderSop();
@@ -1762,9 +1798,9 @@ async function renderBatches() {
                   <div class="form-text text-muted small mt-1">Write out the weekly schedule details directly.</div>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label">Upload Chapter-wise Course Planner (PDF/Doc) *</label>
-                  <input type="file" class="form-control spx-input" id="batchPlanner" accept=".pdf,.doc,.docx" required>
-                  <div class="form-text text-muted small mt-1">Or upload a syllabus document file if you have one.</div>
+                  <label class="spx-label">Upload Course Planner / Syllabus (Any format) *</label>
+                  <input type="file" class="form-control spx-input" id="batchPlanner" required>
+                  <div class="form-text text-muted small mt-1">Select any file (PDF, Doc, Zip, etc.) detailing your batch syllabus schedule.</div>
                 </div>
                 <div class="mb-3">
                   <label class="spx-label mb-0">Way of Teaching / Teaching Methodology *</label>
@@ -1777,9 +1813,18 @@ async function renderBatches() {
                   <textarea class="form-control spx-input" id="batchInstructions" rows="3" placeholder="e.g. Recommended for students with a basic understanding of quadratic equations. Must bring a notebook and laptop to classes." required></textarea>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label mb-0">Upload Demo Video *</label>
-                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Upload a short video introducing yourself and the batch (MP4/WebM, Max 200MB).</small>
-                  <input type="file" class="form-control spx-input" id="batchDemoVideo" accept="video/mp4,video/webm" required>
+                  <label class="spx-label mb-0">Batch Demo Video *</label>
+                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Provide an introductory video explaining the course layout. You can EITHER upload a video file OR paste a direct shareable link (like YouTube, Google Drive, or Loom).</small>
+                  <div class="row g-2 mt-1">
+                    <div class="col-sm-6">
+                      <label class="small text-muted mb-1" style="font-size:0.68rem; text-transform:uppercase;">Option A: Upload Video File</label>
+                      <input type="file" class="form-control spx-input" id="batchDemoVideo" accept="video/mp4,video/webm">
+                    </div>
+                    <div class="col-sm-6">
+                      <label class="small text-muted mb-1" style="font-size:0.68rem; text-transform:uppercase;">Option B: Paste Video Link URL</label>
+                      <input type="text" class="form-control spx-input" id="batchDemoVideoUrl" placeholder="e.g. https://www.youtube.com/watch?v=...">
+                    </div>
+                  </div>
                 </div>
                 <button type="submit" class="btn btn-spx w-100">Create Batch</button>
               </form>
@@ -2019,13 +2064,15 @@ async function createBatch(e) {
 
   const plannerFile = document.getElementById('batchPlanner').files[0];
   if (!plannerFile) {
-    showToast('Please upload a Chapter-wise Course Planner file.', 'error');
+    showToast('Please upload a Course Planner file.', 'error');
     return;
   }
 
   const demoVideoFile = document.getElementById('batchDemoVideo').files[0];
-  if (!demoVideoFile) {
-    showToast('Please upload a Batch Demo Video.', 'error');
+  const demoVideoUrl = document.getElementById('batchDemoVideoUrl') ? document.getElementById('batchDemoVideoUrl').value.trim() : '';
+
+  if (!demoVideoFile && !demoVideoUrl) {
+    showToast('Please upload a Batch Demo Video file OR enter a Video Link URL.', 'error');
     return;
   }
 
@@ -2043,7 +2090,12 @@ async function createBatch(e) {
   formData.append('teaching_method', document.getElementById('batchTeachingMethod').value);
   formData.append('batch_instructions', document.getElementById('batchInstructions').value);
   formData.append('planner', plannerFile);
-  formData.append('demo_video', demoVideoFile);
+  if (demoVideoFile) {
+    formData.append('demo_video', demoVideoFile);
+  }
+  if (demoVideoUrl) {
+    formData.append('demo_video_url', demoVideoUrl);
+  }
 
   try {
     showToast('Creating batch & uploading planner...', 'info');
@@ -2053,8 +2105,7 @@ async function createBatch(e) {
       body: formData
     });
 
-    if (res.status === 401) { logout(); throw new Error('Session expired'); }
-    const data = await res.json();
+    const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
 
     clearAutoSave('autosave_teacher_batch');
@@ -3349,7 +3400,7 @@ async function renderLevel() {
           <div class="spx-card text-center">
             <h6 class="text-muted mb-2">My Current Level</h6>
             <div class="display-4 text-warning mb-2"><i class="fas fa-medal"></i></div>
-            <h4 class="text-dark fw-bold mb-1">${data.level || 'Without Slab'}</h4>
+            <h4 class="text-dark fw-bold mb-1">${data.level || 'New Joiner'}</h4>
             <div class="text-muted small">Current Rating: <strong>${parseFloat(data.rating).toFixed(2)}</strong></div>
             
             <hr style="border-color:var(--border);margin:20px 0">
@@ -3415,7 +3466,7 @@ async function renderProfile() {
     } else if (profile.teacher_level === 'Bronze') {
       levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#B45309,#D97706);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-certificate me-1"></i>Bronze Class Mentor</span>`;
     } else {
-      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#64748B,#94A3B8);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-user me-1"></i>Without Slab</span>`;
+      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#64748B,#94A3B8);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-user me-1"></i>New Joiner</span>`;
     }
 
     document.getElementById('pageContent').innerHTML = `
@@ -3643,6 +3694,14 @@ async function uploadTeacherAvatar(input) {
   const file = input.files[0];
   if (!file) return;
 
+  // Max 5MB client-side check for avatars
+  const maxAvatarSize = 5 * 1024 * 1024;
+  if (file.size > maxAvatarSize) {
+    showToast(`File "${file.name}" is too large. Maximum size allowed for avatar is 5MB.`, 'error');
+    input.value = '';
+    return;
+  }
+
   const formData = new FormData();
   formData.append('avatar', file);
 
@@ -3653,7 +3712,7 @@ async function uploadTeacherAvatar(input) {
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData,
     });
-    const data = await res.json();
+    const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast('Profile photo updated successfully!');
     

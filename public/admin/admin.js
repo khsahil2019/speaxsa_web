@@ -107,10 +107,31 @@ function showApp() {
 }
 
 // ── API helpers ───────────────────────────────────────────────
+async function parseFetchResponse(res) {
+  if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
+  const contentType = res.headers.get("content-type");
+  const isJson = contentType && contentType.indexOf("application/json") !== -1;
+  
+  if (!res.ok) {
+    if (isJson) {
+      const err = await res.json();
+      throw new Error(err.error || 'Request failed');
+    } else {
+      const text = await res.text();
+      throw new Error(`Server error (${res.status}): ${text.slice(0, 100)}...`);
+    }
+  }
+  
+  if (isJson) {
+    return res.json();
+  } else {
+    return { message: await res.text() };
+  }
+}
+
 async function apiGet(path) {
   const res = await fetch(`${API}${path}`, { headers: { 'Authorization': `Bearer ${token}` } });
-  if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
-  return res.json();
+  return parseFetchResponse(res);
 }
 
 async function apiPost(path, body = {}, method = 'POST') {
@@ -119,8 +140,7 @@ async function apiPost(path, body = {}, method = 'POST') {
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
-  return res.json();
+  return parseFetchResponse(res);
 }
 
 async function apiDelete(path) { return apiPost(path, {}, 'DELETE'); }
@@ -256,9 +276,9 @@ function levelBadge(level) {
     'Silver': 'badge-silver',
     'Gold': 'badge-gold',
     'Elite Mentor': 'badge-elite',
-    'Without Slab': 'badge-pending'
+    'New Joiner': 'badge-pending'
   };
-  const val = level || 'Without Slab';
+  const val = level || 'New Joiner';
   const badgeClass = map[val] || 'badge-pending';
   return `<span class="${badgeClass}">${val}</span>`;
 }
