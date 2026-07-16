@@ -39,14 +39,19 @@ class CustomButton extends StatelessWidget {
             ? const SpinKitThreeBounce(color: Colors.white, size: 20)
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
                     Icon(icon, size: 20),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    text,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Flexible(
+                    child: Text(
+                      text,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                 ],
               ),

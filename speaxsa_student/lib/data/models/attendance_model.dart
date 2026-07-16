@@ -8,6 +8,8 @@ class AttendanceRecord {
   final int durationMins;
   final String? classTitle;
   final String? batchName;
+  final String? joinTime;
+  final String? exitTime;
 
   AttendanceRecord({
     required this.id,
@@ -19,6 +21,8 @@ class AttendanceRecord {
     this.durationMins = 0,
     this.classTitle,
     this.batchName,
+    this.joinTime,
+    this.exitTime,
   });
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,8 @@ class AttendanceRecord {
       durationMins: json['duration_mins'] is int ? json['duration_mins'] : int.tryParse(json['duration_mins']?.toString() ?? '0') ?? 0,
       classTitle: json['class_title']?.toString(),
       batchName: json['batch_name']?.toString(),
+      joinTime: json['join_time']?.toString(),
+      exitTime: json['exit_time']?.toString(),
     );
   }
 }

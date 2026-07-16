@@ -1,6 +1,7 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/fcm_service.dart';
 import '../../../data/models/batch_model.dart';
 import '../../../data/models/course_model.dart';
 import '../../../data/models/user_model.dart';
@@ -87,7 +88,7 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
 
       try {
         final res = await _studentRepository.getParentRequests();
-        parentRequests.value = res;
+        parentRequests.value = res.where((element) => element['status'] == 'pending').toList();
       } catch (e) {
         debugPrint('[Dashboard] Error loading parentRequests: $e');
       }
@@ -186,6 +187,14 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
     try {
       await _studentRepository.approveParentRequest(linkId);
       Get.snackbar('Success', 'Parent connection approved');
+      try {
+        Get.find<FcmService>().showLocalNotification(
+          "Parent Linked Successfully 🔗",
+          "Your parent's account is now connected. They can track your learning streak!"
+        );
+      } catch (e) {
+        debugPrint('[Notification] Parent link notification failed: $e');
+      }
       loadDashboardData();
     } catch (e) {
       Get.snackbar('Error', e.toString());
@@ -196,9 +205,49 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
     try {
       await _studentRepository.rejectParentRequest(linkId);
       Get.snackbar('Info', 'Parent connection request rejected');
+      try {
+        Get.find<FcmService>().showLocalNotification(
+          "Connection Request Declined 🛑",
+          "The parent connection request has been rejected."
+        );
+      } catch (e) {
+        debugPrint('[Notification] Parent reject notification failed: $e');
+      }
       loadDashboardData();
     } catch (e) {
       Get.snackbar('Error', e.toString());
+    }
+  }
+
+  Future<void> submitAssignment(String assignmentId, String filePath) async {
+    try {
+      isLoading.value = true;
+      await _studentRepository.submitAssignment(assignmentId, filePath: filePath);
+      Get.snackbar(
+        'Success',
+        'Assignment submitted successfully!',
+        backgroundColor: const Color(0xFF3CBDB0),
+        colorText: Colors.white,
+      );
+      try {
+        Get.find<FcmService>().showLocalNotification(
+          "Assignment Submitted 📝",
+          "Your solution was uploaded successfully! Keep up the good work."
+        );
+      } catch (e) {
+        debugPrint('[Notification] Assignment notification failed: $e');
+      }
+      await loadDashboardData();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to submit assignment: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      rethrow;
+    } finally {
+      isLoading.value = false;
     }
   }
 }

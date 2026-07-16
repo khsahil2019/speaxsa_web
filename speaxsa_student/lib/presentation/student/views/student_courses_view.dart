@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/auth_service.dart';
@@ -477,6 +478,10 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                                     Icons.access_time_rounded,
                                     "Timings: ${batch.startTime ?? ''} - ${batch.endTime ?? ''}",
                                   ),
+                                  if (batch.plannerUrl != null && batch.plannerUrl!.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    _buildPlannerButton(batch),
+                                  ],
                                   const SizedBox(height: 12),
 
                                   // Capacity Progress bar
@@ -521,12 +526,14 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                                     height: 40,
                                     child: ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: isAlreadyEnrolled
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        disabledBackgroundColor: isAlreadyEnrolled
                                             ? (isDark ? Colors.white12 : Colors.grey.shade200)
-                                            : (isFull ? (isDark ? Colors.white24 : Colors.grey.shade300) : AppColors.primary),
-                                        foregroundColor: isAlreadyEnrolled 
-                                            ? (isDark ? Colors.grey.shade400 : Colors.grey.shade600) 
-                                            : Colors.white,
+                                            : (isDark ? Colors.white24 : Colors.grey.shade300),
+                                        disabledForegroundColor: isAlreadyEnrolled
+                                            ? (isDark ? Colors.blue.shade300 : const Color(0xFF1D4ED8))
+                                            : (isDark ? Colors.white30 : Colors.grey.shade500),
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(10),
@@ -557,14 +564,16 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                                                 },
                                               );
                                             },
-                                      child: Text(
-                                        isAlreadyEnrolled
-                                            ? "Already Enrolled"
-                                            : (isFull ? "No Seats Available" : "Pay & Enroll Now"),
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: isAlreadyEnrolled ? Colors.grey.shade500 : Colors.white,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          isAlreadyEnrolled
+                                              ? "Already Enrolled"
+                                              : (isFull ? "No Seats Available" : "Pay & Enroll Now"),
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -603,5 +612,44 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
         ),
       ],
     );
+  }
+
+  Widget _buildPlannerButton(BatchModel batch) {
+    return InkWell(
+      onTap: () => _launchUrl(batch.plannerUrl!),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.amber.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.picture_as_pdf_outlined, size: 14, color: Colors.amber),
+            SizedBox(width: 6),
+            Text(
+              "Syllabus Planner",
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+                color: Colors.amber,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    try {
+      final uri = Uri.parse(url.startsWith('http') ? url : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$url');
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      Get.snackbar('Error', 'Could not open link: $e');
+    }
   }
 }

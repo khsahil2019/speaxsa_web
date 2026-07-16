@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter/services.dart';
+import 'package:app_links/app_links.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/fcm_service.dart';
 import '../../../data/repositories/auth_repository.dart';
 
 class AuthController extends GetxController {
@@ -29,6 +33,11 @@ class AuthController extends GetxController {
   final regPhoneOtpController = TextEditingController();
   final regEmailOtpController = TextEditingController();
 
+  // Multi-step Registration states
+  final RxInt currentRegStep = 1.obs;
+  final RxString selectedRegGrade = ''.obs;
+  final RxString selectedRegBoard = ''.obs;
+
   TextEditingController get nameController => regNameController;
   TextEditingController get phoneController => regPhoneController;
 
@@ -37,10 +46,95 @@ class AuthController extends GetxController {
   final resetOtpController = TextEditingController();
   final resetNewPasswordController = TextEditingController();
 
+  final _appLinks = AppLinks();
+
   @override
   void onInit() {
     super.onInit();
     _loadSavedCredentials();
+    _initDeepLinks();
+    checkForClipboardReferral();
+  }
+
+  void _initDeepLinks() async {
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        handleIncomingLink(initialUri);
+      }
+      _appLinks.uriLinkStream.listen((uri) {
+        handleIncomingLink(uri);
+      }, onError: (err) {
+        debugPrint('[DeepLink] Stream error: $err');
+      });
+    } catch (e) {
+      debugPrint('[DeepLink] Initialization failed: $e');
+    }
+  }
+
+  void handleIncomingLink(Uri uri) {
+    debugPrint('[DeepLink] Handling incoming link: $uri');
+    String? refCode = uri.queryParameters['ref'] ?? uri.queryParameters['referred_by_code'] ?? uri.queryParameters['referred_by'];
+    
+    if (refCode == null || refCode.isEmpty) {
+      final segments = uri.pathSegments;
+      final refIndex = segments.indexOf('ref');
+      if (refIndex != -1 && refIndex + 1 < segments.length) {
+        refCode = segments[refIndex + 1];
+      }
+    }
+
+    if (refCode != null && refCode.trim().isNotEmpty) {
+      regReferralCodeController.text = refCode.trim();
+      debugPrint('[DeepLink] Auto-filled referral code: $refCode');
+      Get.snackbar(
+        'Referral Applied 🎁',
+        'Referral code "$refCode" has been auto-filled!',
+        backgroundColor: AppColors.primary,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> checkForClipboardReferral() async {
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      if (clipboardData != null && clipboardData.text != null) {
+        final text = clipboardData.text!.trim();
+        if (text.startsWith('SPX-') || text.contains('speaxa.in/ref') || text.contains('ref=SPX-')) {
+          String? refCode;
+          if (text.startsWith('SPX-')) {
+            refCode = text;
+          } else {
+            final uri = Uri.tryParse(text);
+            if (uri != null) {
+              refCode = uri.queryParameters['ref'] ?? uri.queryParameters['referred_by_code'];
+              if (refCode == null) {
+                final segments = uri.pathSegments;
+                final refIndex = segments.indexOf('ref');
+                if (refIndex != -1 && refIndex + 1 < segments.length) {
+                  refCode = segments[refIndex + 1];
+                }
+              }
+            }
+          }
+          if (refCode != null && refCode.trim().isNotEmpty) {
+            regReferralCodeController.text = refCode.trim();
+            debugPrint('[Clipboard] Auto-filled referral code from clipboard: $refCode');
+            Get.snackbar(
+              'Referral Detected 🎁',
+              'Auto-filled referral code "$refCode" from your clipboard.',
+              backgroundColor: AppColors.primary,
+              colorText: Colors.white,
+              snackPosition: SnackPosition.BOTTOM,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[Clipboard] Error checking clipboard: $e');
+    }
   }
 
   void _loadSavedCredentials() async {
@@ -96,8 +190,21 @@ class AuthController extends GetxController {
     final phone = regPhoneController.text.trim();
     final password = regPasswordController.text;
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
       Get.snackbar('Error', 'Please fill in all required fields', backgroundColor: Colors.red, colorText: Colors.white);
+      return;
+    }
+
+    if (currentRegStep.value == 1) {
+      currentRegStep.value = 2;
+      return;
+    }
+
+    final grade = selectedRegGrade.value;
+    final board = selectedRegBoard.value;
+
+    if (grade.isEmpty || board.isEmpty) {
+      Get.snackbar('Error', 'Please select both your Class and Board', backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
 
@@ -108,7 +215,10 @@ class AuthController extends GetxController {
         'email': email,
         'password': password,
         'role': 'student',
-        if (phone.isNotEmpty) 'phone': phone,
+        'phone': phone,
+        'grade': grade,
+        'board': board,
+        if (regReferralCodeController.text.trim().isNotEmpty) 'referred_by_code': regReferralCodeController.text.trim(),
         if (regEmailOtpController.text.isNotEmpty) 'emailOtp': regEmailOtpController.text.trim(),
       });
 
@@ -130,6 +240,15 @@ class AuthController extends GetxController {
       }
 
       Get.snackbar('Success', 'Account created successfully!', backgroundColor: Colors.green, colorText: Colors.white);
+
+      try {
+        Get.find<FcmService>().showLocalNotification(
+          "Welcome to Speaxa! 🎉",
+          "Hi $name, your student registration is successfully completed. Start learning today!"
+        );
+      } catch (e) {
+        debugPrint('[Notification] Registration notification failed: $e');
+      }
 
       final route = AuthService.to.getInitialRoute();
       Get.offAllNamed(route);

@@ -6,7 +6,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/auth_service.dart';
-import '../../../core/services/storage_service.dart';
 import '../../../data/models/user_model.dart';
 
 class ProfileView extends StatefulWidget {
@@ -18,47 +17,7 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  // Form controllers
-  late TextEditingController _nameCtrl;
-  late TextEditingController _phoneCtrl;
-  String? _selectedGrade;
-  String? _selectedBoard;
-
-  // Password controllers
-  final _currentPassCtrl = TextEditingController();
-  final _newPassCtrl = TextEditingController();
-  bool _showCurrentPass = false;
-  bool _showNewPass = false;
-
-  bool _isSaving = false;
-  bool _isChangingPass = false;
   bool _isUploadingAvatar = false;
-
-  final List<String> _grades = [
-    'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5',
-    'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10',
-    'Class 11', 'Class 12',
-  ];
-  final List<String> _boards = ['CBSE', 'ICSE', 'State Board', 'IB', 'IGCSE', 'Other'];
-
-  @override
-  void initState() {
-    super.initState();
-    final user = AuthService.to.currentUser.value;
-    _nameCtrl = TextEditingController(text: user?.name ?? '');
-    _phoneCtrl = TextEditingController(text: user?.phone ?? '');
-    _selectedGrade = user?.grade;
-    _selectedBoard = user?.board;
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _phoneCtrl.dispose();
-    _currentPassCtrl.dispose();
-    _newPassCtrl.dispose();
-    super.dispose();
-  }
 
   Future<void> _pickAndUploadAvatar() async {
     final picker = ImagePicker();
@@ -85,55 +44,6 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
-  Future<void> _saveProfile() async {
-    setState(() => _isSaving = true);
-    try {
-      final apiClient = Get.find<ApiClient>();
-      final data = <String, dynamic>{};
-      if (_nameCtrl.text.trim().isNotEmpty) data['name'] = _nameCtrl.text.trim();
-      if (_phoneCtrl.text.trim().isNotEmpty) data['phone'] = _phoneCtrl.text.trim();
-      if (_selectedGrade != null) data['grade'] = _selectedGrade;
-      if (_selectedBoard != null) data['board'] = _selectedBoard;
-
-      final response = await apiClient.put(ApiEndpoints.profile, data: data);
-      if (response != null && response['user'] != null) {
-        final updatedUser = UserModel.fromJson(response['user']);
-        AuthService.to.updateUserProfile(updatedUser);
-        Get.snackbar('Saved', 'Profile updated successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
-      }
-    } catch (e) {
-      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
-    } finally {
-      setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _changePassword() async {
-    if (_currentPassCtrl.text.isEmpty || _newPassCtrl.text.isEmpty) {
-      Get.snackbar('Error', 'Both password fields are required', backgroundColor: Colors.orange, colorText: Colors.white);
-      return;
-    }
-    if (_newPassCtrl.text.length < 6) {
-      Get.snackbar('Error', 'New password must be at least 6 characters', backgroundColor: Colors.orange, colorText: Colors.white);
-      return;
-    }
-    setState(() => _isChangingPass = true);
-    try {
-      final apiClient = Get.find<ApiClient>();
-      await apiClient.post(ApiEndpoints.changePassword, data: {
-        'currentPassword': _currentPassCtrl.text,
-        'newPassword': _newPassCtrl.text,
-      });
-      _currentPassCtrl.clear();
-      _newPassCtrl.clear();
-      Get.snackbar('Success', 'Password changed successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
-    } catch (e) {
-      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
-    } finally {
-      setState(() => _isChangingPass = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final content = Obx(() {
@@ -146,16 +56,8 @@ class _ProfileViewState extends State<ProfileView> {
             _buildProfileHeaderCard(user),
             const SizedBox(height: 20),
 
-            // ── Edit Profile Form ──────────────────────────────
-            _buildEditProfileCard(),
-            const SizedBox(height: 20),
-
-            // ── Change Password Card ───────────────────────────
-            _buildChangePasswordCard(),
-            const SizedBox(height: 20),
-
-            // ── App Settings Card ──────────────────────────────
-            _buildSettingsCard(),
+            // ── Profile Settings / Navigation Card ──────────────
+            _buildProfileSettingsCard(),
             const SizedBox(height: 20),
 
             // ── Logout Button ──────────────────────────────────
@@ -380,252 +282,381 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildEditProfileCard() {
+  Widget _buildProfileSettingsCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.edit_rounded, color: AppColors.primary, size: 20),
-              SizedBox(width: 8),
-              Text("Edit Student Profile", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-            ],
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+            leading: const Icon(Icons.person_outline, color: Colors.blueAccent),
+            title: const Text("Edit Student Profile", style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text("Update name, phone, class, and board", style: TextStyle(fontSize: 12, color: Colors.grey)),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+            onTap: () => Get.to(() => const EditProfileView()),
           ),
-          const SizedBox(height: 20),
-
-          // Name & Phone
-          Row(
-            children: [
-              Expanded(
-                child: _buildField("Full Name", _nameCtrl, Icons.person_outline),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildField("Phone", _phoneCtrl, Icons.phone_outlined, keyboard: TextInputType.phone),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Grade & Board dropdowns
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Grade / Class", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      value: _grades.contains(_selectedGrade) ? _selectedGrade : null,
-                      hint: const Text("Select Grade", style: TextStyle(fontSize: 13)),
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      ),
-                      items: _grades.map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 13)))).toList(),
-                      onChanged: (val) => setState(() => _selectedGrade = val),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Syllabus Board", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      value: _boards.contains(_selectedBoard) ? _selectedBoard : null,
-                      hint: const Text("Select Board", style: TextStyle(fontSize: 13)),
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      ),
-                      items: _boards.map((b) => DropdownMenuItem(value: b, child: Text(b, style: const TextStyle(fontSize: 13)))).toList(),
-                      onChanged: (val) => setState(() => _selectedBoard = val),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Save button
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: _isSaving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.save_rounded, size: 18),
-              label: Text(_isSaving ? "Saving..." : "Save Changes", style: const TextStyle(fontWeight: FontWeight.bold)),
-              onPressed: _isSaving ? null : _saveProfile,
-            ),
+          const Divider(height: 1, indent: 20, endIndent: 20),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20))),
+            leading: const Icon(Icons.lock_outline, color: Colors.orangeAccent),
+            title: const Text("Change Security Password", style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text("Update your login password", style: TextStyle(fontSize: 12, color: Colors.grey)),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+            onTap: () => Get.to(() => const ChangePasswordView()),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildField(String label, TextEditingController ctrl, IconData icon, {TextInputType keyboard = TextInputType.text}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: ctrl,
-          keyboardType: keyboard,
-          style: const TextStyle(fontSize: 14),
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 18),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-          ),
+class EditProfileView extends StatefulWidget {
+  const EditProfileView({super.key});
+
+  @override
+  State<EditProfileView> createState() => _EditProfileViewState();
+}
+
+class _EditProfileViewState extends State<EditProfileView> {
+  late TextEditingController _nameCtrl;
+  late TextEditingController _phoneCtrl;
+  String? _selectedGrade;
+  String? _selectedBoard;
+  bool _isSaving = false;
+
+  final List<String> _grades = [
+    'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10',
+    'Class 11', 'Class 12',
+  ];
+  final List<String> _boards = ['CBSE', 'ICSE', 'State Board'];
+
+  @override
+  void initState() {
+    super.initState();
+    final user = AuthService.to.currentUser.value;
+    _nameCtrl = TextEditingController(text: user?.name ?? '');
+    _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _selectedGrade = user?.grade;
+    _selectedBoard = user?.board;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Name and Phone fields are required', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    setState(() => _isSaving = true);
+    try {
+      final apiClient = Get.find<ApiClient>();
+      final data = <String, dynamic>{};
+      data['name'] = _nameCtrl.text.trim();
+      data['phone'] = _phoneCtrl.text.trim();
+      if (_selectedGrade != null) data['grade'] = _selectedGrade;
+      if (_selectedBoard != null) data['board'] = _selectedBoard;
+
+      final response = await apiClient.put(ApiEndpoints.profile, data: data);
+      if (response != null && response['user'] != null) {
+        final updatedUser = UserModel.fromJson(response['user']);
+        AuthService.to.updateUserProfile(updatedUser);
+        Get.snackbar('Saved', 'Profile updated successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
+        Get.back();
+      }
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      appBar: AppBar(
+        title: const Text("Edit Profile", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+        foregroundColor: textColor,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Profile Details",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Update your personal academic details.",
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Full Name",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _nameCtrl,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.person_outline, size: 18),
+                hintText: "Enter your full name",
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              "Phone Number",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.phone_outlined, size: 18),
+                hintText: "Enter your phone number",
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              "Grade / Class",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _grades.contains(_selectedGrade) ? _selectedGrade : null,
+                  isExpanded: true,
+                  items: _grades.map((String val) {
+                    return DropdownMenuItem<String>(
+                      value: val,
+                      child: Text(val),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedGrade = val;
+                    });
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              "Syllabus Board",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _boards.contains(_selectedBoard) ? _selectedBoard : null,
+                  isExpanded: true,
+                  items: _boards.map((String val) {
+                    return DropdownMenuItem<String>(
+                      value: val,
+                      child: Text(val),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedBoard = val;
+                    });
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: _isSaving
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save_outlined, size: 20),
+                label: Text(
+                  _isSaving ? "Saving..." : "Save Changes",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onPressed: _isSaving ? null : _saveProfile,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
+}
 
-  Widget _buildChangePasswordCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
+class ChangePasswordView extends StatefulWidget {
+  const ChangePasswordView({super.key});
+
+  @override
+  State<ChangePasswordView> createState() => _ChangePasswordViewState();
+}
+
+class _ChangePasswordViewState extends State<ChangePasswordView> {
+  final _currentPassCtrl = TextEditingController();
+  final _newPassCtrl = TextEditingController();
+  bool _isChangingPass = false;
+
+  Future<void> _changePassword() async {
+    if (_currentPassCtrl.text.isEmpty || _newPassCtrl.text.isEmpty) {
+      Get.snackbar('Error', 'Both password fields are required', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    if (_newPassCtrl.text.length < 6) {
+      Get.snackbar('Error', 'New password must be at least 6 characters', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+
+    setState(() => _isChangingPass = true);
+    try {
+      final apiClient = Get.find<ApiClient>();
+      await apiClient.post(ApiEndpoints.changePassword, data: {
+        'currentPassword': _currentPassCtrl.text,
+        'newPassword': _newPassCtrl.text,
+      });
+
+      _currentPassCtrl.clear();
+      _newPassCtrl.clear();
+
+      Get.snackbar('Success', 'Password changed successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
+      Get.back();
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update password: $e', backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      setState(() => _isChangingPass = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _currentPassCtrl.dispose();
+    _newPassCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      appBar: AppBar(
+        title: const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+        foregroundColor: textColor,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.lock_outline, color: Colors.blueAccent, size: 20),
-              SizedBox(width: 8),
-              Text("Change Security Password", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Current Password", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _currentPassCtrl,
-                      obscureText: !_showCurrentPass,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline, size: 18),
-                        suffixIcon: IconButton(
-                          icon: Icon(_showCurrentPass ? Icons.visibility_off : Icons.visibility, size: 18),
-                          onPressed: () => setState(() => _showCurrentPass = !_showCurrentPass),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("New Password", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _newPassCtrl,
-                      obscureText: !_showNewPass,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_rounded, size: 18),
-                        suffixIcon: IconButton(
-                          icon: Icon(_showNewPass ? Icons.visibility_off : Icons.visibility, size: 18),
-                          onPressed: () => setState(() => _showNewPass = !_showNewPass),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: _isChangingPass
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
-                  : const Icon(Icons.key_rounded, size: 18),
-              label: Text(_isChangingPass ? "Updating..." : "Update Password", style: const TextStyle(fontWeight: FontWeight.bold)),
-              onPressed: _isChangingPass ? null : _changePassword,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Update Security Password",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsCard() {
-    final isDark = StorageService.to.isDarkMode();
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        secondary: const Icon(Icons.dark_mode_outlined, color: Colors.deepPurple),
-        title: const Text("Dark Theme Mode", style: TextStyle(fontWeight: FontWeight.w600)),
-        value: isDark,
-        activeColor: AppColors.primary,
-        onChanged: (val) {
-          StorageService.to.setDarkMode(val);
-          Get.changeThemeMode(val ? ThemeMode.dark : ThemeMode.light);
-        },
+            const SizedBox(height: 8),
+            Text(
+              "Choose a strong password with at least 6 characters.",
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Current Password",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _currentPassCtrl,
+              obscureText: true,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.lock_open, size: 18),
+                hintText: "Enter current password",
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              "New Password",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _newPassCtrl,
+              obscureText: true,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.lock_outline, size: 18),
+                hintText: "Enter new password",
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: _isChangingPass
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save_outlined, size: 20),
+                label: Text(
+                  _isChangingPass ? "Updating..." : "Update Password",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onPressed: _isChangingPass ? null : _changePassword,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

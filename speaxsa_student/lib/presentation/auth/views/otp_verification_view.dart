@@ -38,7 +38,7 @@ class OtpVerificationView extends GetView<AuthController> {
                 ),
               CustomTextField(
                 label: 'Email OTP Code',
-                hint: '123456',
+                hint: 'enter 6-digit OTP',
                 controller: controller.regEmailOtpController,
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.number,
@@ -50,9 +50,9 @@ class OtpVerificationView extends GetView<AuthController> {
                 isLoading: controller.isLoading.value,
               )),
             ] else ...[
-              CustomTextField(
+               CustomTextField(
                 label: 'OTP Code',
-                hint: '123456',
+                hint: 'enter 6-digit OTP',
                 controller: controller.resetOtpController,
                 prefixIcon: Icons.pin_outlined,
                 keyboardType: TextInputType.number,

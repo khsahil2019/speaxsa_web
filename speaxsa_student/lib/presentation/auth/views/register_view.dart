@@ -15,7 +15,13 @@ class RegisterView extends GetView<AuthController> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Get.back(),
+          onPressed: () {
+            if (controller.currentRegStep.value == 2) {
+              controller.currentRegStep.value = 1;
+            } else {
+              Get.back();
+            }
+          },
         ),
       ),
       body: SafeArea(
@@ -63,78 +69,183 @@ class RegisterView extends GetView<AuthController> {
               ),
               const SizedBox(height: 24),
 
-              CustomTextField(
-                label: 'Full Name',
-                hint: 'enter full name',
-                controller: controller.nameController,
-                prefixIcon: Icons.person_outline,
-              ),
-
-              CustomTextField(
-                label: 'Email Address',
-                hint: 'enter email address',
-                controller: controller.emailController,
-                prefixIcon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-              ),
-
-              CustomTextField(
-                label: 'Phone Number',
-                hint: 'enter mobile number',
-                controller: controller.phoneController,
-                prefixIcon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-              ),
-
-              Obx(() => CustomTextField(
-                label: 'Password',
-                hint: '••••••••',
-                controller: controller.passwordController,
-                obscureText: !controller.isPasswordVisible.value,
-                prefixIcon: Icons.lock_outline,
-                suffixIcon: IconButton(
-                  icon: Icon(controller.isPasswordVisible.value ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                  onPressed: () => controller.isPasswordVisible.toggle(),
-                ),
-              )),
-
-              // Terms & Conditions Checkbox (Exact matching screenshot 2)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Checkbox(
-                    value: true,
-                    onChanged: (val) {},
-                    activeColor: AppColors.primary,
-                  ),
-                  const Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        text: "I agree to the ",
-                        style: TextStyle(fontSize: 12.5, color: Colors.grey),
-                        children: [
-                          TextSpan(
-                            text: "Terms & Conditions",
-                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+              Obx(() {
+                if (controller.currentRegStep.value == 1) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomTextField(
+                        label: 'Full Name',
+                        hint: 'enter full name',
+                        controller: controller.nameController,
+                        prefixIcon: Icons.person_outline,
+                      ),
+                      CustomTextField(
+                        label: 'Email Address',
+                        hint: 'enter email address',
+                        controller: controller.regEmailController,
+                        prefixIcon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      CustomTextField(
+                        label: 'Phone Number',
+                        hint: 'enter mobile number',
+                        controller: controller.phoneController,
+                        prefixIcon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                      ),
+                      Obx(() => CustomTextField(
+                        label: 'Password',
+                        hint: '••••••••',
+                        controller: controller.regPasswordController,
+                        obscureText: !controller.isPasswordVisible.value,
+                        prefixIcon: Icons.lock_outline,
+                        suffixIcon: IconButton(
+                          icon: Icon(controller.isPasswordVisible.value ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                          onPressed: () => controller.isPasswordVisible.toggle(),
+                        ),
+                      )),
+                      const SizedBox(height: 24),
+                      CustomButton(
+                        text: 'Next Step',
+                        onPressed: () {
+                          if (controller.nameController.text.trim().isEmpty ||
+                              controller.regEmailController.text.trim().isEmpty ||
+                              controller.phoneController.text.trim().isEmpty ||
+                              controller.regPasswordController.text.isEmpty) {
+                            Get.snackbar('Error', 'Please fill in all fields', backgroundColor: Colors.red, colorText: Colors.white);
+                            return;
+                          }
+                          controller.currentRegStep.value = 2;
+                        },
+                      ),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Select Class / Grade *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.lightTextPrimary)),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: controller.selectedRegGrade.value.isEmpty ? null : controller.selectedRegGrade.value,
+                            hint: const Text("Select Class"),
+                            isExpanded: true,
+                            items: ['Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map((String val) {
+                              return DropdownMenuItem<String>(
+                                value: val,
+                                child: Text(val),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) controller.selectedRegGrade.value = val;
+                            },
                           ),
-                          TextSpan(text: " and "),
-                          TextSpan(
-                            text: "Privacy Policy",
-                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      const Text("Select Syllabus Board *", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.lightTextPrimary)),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: controller.selectedRegBoard.value.isEmpty ? null : controller.selectedRegBoard.value,
+                            hint: const Text("Select Board"),
+                            isExpanded: true,
+                            items: ['CBSE', 'ICSE', 'State Board'].map((String val) {
+                              return DropdownMenuItem<String>(
+                                value: val,
+                                child: Text(val),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) controller.selectedRegBoard.value = val;
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      CustomTextField(
+                        label: 'Referral Code (Optional)',
+                        hint: 'enter referral code',
+                        controller: controller.regReferralCodeController,
+                        prefixIcon: Icons.card_giftcard,
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: true,
+                            onChanged: (val) {},
+                            activeColor: AppColors.primary,
+                          ),
+                          const Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                text: "I agree to the ",
+                                style: TextStyle(fontSize: 12.5, color: Colors.grey),
+                                children: [
+                                  TextSpan(
+                                    text: "Terms & Conditions",
+                                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                  ),
+                                  TextSpan(text: " and "),
+                                  TextSpan(
+                                    text: "Privacy Policy",
+                                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-              Obx(() => CustomButton(
-                text: 'Create Account',
-                onPressed: controller.register,
-                isLoading: controller.isLoading.value,
-              )),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              child: const Text("Back"),
+                              onPressed: () => controller.currentRegStep.value = 1,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: CustomButton(
+                              text: 'Create Account',
+                              isLoading: controller.isLoading.value,
+                              onPressed: controller.register,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+              }),
               const SizedBox(height: 24),
 
               Row(

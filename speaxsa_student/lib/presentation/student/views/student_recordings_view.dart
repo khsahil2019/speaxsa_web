@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/api_endpoints.dart';
 import '../controllers/student_dashboard_controller.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 
@@ -11,12 +12,13 @@ class StudentRecordingsView extends GetView<StudentDashboardController> {
 
   Future<void> _watchRecording(String url) async {
     try {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        Get.snackbar('Error', 'Could not open recording link');
+      String fullUrl = url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api', '');
+        fullUrl = '$baseUrl${url.startsWith('/') ? '' : '/'}$url';
       }
+      final uri = Uri.parse(fullUrl);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       Get.snackbar('Error', 'Failed to watch recording: $e');
     }

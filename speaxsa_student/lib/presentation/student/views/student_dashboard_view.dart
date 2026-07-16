@@ -219,8 +219,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                     context,
                     icon: Icons.calendar_today_rounded,
                     label: 'Attendance',
-                    isSelected: controller.selectedIndex.value == 2,
-                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 2; },
+                    onTap: () { Navigator.pop(context); Get.to(() => const StudentAttendanceView()); },
                   ),
                   _buildDrawerItem(
                     context,
@@ -233,8 +232,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                     context,
                     icon: Icons.analytics_rounded,
                     label: 'Reports',
-                    isSelected: controller.selectedIndex.value == 4,
-                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 4; },
+                    onTap: () { Navigator.pop(context); Get.to(() => const StudentReportsView()); },
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -383,6 +381,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
       final user = AuthService.to.currentUser.value;
       final attData = controller.attendanceData.value;
       final batches = controller.myBatches;
+      final isDark = Theme.of(context).brightness == Brightness.dark;
 
       return RefreshIndicator(
         onRefresh: controller.loadDashboardData,
@@ -416,7 +415,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                           children: [
                             Expanded(
                               child: Text(
-                                "Welcome back, ${user?.name.split(' ').first ?? 'Student'}! 👋",
+                                "Welcome back, ${user?.name?.trim() ?? 'Student'}! 👋",
                                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -466,44 +465,127 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                 ],
               ),
               const SizedBox(height: 24),
+
+              Obx(() {
+                if (controller.parentRequests.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                
+                final req = controller.parentRequests.first;
+                final parentName = req['parent_name'] ?? 'A parent';
+                final parentEmail = req['parent_email'] ?? '';
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                
+                return Card(
+                  color: isDark ? const Color(0xFF2C2410) : Colors.amber.shade50,
+                  elevation: 0,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: isDark ? Colors.amber.shade800 : Colors.amber.shade300, width: 1.5),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.family_restroom, color: Colors.amber, size: 24),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                "Parent Link Request",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold, 
+                                  fontSize: 15, 
+                                  color: isDark ? AppColors.darkTextPrimary : Colors.black87
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "$parentName ($parentEmail) wants to link their account to track your study progress.",
+                          style: TextStyle(
+                            fontSize: 13, 
+                            color: isDark ? AppColors.darkTextSecondary : Colors.black87, 
+                            height: 1.4
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => controller.rejectParentRequest(req['id'].toString()),
+                              child: const Text("Reject", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade600,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
+                              onPressed: () => controller.approveParentRequest(req['id'].toString()),
+                              child: const Text("Approve Link", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                );
+              }),
+
               _buildQuickMenu(context),
               const SizedBox(height: 24),
 
               // Attendance Gauge Stats Card
               Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.success.withOpacity(0.15),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                ),
+                child: InkWell(
+                  onTap: () => Get.to(() => const StudentAttendanceView()),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.success.withOpacity(0.15),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "${attData?.attendancePct ?? 0}%",
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.success),
+                          ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          "${attData?.attendancePct ?? 0}%",
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.success),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Attendance Summary", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text("Classes Attended: ${attData?.present ?? 0} / ${attData?.total ?? 0}", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Attendance Summary", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 4),
-                            Text("Classes Attended: ${attData?.present ?? 0} / ${attData?.total ?? 0}", style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right),
-                        onPressed: () => controller.selectedIndex.value = 2,
-                      )
-                    ],
+                        const Icon(Icons.chevron_right, color: Colors.grey),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -593,7 +675,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
         'title': 'My\nAttendance',
         'icon': Icons.done_all,
         'color': AppColors.primary,
-        'action': () => controller.selectedIndex.value = 2,
+        'action': () => Get.to(() => const StudentAttendanceView()),
       },
       {
         'title': 'My\nAssignments',
@@ -605,7 +687,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
         'title': 'Academic\nReports',
         'icon': Icons.analytics,
         'color': AppColors.goldAccent,
-        'action': () => controller.selectedIndex.value = 4,
+        'action': () => Get.to(() => const StudentReportsView()),
       },
       {
         'title': 'Parent\nLink',
@@ -993,13 +1075,14 @@ class _BatchDetailsBottomSheetState extends State<BatchDetailsBottomSheet> {
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    height: 36,
+                    height: 46,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isLive ? const Color(0xFFEF4444) : AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       ),
                       onPressed: () async {
                         // Join Classroom
@@ -1008,10 +1091,13 @@ class _BatchDetailsBottomSheetState extends State<BatchDetailsBottomSheet> {
                         final url = "$baseUrl/live/room.html?classId=${c.id}&role=student&token=$token";
                         launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
                       },
-                      icon: Icon(isLive ? Icons.play_circle_fill_rounded : Icons.login_rounded, size: 16),
-                      label: Text(
-                        isLive ? "JOIN LIVE" : "ENTER CLASSROOM",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      icon: Icon(isLive ? Icons.play_circle_fill_rounded : Icons.login_rounded, size: 18),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          isLive ? "JOIN LIVE" : "ENTER CLASSROOM",
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
                       ),
                     ),
                   ),
@@ -1030,6 +1116,40 @@ class _BatchDetailsBottomSheetState extends State<BatchDetailsBottomSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.batch.plannerUrl != null && widget.batch.plannerUrl!.isNotEmpty) ...[
+            Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: AppColors.primary.withOpacity(0.2)),
+              ),
+              color: AppColors.primary.withOpacity(0.04),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.picture_as_pdf, color: Colors.amber, size: 22),
+                ),
+                title: Text(
+                  widget.batch.plannerName ?? 'Syllabus Planner',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: textColor),
+                ),
+                subtitle: Text(
+                  widget.batch.plannerDesc ?? 'Comprehensive course syllabus & scheduling planner.',
+                  style: TextStyle(fontSize: 11, color: secTextColor),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.download_rounded, color: AppColors.primary),
+                  onPressed: () => _launchUrl(widget.batch.plannerUrl!),
+                ),
+              ),
+            ),
+          ],
+
           // ── Syllabus Modules ─────────────────────────────
           Row(
             children: [

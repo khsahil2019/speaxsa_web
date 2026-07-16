@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/fcm_service.dart';
 import '../controllers/student_dashboard_controller.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 
@@ -23,6 +24,15 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
       // On Android, launching without checking canLaunchUrl is safer
       // for custom browser schemes/intents when intent queries might be restricted,
       // but since we added the scheme to queries, we can launch it directly.
+      try {
+        Get.find<FcmService>().showLocalNotification(
+          "Entering Classroom 🏫",
+          "You are now entering the live classroom. Keep your curiosity high!"
+        );
+      } catch (e) {
+        debugPrint('[Notification] Live class notification failed: $e');
+      }
+
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       Get.snackbar('Error', 'Failed to launch classroom: $e', backgroundColor: Colors.red, colorText: Colors.white);
@@ -148,16 +158,20 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
                       // Subtitle Row (Batch and Teacher)
                       Row(
                         children: [
-                          _buildSmallChip(
-                            Icons.layers_outlined,
-                            c.batchName ?? 'General',
-                            const Color(0xFF8B5CF6),
+                          Flexible(
+                            child: _buildSmallChip(
+                              Icons.layers_outlined,
+                              c.batchName ?? 'General',
+                              const Color(0xFF8B5CF6),
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          _buildSmallChip(
-                            Icons.person_outline_rounded,
-                            c.teacherName ?? 'Mentor',
-                            AppColors.primary,
+                          Flexible(
+                            child: _buildSmallChip(
+                              Icons.person_outline_rounded,
+                              c.teacherName ?? 'Mentor',
+                              AppColors.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -256,7 +270,7 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
                       // CTA Button
                       SizedBox(
                         width: double.infinity,
-                        height: 44,
+                        height: 46,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isLive 
@@ -265,7 +279,7 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
                             foregroundColor: isEnded ? Colors.grey.shade600 : Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           onPressed: isEnded ? null : () => _joinLiveRoom(c.id),
@@ -273,14 +287,17 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
                             isLive ? Icons.play_circle_fill_rounded : Icons.login_rounded,
                             size: 18,
                           ),
-                          label: Text(
-                            isLive 
-                                ? "JOIN CLASSROOM (LIVE)" 
-                                : (isEnded ? "CLASS COMPLETED" : "ENTER CLASSROOM"),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.5,
-                              letterSpacing: 0.2,
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              isLive 
+                                  ? "JOIN CLASSROOM (LIVE)" 
+                                  : (isEnded ? "CLASS COMPLETED" : "ENTER CLASSROOM"),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                                letterSpacing: 0.2,
+                              ),
                             ),
                           ),
                         ),
@@ -317,12 +334,16 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
         children: [
           Icon(icon, size: 12.5, color: themeColor),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: themeColor,
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: themeColor,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
