@@ -445,16 +445,37 @@
         height: 400px;
       }
       .control-bar {
-        padding: 10px;
-        gap: 8px;
-        flex-wrap: wrap;
+        padding: 8px 16px;
+        gap: 10px;
+        bottom: 12px;
+        border-radius: 30px;
+        max-width: 95vw;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
       }
       .control-btn {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50% !important; /* Circular like Google Meet */
       }
       .control-btn-danger {
-        padding: 0 12px;
+        width: 44px !important;
+        height: 44px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .control-btn-danger span {
+        display: none !important; /* Hide text on mobile */
+      }
+      .control-btn-danger i {
+        margin: 0 !important;
+        font-size: 1.1rem;
+      }
+      /* Hide screen share on mobile browsers since it's unsupported/takes space */
+      #btnScreen {
+        display: none !important;
       }
     }
   </style>

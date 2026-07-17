@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/fcm_service.dart';
+import '../../../core/routes/app_routes.dart';
 import '../controllers/student_dashboard_controller.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 
@@ -16,14 +18,12 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
   Future<void> _joinLiveRoom(String classId) async {
     try {
       final token = await StorageService.to.getToken() ?? '';
+      final user = StorageService.to.getUser();
+      final userJsonStr = user != null ? jsonEncode(user.toJson()) : '';
+      final userParam = Uri.encodeComponent(userJsonStr);
       final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api', '');
-      final url = "$baseUrl/live/room.html?classId=$classId&role=student&token=$token";
+      final url = "$baseUrl/live/room.html?classId=$classId&role=student&token=$token&user=$userParam";
       
-      final uri = Uri.parse(url);
-      
-      // On Android, launching without checking canLaunchUrl is safer
-      // for custom browser schemes/intents when intent queries might be restricted,
-      // but since we added the scheme to queries, we can launch it directly.
       try {
         Get.find<FcmService>().showLocalNotification(
           "Entering Classroom 🏫",
@@ -33,7 +33,7 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
         debugPrint('[Notification] Live class notification failed: $e');
       }
 
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      Get.toNamed(Routes.STUDENT_CLASSROOM, arguments: url);
     } catch (e) {
       Get.snackbar('Error', 'Failed to launch classroom: $e', backgroundColor: Colors.red, colorText: Colors.white);
     }

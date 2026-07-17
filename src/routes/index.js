@@ -20,10 +20,9 @@ router.get('/public/courses', async (req, res) => {
       SELECT c.*, COUNT(DISTINCT b.id) as batch_count
       FROM courses c
       LEFT JOIN batches b ON b.course_id = c.id AND b.status = 'active'
-      WHERE c.status = 'active' AND c.is_featured = true
+      WHERE c.status = 'active'
       GROUP BY c.id
       ORDER BY c.created_at DESC
-      LIMIT 8
     `);
     res.json(result.rows);
   } catch (err) {

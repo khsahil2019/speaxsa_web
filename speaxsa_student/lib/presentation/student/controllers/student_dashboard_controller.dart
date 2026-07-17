@@ -12,10 +12,29 @@ import '../../../data/models/live_class_model.dart';
 import '../../../data/models/recording_model.dart';
 import '../../../data/repositories/student_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../core/network/api_client.dart';
+import '../../shared/widgets/razorpay_checkout_sheet.dart';
 
 class StudentDashboardController extends GetxController with WidgetsBindingObserver {
   final StudentRepository _studentRepository = StudentRepository();
   final AuthRepository _authRepository = AuthRepository();
+
+  // Dynamic stats from speaxa.in database
+  final RxInt statStudents = 0.obs;
+  final RxInt statTeachers = 0.obs;
+  final RxInt statCourses = 0.obs;
+  final RxInt statClasses = 0.obs;
+
+  // Course search and filter fields
+  final RxString courseSearchQuery = ''.obs;
+  final RxString courseSelectedSubject = 'All'.obs;
+
+  // Enquiry form controllers
+  final enquiryNameController = TextEditingController();
+  final enquiryEmailController = TextEditingController();
+  final enquiryPhoneController = TextEditingController();
+  final enquiryMessageController = TextEditingController();
+  final RxBool isSubmittingEnquiry = false.obs;
 
   final RxInt selectedIndex = 0.obs;
   final RxBool isLoading = true.obs;
@@ -41,6 +60,10 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);
+    enquiryNameController.dispose();
+    enquiryEmailController.dispose();
+    enquiryPhoneController.dispose();
+    enquiryMessageController.dispose();
     super.onClose();
   }
 
@@ -56,6 +79,48 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
     try {
       isLoading.value = true;
       errorMessage.value = '';
+
+      final isLoggedIn = AuthService.to.isLoggedIn.value;
+      if (!isLoggedIn) {
+        myBatches.clear();
+        attendanceData.value = null;
+        assignments.clear();
+        reports.clear();
+        parentRequests.clear();
+        recordings.clear();
+        upcomingClasses.clear();
+
+        try {
+          final resCourses = await _studentRepository.getCourses();
+          courses.value = resCourses;
+
+          final allBatches = <BatchModel>[];
+          await Future.wait(resCourses.map((c) async {
+            try {
+              final resBatches = await _studentRepository.getBatches(courseId: c.id);
+              allBatches.addAll(resBatches);
+            } catch (e) {
+              debugPrint('[Dashboard] Error loading batches for course ${c.id}: $e');
+            }
+          }));
+          availableBatches.value = allBatches;
+        } catch (e) {
+          debugPrint('[Dashboard] Error loading guest data: $e');
+        }
+
+        try {
+          final stats = await Get.find<ApiClient>().get('/public/stats');
+          if (stats is Map<String, dynamic>) {
+            statStudents.value = stats['students'] ?? 0;
+            statTeachers.value = stats['teachers'] ?? 0;
+            statCourses.value = stats['courses'] ?? 0;
+            statClasses.value = stats['classesCompleted'] ?? 0;
+          }
+        } catch (e) {
+          debugPrint('[Dashboard] Error loading public stats: $e');
+        }
+        return;
+      }
 
       // Fetch each endpoint individually with try-catch to be fully resilient to hotspot concurrent connection drops
       try {
@@ -170,6 +235,9 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
       errorMessage.value = e.toString();
     } finally {
       isLoading.value = false;
+      if (AuthService.to.isLoggedIn.value) {
+        checkPendingEnrollment();
+      }
     }
   }
 
@@ -180,6 +248,101 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
       loadDashboardData();
     } catch (e) {
       Get.snackbar('Error', e.toString());
+    }
+  }
+
+  void checkPendingEnrollment() {
+    final pendingId = AuthService.to.pendingBatchId;
+    if (pendingId == null) return;
+    
+    // Clear pending batch ID so it doesn't trigger repeatedly
+    AuthService.to.pendingBatchId = null;
+
+    final batch = availableBatches.firstWhereOrNull((b) => b.id == pendingId);
+    if (batch == null) {
+      debugPrint('[Dashboard] Pending batch $pendingId not found in available batches');
+      return;
+    }
+
+    final course = courses.firstWhereOrNull((c) => c.id == batch.courseId);
+    if (course == null) {
+      debugPrint('[Dashboard] Course not found for pending batch $pendingId');
+      return;
+    }
+
+    final user = AuthService.to.currentUser.value;
+    if (user == null) return;
+
+    // Show Razorpay Checkout Sheet directly using Get.bottomSheet
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.bottomSheet(
+        RazorpayCheckoutSheet(
+          amount: course.fees,
+          courseTitle: course.title,
+          batchName: batch.batchName,
+          email: user.email,
+          phone: user.phone,
+          onSuccess: (paymentId) {
+            enrollInBatch(batch.id, paymentId: paymentId);
+          },
+        ),
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+      );
+    });
+  }
+
+  Future<void> submitEnquiry() async {
+    final name = enquiryNameController.text.trim();
+    final email = enquiryEmailController.text.trim();
+    final phone = enquiryPhoneController.text.trim();
+    final message = enquiryMessageController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || message.isEmpty) {
+      Get.snackbar(
+        'Required Fields ⚠️',
+        'Please enter name, email, and message.',
+        backgroundColor: Colors.redAccent.withOpacity(0.85),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      isSubmittingEnquiry.value = true;
+      await Get.find<ApiClient>().post('/support/public-connect', data: {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'role': 'student',
+        'message': message,
+      });
+
+      Get.snackbar(
+        'Message Sent! 📬',
+        'Thank you for contacting us! We will get back to you shortly.',
+        backgroundColor: Colors.white.withOpacity(0.85),
+        colorText: const Color(0xFF1E293B),
+        borderRadius: 16,
+        margin: const EdgeInsets.all(16),
+        barBlur: 15,
+        boxShadows: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
+      );
+
+      enquiryNameController.clear();
+      enquiryEmailController.clear();
+      enquiryPhoneController.clear();
+      enquiryMessageController.clear();
+    } catch (e) {
+      Get.snackbar('Error', e.toString());
+    } finally {
+      isSubmittingEnquiry.value = false;
     }
   }
 

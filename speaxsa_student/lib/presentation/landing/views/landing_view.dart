@@ -124,7 +124,7 @@ class _LandingViewState extends State<LandingView> with SingleTickerProviderStat
                       // Skip Button
                       if (_currentPage < _onboardingData.length - 1)
                         TextButton(
-                          onPressed: () => Get.toNamed(Routes.LOGIN),
+                          onPressed: () => Get.offAllNamed(Routes.STUDENT_DASHBOARD),
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.grey.shade600,
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -325,14 +325,14 @@ class _LandingViewState extends State<LandingView> with SingleTickerProviderStat
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            onPressed: () {
+                             onPressed: () {
                               if (_currentPage < _onboardingData.length - 1) {
                                 _pageController.nextPage(
                                   duration: const Duration(milliseconds: 400),
                                   curve: Curves.easeInOut,
                                 );
                               } else {
-                                Get.toNamed(Routes.LOGIN);
+                                Get.offAllNamed(Routes.STUDENT_DASHBOARD);
                               }
                             },
                             child: Row(

@@ -8,6 +8,7 @@ class AuthService extends GetxService {
 
   final Rx<UserModel?> currentUser = Rx<UserModel?>(null);
   final RxBool isLoggedIn = false.obs;
+  String? pendingBatchId;
 
   bool get isStudent => currentUser.value?.role == 'student';
   bool get isTeacher => currentUser.value?.role == 'teacher';

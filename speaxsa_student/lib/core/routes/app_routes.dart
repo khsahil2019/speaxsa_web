@@ -10,4 +10,5 @@ abstract class Routes {
   static const PARENT_DASHBOARD = '/parent/dashboard';
   static const PROFILE = '/profile';
   static const NOTIFICATIONS = '/notifications';
+  static const STUDENT_CLASSROOM = '/student/classroom';
 }

@@ -14,6 +14,7 @@ import '../../presentation/parent/controllers/parent_dashboard_controller.dart';
 import '../../presentation/parent/views/parent_dashboard_view.dart';
 import '../../presentation/shared/views/profile_view.dart';
 import '../../presentation/shared/views/notifications_view.dart';
+import '../../presentation/student/views/student_classroom_webview.dart';
 
 class AppPages {
   static final pages = [
@@ -77,6 +78,10 @@ class AppPages {
     GetPage(
       name: Routes.NOTIFICATIONS,
       page: () => const NotificationsView(),
+    ),
+    GetPage(
+      name: Routes.STUDENT_CLASSROOM,
+      page: () => const StudentClassroomWebView(),
     ),
   ];
 }

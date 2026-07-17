@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_client.dart';
+import '../../core/services/auth_service.dart';
 import '../models/course_model.dart';
 import '../models/batch_model.dart';
 import '../models/attendance_model.dart';
@@ -18,13 +19,25 @@ class StudentRepository {
     if (board != null) params['board'] = board;
     if (subject != null) params['subject'] = subject;
 
-    final response = await _apiClient.get(ApiEndpoints.studentCourses, queryParameters: params);
+    final isLoggedIn = AuthService.to.isLoggedIn.value;
+    final endpoint = isLoggedIn ? ApiEndpoints.studentCourses : ApiEndpoints.publicCourses;
+
+    final response = await _apiClient.get(endpoint, queryParameters: params);
     return (response as List).map((e) => CourseModel.fromJson(e)).toList();
   }
 
   Future<List<BatchModel>> getBatches({String? courseId}) async {
     final params = <String, dynamic>{};
     if (courseId != null) params['courseId'] = courseId;
+
+    final isLoggedIn = AuthService.to.isLoggedIn.value;
+    if (!isLoggedIn) {
+      if (courseId != null) {
+        final response = await _apiClient.get('/public/courses/$courseId/batches');
+        return (response as List).map((e) => BatchModel.fromJson(e)).toList();
+      }
+      return [];
+    }
 
     final response = await _apiClient.get(ApiEndpoints.studentBatches, queryParameters: params);
     return (response as List).map((e) => BatchModel.fromJson(e)).toList();

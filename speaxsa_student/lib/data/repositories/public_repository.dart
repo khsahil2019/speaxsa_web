@@ -1,14 +1,15 @@
+import 'package:get/get.dart';
 import '../../core/network/api_client.dart';
 import '../../core/constants/api_endpoints.dart';
 
 class PublicRepository {
-  final ApiClient _apiClient = ApiClient();
+  final ApiClient _apiClient = Get.find<ApiClient>();
 
   Future<Map<String, dynamic>> getAdminSettings() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.publicAdminSettings);
-      if (response.data is Map<String, dynamic>) {
-        return response.data as Map<String, dynamic>;
+      if (response is Map<String, dynamic>) {
+        return response;
       }
       return {};
     } catch (e) {
@@ -19,8 +20,8 @@ class PublicRepository {
   Future<List<dynamic>> getPublicCourses() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.publicCourses);
-      if (response.data is List) {
-        return response.data as List<dynamic>;
+      if (response is List) {
+        return response;
       }
       return [];
     } catch (e) {
@@ -31,8 +32,8 @@ class PublicRepository {
   Future<List<dynamic>> getPublicTeachers() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.publicTeachers);
-      if (response.data is List) {
-        return response.data as List<dynamic>;
+      if (response is List) {
+        return response;
       }
       return [];
     } catch (e) {
@@ -43,8 +44,8 @@ class PublicRepository {
   Future<Map<String, dynamic>> getPublicStats() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.publicStats);
-      if (response.data is Map<String, dynamic>) {
-        return response.data as Map<String, dynamic>;
+      if (response is Map<String, dynamic>) {
+        return response;
       }
       return {};
     } catch (e) {

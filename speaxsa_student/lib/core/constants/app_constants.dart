@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'Speaxa Student';
+  static const String appName = 'Speaxa';
   static const String appTagline = 'Interactive Live Learning Platform';
 
   // Storage Keys

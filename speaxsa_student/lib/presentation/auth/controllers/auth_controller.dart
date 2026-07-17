@@ -11,6 +11,7 @@ import '../../../data/repositories/auth_repository.dart';
 
 class AuthController extends GetxController {
   final AuthRepository _authRepository = AuthRepository();
+  static final Set<String> _detectedReferrals = {};
 
   // Login Controllers
   final emailController = TextEditingController();
@@ -85,14 +86,28 @@ class AuthController extends GetxController {
     }
 
     if (refCode != null && refCode.trim().isNotEmpty) {
-      regReferralCodeController.text = refCode.trim();
-      debugPrint('[DeepLink] Auto-filled referral code: $refCode');
+      final trimmed = refCode.trim();
+      if (_detectedReferrals.contains(trimmed)) return;
+      _detectedReferrals.add(trimmed);
+
+      regReferralCodeController.text = trimmed;
+      debugPrint('[DeepLink] Auto-filled referral code: $trimmed');
       Get.snackbar(
         'Referral Applied 🎁',
-        'Referral code "$refCode" has been auto-filled!',
-        backgroundColor: AppColors.primary,
-        colorText: Colors.white,
+        'Referral code "$trimmed" has been auto-filled!',
+        backgroundColor: Colors.white.withOpacity(0.85),
+        colorText: const Color(0xFF1E293B),
         snackPosition: SnackPosition.BOTTOM,
+        borderRadius: 16,
+        margin: const EdgeInsets.all(16),
+        barBlur: 15,
+        boxShadows: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
       );
     }
   }
@@ -120,14 +135,28 @@ class AuthController extends GetxController {
             }
           }
           if (refCode != null && refCode.trim().isNotEmpty) {
-            regReferralCodeController.text = refCode.trim();
-            debugPrint('[Clipboard] Auto-filled referral code from clipboard: $refCode');
+            final trimmed = refCode.trim();
+            if (_detectedReferrals.contains(trimmed)) return;
+            _detectedReferrals.add(trimmed);
+
+            regReferralCodeController.text = trimmed;
+            debugPrint('[Clipboard] Auto-filled referral code from clipboard: $trimmed');
             Get.snackbar(
               'Referral Detected 🎁',
-              'Auto-filled referral code "$refCode" from your clipboard.',
-              backgroundColor: AppColors.primary,
-              colorText: Colors.white,
+              'Auto-filled referral code "$trimmed" from your clipboard.',
+              backgroundColor: Colors.white.withOpacity(0.85),
+              colorText: const Color(0xFF1E293B),
               snackPosition: SnackPosition.BOTTOM,
+              borderRadius: 16,
+              margin: const EdgeInsets.all(16),
+              barBlur: 15,
+              boxShadows: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ],
             );
           }
         }
@@ -281,22 +310,6 @@ class AuthController extends GetxController {
 
   @override
   void onClose() {
-    emailController.dispose();
-    passwordController.dispose();
-    regNameController.dispose();
-    regEmailController.dispose();
-    regPhoneController.dispose();
-    regPasswordController.dispose();
-    regQualificationController.dispose();
-    regBoardController.dispose();
-    regGradeController.dispose();
-    regReferralCodeController.dispose();
-    regOtpController.dispose();
-    regPhoneOtpController.dispose();
-    regEmailOtpController.dispose();
-    resetIdentifierController.dispose();
-    resetOtpController.dispose();
-    resetNewPasswordController.dispose();
     super.onClose();
   }
 }

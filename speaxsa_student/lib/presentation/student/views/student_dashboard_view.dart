@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../data/models/batch_model.dart';
@@ -31,40 +33,58 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
   Widget build(BuildContext context) {
     return Obx(() {
       final idx = controller.selectedIndex.value;
+      final isLoggedIn = AuthService.to.isLoggedIn.value;
       return Scaffold(
         appBar: _buildAppBar(context, idx),
-        drawer: _buildDrawer(context),
+        drawer: isLoggedIn ? _buildDrawer(context) : null,
         body: IndexedStack(
-          index: idx,
+          index: idx >= (isLoggedIn ? 5 : 2) ? 0 : idx,
           children: [
             _buildMainDashboard(context),
             const StudentCoursesView(),
-            const StudentUpcomingClassesView(isEmbedded: true),
-            const StudentAssignmentsView(),
-            const ProfileView(isEmbedded: true),
+            if (isLoggedIn) ...[
+              const StudentUpcomingClassesView(isEmbedded: true),
+              const StudentAssignmentsView(),
+              const ProfileView(isEmbedded: true),
+            ] else ...[
+              const SizedBox.shrink(),
+            ]
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
-          currentIndex: idx,
-          onTap: (val) => controller.selectedIndex.value = val,
+          currentIndex: idx >= (isLoggedIn ? 5 : 2) ? 0 : idx,
+          onTap: (val) {
+            if (!isLoggedIn && val == 2) {
+              Get.toNamed(Routes.LOGIN);
+            } else {
+              controller.selectedIndex.value = val;
+            }
+          },
           type: BottomNavigationBarType.fixed,
           selectedItemColor: AppColors.primary,
           unselectedItemColor: Colors.grey,
           selectedFontSize: 11,
           unselectedFontSize: 11,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home_rounded), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), activeIcon: Icon(Icons.menu_book_rounded), label: 'Courses'),
-            BottomNavigationBarItem(icon: Icon(Icons.video_call_outlined), activeIcon: Icon(Icons.video_call_rounded), label: 'Lectures'),
-            BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment_rounded), label: 'Tasks'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person_rounded), label: 'Profile'),
-          ],
+          items: isLoggedIn
+              ? const [
+                  BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home_rounded), label: 'Home'),
+                  BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), activeIcon: Icon(Icons.menu_book_rounded), label: 'Courses'),
+                  BottomNavigationBarItem(icon: Icon(Icons.video_call_outlined), activeIcon: Icon(Icons.video_call_rounded), label: 'Lectures'),
+                  BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment_rounded), label: 'Tasks'),
+                  BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person_rounded), label: 'Profile'),
+                ]
+              : const [
+                  BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), activeIcon: Icon(Icons.explore), label: 'Explore'),
+                  BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), activeIcon: Icon(Icons.menu_book_rounded), label: 'Courses'),
+                  BottomNavigationBarItem(icon: Icon(Icons.login_rounded), activeIcon: Icon(Icons.login_rounded), label: 'Sign In'),
+                ],
         ),
       );
     });
   }
 
   AppBar _buildAppBar(BuildContext context, int index) {
+    final isLoggedIn = AuthService.to.isLoggedIn.value;
     if (index == 0) {
       return AppBar(
         title: Image.asset(
@@ -72,25 +92,36 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
           height: 28,
           fit: BoxFit.contain,
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Get.to(() => const NotificationsView()),
-          ),
-        ],
+        automaticallyImplyLeading: isLoggedIn,
+        actions: isLoggedIn
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () => Get.to(() => const NotificationsView()),
+                ),
+              ]
+            : [
+                TextButton(
+                  onPressed: () => Get.toNamed(Routes.LOGIN),
+                  child: const Text("Sign In", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                ),
+              ],
       );
     }
 
     final titles = ['', 'Browse Courses', 'Upcoming Lectures', 'Tasks & Assignments', 'My Profile'];
+    final displayTitle = index < titles.length ? titles[index] : '';
     return AppBar(
-      title: Text(titles[index]),
-      actions: [
-        if (index != 4) // Don't show profile shortcut on profile tab itself
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => controller.selectedIndex.value = 4,
-          ),
-      ],
+      title: Text(displayTitle),
+      automaticallyImplyLeading: isLoggedIn,
+      actions: isLoggedIn && index != 4
+          ? [
+              IconButton(
+                icon: const Icon(Icons.person_outline),
+                onPressed: () => controller.selectedIndex.value = 4,
+              ),
+            ]
+          : null,
     );
   }
 
@@ -371,11 +402,545 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
     );
   }
 
+  Widget _buildGuestDashboard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Welcome Banner (Premium style)
+          Stack(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: AppColors.heroGradient,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.indigoAccent.withOpacity(0.35),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Explore Speaxa 🚀",
+                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Transform your academic journey with live interactive lectures from expert teachers, top quality notes, and automated recordings.",
+                      style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                      onPressed: () => controller.selectedIndex.value = 1,
+                      child: const Text("Browse Batches", style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: -10,
+                bottom: -15,
+                child: Opacity(
+                  opacity: 0.12,
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 90,
+                    color: Colors.white,
+                    errorBuilder: (context, err, stack) => const SizedBox(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+
+          // Horizontal Featured Courses section
+          Obx(() {
+            if (controller.courses.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Featured Courses", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    TextButton(
+                      onPressed: () => controller.selectedIndex.value = 1,
+                      child: const Text("View All", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 195,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: controller.courses.length,
+                    itemBuilder: (context, idx) {
+                      final course = controller.courses[idx];
+                      final courseBatches = controller.availableBatches
+                          .where((b) => b.courseId == course.id)
+                          .toList();
+
+                      final rawThumbnail = course.thumbnailUrl;
+                      final fullThumbnailUrl = rawThumbnail != null && rawThumbnail.isNotEmpty
+                          ? (rawThumbnail.startsWith('http')
+                              ? rawThumbnail
+                              : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$rawThumbnail')
+                          : null;
+
+                      const Map<String, String> localEmojis = {
+                        'Physics': '⚛️',
+                        'Mathematics': '📐',
+                        'Chemistry': '🧪',
+                        'Biology': '🧬',
+                        'English': '📚',
+                      };
+                      final subjectEmoji = localEmojis[course.subject] ?? '📖';
+
+                      return GestureDetector(
+                        onTap: () {
+                          StudentCoursesView.showCourseDetailsBottomSheet(
+                            context,
+                            course,
+                            courseBatches,
+                            controller,
+                          );
+                        },
+                        child: Container(
+                          width: 210,
+                          margin: const EdgeInsets.only(right: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkCard : Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Image Banner
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                                child: Container(
+                                  height: 95,
+                                  width: double.infinity,
+                                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+                                  child: fullThumbnailUrl != null
+                                      ? Image.network(
+                                          fullThumbnailUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (c, e, s) => Container(
+                                            color: AppColors.primary.withOpacity(0.08),
+                                            child: Center(
+                                              child: Text(
+                                                subjectEmoji,
+                                                style: const TextStyle(fontSize: 32),
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          color: AppColors.primary.withOpacity(0.08),
+                                          child: Center(
+                                            child: Text(
+                                              subjectEmoji,
+                                              style: const TextStyle(fontSize: 32),
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      course.subject ?? 'General',
+                                      style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      course.title,
+                                      style: TextStyle(color: textColor, fontSize: 12.5, fontWeight: FontWeight.bold),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          "₹${course.fees.toStringAsFixed(0)}",
+                                          style: const TextStyle(color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.w900),
+                                        ),
+                                        Text(
+                                          "${courseBatches.length} Batches",
+                                          style: TextStyle(color: Colors.grey.shade500, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
+            );
+          }),
+
+          // About Speaxa Introduction
+          const Text("Why Choose Speaxa?", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 14),
+
+          _buildFeatureCard(
+            context,
+            icon: Icons.video_camera_front_rounded,
+            color: Colors.teal,
+            title: "Interactive Live Classes",
+            description: "Learn live from top subject experts. Participate in interactive Q&As, live polls, and real-time doubt clearing.",
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            context,
+            icon: Icons.play_circle_fill_rounded,
+            color: Colors.amber,
+            title: "Automated HD Recordings",
+            description: "Missed a lecture? Don't worry. Access automated high-definition class recordings and lectures anytime.",
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            context,
+            icon: Icons.menu_book_rounded,
+            color: Colors.indigo,
+            title: "PDF Notes & Chapter Workbooks",
+            description: "Get instant access to digital notebooks, chapter workbooks, practice test series, and track your scores.",
+          ),
+          const SizedBox(height: 28),
+
+          // Platform Stats Section (Real dynamic counts from speaxa.in DB)
+          const Text("Platform Stats", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Obx(() => _buildStatItem(
+                  context,
+                  count: controller.statStudents.value == 0 ? "5K+" : "${controller.statStudents.value}",
+                  label: "Students",
+                  icon: Icons.people_outline,
+                  color: Colors.blue,
+                )),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Obx(() => _buildStatItem(
+                  context,
+                  count: controller.statTeachers.value == 0 ? "150+" : "${controller.statTeachers.value}",
+                  label: "Mentors",
+                  icon: Icons.school_outlined,
+                  color: Colors.purple,
+                )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Obx(() => _buildStatItem(
+                  context,
+                  count: controller.statCourses.value == 0 ? "50+" : "${controller.statCourses.value}",
+                  label: "Courses",
+                  icon: Icons.menu_book_outlined,
+                  color: Colors.orange,
+                )),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Obx(() => _buildStatItem(
+                  context,
+                  count: controller.statClasses.value == 0 ? "12K+" : "${controller.statClasses.value}",
+                  label: "Classes Held",
+                  icon: Icons.video_call_outlined,
+                  color: Colors.green,
+                )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+
+          // Enquiry Form Section (Contact Us)
+          const Text("Have Questions? Send us a Message! 💬", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 14),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Fill out the form below and our counselor will call or email you back within 24 hours.",
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12.5, height: 1.4),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Name Field
+                  TextField(
+                    controller: controller.enquiryNameController,
+                    decoration: InputDecoration(
+                      labelText: "Your Name",
+                      prefixIcon: const Icon(Icons.person_outline, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  
+                  // Email Field
+                  TextField(
+                    controller: controller.enquiryEmailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: "Email Address",
+                      prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  
+                  // Phone Field
+                  TextField(
+                    controller: controller.enquiryPhoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: "Phone Number (Optional)",
+                      prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  
+                  // Message Field
+                  TextField(
+                    controller: controller.enquiryMessageController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: "Your Message",
+                      alignLabelWithHint: true,
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 56),
+                        child: Icon(Icons.message_outlined, size: 20),
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Submit Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: Obx(() => ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: controller.isSubmittingEnquiry.value
+                          ? null
+                          : () => controller.submitEnquiry(),
+                      child: controller.isSubmittingEnquiry.value
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.send_rounded, size: 16),
+                                SizedBox(width: 8),
+                                Text("Send Enquiry", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              ],
+                            ),
+                    )),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Sign In Prompt Banner
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Already have an account?",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Sign in to access your existing batches, homework and profile.",
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () => Get.toNamed(Routes.LOGIN),
+                  child: const Text("Sign In"),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureCard(BuildContext context, {required IconData icon, required Color color, required String title, required String description}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Text(description, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, height: 1.4)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(BuildContext context, {required String count, required String label, required IconData icon, required Color color}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(count, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMainDashboard(BuildContext context) {
     return Obx(() {
       if (controller.isLoading.value) return const SkeletonLoader(itemCount: 4);
       if (controller.errorMessage.isNotEmpty) {
         return ErrorStateWidget(errorMessage: controller.errorMessage.value, onRetry: controller.loadDashboardData);
+      }
+
+      final isLoggedIn = AuthService.to.isLoggedIn.value;
+      if (!isLoggedIn) {
+        return _buildGuestDashboard(context);
       }
 
       final user = AuthService.to.currentUser.value;
@@ -1087,9 +1652,12 @@ class _BatchDetailsBottomSheetState extends State<BatchDetailsBottomSheet> {
                       onPressed: () async {
                         // Join Classroom
                         final token = await StorageService.to.getToken() ?? '';
+                        final user = StorageService.to.getUser();
+                        final userJsonStr = user != null ? jsonEncode(user.toJson()) : '';
+                        final userParam = Uri.encodeComponent(userJsonStr);
                         final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api', '');
-                        final url = "$baseUrl/live/room.html?classId=${c.id}&role=student&token=$token";
-                        launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                        final url = "$baseUrl/live/room.html?classId=${c.id}&role=student&token=$token&user=$userParam";
+                        Get.toNamed(Routes.STUDENT_CLASSROOM, arguments: url);
                       },
                       icon: Icon(isLive ? Icons.play_circle_fill_rounded : Icons.login_rounded, size: 18),
                       label: FittedBox(

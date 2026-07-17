@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../data/models/course_model.dart';
 import '../../../data/models/batch_model.dart';
@@ -24,79 +25,185 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final coursesList = controller.courses;
-      if (coursesList.isEmpty) {
-        return const EmptyStateWidget(
-          title: "No Courses Available",
-          message: "Check back soon for new courses and syllabus updates.",
-        );
-      }
+      final coursesList = controller.courses.where((c) {
+        final matchesSearch = c.title.toLowerCase().contains(controller.courseSearchQuery.value.toLowerCase()) ||
+            (c.description ?? '').toLowerCase().contains(controller.courseSearchQuery.value.toLowerCase()) ||
+            (c.subject ?? '').toLowerCase().contains(controller.courseSearchQuery.value.toLowerCase());
+        final matchesSubject = controller.courseSelectedSubject.value == 'All' ||
+            c.subject == controller.courseSelectedSubject.value;
+        return matchesSearch && matchesSubject;
+      }).toList();
 
-      return RefreshIndicator(
-        onRefresh: controller.loadDashboardData,
-        color: AppColors.primary,
-        child: ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          itemCount: coursesList.length,
-          itemBuilder: (context, index) {
-            final course = coursesList[index];
-            final courseBatches = controller.availableBatches
-                .where((b) => b.courseId == course.id)
-                .toList();
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final searchBgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100;
+      final searchTextColor = isDark ? Colors.white : Colors.black87;
 
-            // Construct full thumbnail URL if relative
-            final rawThumbnail = course.thumbnailUrl;
-            final fullThumbnailUrl = rawThumbnail != null && rawThumbnail.isNotEmpty
-                ? (rawThumbnail.startsWith('http')
-                    ? rawThumbnail
-                    : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$rawThumbnail')
-                : null;
-
-            final subjectEmoji = _subjectEmojis[course.subject] ?? '📖';
-
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B);
-            final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
-            final cardBorderColor = isDark ? Colors.white10 : Colors.grey.shade200;
-
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 20),
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: cardBorderColor),
-              ),
-              child: InkWell(
-                onTap: () => _showCourseDetailsBottomSheet(context, course, courseBatches),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Course Image (Banner style, identical to website)
-                    Container(
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.06),
-                      ),
-                      child: fullThumbnailUrl != null
-                          ? Image.network(
-                              fullThumbnailUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
-                            )
-                          : _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
+      return Column(
+        children: [
+          // Search & Filter Panel
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: Column(
+              children: [
+                // 1. Search Bar
+                Container(
+                  decoration: BoxDecoration(
+                    color: searchBgColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TextField(
+                    onChanged: (val) => controller.courseSearchQuery.value = val,
+                    style: TextStyle(color: searchTextColor, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: "Search courses or subjects...",
+                      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13.5),
+                      prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade500, size: 20),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 10),
 
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Badges Row
-                          Row(
+                // 2. Horizontal Filter Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: ['All', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'English'].map((subject) {
+                      final isSelected = controller.courseSelectedSubject.value == subject;
+                      final chipEmoji = _subjectEmojis[subject] ?? '📖';
+                      final labelText = subject == 'All' ? 'All Subjects' : '$chipEmoji $subject';
+
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(
+                            labelText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
+                          onSelected: (selected) {
+                            if (selected) {
+                              controller.courseSelectedSubject.value = subject;
+                            }
+                          },
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : (isDark ? Colors.white10 : Colors.grey.shade200),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          // Course List
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: controller.loadDashboardData,
+              color: AppColors.primary,
+              child: coursesList.isEmpty
+                  ? Center(
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              const Text(
+                                "No Matching Courses",
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                "Try searching for a different keyword or changing the subject filter.",
+                                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: coursesList.length,
+                      itemBuilder: (context, index) {
+                        final course = coursesList[index];
+                        final courseBatches = controller.availableBatches
+                            .where((b) => b.courseId == course.id)
+                            .toList();
+
+                        // Construct full thumbnail URL if relative
+                        final rawThumbnail = course.thumbnailUrl;
+                        final fullThumbnailUrl = rawThumbnail != null && rawThumbnail.isNotEmpty
+                            ? (rawThumbnail.startsWith('http')
+                                ? rawThumbnail
+                                : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$rawThumbnail')
+                            : null;
+
+                        final subjectEmoji = _subjectEmojis[course.subject] ?? '📖';
+
+                        final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B);
+                        final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
+                        final cardBorderColor = isDark ? Colors.white10 : Colors.grey.shade200;
+
+                        return Card(
+                          elevation: 0,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(color: cardBorderColor),
+                          ),
+                          child: InkWell(
+                            onTap: () => showCourseDetailsBottomSheet(context, course, courseBatches, controller),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Course Image (Banner style, identical to website)
+                                Container(
+                                  height: 150,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.06),
+                                  ),
+                                  child: fullThumbnailUrl != null
+                                      ? Image.network(
+                                          fullThumbnailUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) =>
+                                              _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
+                                        )
+                                      : _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
+                                ),
+
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Badges Row
+                                      Row(
                             children: [
                               _buildBadge(
                                 course.subject ?? 'General',
@@ -173,7 +280,10 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
             );
           },
         ),
-      );
+      ),
+    ),
+  ],
+);
     });
   }
 
@@ -223,10 +333,11 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
     );
   }
 
-  void _showCourseDetailsBottomSheet(
+  static void showCourseDetailsBottomSheet(
     BuildContext context,
     CourseModel course,
     List<BatchModel> courseBatches,
+    StudentDashboardController controller,
   ) {
     showModalBottomSheet(
       context: context,
@@ -464,23 +575,23 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                                   const SizedBox(height: 10),
 
                                   // Teacher and Timings details
-                                  _buildBatchDetailRow(
+                                  _buildBatchDetailRowStatic(
                                     Icons.person_outline_rounded,
                                     "Teacher: ${batch.teacherName ?? 'Assigned Teacher'}",
                                   ),
                                   const SizedBox(height: 6),
-                                  _buildBatchDetailRow(
+                                  _buildBatchDetailRowStatic(
                                     Icons.calendar_today_outlined,
                                     "Days: ${batch.daysOfWeek.join(', ')}",
                                   ),
                                   const SizedBox(height: 6),
-                                  _buildBatchDetailRow(
+                                  _buildBatchDetailRowStatic(
                                     Icons.access_time_rounded,
                                     "Timings: ${batch.startTime ?? ''} - ${batch.endTime ?? ''}",
                                   ),
                                   if (batch.plannerUrl != null && batch.plannerUrl!.isNotEmpty) ...[
                                     const SizedBox(height: 8),
-                                    _buildPlannerButton(batch),
+                                    _buildPlannerButtonStatic(batch),
                                   ],
                                   const SizedBox(height: 12),
 
@@ -544,8 +655,38 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                                           : () {
                                               Navigator.pop(context); // Close course details sheet
                                               
-                                              // Show Razorpay Checkout Sheet
                                               final user = AuthService.to.currentUser.value;
+                                              if (user == null) {
+                                                Get.dialog(
+                                                  AlertDialog(
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                    title: const Text("Authentication Required", style: TextStyle(fontWeight: FontWeight.bold)),
+                                                    content: const Text("Please sign in or create an account to enroll in a batch and proceed to payment."),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () => Get.back(),
+                                                        child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                                                      ),
+                                                      ElevatedButton(
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: AppColors.primary,
+                                                          foregroundColor: Colors.white,
+                                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                        ),
+                                                        onPressed: () {
+                                                          AuthService.to.pendingBatchId = batch.id;
+                                                          Get.back();
+                                                          Get.toNamed(Routes.LOGIN);
+                                                        },
+                                                        child: const Text("Sign In / Register", style: TextStyle(fontWeight: FontWeight.bold)),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                                return;
+                                              }
+
+                                              // Show Razorpay Checkout Sheet
                                               showModalBottomSheet(
                                                 context: context,
                                                 isScrollControlled: true,
@@ -555,8 +696,8 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                                                     amount: course.fees,
                                                     courseTitle: course.title,
                                                     batchName: batch.batchName,
-                                                    email: user?.email ?? '',
-                                                    phone: user?.phone ?? '',
+                                                    email: user.email,
+                                                    phone: user.phone,
                                                     onSuccess: (paymentId) {
                                                       controller.enrollInBatch(batch.id, paymentId: paymentId);
                                                     },
@@ -594,7 +735,7 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
     );
   }
 
-  Widget _buildBatchDetailRow(IconData icon, String text) {
+  static Widget _buildBatchDetailRowStatic(IconData icon, String text) {
     final isDark = Theme.of(Get.context!).brightness == Brightness.dark;
     return Row(
       children: [
@@ -614,9 +755,9 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
     );
   }
 
-  Widget _buildPlannerButton(BatchModel batch) {
+  static Widget _buildPlannerButtonStatic(BatchModel batch) {
     return InkWell(
-      onTap: () => _launchUrl(batch.plannerUrl!),
+      onTap: () => _launchUrlStatic(batch.plannerUrl!),
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -644,7 +785,7 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
     );
   }
 
-  Future<void> _launchUrl(String url) async {
+  static Future<void> _launchUrlStatic(String url) async {
     try {
       final uri = Uri.parse(url.startsWith('http') ? url : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$url');
       await launchUrl(uri, mode: LaunchMode.externalApplication);
