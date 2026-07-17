@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../data/models/user_model.dart';
@@ -17,6 +18,7 @@ class ParentDashboardController extends GetxController {
   final RxList<dynamic> childAttendance = <dynamic>[].obs;
   final RxList<dynamic> childAssignments = <dynamic>[].obs;
   final RxList<dynamic> childReports = <dynamic>[].obs;
+  final RxList<dynamic> childObservations = <dynamic>[].obs;
 
   // Link child controller
   final studentCodeController = TextEditingController();
@@ -24,6 +26,8 @@ class ParentDashboardController extends GetxController {
   // Chat message controller
   final messageController = TextEditingController();
   final RxList<ChatMessageModel> chatMessages = <ChatMessageModel>[].obs;
+  
+  Timer? _chatTimer;
 
   @override
   void onInit() {
@@ -58,12 +62,14 @@ class ParentDashboardController extends GetxController {
         _parentRepository.getChildAttendance(studentId),
         _parentRepository.getChildAssignments(studentId),
         _parentRepository.getChildReports(studentId),
+        _parentRepository.getChildObservations(studentId),
       ]);
 
       childOverview.value = results[0] as Map;
       childAttendance.value = results[1] as List;
       childAssignments.value = results[2] as List;
       childReports.value = results[3] as List;
+      childObservations.value = results[4] as List;
     } catch (e) {
       errorMessage.value = e.toString();
     } finally {
@@ -89,6 +95,19 @@ class ParentDashboardController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void startMessagePolling(String teacherId) {
+    stopMessagePolling();
+    loadChatMessages(teacherId);
+    _chatTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      loadChatMessages(teacherId);
+    });
+  }
+
+  void stopMessagePolling() {
+    _chatTimer?.cancel();
+    _chatTimer = null;
   }
 
   Future<void> loadChatMessages(String teacherId) async {
@@ -120,6 +139,7 @@ class ParentDashboardController extends GetxController {
 
   @override
   void onClose() {
+    stopMessagePolling();
     studentCodeController.dispose();
     messageController.dispose();
     super.onClose();

@@ -14,14 +14,17 @@ async function sendEmail({ to, subject, html, type = 'custom' }) {
     const settings = {};
     settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
 
-    const smtpHost = settings.smtp_host;
-    const smtpUser = settings.smtp_user;
-    const smtpPass = settings.smtp_pass;
+    const smtpHost = settings.smtp_host || process.env.SMTP_HOST;
+    const smtpUser = settings.smtp_user || process.env.SMTP_USER;
+    const smtpPass = settings.smtp_pass || process.env.SMTP_PASS;
+    const smtpPort = settings.smtp_port || process.env.SMTP_PORT || '587';
+    const emailProvider = settings.email_provider || process.env.EMAIL_PROVIDER || 'smtp';
+    
     let platformName = settings.platform_name || 'Speaxa';
     if (platformName.toLowerCase() === 'speaxa') {
       platformName = 'Speaxa';
     }
-    const fromEmail = settings.smtp_from_email || settings.support_email || settings.smtp_user || 'no-reply@speaxa.com';
+    const fromEmail = settings.smtp_from_email || settings.support_email || smtpUser || process.env.EMAIL_FROM || 'no-reply@speaxa.com';
 
     // Format rich premium email wrapper based on type
     let finalHtml = html;
@@ -102,8 +105,6 @@ async function sendEmail({ to, subject, html, type = 'custom' }) {
 </html>`;
     }
 
-    const emailProvider = settings.email_provider || 'smtp';
-
     // Filter placeholder keys
     const cleanHost = smtpHost && !smtpHost.includes('YOUR_') && !smtpHost.includes('CHANGE_') ? smtpHost : null;
     const cleanUser = smtpUser && !smtpUser.includes('YOUR_') && !smtpUser.includes('CHANGE_') ? smtpUser : null;
@@ -139,8 +140,8 @@ async function sendEmail({ to, subject, html, type = 'custom' }) {
         // Nodemailer SMTP Mode
         const transporter = nodemailer.createTransport({
           host: cleanHost,
-          port: parseInt(settings.smtp_port || '587', 10),
-          secure: parseInt(settings.smtp_port || '587', 10) === 465,
+          port: parseInt(smtpPort, 10),
+          secure: parseInt(smtpPort, 10) === 465,
           auth: { user: cleanUser, pass: smtpPass },
         });
 

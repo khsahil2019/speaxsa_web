@@ -1,6 +1,8 @@
 import 'package:get/get.dart';
 import 'app_routes.dart';
 import '../../presentation/landing/views/landing_view.dart';
+import '../../presentation/landing/views/portal_landing_view.dart';
+import '../../presentation/landing/controllers/landing_controller.dart';
 import '../../presentation/auth/controllers/auth_controller.dart';
 import '../../presentation/auth/views/login_view.dart';
 import '../../presentation/auth/views/register_view.dart';
@@ -20,6 +22,13 @@ class AppPages {
     GetPage(
       name: Routes.LANDING,
       page: () => const LandingView(),
+    ),
+    GetPage(
+      name: Routes.PORTAL_LANDING,
+      page: () => const PortalLandingView(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => LandingController());
+      }),
     ),
     GetPage(
       name: Routes.LOGIN,

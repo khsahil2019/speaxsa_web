@@ -1,32 +1,16 @@
-import 'package:flutter/foundation.dart';
-
 class ApiEndpoints {
   // Base Production URL for Speaxa domain
   static const String localAndroidBaseUrl = 'http://10.0.2.2:5002/api';
   static const String localIosBaseUrl = 'http://localhost:5002/api';
   static const String productionBaseUrl = 'https://speaxa.in/api';
 
-  static String get baseUrl {
-    if (kDebugMode) {
-      return defaultTargetPlatform == TargetPlatform.android
-          ? localAndroidBaseUrl
-          : localIosBaseUrl;
-    }
-    return productionBaseUrl;
-  }
+  static String get baseUrl => productionBaseUrl;
 
   static const String localAndroidSocketUrl = 'http://10.0.2.2:5002';
   static const String localIosSocketUrl = 'http://localhost:5002';
   static const String productionSocketUrl = 'https://speaxa.in';
 
-  static String get socketUrl {
-    if (kDebugMode) {
-      return defaultTargetPlatform == TargetPlatform.android
-          ? localAndroidSocketUrl
-          : localIosSocketUrl;
-    }
-    return productionSocketUrl;
-  }
+  static String get socketUrl => productionSocketUrl;
 
   // Auth Endpoints
   static const String login = '/auth/login';
@@ -82,8 +66,9 @@ class ApiEndpoints {
   static String childAttendance(String studentId) => '/parent/children/$studentId/attendance';
   static String childAssignments(String studentId) => '/parent/children/$studentId/assignments';
   static String childReports(String studentId) => '/parent/children/$studentId/reports';
-  static const String parentMessages = '/parent/messages';
+  static const String parentMessages = '/parent/connect/messages';
   static const String sendMessageToTeacher = '/parent/send-message';
+  static String childObservations(String studentId) => '/parent/children/$studentId/observations';
 
   // Live Classes & Payments
   static const String activeLiveClasses = '/live-classes/active';

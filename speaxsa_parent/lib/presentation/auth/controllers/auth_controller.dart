@@ -96,7 +96,7 @@ class AuthController extends GetxController {
     final phone = regPhoneController.text.trim();
     final password = regPasswordController.text;
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
       Get.snackbar('Error', 'Please fill in all required fields', backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
@@ -106,9 +106,9 @@ class AuthController extends GetxController {
       final result = await _authRepository.register({
         'name': name,
         'email': email,
+        'phone': phone,
         'password': password,
         'role': 'parent',
-        if (phone.isNotEmpty) 'phone': phone,
         if (regEmailOtpController.text.isNotEmpty) 'emailOtp': regEmailOtpController.text.trim(),
       });
 

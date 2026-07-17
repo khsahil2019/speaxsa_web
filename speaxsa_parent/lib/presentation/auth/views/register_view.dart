@@ -73,7 +73,7 @@ class RegisterView extends GetView<AuthController> {
               CustomTextField(
                 label: 'Email Address',
                 hint: 'enter email address',
-                controller: controller.emailController,
+                controller: controller.regEmailController,
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -89,7 +89,7 @@ class RegisterView extends GetView<AuthController> {
               Obx(() => CustomTextField(
                 label: 'Password',
                 hint: '••••••••',
-                controller: controller.passwordController,
+                controller: controller.regPasswordController,
                 obscureText: !controller.isPasswordVisible.value,
                 prefixIcon: Icons.lock_outline,
                 suffixIcon: IconButton(

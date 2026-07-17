@@ -36,6 +36,11 @@ class ParentRepository {
     return response as List;
   }
 
+  Future<List<dynamic>> getChildObservations(String studentId) async {
+    final response = await _apiClient.get(ApiEndpoints.childObservations(studentId));
+    return response as List;
+  }
+
   Future<List<ChatMessageModel>> getMessages({required String teacherId, required String studentId}) async {
     final response = await _apiClient.get(
       ApiEndpoints.parentMessages,

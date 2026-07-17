@@ -1,6 +1,7 @@
 abstract class Routes {
   static const INITIAL = '/';
   static const LANDING = '/landing';
+  static const PORTAL_LANDING = '/portal-landing';
   static const LOGIN = '/login';
   static const REGISTER = '/register';
   static const FORGOT_PASSWORD = '/forgot-password';
