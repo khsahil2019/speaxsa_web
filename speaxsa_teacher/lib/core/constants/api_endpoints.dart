@@ -7,11 +7,6 @@ class ApiEndpoints {
   static const String productionBaseUrl = 'https://speaxa.in/api';
 
   static String get baseUrl {
-    if (kDebugMode) {
-      return defaultTargetPlatform == TargetPlatform.android
-          ? localAndroidBaseUrl
-          : localIosBaseUrl;
-    }
     return productionBaseUrl;
   }
 
@@ -20,11 +15,6 @@ class ApiEndpoints {
   static const String productionSocketUrl = 'https://speaxa.in';
 
   static String get socketUrl {
-    if (kDebugMode) {
-      return defaultTargetPlatform == TargetPlatform.android
-          ? localAndroidSocketUrl
-          : localIosSocketUrl;
-    }
     return productionSocketUrl;
   }
 

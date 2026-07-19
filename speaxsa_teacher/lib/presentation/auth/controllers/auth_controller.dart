@@ -22,12 +22,17 @@ class AuthController extends GetxController {
   final regPhoneController = TextEditingController();
   final regPasswordController = TextEditingController();
   final regQualificationController = TextEditingController();
+  final regExperienceYearsController = TextEditingController();
+  final regSubjectExpertiseController = TextEditingController();
+  final regLanguagesController = TextEditingController();
+  final regAddressController = TextEditingController();
   final regBoardController = TextEditingController();
   final regGradeController = TextEditingController();
   final regReferralCodeController = TextEditingController();
   final regOtpController = TextEditingController();
   final regPhoneOtpController = TextEditingController();
   final regEmailOtpController = TextEditingController();
+  final RxInt currentRegStep = 1.obs;
 
   TextEditingController get nameController => regNameController;
   TextEditingController get phoneController => regPhoneController;
@@ -47,8 +52,13 @@ class AuthController extends GetxController {
     rememberMe.value = StorageService.to.getRememberMe();
     if (rememberMe.value) {
       final creds = await StorageService.to.getSavedCredentials();
-      emailController.text = creds['email'] ?? '';
-      passwordController.text = creds['password'] ?? '';
+      if (isClosed) return;
+      try {
+        emailController.text = creds['email'] ?? '';
+        passwordController.text = creds['password'] ?? '';
+      } catch (e) {
+        print("Error setting credentials on controller: $e");
+      }
     }
   }
 
@@ -95,6 +105,12 @@ class AuthController extends GetxController {
     final email = regEmailController.text.trim();
     final phone = regPhoneController.text.trim();
     final password = regPasswordController.text;
+    final qualification = regQualificationController.text.trim();
+    final experienceYears = int.tryParse(regExperienceYearsController.text.trim()) ?? 0;
+    final subjectExpertise = regSubjectExpertiseController.text.trim();
+    final languages = regLanguagesController.text.trim();
+    final address = regAddressController.text.trim();
+    final referralCode = regReferralCodeController.text.trim();
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
       Get.snackbar('Error', 'Please fill in all required fields', backgroundColor: Colors.red, colorText: Colors.white);
@@ -109,6 +125,12 @@ class AuthController extends GetxController {
         'password': password,
         'role': 'teacher',
         if (phone.isNotEmpty) 'phone': phone,
+        if (qualification.isNotEmpty) 'qualification': qualification,
+        'experience_years': experienceYears,
+        if (subjectExpertise.isNotEmpty) 'subject_expertise': subjectExpertise,
+        if (languages.isNotEmpty) 'languages': languages,
+        if (address.isNotEmpty) 'address': address,
+        if (referralCode.isNotEmpty) 'referral_code': referralCode,
         if (regEmailOtpController.text.isNotEmpty) 'emailOtp': regEmailOtpController.text.trim(),
       });
 
@@ -162,22 +184,6 @@ class AuthController extends GetxController {
 
   @override
   void onClose() {
-    emailController.dispose();
-    passwordController.dispose();
-    regNameController.dispose();
-    regEmailController.dispose();
-    regPhoneController.dispose();
-    regPasswordController.dispose();
-    regQualificationController.dispose();
-    regBoardController.dispose();
-    regGradeController.dispose();
-    regReferralCodeController.dispose();
-    regOtpController.dispose();
-    regPhoneOtpController.dispose();
-    regEmailOtpController.dispose();
-    resetIdentifierController.dispose();
-    resetOtpController.dispose();
-    resetNewPasswordController.dispose();
     super.onClose();
   }
 }

@@ -3,15 +3,23 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../controllers/teacher_dashboard_controller.dart';
-import 'teacher_sop_view.dart';
-import 'teacher_batches_view.dart';
-import 'teacher_wallet_view.dart';
-import 'teacher_documents_view.dart';
+import 'tabs/teacher_home_tab.dart';
+import 'tabs/teacher_sop_tab.dart';
+import 'tabs/teacher_courses_tab.dart';
+import 'tabs/teacher_batches_tab.dart';
+import 'tabs/teacher_live_classes_tab.dart';
+import 'tabs/teacher_assignments_tab.dart';
+import 'tabs/teacher_observations_tab.dart';
+import 'tabs/teacher_attendance_tab.dart';
+import 'tabs/teacher_notes_tab.dart';
+import 'tabs/teacher_chats_tab.dart';
+import 'tabs/teacher_earnings_tab.dart';
+import 'tabs/teacher_referrals_tab.dart';
+import 'tabs/teacher_level_tab.dart';
+import 'tabs/teacher_certificates_tab.dart';
+import 'tabs/teacher_profile_tab.dart';
+import 'tabs/teacher_documents_tab.dart';
 import '../../shared/views/notifications_view.dart';
-import '../../shared/views/profile_view.dart';
-import '../../shared/widgets/skeleton_loader.dart';
-import '../../shared/widgets/error_state_widget.dart';
-import '../../shared/widgets/status_chip.dart';
 
 class TeacherDashboardView extends GetView<TeacherDashboardController> {
   const TeacherDashboardView({super.key});
@@ -22,39 +30,86 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
       final idx = controller.selectedIndex.value;
       return Scaffold(
         appBar: _buildAppBar(context, idx),
-        drawer: _buildDrawer(context),
-        body: IndexedStack(
-          index: idx,
-          children: [
-            _buildMainDashboard(context),
-            const TeacherBatchesView(),
-            const TeacherSopView(),
-            const TeacherWalletView(),
-            const TeacherDocumentsView(),
-          ],
-        ),
+        drawer: _buildDrawer(context, idx),
+        body: _getBody(idx),
         bottomNavigationBar: BottomNavigationBar(
-          currentIndex: idx,
-          onTap: (val) => controller.selectedIndex.value = val,
+          currentIndex: _getBottomNavIndex(idx),
+          onTap: (val) => _onBottomNavTap(val),
           type: BottomNavigationBarType.fixed,
           selectedItemColor: AppColors.teacherRole,
           unselectedItemColor: Colors.grey,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.class_outlined), activeIcon: Icon(Icons.class_), label: 'Batches'),
-            BottomNavigationBarItem(icon: Icon(Icons.verified_user_outlined), activeIcon: Icon(Icons.verified_user), label: 'SOP Hub'),
+            BottomNavigationBarItem(icon: Icon(Icons.video_camera_front_outlined), activeIcon: Icon(Icons.video_camera_front), label: 'Live'),
+            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chats'),
             BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_outlined), activeIcon: Icon(Icons.account_balance_wallet), label: 'Wallet'),
-            BottomNavigationBarItem(icon: Icon(Icons.folder_outlined), activeIcon: Icon(Icons.folder), label: 'Documents'),
           ],
         ),
       );
     });
   }
 
+  int _getBottomNavIndex(int idx) {
+    // Maps actual selectedIndex to BottomNav position
+    if (idx == 0) return 0; // Home
+    if (idx == 3) return 1; // Batches
+    if (idx == 4) return 2; // Live Classes
+    if (idx == 9) return 3; // Chats
+    if (idx == 10) return 4; // Wallet
+    return 0; // fallback to Home if navigating drawer-only pages
+  }
+
+  void _onBottomNavTap(int val) {
+    if (val == 0) controller.selectedIndex.value = 0;
+    if (val == 1) controller.selectedIndex.value = 3;
+    if (val == 2) controller.selectedIndex.value = 4;
+    if (val == 3) controller.selectedIndex.value = 9;
+    if (val == 4) controller.selectedIndex.value = 10;
+  }
+
+  Widget _getBody(int index) {
+    switch (index) {
+      case 0:
+        return const TeacherHomeTab();
+      case 1:
+        return const TeacherSopTab();
+      case 2:
+        return const TeacherCoursesTab();
+      case 3:
+        return const TeacherBatchesTab();
+      case 4:
+        return const TeacherLiveClassesTab();
+      case 5:
+        return const TeacherAssignmentsTab();
+      case 6:
+        return const TeacherObservationsTab();
+      case 7:
+        return const TeacherAttendanceTab();
+      case 8:
+        return const TeacherNotesTab();
+      case 9:
+        return const TeacherChatsTab();
+      case 10:
+        return const TeacherEarningsTab();
+      case 11:
+        return const TeacherReferralsTab();
+      case 12:
+        return const TeacherLevelTab();
+      case 13:
+        return const TeacherCertificatesTab();
+      case 14:
+        return const TeacherProfileTab();
+      case 15:
+        return const TeacherDocumentsTab();
+      default:
+        return const TeacherHomeTab();
+    }
+  }
+
   AppBar _buildAppBar(BuildContext context, int index) {
-    final titles = ['Teacher Workspace', 'Batch Management', 'SOP & Compliance Hub', 'My Wallet & Ledger', 'KYC & Verification Docs'];
     return AppBar(
-      title: Text(titles[index]),
+      title: Text(_getTitle(index)),
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_outlined),
@@ -62,13 +117,35 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
         ),
         IconButton(
           icon: const Icon(Icons.person_outline),
-          onPressed: () => Get.to(() => const ProfileView()),
+          onPressed: () => controller.selectedIndex.value = 14, // Profile tab
         ),
       ],
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
+  String _getTitle(int index) {
+    switch (index) {
+      case 0: return 'Teacher Workspace';
+      case 1: return 'SOP & Compliance';
+      case 2: return 'My Courses';
+      case 3: return 'Study Batches';
+      case 4: return 'Live Classes';
+      case 5: return 'Homework Assignments';
+      case 6: return 'Student Observations';
+      case 7: return 'Attendance Logs';
+      case 8: return 'Study Materials';
+      case 9: return 'Parent Connect';
+      case 10: return 'Earnings & Ledger';
+      case 11: return 'Referrals & Rewards';
+      case 12: return 'My Mentor Level';
+      case 13: return 'My Certificates';
+      case 14: return 'Profile Settings';
+      case 15: return 'KYC Documents';
+      default: return 'Teacher Workspace';
+    }
+  }
+
+  Widget _buildDrawer(BuildContext context, int activeIdx) {
     final user = AuthService.to.currentUser.value;
     return Drawer(
       child: ListView(
@@ -77,27 +154,33 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
           UserAccountsDrawerHeader(
             decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
             accountName: Text(user?.name ?? 'Teacher', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            accountEmail: Text("Level: ${user?.teacherLevel ?? 'Junior Teacher'} • Rating: ${user?.rating ?? 5.0}★"),
+            accountEmail: Text("Level: ${user?.teacherLevel ?? 'Junior Mentor'} • Rating: ${user?.rating ?? 5.0}★"),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
-              child: Text(user?.name.substring(0, 1).toUpperCase() ?? 'T', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.teacherRole)),
+              backgroundImage: user?.photoUrl != null && user!.photoUrl!.isNotEmpty
+                  ? NetworkImage(user.photoUrl!) as ImageProvider
+                  : null,
+              child: user?.photoUrl == null || user!.photoUrl!.isEmpty
+                  ? Text(user?.name.substring(0, 1).toUpperCase() ?? 'T', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.teacherRole))
+                  : null,
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.dashboard_outlined),
-            title: const Text('Dashboard'),
-            onTap: () { Navigator.pop(context); controller.selectedIndex.value = 0; },
-          ),
-          ListTile(
-            leading: const Icon(Icons.verified_user_outlined),
-            title: const Text('SOP & Compliance'),
-            onTap: () { Navigator.pop(context); controller.selectedIndex.value = 2; },
-          ),
-          ListTile(
-            leading: const Icon(Icons.person_outlined),
-            title: const Text('Profile Settings'),
-            onTap: () { Navigator.pop(context); Get.to(() => const ProfileView()); },
-          ),
+          _buildDrawerItem(context, Icons.dashboard_outlined, 'Dashboard', 0, activeIdx),
+          _buildDrawerItem(context, Icons.verified_user_outlined, 'SOP Setup', 1, activeIdx),
+          _buildDrawerItem(context, Icons.book_outlined, 'My Courses', 2, activeIdx),
+          _buildDrawerItem(context, Icons.layers_outlined, 'My Batches', 3, activeIdx),
+          _buildDrawerItem(context, Icons.videocam_outlined, 'Live Classes', 4, activeIdx),
+          _buildDrawerItem(context, Icons.assignment_outlined, 'Assignments', 5, activeIdx),
+          _buildDrawerItem(context, Icons.remove_red_eye_outlined, 'Observations', 6, activeIdx),
+          _buildDrawerItem(context, Icons.calendar_today_outlined, 'Attendance logs', 7, activeIdx),
+          _buildDrawerItem(context, Icons.file_present_outlined, 'Study Materials', 8, activeIdx),
+          _buildDrawerItem(context, Icons.chat_bubble_outline, 'Parent Connect', 9, activeIdx),
+          _buildDrawerItem(context, Icons.account_balance_wallet_outlined, 'Earnings & Wallet', 10, activeIdx),
+          _buildDrawerItem(context, Icons.card_giftcard_outlined, 'Referrals & Rewards', 11, activeIdx),
+          _buildDrawerItem(context, Icons.military_tech_outlined, 'My Level', 12, activeIdx),
+          _buildDrawerItem(context, Icons.card_membership_outlined, 'Certificates', 13, activeIdx),
+          _buildDrawerItem(context, Icons.person_outline, 'Profile settings', 14, activeIdx),
+          _buildDrawerItem(context, Icons.folder_open_outlined, 'KYC Documents', 15, activeIdx),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: AppColors.error),
@@ -109,167 +192,18 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
     );
   }
 
-  Widget _buildMainDashboard(BuildContext context) {
-    return Obx(() {
-      if (controller.isLoading.value) return const SkeletonLoader(itemCount: 4);
-      if (controller.errorMessage.isNotEmpty) {
-        return ErrorStateWidget(errorMessage: controller.errorMessage.value, onRetry: controller.loadTeacherData);
-      }
-
-      final analytics = controller.analytics;
-      final sop = controller.sopStatus.value;
-      final batches = controller.batches;
-
-      return RefreshIndicator(
-        onRefresh: controller.loadTeacherData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Hero Banner Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: AppColors.heroGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Welcome, ${AuthService.to.currentUser.value?.name.split(' ').first ?? 'Teacher'}! 👨‍🏫",
-                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                          child: Text(
-                            "${analytics['level'] ?? 'Verified Mentor'}",
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildHeroStat("Active Batches", "${analytics['activeBatches'] ?? 0}"),
-                        _buildHeroStat("Students", "${analytics['totalStudents'] ?? 0}"),
-                        _buildHeroStat("Rating", "${analytics['rating'] ?? 5.0}★"),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // SOP Verification Banner (if pending)
-              if (sop == null || sop.status != 'approved' || !sop.agreementSigned) ...[
-                Card(
-                  color: AppColors.warning.withOpacity(0.1),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 36),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("SOP Verification Pending", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                              const SizedBox(height: 2),
-                              Text(
-                                sop?.agreementSigned == false && sop?.status == 'approved'
-                                    ? "SOP approved! Sign the digital agreement to start teaching."
-                                    : "Submit your technical SOP proofs for admin approval.",
-                                style: const TextStyle(fontSize: 12, color: Colors.black87),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => controller.selectedIndex.value = 2,
-                          child: const Text("Action"),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-
-              // Batches List Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text("My Active Batches", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  TextButton(onPressed: () => controller.selectedIndex.value = 1, child: const Text("Manage")),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              if (batches.isEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          const Icon(Icons.class_outlined, size: 48, color: Colors.grey),
-                          const SizedBox(height: 12),
-                          const Text("No Batches Created Yet", style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          const Text("Complete SOP verification and create your first batch.", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: batches.length,
-                  itemBuilder: (context, i) {
-                    final b = batches[i];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.teacherRole.withOpacity(0.1),
-                          child: const Icon(Icons.menu_book, color: AppColors.teacherRole),
-                        ),
-                        title: Text(b.batchName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text("Course: ${b.courseTitle ?? b.subject ?? 'Speaxa Batch'}\nStudents: ${b.seatsFilled}/${b.capacity}"),
-                        trailing: StatusChip(status: b.status),
-                      ),
-                    );
-                  },
-                ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _buildHeroStat(String label, String value) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-      ],
+  Widget _buildDrawerItem(BuildContext context, IconData icon, String title, int index, int activeIdx) {
+    final isSelected = index == activeIdx;
+    return ListTile(
+      selected: isSelected,
+      selectedTileColor: AppColors.teacherRole.withOpacity(0.08),
+      selectedColor: AppColors.teacherRole,
+      leading: Icon(icon, color: isSelected ? AppColors.teacherRole : Colors.grey.shade600),
+      title: Text(title, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+      onTap: () {
+        Navigator.pop(context);
+        controller.selectedIndex.value = index;
+      },
     );
   }
 }
