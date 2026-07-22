@@ -794,6 +794,46 @@ router.get('/level', async (req, res) => {
   }
 });
 
+// ── Pending Action Counts ─────────────────────────────────────
+router.get('/pending-counts', async (req, res) => {
+  try {
+    // 1. Unread chat messages (Parent Connect)
+    const chats = await db.query(`
+      SELECT COUNT(*) as count 
+      FROM parent_teacher_chats 
+      WHERE teacher_id = $1 AND sender_id != $1 AND is_read = false
+    `, [req.user.id]);
+    
+    // 2. Pending assignment submissions to grade
+    const assignments = await db.query(`
+      SELECT COUNT(*) as count 
+      FROM assignment_submissions sub
+      JOIN assignments a ON a.id = sub.assignment_id
+      WHERE a.teacher_id = $1 AND sub.status = 'submitted'
+    `, [req.user.id]);
+
+    // 3. Unread notifications
+    const notifications = await db.query(`
+      SELECT COUNT(*) as count 
+      FROM notifications 
+      WHERE target_user = $1 AND is_active = true AND is_read = false
+    `, [req.user.id]);
+
+    const total = parseInt(chats.rows[0].count) + 
+                  parseInt(assignments.rows[0].count) + 
+                  parseInt(notifications.rows[0].count);
+    
+    res.json({
+      total,
+      chats: parseInt(chats.rows[0].count),
+      assignments: parseInt(assignments.rows[0].count),
+      notifications: parseInt(notifications.rows[0].count)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Notifications ─────────────────────────────────────────────
 router.get('/notifications', async (req, res) => {
   const teacherId = req.user.id;
@@ -1217,6 +1257,13 @@ router.get('/connect/messages', async (req, res) => {
     return res.status(400).json({ error: 'parentId and studentId are required' });
   }
   try {
+    // Mark incoming messages as read
+    await db.query(`
+      UPDATE parent_teacher_chats 
+      SET is_read = true 
+      WHERE teacher_id = $1 AND parent_id = $2 AND student_id = $3 AND sender_id != $1
+    `, [req.user.id, parentId, studentId]);
+
     const messages = await db.query(`
       SELECT chat.*, 
              sender.name as sender_name, sender.role as sender_role

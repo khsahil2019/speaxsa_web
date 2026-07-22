@@ -792,6 +792,66 @@ INSERT INTO platform_settings (key, value) VALUES
   ('home_footer_youtube', 'https://youtube.com/speaxa'),
   ('home_footer_twitter', 'https://twitter.com/speaxa'),
   ('home_footer_play_store_url', 'https://play.google.com/store/apps/details?id=com.speaxa'),
-  ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa')
+  ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa'),
+  ('home_footer_url_about', '/about.html'),
+  ('home_footer_url_contact', '/contact.html'),
+  ('home_footer_url_blog', '/blog.html'),
+  ('home_footer_url_results', '/success-stories.html'),
+  ('home_footer_url_safety', '/privacy.html')
 ON CONFLICT (key) DO NOTHING;
+
+
+-- ============================================================
+-- 35. TEACHER RATINGS & REVIEWS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS teacher_ratings (
+  id SERIAL PRIMARY KEY,
+  teacher_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  parent_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  student_id VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  feedback TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(teacher_id, parent_id, student_id)
+);
+CREATE INDEX IF NOT EXISTS idx_teacher_ratings_lookup ON teacher_ratings (teacher_id);
+
+-- ============================================================
+-- 36. BLOGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS blogs (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  content TEXT NOT NULL,
+  summary TEXT,
+  banner_url TEXT,
+  author VARCHAR(100) DEFAULT 'Admin',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 37. FAQS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS faqs (
+  id SERIAL PRIMARY KEY,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  category VARCHAR(100) DEFAULT 'General',
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 38. MEDIA GALLERY
+-- ============================================================
+CREATE TABLE IF NOT EXISTS media_gallery (
+  id SERIAL PRIMARY KEY,
+  filename VARCHAR(255) NOT NULL,
+  url TEXT NOT NULL,
+  file_size INT,
+  mime_type VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 

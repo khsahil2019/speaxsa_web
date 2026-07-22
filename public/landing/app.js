@@ -452,6 +452,23 @@ async function loadSettings() {
       document.querySelectorAll('a[href*="twitter.com"]').forEach(el => el.href = settings.home_footer_twitter);
     }
 
+    // 5.5 Company Links updates
+    if (settings.home_footer_url_about) {
+      document.querySelectorAll('a[href="/about.html"], a[href$="about.html"]').forEach(el => el.href = settings.home_footer_url_about);
+    }
+    if (settings.home_footer_url_contact) {
+      document.querySelectorAll('a[href="/contact.html"], a[href$="contact.html"]').forEach(el => el.href = settings.home_footer_url_contact);
+    }
+    if (settings.home_footer_url_blog) {
+      document.querySelectorAll('a[href="/blog.html"], a[href$="blog.html"]').forEach(el => el.href = settings.home_footer_url_blog);
+    }
+    if (settings.home_footer_url_results) {
+      document.querySelectorAll('a[href="/success-stories.html"], a[href$="success-stories.html"]').forEach(el => el.href = settings.home_footer_url_results);
+    }
+    if (settings.home_footer_url_safety) {
+      document.querySelectorAll('a[href="/privacy.html"], a[href$="privacy.html"]').forEach(el => el.href = settings.home_footer_url_safety);
+    }
+
     // 6. App download buttons dynamic injection
     const appSupportCol = Array.from(document.querySelectorAll('.spx-footer h6.footer-heading')).find(el => el.textContent.includes('App & Support'))?.parentElement;
     if (appSupportCol) {
@@ -576,15 +593,15 @@ async function showCourseDetails(courseId) {
     document.getElementById('modalCourseBoard').textContent = course.board || 'CBSE';
     document.getElementById('modalCourseSubject').textContent = course.subject || 'Physics';
     document.getElementById('modalCourseDuration').textContent = `${course.duration_weeks || 12} Weeks`;
-    document.getElementById('modalCourseDesc').innerHTML = formatRichText(course.description) || 'No description available.';
+    document.getElementById('modalCourseDesc').innerHTML = formatCollapsibleText(course.description) || 'No description available.';
     document.getElementById('modalCourseFees').textContent = `₹${parseFloat(course.fees).toLocaleString('en-IN')}`;
     
     document.getElementById('modalCourseLearningDuration').textContent = course.learning_duration || '—';
     document.getElementById('modalCourseLanguage').textContent = course.language_instruction || '—';
     document.getElementById('modalCourseDailyDuration').textContent = course.daily_class_duration || '—';
     document.getElementById('modalCourseAssessment').textContent = course.assessment_days || '—';
-    document.getElementById('modalCourseObjective').innerHTML = formatRichText(course.objective) || '—';
-    document.getElementById('modalCourseOutcome').innerHTML = formatRichText(course.learning_outcome) || '—';
+    document.getElementById('modalCourseObjective').innerHTML = formatCollapsibleText(course.objective) || '—';
+    document.getElementById('modalCourseOutcome').innerHTML = formatCollapsibleText(course.learning_outcome) || '—';
     
     // Fetch Batches
     const resBatches = await fetch(`/api/public/courses/${courseId}/batches`);

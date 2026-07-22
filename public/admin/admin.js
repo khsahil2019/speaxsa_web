@@ -205,7 +205,12 @@ function navigateTo(page) {
     refunds:'Refunds', sop:'SOP Review',
     coupons:'Coupon Management', notifications:'Send Notifications',
     settings:'Platform Settings', auditlogs:'Audit Logs', support:'Connect Queries',
-    mailmanager:'Mail Manager',
+    mailmanager:'Mail Manager', footer:'Landing Footer Settings',
+    blogs:'Manage Blogs', faqs:'Manage FAQs', privacy:'Privacy & Safety Policy',
+    gallery:'Media Gallery', terms:'Terms of Service',
+    settings_general:'Platform General', settings_reg_payouts:'Registration & Payouts',
+    settings_gateways:'OTP Gateways', settings_tester:'Gateway Tester',
+    settings_credentials:'API Credentials', settings_otp_logs:'OTP Audit Logs',
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   document.getElementById('pageBreadcrumb').textContent = `Admin / ${titles[page] || page}`;
@@ -217,8 +222,13 @@ function navigateTo(page) {
     rewards: renderRewards,
     refunds: renderRefunds, sop: renderSOP,
     coupons: renderCoupons, notifications: renderNotifications,
-    settings: renderSettings, auditlogs: renderAuditLogs, support: renderSupport,
-    mailmanager: renderMailManager,
+    settings: renderSettingsGeneral, auditlogs: renderAuditLogs, support: renderSupport,
+    mailmanager: renderMailManager, footer: renderFooterPage,
+    blogs: renderBlogsPage, faqs: renderFaqsPage, privacy: renderPrivacyPolicyPage,
+    gallery: renderGalleryPage, terms: renderTermsOfServicePage,
+    settings_general: renderSettingsGeneral, settings_reg_payouts: renderSettingsRegPayouts,
+    settings_gateways: renderSettingsGateways, settings_tester: renderSettingsTester,
+    settings_credentials: renderSettingsCredentials, settings_otp_logs: renderSettingsOtpLogs,
   };
 
   const render = renders[page];
@@ -3111,380 +3121,390 @@ async function sendNotif(e) {
 }
 
 // ── Settings & OTP System Management ──────────────────────────────
-async function renderSettings() {
+async function renderSettingsGeneral() {
+  loading();
+  try {
+    const settings = await apiGet('/admin/settings');
+    const container = document.getElementById('pageContent');
+    container.innerHTML = `
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="spx-card mb-4 bg-white text-dark border-0 shadow-sm">
+            <h6 class="mb-4 text-primary fw-bold"><i class="fas fa-sliders-h me-2"></i>Platform Settings</h6>
+            <form onsubmit="saveSettings(event)">
+              ${[
+                {key:'platform_name', label:'Platform Name', type:'text'},
+                {key:'logo_text', label:'Logo Text', type:'text'},
+                {key:'support_email', label:'Support Email', type:'email'},
+                {key:'support_phone', label:'Support Phone', type:'text'},
+                {key:'support_hours', label:'Support Hours', type:'text'},
+                {key:'announcement', label:'Announcement Banner', type:'text'},
+                {key:'max_batch_capacity', label:'Max Batch Capacity', type:'number'},
+              ].map(f => `
+                <div class="mb-3">
+                  <label class="spx-label text-dark">${f.label}</label>
+                  <input class="form-control spx-input" type="${f.type}" id="setting_${f.key}" value="${settings[f.key]||''}">
+                </div>`).join('')}
+              <button type="submit" class="btn btn-spx w-100">Save Platform Settings</button>
+            </form>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="spx-card mb-4 bg-white text-dark border-0 shadow-sm">
+            <h6 class="mb-3 text-primary fw-bold"><i class="fas fa-desktop me-2"></i>Homepage CMS Text</h6>
+            <form onsubmit="saveHomepageSettings(event)">
+              ${[
+                {key:'home_hero_badge', label:'Hero Badge text'},
+                {key:'home_hero_title', label:'Hero Main Title'},
+                {key:'home_hero_desc', label:'Hero Description', type:'textarea'},
+                {key:'home_hero_cta_primary', label:'Primary CTA Button Text'},
+                {key:'home_hero_cta_secondary', label:'Secondary CTA Button Text'},
+                {key:'home_footer_phone', label:'Footer Support Phone'},
+                {key:'home_footer_email', label:'Footer Support Email'},
+              ].map(f => `
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">${f.label}</label>
+                  ${f.type === 'textarea' ? `
+                    <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${settings[f.key]||''}</textarea>
+                  ` : `
+                    <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${settings[f.key]||''}">
+                  `}
+                </div>`).join('')}
+              <button type="submit" class="btn btn-spx btn-sm w-100 mt-2">Save Homepage CMS</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function renderSettingsRegPayouts() {
+  loading();
+  try {
+    const settings = await apiGet('/admin/settings');
+    const container = document.getElementById('pageContent');
+    container.innerHTML = `
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="spx-card border-0 shadow-sm bg-white text-dark p-4">
+            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+              <h6 class="mb-0 text-primary fw-bold"><i class="fas fa-shield-alt me-2"></i>Registration OTP Policy</h6>
+              <span class="badge ${String(settings.require_registration_otp) !== 'false' ? 'bg-success' : 'bg-warning'} px-2.5 py-1">
+                ${String(settings.require_registration_otp) !== 'false' ? 'REQUIRED (ON)' : 'OPTIONAL (OFF)'}
+              </span>
+            </div>
+            <p class="text-muted small mb-3">
+              Control whether new students & teachers must verify OTP via SMS/Email during account sign up.
+            </p>
+            <form onsubmit="saveOtpRequirementSetting(event)">
+              <div class="mb-3">
+                <label class="spx-label text-dark">Require Registration OTP</label>
+                <select class="form-select spx-input" id="setting_require_registration_otp">
+                  <option value="true" ${String(settings.require_registration_otp) !== 'false' ? 'selected' : ''}>Enabled (Require OTP Verification)</option>
+                  <option value="false" ${String(settings.require_registration_otp) === 'false' ? 'selected' : ''}>Disabled (Direct Registration without OTP)</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-spx w-100"><i class="fas fa-save me-1"></i>Save Registration Policy</button>
+            </form>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="spx-card border-0 shadow-sm bg-white text-dark p-4">
+            <h6 class="mb-4 text-primary fw-bold"><i class="fas fa-percentage me-2"></i>Teacher Payout Share (%)</h6>
+            <form onsubmit="saveLevelPayouts(event)">
+              <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                ${[
+                  {key:'payout_pct_Junior_Teacher', label:'Junior Teacher Share (%)', default:'50.00'},
+                  {key:'payout_pct_Assistant_Teacher', label:'Assistant Teacher Share (%)', default:'55.00'},
+                  {key:'payout_pct_Senior_Teacher', label:'Senior Teacher Share (%)', default:'60.00'},
+                  {key:'payout_pct_Executive_Teacher', label:'Executive Teacher Share (%)', default:'65.00'},
+                  {key:'payout_pct_Lecturer', label:'Lecturer Share (%)', default:'70.00'},
+                  {key:'payout_pct_Professor', label:'Professor Share (%)', default:'75.00'},
+                  {key:'payout_pct_Senior_Professor', label:'Senior Professor Share (%)', default:'80.00'},
+                  {key:'payout_pct_HOD', label:'HOD Share (%)', default:'85.00'},
+                  {key:'payout_pct_Dean', label:'Dean Share (%)', default:'90.00'},
+                ].map(f => `
+                  <div class="mb-3">
+                    <label class="spx-label text-dark">${f.label}</label>
+                    <input class="form-control spx-input" type="number" step="0.01" min="0" max="100" id="setting_${f.key}" value="${settings[f.key]||f.default}">
+                  </div>`).join('')}
+              </div>
+              <button type="submit" class="btn btn-spx w-100 mt-3">Save Level Payouts</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function renderSettingsGateways() {
   loading();
   try {
     const settings = await apiGet('/admin/settings');
     const smsProv = settings.sms_provider || 'dev';
     const emailProv = settings.email_provider || 'smtp';
-
-    document.getElementById('pageContent').innerHTML = `
-      <div class="row g-4">
-        <!-- Settings Sidebar tabs -->
-        <div class="col-md-3">
-          <div class="nav flex-column nav-pills border rounded p-2 bg-light shadow-sm" id="settingsTabs" role="tablist">
-            <button class="nav-link active text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-general" data-bs-toggle="pill" data-bs-target="#pane-general" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-sliders-h me-2"></i>Platform General</button>
-            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-reg-payouts" data-bs-toggle="pill" data-bs-target="#pane-reg-payouts" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-percentage me-2"></i>Registration & Payouts</button>
-            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-gateways" data-bs-toggle="pill" data-bs-target="#pane-gateways" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-paper-plane me-2"></i>OTP Gateways</button>
-            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-tester" data-bs-toggle="pill" data-bs-target="#pane-tester" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-vial me-2"></i>Gateway Tester</button>
-            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0 mb-1" id="tab-credentials" data-bs-toggle="pill" data-bs-target="#pane-credentials" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-key me-2"></i>API Credentials</button>
-            <button class="nav-link text-start py-2.5 px-3 small fw-semibold text-decoration-none border-0" id="tab-logs" data-bs-toggle="pill" data-bs-target="#pane-logs" type="button" role="tab" style="background:transparent; color:#aaa;"><i class="fas fa-history me-2"></i>OTP Audit Logs</button>
+    const container = document.getElementById('pageContent');
+    container.innerHTML = `
+      <div class="row">
+        <div class="col-12">
+          <div class="spx-card border-0 shadow-sm bg-white text-dark p-4 mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+              <h6 class="mb-0 text-primary fw-bold"><i class="fas fa-paper-plane me-2"></i>OTP & Gateway Services</h6>
+              <span class="badge bg-info text-dark">Ready-Made System</span>
+            </div>
+            <p class="text-muted small mb-3">
+              Configure, manage, and switch SMS and Email OTP dispatch providers dynamically for the platform.
+            </p>
+            <form onsubmit="saveOtpSystemSettings(event)">
+              <div class="mb-3">
+                <label class="spx-label text-dark">Active SMS Provider</label>
+                <select class="form-select spx-input" id="setting_sms_provider" onchange="onSmsProviderChange()">
+                  <option value="dev" ${smsProv === 'dev' ? 'selected' : ''}>Development / Console Mode (Free, test mode)</option>
+                  <option value="msg91" ${smsProv === 'msg91' ? 'selected' : ''}>MSG91 Gateway (India & Global)</option>
+                  <option value="twilio" ${smsProv === 'twilio' ? 'selected' : ''}>Twilio SMS Gateway (Global)</option>
+                  <option value="fast2sms" ${smsProv === 'fast2sms' ? 'selected' : ''}>Fast2SMS Gateway (India)</option>
+                  <option value="2factor" ${smsProv === '2factor' ? 'selected' : ''}>2Factor SMS Gateway (India)</option>
+                  <option value="custom" ${smsProv === 'custom' ? 'selected' : ''}>Custom HTTP REST Gateway (Generic API)</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="spx-label text-dark">Active Email Provider</label>
+                <select class="form-select spx-input" id="setting_email_provider">
+                  <option value="smtp" ${emailProv === 'smtp' ? 'selected' : ''}>SMTP Mail Server (Nodemailer)</option>
+                  <option value="dev" ${emailProv === 'dev' ? 'selected' : ''}>Development / Console Mode (Free, test/console logs)</option>
+                </select>
+              </div>
+              <!-- MSG91 Dynamic Fields -->
+              <div id="fields_msg91" class="otp-provider-fields ${smsProv === 'msg91' ? '' : 'd-none'} p-3 mb-3 rounded border text-dark" style="background: rgba(13,122,109,0.03);">
+                <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>MSG91 Credentials</h6>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">MSG91 Auth Key</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_auth_key" value="${settings.msg91_auth_key||''}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">MSG91 Template ID</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_template_id" value="${settings.msg91_template_id||''}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">MSG91 Sender ID (6 chars)</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_sender_id" value="${settings.msg91_sender_id||''}">
+                </div>
+              </div>
+              <!-- Twilio Dynamic Fields -->
+              <div id="fields_twilio" class="otp-provider-fields ${smsProv === 'twilio' ? '' : 'd-none'} p-3 mb-3 rounded border text-dark" style="background: rgba(13,122,109,0.03);">
+                <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Twilio Credentials</h6>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Twilio Account SID</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_account_sid" value="${settings.twilio_account_sid||''}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Twilio Auth Token</label>
+                  <input class="form-control spx-input form-control-sm" type="password" id="setting_twilio_auth_token" value="${settings.twilio_auth_token||''}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Twilio From Phone Number</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_from_phone" value="${settings.twilio_from_phone||''}">
+                </div>
+              </div>
+              <!-- Fast2SMS Dynamic Fields -->
+              <div id="fields_fast2sms" class="otp-provider-fields ${smsProv === 'fast2sms' ? '' : 'd-none'} p-3 mb-3 rounded border text-dark" style="background: rgba(13,122,109,0.03);">
+                <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Fast2SMS Credentials</h6>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Fast2SMS Authorization API Key</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_api_key" value="${settings.fast2sms_api_key||''}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Fast2SMS Route (e.g. dlt or v3)</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_route" value="${settings.fast2sms_route||''}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Sender ID (DLT Registered)</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_sender_id" value="${settings.fast2sms_sender_id||''}">
+                </div>
+              </div>
+              <!-- 2Factor Dynamic Fields -->
+              <div id="fields_2factor" class="otp-provider-fields ${smsProv === '2factor' ? '' : 'd-none'} p-3 mb-3 rounded border text-dark" style="background: rgba(13,122,109,0.03);">
+                <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>2Factor Credentials</h6>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">2Factor API Key</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_api_key" value="${settings.twofactor_api_key||''}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Template Name (Optional)</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_template_name" value="${settings.twofactor_template_name||''}" placeholder="e.g. MyOTPTemplate">
+                </div>
+              </div>
+              <!-- Custom HTTP Gateway -->
+              <div id="fields_custom" class="otp-provider-fields ${smsProv === 'custom' ? '' : 'd-none'} p-3 mb-3 rounded border text-dark" style="background: rgba(13,122,109,0.03);">
+                <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-cog me-1"></i>Custom API Endpoint Config</h6>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Gateway Request URL</label>
+                  <input class="form-control spx-input form-control-sm" type="url" id="setting_custom_sms_url" value="${settings.custom_sms_url||''}" placeholder="https://api.mygateway.com/send?to={PHONE}&msg={MSG}">
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">Request Method</label>
+                  <select class="form-select spx-input form-control-sm" id="setting_custom_sms_method">
+                    <option value="GET" ${settings.custom_sms_method === 'GET' ? 'selected' : ''}>GET Request</option>
+                    <option value="POST" ${settings.custom_sms_method === 'POST' ? 'selected' : ''}>POST Request</option>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">HTTP Headers JSON (Optional)</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_headers" value="${settings.custom_sms_headers||''}" placeholder='{"Authorization": "Bearer key"}'>
+                </div>
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">HTTP Body Template JSON (Optional)</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_body" value="${settings.custom_sms_body||''}" placeholder='{"to": "{PHONE}", "text": "{MSG}"}'>
+                </div>
+              </div>
+              <hr>
+              <div class="row">
+                <div class="col-md-6 mb-2">
+                  <label class="spx-label text-dark">OTP Expiry (Minutes)</label>
+                  <input class="form-control spx-input" type="number" id="setting_otp_expiry_minutes" value="${settings.otp_expiry_minutes||'8'}" required>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <label class="spx-label text-dark">OTP Length (Digits)</label>
+                  <input class="form-control spx-input" type="number" id="setting_otp_length" value="${settings.otp_length||'6'}" required>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <label class="spx-label text-dark">Master/Backdoor OTP Code</label>
+                  <input class="form-control spx-input" type="text" id="setting_master_otp" value="${settings.master_otp||''}" placeholder="e.g. 999999 (Overrides check)">
+                </div>
+                <div class="col-md-6 mb-2">
+                  <label class="spx-label text-dark">Dev OTP In Response</label>
+                  <select class="form-select spx-input" id="setting_dev_otp_in_response">
+                    <option value="true" ${String(settings.dev_otp_in_response) === 'true' ? 'selected' : ''}>Yes (Show OTP for development ease)</option>
+                    <option value="false" ${String(settings.dev_otp_in_response) === 'false' ? 'selected' : ''}>No (Prod mode, hide OTP)</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-spx w-100 mt-3">Save OTP Settings</button>
+            </form>
           </div>
         </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
 
-        <!-- Settings Panes -->
-        <div class="col-md-9">
-          <div class="tab-content" id="settingsTabContent">
-            <!-- Pane 1: Platform General -->
-            <div class="tab-pane fade show active" id="pane-general" role="tabpanel">
-              <div class="row g-4">
-                <div class="col-md-6">
-                  <div class="spx-card">
-                    <h6 class="mb-4"><i class="fas fa-sliders-h me-2 text-primary"></i>Platform Settings</h6>
-                    <form onsubmit="saveSettings(event)">
-                      ${[
-                        {key:'platform_name', label:'Platform Name', type:'text'},
-                        {key:'logo_text', label:'Logo Text', type:'text'},
-                        {key:'support_email', label:'Support Email', type:'email'},
-                        {key:'support_phone', label:'Support Phone', type:'text'},
-                        {key:'support_hours', label:'Support Hours', type:'text'},
-                        {key:'announcement', label:'Announcement Banner', type:'text'},
-                        {key:'max_batch_capacity', label:'Max Batch Capacity', type:'number'},
-                      ].map(f => `
-                        <div class="mb-3">
-                          <label class="spx-label">${f.label}</label>
-                          <input class="form-control spx-input" type="${f.type}" id="setting_${f.key}" value="${settings[f.key]||''}">
-                        </div>`).join('')}
-                      <button type="submit" class="btn btn-spx w-100">Save Platform Settings</button>
-                    </form>
-                  </div>
+async function renderSettingsTester() {
+  const container = document.getElementById('pageContent');
+  container.innerHTML = `
+    <div class="row">
+      <div class="col-12">
+        <div class="spx-card mb-4 border-0 shadow-sm bg-white text-dark p-4">
+          <h6 class="mb-3 text-primary fw-bold"><i class="fas fa-vial me-2"></i>Live Gateway Tester</h6>
+          <p class="text-muted small mb-3">Execute diagnostic test dispatches to verify external API integration.</p>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <form onsubmit="runSmsTest(event)" class="p-3 rounded bg-light border text-dark" style="height:100%;">
+                <label class="spx-label small fw-bold text-dark"><i class="fas fa-sms me-1 text-primary"></i>Test SMS Gateway</label>
+                <div class="input-group input-group-sm mb-2 mt-2">
+                  <input type="text" class="form-control spx-input" id="test_sms_phone" placeholder="Enter mobile number" required>
+                  <button type="submit" class="btn btn-spx"><i class="fas fa-paper-plane me-1"></i>Send Test SMS</button>
                 </div>
-                <div class="col-md-6">
-                  <div class="spx-card">
-                    <h6 class="mb-3"><i class="fas fa-desktop me-2 text-primary"></i>Homepage CMS</h6>
-                    <form onsubmit="saveHomepageSettings(event)">
-                      ${[
-                        {key:'home_hero_badge', label:'Hero Badge text'},
-                        {key:'home_hero_title', label:'Hero Main Title'},
-                        {key:'home_hero_desc', label:'Hero Description', type:'textarea'},
-                        {key:'home_hero_cta_primary', label:'Primary CTA Button Text'},
-                        {key:'home_hero_cta_secondary', label:'Secondary CTA Button Text'},
-                        {key:'home_footer_phone', label:'Footer Support Phone'},
-                        {key:'home_footer_email', label:'Footer Support Email'},
-                      ].map(f => `
-                        <div class="mb-2">
-                          <label class="spx-label small">${f.label}</label>
-                          ${f.type === 'textarea' ? `
-                            <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${settings[f.key]||''}</textarea>
-                          ` : `
-                            <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${settings[f.key]||''}">
-                          `}
-                        </div>`).join('')}
-                      <button type="submit" class="btn btn-spx btn-sm w-100 mt-2">Save Homepage CMS</button>
-                    </form>
-                  </div>
-                </div>
-              </div>
+                <div id="sms_test_output" class="otp-log-terminal d-none mt-2 bg-dark text-light p-2 rounded small" style="font-family: monospace;"></div>
+              </form>
             </div>
-
-            <!-- Pane 2: Registration & Payouts -->
-            <div class="tab-pane fade" id="pane-reg-payouts" role="tabpanel">
-              <div class="row g-4">
-                <div class="col-md-6">
-                  <div class="spx-card border border-primary border-opacity-25" style="background: linear-gradient(135deg, rgba(13,122,109,0.08), rgba(8,84,75,0.03));">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                      <h6 class="mb-0 text-white"><i class="fas fa-shield-alt text-primary me-2"></i>Registration OTP Policy</h6>
-                      <span class="badge ${String(settings.require_registration_otp) !== 'false' ? 'bg-success' : 'bg-warning'} px-2.5 py-1">
-                        ${String(settings.require_registration_otp) !== 'false' ? 'REQUIRED (ON)' : 'OPTIONAL (OFF)'}
-                      </span>
-                    </div>
-                    <p class="text-muted small mb-3">
-                      Control whether new students & teachers must verify OTP via SMS/Email during account sign up.
-                    </p>
-                    <form onsubmit="saveOtpRequirementSetting(event)">
-                      <div class="mb-3">
-                        <label class="spx-label text-white">Require Registration OTP</label>
-                        <select class="form-select spx-input" id="setting_require_registration_otp">
-                          <option value="true" ${String(settings.require_registration_otp) !== 'false' ? 'selected' : ''}>Enabled (Require OTP Verification)</option>
-                          <option value="false" ${String(settings.require_registration_otp) === 'false' ? 'selected' : ''}>Disabled (Direct Registration without OTP)</option>
-                        </select>
-                      </div>
-                      <button type="submit" class="btn btn-spx w-100"><i class="fas fa-save me-1"></i>Save Registration Policy</button>
-                    </form>
-                  </div>
+            <div class="col-md-6 mb-3">
+              <form onsubmit="runEmailTest(event)" class="p-3 rounded bg-light border text-dark" style="height:100%;">
+                <label class="spx-label small fw-bold text-dark"><i class="fas fa-envelope me-1 text-primary"></i>Test Email Gateway (SMTP)</label>
+                <div class="input-group input-group-sm mb-2 mt-2">
+                  <input type="email" class="form-control spx-input" id="test_email_address" placeholder="Enter email address" required>
+                  <button type="submit" class="btn btn-spx"><i class="fas fa-paper-plane me-1"></i>Send Test Email</button>
                 </div>
-                <div class="col-md-6">
-                  <div class="spx-card">
-                    <h6 class="mb-4"><i class="fas fa-percentage me-2 text-primary"></i>Teacher Payout Share (%)</h6>
-                    <form onsubmit="saveLevelPayouts(event)">
-                      <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
-                        ${[
-                          {key:'payout_pct_Junior_Teacher', label:'Junior Teacher Share (%)', default:'50.00'},
-                          {key:'payout_pct_Assistant_Teacher', label:'Assistant Teacher Share (%)', default:'55.00'},
-                          {key:'payout_pct_Senior_Teacher', label:'Senior Teacher Share (%)', default:'60.00'},
-                          {key:'payout_pct_Executive_Teacher', label:'Executive Teacher Share (%)', default:'65.00'},
-                          {key:'payout_pct_Lecturer', label:'Lecturer Share (%)', default:'70.00'},
-                          {key:'payout_pct_Professor', label:'Professor Share (%)', default:'75.00'},
-                          {key:'payout_pct_Senior_Professor', label:'Senior Professor Share (%)', default:'80.00'},
-                          {key:'payout_pct_HOD', label:'HOD Share (%)', default:'85.00'},
-                          {key:'payout_pct_Dean', label:'Dean Share (%)', default:'90.00'},
-                        ].map(f => `
-                          <div class="mb-3">
-                            <label class="spx-label">${f.label}</label>
-                            <input class="form-control spx-input" type="number" step="0.01" min="0" max="100" id="setting_${f.key}" value="${settings[f.key]||f.default}">
-                          </div>`).join('')}
-                      </div>
-                      <button type="submit" class="btn btn-spx w-100 mt-3">Save Level Payouts</button>
-                    </form>
-                  </div>
-                </div>
-              </div>
+                <div id="email_test_output" class="otp-log-terminal d-none mt-2 bg-dark text-light p-2 rounded small" style="font-family: monospace;"></div>
+              </form>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
-            <!-- Pane 3: OTP Gateways -->
-            <div class="tab-pane fade" id="pane-gateways" role="tabpanel">
-              <div class="spx-card border border-info border-opacity-25">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                  <h6 class="mb-0"><i class="fas fa-paper-plane me-2 text-info"></i>OTP & Gateway Services</h6>
-                  <span class="badge bg-info text-dark">Ready-Made System</span>
-                </div>
-                <p class="text-muted small mb-3">
-                  Configure, manage, and switch SMS and Email OTP dispatch providers dynamically for the platform.
-                </p>
-                <form onsubmit="saveOtpSystemSettings(event)">
-                  <div class="mb-3">
-                    <label class="spx-label">Active SMS Provider</label>
-                    <select class="form-select spx-input" id="setting_sms_provider" onchange="onSmsProviderChange()">
-                      <option value="dev" ${smsProv === 'dev' ? 'selected' : ''}>Development / Console Mode (Free, test mode)</option>
-                      <option value="msg91" ${smsProv === 'msg91' ? 'selected' : ''}>MSG91 Gateway (India & Global)</option>
-                      <option value="twilio" ${smsProv === 'twilio' ? 'selected' : ''}>Twilio SMS Gateway (Global)</option>
-                      <option value="fast2sms" ${smsProv === 'fast2sms' ? 'selected' : ''}>Fast2SMS Gateway (India)</option>
-                      <option value="2factor" ${smsProv === '2factor' ? 'selected' : ''}>2Factor SMS Gateway (India)</option>
-                      <option value="custom" ${smsProv === 'custom' ? 'selected' : ''}>Custom HTTP REST Gateway (Generic API)</option>
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label class="spx-label">Active Email Provider</label>
-                    <select class="form-select spx-input" id="setting_email_provider">
-                      <option value="smtp" ${emailProv === 'smtp' ? 'selected' : ''}>SMTP Mail Server (Nodemailer)</option>
-                      <option value="dev" ${emailProv === 'dev' ? 'selected' : ''}>Development / Console Mode (Free, test/console logs)</option>
-                    </select>
-                  </div>
-                  <!-- MSG91 Dynamic Fields -->
-                  <div id="fields_msg91" class="otp-provider-fields ${smsProv === 'msg91' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
-                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>MSG91 Credentials</h6>
-                    <div class="mb-2">
-                      <label class="spx-label small">MSG91 Auth Key</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_auth_key" value="${settings.msg91_auth_key||''}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">MSG91 Template ID</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_template_id" value="${settings.msg91_template_id||''}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">MSG91 Sender ID (6 chars)</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_sender_id" value="${settings.msg91_sender_id||''}">
-                    </div>
-                  </div>
-                  <!-- Twilio Dynamic Fields -->
-                  <div id="fields_twilio" class="otp-provider-fields ${smsProv === 'twilio' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
-                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Twilio Credentials</h6>
-                    <div class="mb-2">
-                      <label class="spx-label small">Twilio Account SID</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_account_sid" value="${settings.twilio_account_sid||''}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">Twilio Auth Token</label>
-                      <input class="form-control spx-input form-control-sm" type="password" id="setting_twilio_auth_token" value="${settings.twilio_auth_token||''}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">Twilio From Phone Number</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_from_phone" value="${settings.twilio_from_phone||''}">
-                    </div>
-                  </div>
-                  <!-- Fast2SMS Dynamic Fields -->
-                  <div id="fields_fast2sms" class="otp-provider-fields ${smsProv === 'fast2sms' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
-                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Fast2SMS Credentials</h6>
-                    <div class="mb-2">
-                      <label class="spx-label small">Fast2SMS Authorization API Key</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_api_key" value="${settings.fast2sms_api_key||''}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">Fast2SMS Route (e.g. dlt or v3)</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_route" value="${settings.fast2sms_route||''}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">Sender ID (DLT Registered)</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_sender_id" value="${settings.fast2sms_sender_id||''}">
-                    </div>
-                  </div>
-                  <!-- 2Factor Dynamic Fields -->
-                  <div id="fields_2factor" class="otp-provider-fields ${smsProv === '2factor' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
-                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>2Factor Credentials</h6>
-                    <div class="mb-2">
-                      <label class="spx-label small">2Factor API Key</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_api_key" value="${settings.twofactor_api_key||''}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">Template Name (Optional)</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_template_name" value="${settings.twofactor_template_name||''}" placeholder="e.g. MyOTPTemplate">
-                    </div>
-                  </div>
-                  <!-- Custom HTTP Gateway -->
-                  <div id="fields_custom" class="otp-provider-fields ${smsProv === 'custom' ? '' : 'd-none'} p-3 mb-3 rounded border" style="background: rgba(13,122,109,0.03);">
-                    <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-cog me-1"></i>Custom API Endpoint Config</h6>
-                    <div class="mb-2">
-                      <label class="spx-label small">Gateway Request URL</label>
-                      <input class="form-control spx-input form-control-sm" type="url" id="setting_custom_sms_url" value="${settings.custom_sms_url||''}" placeholder="https://api.mygateway.com/send?to={PHONE}&msg={MSG}">
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">Request Method</label>
-                      <select class="form-select spx-input form-control-sm" id="setting_custom_sms_method">
-                        <option value="GET" ${settings.custom_sms_method === 'GET' ? 'selected' : ''}>GET Request</option>
-                        <option value="POST" ${settings.custom_sms_method === 'POST' ? 'selected' : ''}>POST Request</option>
-                      </select>
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">HTTP Headers JSON (Optional)</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_headers" value="${settings.custom_sms_headers||''}" placeholder='{"Authorization": "Bearer key"}'>
-                    </div>
-                    <div class="mb-2">
-                      <label class="spx-label small">HTTP Body Template JSON (Optional)</label>
-                      <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_body" value="${settings.custom_sms_body||''}" placeholder='{"to": "{PHONE}", "text": "{MSG}"}'>
-                    </div>
-                  </div>
-                  <hr>
-                  <div class="row">
-                    <div class="col-md-6 mb-2">
-                      <label class="spx-label">OTP Expiry (Minutes)</label>
-                      <input class="form-control spx-input" type="number" id="setting_otp_expiry_minutes" value="${settings.otp_expiry_minutes||'8'}" required>
-                    </div>
-                    <div class="col-md-6 mb-2">
-                      <label class="spx-label">OTP Length (Digits)</label>
-                      <input class="form-control spx-input" type="number" id="setting_otp_length" value="${settings.otp_length||'6'}" required>
-                    </div>
-                    <div class="col-md-6 mb-2">
-                      <label class="spx-label">Master/Backdoor OTP Code</label>
-                      <input class="form-control spx-input" type="text" id="setting_master_otp" value="${settings.master_otp||''}" placeholder="e.g. 999999 (Overrides check)">
-                    </div>
-                    <div class="col-md-6 mb-2">
-                      <label class="spx-label">Dev OTP In Response</label>
-                      <select class="form-select spx-input" id="setting_dev_otp_in_response">
-                        <option value="true" ${String(settings.dev_otp_in_response) === 'true' ? 'selected' : ''}>Yes (Show OTP for development ease)</option>
-                        <option value="false" ${String(settings.dev_otp_in_response) === 'false' ? 'selected' : ''}>No (Prod mode, hide OTP)</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button type="submit" class="btn btn-spx w-100 mt-3">Save OTP Settings</button>
-                </form>
-              </div>
+async function renderSettingsCredentials() {
+  loading();
+  try {
+    const settings = await apiGet('/admin/settings');
+    const container = document.getElementById('pageContent');
+    container.innerHTML = `
+      <div class="row">
+        <div class="col-12">
+          <div class="spx-card mb-4 border-0 shadow-sm bg-white text-dark p-4">
+            <h6 class="mb-3 text-primary fw-bold"><i class="fas fa-key me-2"></i>API Credentials</h6>
+            <form onsubmit="saveAPICredentials(event)">
+              ${[
+                {key:'razorpay_key_id', label:'Razorpay Key ID'},
+                {key:'razorpay_key_secret', label:'Razorpay Secret'},
+                {key:'agora_app_id', label:'Agora App ID'},
+                {key:'agora_app_certificate', label:'Agora App Certificate'},
+                {key:'agora_customer_id', label:'Agora Customer ID'},
+                {key:'agora_customer_secret', label:'Agora Customer Secret', hidden:true},
+                {key:'smtp_host', label:'SMTP Host'},
+                {key:'smtp_port', label:'SMTP Port'},
+                {key:'smtp_user', label:'SMTP Username'},
+                {key:'smtp_pass', label:'SMTP Password', hidden:true},
+                {key:'smtp_from_email', label:'SMTP From Email (e.g. info@speaxa.com)'},
+              ].map(f => `
+                <div class="mb-2">
+                  <label class="spx-label small text-dark">${f.label}</label>
+                  <input class="form-control spx-input form-control-sm" type="${f.hidden?'password':'text'}" id="cred_${f.key}" value="${settings[f.key]||''}" placeholder="${f.hidden?'••••••••':''}">
+                </div>`).join('')}
+              <button type="submit" class="btn btn-spx w-100 mt-3">Save Credentials</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function renderSettingsOtpLogs() {
+  loading();
+  try {
+    const container = document.getElementById('pageContent');
+    container.innerHTML = `
+      <div class="row">
+        <div class="col-12">
+          <div class="spx-card border-0 shadow-sm bg-white text-dark p-4">
+            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+              <h6 class="mb-0 text-primary fw-bold"><i class="fas fa-history me-2"></i>Recent OTP Tokens & Delivery Audit Logs</h6>
+              <button onclick="loadOtpAuditLogs()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt me-1"></i>Refresh Logs</button>
             </div>
-
-            <!-- Pane 4: Live Gateway Tester -->
-            <div class="tab-pane fade" id="pane-tester" role="tabpanel">
-              <div class="spx-card mb-4 border border-info border-opacity-25">
-                <h6 class="mb-3 text-info"><i class="fas fa-vial me-2"></i>Live Gateway Tester</h6>
-                <p class="text-muted small mb-3">Execute diagnostic test dispatches to verify external API integration.</p>
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <form onsubmit="runSmsTest(event)" class="p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); height:100%;">
-                      <label class="spx-label small fw-bold"><i class="fas fa-sms me-1 text-info"></i>Test SMS Gateway</label>
-                      <div class="input-group input-group-sm mb-2">
-                        <input type="text" class="form-control spx-input" id="test_sms_phone" placeholder="Enter mobile number" required>
-                        <button type="submit" class="btn btn-outline-info"><i class="fas fa-paper-plane me-1"></i>Send Test SMS</button>
-                      </div>
-                      <div id="sms_test_output" class="otp-log-terminal d-none mt-2"></div>
-                    </form>
-                  </div>
-                  <div class="col-md-6 mb-3">
-                    <form onsubmit="runEmailTest(event)" class="p-3 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); height:100%;">
-                      <label class="spx-label small fw-bold"><i class="fas fa-envelope me-1 text-info"></i>Test Email Gateway (SMTP)</label>
-                      <div class="input-group input-group-sm mb-2">
-                        <input type="email" class="form-control spx-input" id="test_email_address" placeholder="Enter email address" required>
-                        <button type="submit" class="btn btn-outline-info"><i class="fas fa-paper-plane me-1"></i>Send Test Email</button>
-                      </div>
-                      <div id="email_test_output" class="otp-log-terminal d-none mt-2"></div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Pane 5: API Credentials -->
-            <div class="tab-pane fade" id="pane-credentials" role="tabpanel">
-              <div class="spx-card mb-4">
-                <h6 class="mb-3"><i class="fas fa-key me-2 text-primary"></i>API Credentials</h6>
-                <form onsubmit="saveAPICredentials(event)">
-                  ${[
-                    {key:'razorpay_key_id', label:'Razorpay Key ID'},
-                    {key:'razorpay_key_secret', label:'Razorpay Secret'},
-                    {key:'agora_app_id', label:'Agora App ID'},
-                    {key:'agora_app_certificate', label:'Agora App Certificate'},
-                    {key:'agora_customer_id', label:'Agora Customer ID'},
-                    {key:'agora_customer_secret', label:'Agora Customer Secret', hidden:true},
-                    {key:'smtp_host', label:'SMTP Host'},
-                    {key:'smtp_port', label:'SMTP Port'},
-                    {key:'smtp_user', label:'SMTP Username'},
-                    {key:'smtp_pass', label:'SMTP Password', hidden:true},
-                    {key:'smtp_from_email', label:'SMTP From Email (e.g. info@speaxa.com)'},
-                  ].map(f => `
-                    <div class="mb-2">
-                      <label class="spx-label small">${f.label}</label>
-                      <input class="form-control spx-input form-control-sm" type="${f.hidden?'password':'text'}" id="cred_${f.key}" value="${settings[f.key]||''}" placeholder="${f.hidden?'••••••••':''}">
-                    </div>`).join('')}
-                  <button type="submit" class="btn btn-spx w-100 mt-3">Save Credentials</button>
-                </form>
-              </div>
-            </div>
-
-            <!-- Pane 6: OTP Audit Logs -->
-            <div class="tab-pane fade" id="pane-logs" role="tabpanel">
-              <div class="spx-card">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                  <h6 class="mb-0"><i class="fas fa-history me-2 text-primary"></i>Recent OTP Tokens & Delivery Audit Logs</h6>
-                  <button onclick="loadOtpAuditLogs()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-sync-alt me-1"></i>Refresh Logs</button>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Identifier (Phone/Email)</th>
-                        <th>OTP Code</th>
-                        <th>Purpose</th>
-                        <th>Delivery Method</th>
-                        <th>Delivery Status</th>
-                        <th>State</th>
-                        <th>Created At</th>
-                      </tr>
-                    </thead>
-                    <tbody id="otpLogsTableBody">
-                      <tr><td colspan="7" class="text-center py-3 text-muted">Loading logs...</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 text-dark" style="font-size:0.85rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th>Identifier (Phone/Email)</th>
+                    <th>OTP Code</th>
+                    <th>Purpose</th>
+                    <th>Delivery Method</th>
+                    <th>Delivery Status</th>
+                    <th>State</th>
+                    <th>Created At</th>
+                  </tr>
+                </thead>
+                <tbody id="otpLogsTableBody">
+                  <tr><td colspan="7" class="text-center py-3 text-muted">Loading logs...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       </div>
     `;
-
-    // Dynamic styling updates for active links in settings vertical tabs
-    const settingsTabButtons = document.querySelectorAll('#settingsTabs button');
-    settingsTabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        settingsTabButtons.forEach(b => {
-          b.style.color = '#aaa';
-          b.style.background = 'transparent';
-        });
-        btn.style.color = '#fff';
-        btn.style.background = '#0d7a6d';
-      });
-    });
-    // Set initial active button styling
-    document.getElementById('tab-general').style.color = '#fff';
-    document.getElementById('tab-general').style.background = '#0d7a6d';
-
     loadOtpAuditLogs();
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -3517,7 +3537,7 @@ async function saveOtpSystemSettings(e) {
   try {
     const d = await apiPost('/admin/settings', body);
     showToast(d.message || 'OTP Gateway Settings updated successfully!');
-    renderSettings();
+    renderSettingsGateways();
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -3629,7 +3649,7 @@ async function saveOtpRequirementSetting(e) {
   try {
     const d = await apiPost('/admin/settings', { require_registration_otp: val });
     showToast(d.message || 'Registration OTP requirement updated!');
-    renderSettings();
+    renderSettingsRegPayouts();
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -4680,3 +4700,799 @@ function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
+
+async function renderFooterPage() {
+  loading('Loading footer settings...');
+  try {
+    const settings = await apiGet('/admin/settings');
+    const container = document.getElementById('pageContent');
+    container.innerHTML = `
+      <div class="row">
+        <div class="col-12">
+          <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
+            <div class="card-header border-0 bg-white pt-4 pb-2">
+              <h5 class="fw-bold text-dark mb-0"><i class="fas fa-desktop text-primary me-2"></i>Landing Page Footer Settings</h5>
+              <p class="text-muted small mb-0 mt-1">Configure and manage all the text, contact details, social links, and app downloads shown in the public footer section.</p>
+            </div>
+            <div class="card-body">
+              <form id="footerSettingsForm" onsubmit="saveFooterSettings(event)">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 text-primary"><i class="fas fa-info-circle me-1"></i>Company Info & Description</h6>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label spx-label text-dark">Footer Description Text</label>
+                    <textarea class="form-control spx-input" id="setting_home_footer_desc" rows="3" required placeholder="e.g. Speaxa is India's leading live interactive EdTech platform...">${settings.home_footer_desc || ''}</textarea>
+                  </div>
+                  
+                  <div class="col-12 mt-4">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 text-primary"><i class="fas fa-link me-1"></i>Company Page Redirect Links</h6>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">About Us Link</label>
+                    <input type="text" class="form-control spx-input" id="setting_home_footer_url_about" required value="${settings.home_footer_url_about || '/about.html'}" placeholder="e.g. /about.html or external URL">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">Contact Us Link</label>
+                    <input type="text" class="form-control spx-input" id="setting_home_footer_url_contact" required value="${settings.home_footer_url_contact || '/contact.html'}" placeholder="e.g. /contact.html or external URL">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label spx-label text-dark">Speaxa Blog Link</label>
+                    <input type="text" class="form-control spx-input" id="setting_home_footer_url_blog" required value="${settings.home_footer_url_blog || '/blog.html'}" placeholder="e.g. /blog.html or external URL">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label spx-label text-dark">Our Results Link</label>
+                    <input type="text" class="form-control spx-input" id="setting_home_footer_url_results" required value="${settings.home_footer_url_results || '/success-stories.html'}" placeholder="e.g. /success-stories.html or external URL">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label spx-label text-dark">Child Safety Link</label>
+                    <input type="text" class="form-control spx-input" id="setting_home_footer_url_safety" required value="${settings.home_footer_url_safety || '/privacy.html'}" placeholder="e.g. /privacy.html or external URL">
+                  </div>
+
+                  <div class="col-12 mt-4">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 text-primary"><i class="fas fa-phone-alt me-1"></i>Contact & Support Channels</h6>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label spx-label text-dark">Toll Free Number</label>
+                    <input type="text" class="form-control spx-input" id="setting_home_footer_toll_free" required value="${settings.home_footer_toll_free || ''}" placeholder="e.g. 1800-120-456-456">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label spx-label text-dark">Support Phone (with timings)</label>
+                    <input type="text" class="form-control spx-input" id="setting_home_footer_phone" required value="${settings.home_footer_phone || ''}" placeholder="e.g. +91 9999 999 999 (9 AM - 9:30 PM)">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label spx-label text-dark">Support Email Address</label>
+                    <input type="email" class="form-control spx-input" id="setting_home_footer_email" required value="${settings.home_footer_email || ''}" placeholder="e.g. support@speaxa.com">
+                  </div>
+
+                  <div class="col-12 mt-4">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 text-primary"><i class="fas fa-share-alt me-1"></i>Social Media Handles</h6>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">Instagram URL</label>
+                    <input type="url" class="form-control spx-input" id="setting_home_footer_instagram" value="${settings.home_footer_instagram || ''}" placeholder="e.g. https://instagram.com/speaxa">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">Facebook URL</label>
+                    <input type="url" class="form-control spx-input" id="setting_home_footer_facebook" value="${settings.home_footer_facebook || ''}" placeholder="e.g. https://facebook.com/speaxa">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">YouTube URL</label>
+                    <input type="url" class="form-control spx-input" id="setting_home_footer_youtube" value="${settings.home_footer_youtube || ''}" placeholder="e.g. https://youtube.com/speaxa">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">Twitter URL</label>
+                    <input type="url" class="form-control spx-input" id="setting_home_footer_twitter" value="${settings.home_footer_twitter || ''}" placeholder="e.g. https://twitter.com/speaxa">
+                  </div>
+
+                  <div class="col-12 mt-4">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3 text-primary"><i class="fas fa-mobile-alt me-1"></i>App Download Store Links</h6>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">Google Play Store Link</label>
+                    <input type="url" class="form-control spx-input" id="setting_home_footer_play_store_url" value="${settings.home_footer_play_store_url || ''}" placeholder="e.g. https://play.google.com/store/apps/details?id=com.speaxa">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label spx-label text-dark">Apple App Store Link</label>
+                    <input type="url" class="form-control spx-input" id="setting_home_footer_app_store_url" value="${settings.home_footer_app_store_url || ''}" placeholder="e.g. https://apps.apple.com/app/speaxa">
+                  </div>
+                </div>
+                
+                <div class="mt-4 pt-3 border-top d-flex justify-content-end">
+                  <button type="submit" class="btn btn-spx px-4 py-2" id="saveFooterBtn">
+                    <i class="fas fa-save me-2"></i>Save Footer Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function saveFooterSettings(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveFooterBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  
+  const keys = [
+    'home_footer_desc', 'home_footer_toll_free', 'home_footer_phone', 'home_footer_email',
+    'home_footer_instagram', 'home_footer_facebook', 'home_footer_youtube', 'home_footer_twitter',
+    'home_footer_play_store_url', 'home_footer_app_store_url',
+    'home_footer_url_about', 'home_footer_url_contact', 'home_footer_url_blog', 'home_footer_url_results', 'home_footer_url_safety'
+  ];
+  const body = {};
+  keys.forEach(k => {
+    body[k] = document.getElementById(`setting_${k}`)?.value || '';
+  });
+  
+  try {
+    const d = await apiPost('/admin/settings', body);
+    showToast(d.message || 'Footer settings updated successfully!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save me-2"></i>Save Footer Changes';
+  }
+}
+
+// ── Blogs Management ──────────────────────────────────────────
+let blogEditorInstance = null;
+
+async function renderBlogsPage() {
+  loading('Loading blogs...');
+  try {
+    const blogs = await apiGet('/admin/blogs');
+    const container = document.getElementById('pageContent');
+    
+    container.innerHTML = `
+      <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
+        <div class="card-header border-0 bg-white pt-4 pb-2 d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="fw-bold text-dark mb-0"><i class="fas fa-blog text-primary me-2"></i>Platform Blogs</h5>
+            <p class="text-muted small mb-0 mt-1">Create, edit, and publish blog content on the Speaxa website.</p>
+          </div>
+          <button onclick="openBlogForm()" class="btn btn-spx"><i class="fas fa-plus me-1"></i>Add New Blog</button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-dark" style="font-size:0.88rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>Banner</th>
+                  <th>Title</th>
+                  <th>Author</th>
+                  <th>Published Date</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${blogs.length === 0 ? '<tr><td colspan="5" class="text-center py-4 text-muted">No blog posts found.</td></tr>' : blogs.map(b => `
+                  <tr>
+                    <td>
+                      ${b.banner_url ? `<img src="${escapeHtml(b.banner_url)}" style="width: 60px; height: 35px; object-fit: cover; border-radius: 4px;">` : `<div class="bg-light d-flex align-items-center justify-content-center" style="width: 60px; height: 35px; border-radius: 4px;"><i class="fas fa-image text-muted" style="font-size:11px;"></i></div>`}
+                    </td>
+                    <td>
+                      <div class="fw-semibold text-dark">${escapeHtml(b.title)}</div>
+                      <div class="text-muted extra-small font-monospace">/blog/${escapeHtml(b.slug)}</div>
+                    </td>
+                    <td>${escapeHtml(b.author || 'Admin')}</td>
+                    <td class="small text-muted">${new Date(b.created_at).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</td>
+                    <td class="text-end">
+                      <button onclick="openBlogForm(${b.id})" class="btn btn-sm btn-icon me-1" title="Edit"><i class="fas fa-edit"></i></button>
+                      <button onclick="deleteBlog(${b.id})" class="btn btn-sm btn-icon text-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    window._cachedBlogs = blogs;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+function openBlogForm(id = null) {
+  const blog = id ? window._cachedBlogs?.find(b => b.id === id) : null;
+  const modalBody = document.getElementById('formModalBody');
+  document.getElementById('formModalTitle').textContent = blog ? 'Edit Blog Post' : 'Add New Blog Post';
+  
+  modalBody.innerHTML = `
+    <form id="blogForm" onsubmit="saveBlog(event)">
+      <input type="hidden" id="blog_id" value="${blog ? blog.id : ''}">
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Blog Title *</label>
+        <input type="text" class="form-control spx-input" id="blog_title" required value="${blog ? escapeHtml(blog.title) : ''}" placeholder="e.g. 5 Tips to Master Mental Mathematics">
+      </div>
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Author Name</label>
+        <input type="text" class="form-control spx-input" id="blog_author" value="${blog ? escapeHtml(blog.author) : 'Admin'}" placeholder="e.g. Admin or Teacher Name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Banner Image URL</label>
+        <input type="url" class="form-control spx-input" id="blog_banner_url" value="${blog ? escapeHtml(blog.banner_url || '') : ''}" placeholder="e.g. https://images.unsplash.com/photo-...">
+      </div>
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Short Summary *</label>
+        <textarea class="form-control spx-input" id="blog_summary" required rows="2" placeholder="Brief 1-2 sentence overview shown in blog cards...">${blog ? escapeHtml(blog.summary || '') : ''}</textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Blog Content *</label>
+        <div id="blogEditor" style="height: 250px; background: white; color: black;" class="rounded border"></div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-spx" id="saveBlogBtn">Save Blog Post</button>
+      </div>
+    </form>
+  `;
+  
+  formModal.show();
+  
+  blogEditorInstance = new Quill('#blogEditor', {
+    theme: 'snow',
+    placeholder: 'Write your blog content here...',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link', 'image'],
+        ['clean']
+      ]
+    }
+  });
+  
+  if (blog && blog.content) {
+    blogEditorInstance.root.innerHTML = blog.content;
+  }
+}
+
+async function saveBlog(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveBlogBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  
+  const id = document.getElementById('blog_id').value;
+  const title = document.getElementById('blog_title').value;
+  const author = document.getElementById('blog_author').value;
+  const banner_url = document.getElementById('blog_banner_url').value;
+  const summary = document.getElementById('blog_summary').value;
+  const content = blogEditorInstance?.root.innerHTML || '';
+  
+  if (!content.trim() || content === '<p><br></p>') {
+    showToast('Blog content is required', 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Save Blog Post';
+    return;
+  }
+  
+  try {
+    const res = await apiPost('/admin/blogs', {
+      id: id ? parseInt(id) : undefined,
+      title, author, banner_url, summary, content
+    });
+    showToast(res.message || 'Blog saved successfully');
+    formModal.hide();
+    renderBlogsPage();
+  } catch (err) {
+    showToast(err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Save Blog Post';
+  }
+}
+
+async function deleteBlog(id) {
+  confirm('Delete Blog Post', 'Are you sure you want to delete this blog post? This action cannot be undone.', async () => {
+    try {
+      const res = await apiDelete(`/admin/blogs/${id}`);
+      showToast(res.message || 'Blog deleted successfully');
+      renderBlogsPage();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+// ── FAQs Management ───────────────────────────────────────────
+async function renderFaqsPage() {
+  loading('Loading FAQs...');
+  try {
+    const faqs = await apiGet('/admin/faqs');
+    const container = document.getElementById('pageContent');
+    
+    container.innerHTML = `
+      <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
+        <div class="card-header border-0 bg-white pt-4 pb-2 d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="fw-bold text-dark mb-0"><i class="fas fa-info-circle text-primary me-2"></i>Platform FAQs</h5>
+            <p class="text-muted small mb-0 mt-1">Manage standard questions and answers displayed across the website.</p>
+          </div>
+          <button onclick="openFaqForm()" class="btn btn-spx"><i class="fas fa-plus me-1"></i>Add FAQ</button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-dark" style="font-size:0.88rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>Sort Order</th>
+                  <th>Category</th>
+                  <th>Question</th>
+                  <th>Answer</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${faqs.length === 0 ? '<tr><td colspan="5" class="text-center py-4 text-muted">No FAQs found.</td></tr>' : faqs.map(f => `
+                  <tr>
+                    <td><span class="badge bg-light text-dark border font-monospace">${f.sort_order}</span></td>
+                    <td><span class="badge bg-secondary">${escapeHtml(f.category || 'General')}</span></td>
+                    <td class="fw-semibold text-dark" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(f.question)}">${escapeHtml(f.question)}</td>
+                    <td class="text-muted" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(f.answer)}">${escapeHtml(f.answer)}</td>
+                    <td class="text-end">
+                      <button onclick="openFaqForm(${f.id})" class="btn btn-sm btn-icon me-1" title="Edit"><i class="fas fa-edit"></i></button>
+                      <button onclick="deleteFaq(${f.id})" class="btn btn-sm btn-icon text-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    window._cachedFaqs = faqs;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+function openFaqForm(id = null) {
+  const faq = id ? window._cachedFaqs?.find(f => f.id === id) : null;
+  const modalBody = document.getElementById('formModalBody');
+  document.getElementById('formModalTitle').textContent = faq ? 'Edit FAQ' : 'Add FAQ';
+  
+  modalBody.innerHTML = `
+    <form id="faqForm" onsubmit="saveFaq(event)">
+      <input type="hidden" id="faq_id" value="${faq ? faq.id : ''}">
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Category</label>
+        <input type="text" class="form-control spx-input" id="faq_category" value="${faq ? escapeHtml(faq.category) : 'General'}" placeholder="e.g. General, Registration, Payments">
+      </div>
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Question *</label>
+        <textarea class="form-control spx-input" id="faq_question" required rows="2" placeholder="e.g. How can I schedule a live class?">${faq ? escapeHtml(faq.question) : ''}</textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Answer *</label>
+        <textarea class="form-control spx-input" id="faq_answer" required rows="4" placeholder="Enter detailed answer here...">${faq ? escapeHtml(faq.answer) : ''}</textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label spx-label text-dark">Sort Order</label>
+        <input type="number" class="form-control spx-input" id="faq_sort_order" value="${faq ? faq.sort_order : '0'}" required>
+      </div>
+      <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-spx" id="saveFaqBtn">Save FAQ</button>
+      </div>
+    </form>
+  `;
+  
+  formModal.show();
+}
+
+async function saveFaq(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveFaqBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  
+  const id = document.getElementById('faq_id').value;
+  const question = document.getElementById('faq_question').value;
+  const answer = document.getElementById('faq_answer').value;
+  const category = document.getElementById('faq_category').value;
+  const sort_order = document.getElementById('faq_sort_order').value;
+  
+  try {
+    const res = await apiPost('/admin/faqs', {
+      id: id ? parseInt(id) : undefined,
+      question, answer, category, sort_order: parseInt(sort_order)
+    });
+    showToast(res.message || 'FAQ saved successfully');
+    formModal.hide();
+    renderFaqsPage();
+  } catch (err) {
+    showToast(err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Save FAQ';
+  }
+}
+
+async function deleteFaq(id) {
+  confirm('Delete FAQ', 'Are you sure you want to delete this FAQ? This action cannot be undone.', async () => {
+    try {
+      const res = await apiDelete(`/admin/faqs/${id}`);
+      showToast(res.message || 'FAQ deleted successfully');
+      renderFaqsPage();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+// ── Privacy Policy Management ──────────────────────────────────
+let privacyEditorInstance = null;
+
+async function renderPrivacyPolicyPage() {
+  loading('Loading Privacy & Safety settings...');
+  try {
+    const settings = await apiGet('/admin/settings');
+    const container = document.getElementById('pageContent');
+    
+    container.innerHTML = `
+      <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
+        <div class="card-header border-0 bg-white pt-4 pb-2">
+          <h5 class="fw-bold text-dark mb-0"><i class="fas fa-user-shield text-primary me-2"></i>Privacy & Child Safety Policy</h5>
+          <p class="text-muted small mb-0 mt-1">Configure the official safety policy, data protocols, and terms displayed on the public safety policy page.</p>
+        </div>
+        <div class="card-body">
+          <form onsubmit="savePrivacyPolicy(event)">
+            <!-- Header Customization fields -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label spx-label text-dark fw-bold mb-1">Page Section Badge</label>
+                <input type="text" class="form-control" id="privacyPolicyBadgeInp" placeholder="e.g. Legal Agreements" value="${escapeHtml(settings.privacy_policy_badge || '')}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label spx-label text-dark fw-bold mb-1">Page Title</label>
+                <input type="text" class="form-control" id="privacyPolicyTitleInp" placeholder="e.g. Privacy Policy" value="${escapeHtml(settings.privacy_policy_title || '')}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label spx-label text-dark fw-bold mb-1">Page Subtitle / Description</label>
+                <input type="text" class="form-control" id="privacyPolicyDescInp" placeholder="How we collect, store, and process your data..." value="${escapeHtml(settings.privacy_policy_desc || '')}">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label spx-label text-dark fw-bold mb-2">Policy Page HTML Content</label>
+              <div id="privacyPolicyEditor" style="height: 450px; background: white; color: black;" class="rounded border"></div>
+            </div>
+            <div class="d-flex justify-content-end border-top pt-3">
+              <button type="submit" class="btn btn-spx px-4" id="savePrivacyBtn">
+                <i class="fas fa-save me-2"></i>Save Privacy Policy
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    
+    // Initialize Quill Editor
+    privacyEditorInstance = new Quill('#privacyPolicyEditor', {
+      theme: 'snow',
+      placeholder: 'Write the child safety & privacy policy here...',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, 4, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          ['link', 'image'],
+          ['clean']
+        ]
+      }
+    });
+    
+    if (settings.privacy_policy_content) {
+      privacyEditorInstance.root.innerHTML = settings.privacy_policy_content;
+    }
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function savePrivacyPolicy(e) {
+  e.preventDefault();
+  const btn = document.getElementById('savePrivacyBtn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  
+  const content = privacyEditorInstance?.root.innerHTML || '';
+  const badge = document.getElementById('privacyPolicyBadgeInp').value;
+  const title = document.getElementById('privacyPolicyTitleInp').value;
+  const desc = document.getElementById('privacyPolicyDescInp').value;
+  
+  try {
+    const res = await apiPost('/admin/settings', { 
+      privacy_policy_content: content,
+      privacy_policy_badge: badge,
+      privacy_policy_title: title,
+      privacy_policy_desc: desc
+    });
+    showToast(res.message || 'Privacy Policy updated successfully!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+}
+
+// ── Terms of Service Management ───────────────────────────────
+let termsEditorInstance;
+
+async function renderTermsOfServicePage() {
+  loading('Loading Terms of Service settings...');
+  try {
+    const settings = await apiGet('/admin/settings');
+    const container = document.getElementById('pageContent');
+    
+    container.innerHTML = `
+      <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
+        <div class="card-header border-0 bg-white pt-4 pb-2">
+          <h5 class="fw-bold text-dark mb-0"><i class="fas fa-file-contract text-primary me-2"></i>Terms of Service</h5>
+          <p class="text-muted small mb-0 mt-1">Configure the official Terms of Service, user rules, and commitments displayed on the public terms page.</p>
+        </div>
+        <div class="card-body">
+          <form onsubmit="saveTermsOfService(event)">
+            <!-- Header Customization fields -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label spx-label text-dark fw-bold mb-1">Page Section Badge</label>
+                <input type="text" class="form-control" id="termsBadgeInp" placeholder="e.g. Platform Policies" value="${escapeHtml(settings.terms_of_service_badge || '')}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label spx-label text-dark fw-bold mb-1">Page Title</label>
+                <input type="text" class="form-control" id="termsTitleInp" placeholder="e.g. Terms of Service" value="${escapeHtml(settings.terms_of_service_title || '')}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label spx-label text-dark fw-bold mb-1">Page Subtitle / Description</label>
+                <input type="text" class="form-control" id="termsDescInp" placeholder="Please read these terms carefully..." value="${escapeHtml(settings.terms_of_service_desc || '')}">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label spx-label text-dark fw-bold mb-2">Terms Page HTML Content</label>
+              <div id="termsEditor" style="height: 450px; background: white; color: black;" class="rounded border"></div>
+            </div>
+            <div class="d-flex justify-content-end border-top pt-3">
+              <button type="submit" class="btn btn-spx px-4" id="saveTermsBtn">
+                <i class="fas fa-save me-2"></i>Save Terms of Service
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    
+    // Initialize Quill Editor
+    termsEditorInstance = new Quill('#termsEditor', {
+      theme: 'snow',
+      placeholder: 'Write the Terms of Service here...',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, 4, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          ['link', 'image'],
+          ['clean']
+        ]
+      }
+    });
+    
+    if (settings.terms_of_service_content) {
+      termsEditorInstance.root.innerHTML = settings.terms_of_service_content;
+    }
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function saveTermsOfService(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveTermsBtn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  
+  const content = termsEditorInstance?.root.innerHTML || '';
+  const badge = document.getElementById('termsBadgeInp').value;
+  const title = document.getElementById('termsTitleInp').value;
+  const desc = document.getElementById('termsDescInp').value;
+  
+  try {
+    const res = await apiPost('/admin/settings', { 
+      terms_of_service_content: content,
+      terms_of_service_badge: badge,
+      terms_of_service_title: title,
+      terms_of_service_desc: desc
+    });
+    showToast(res.message || 'Terms of Service updated successfully!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+}
+
+// ── Media Gallery Management ──────────────────────────────────
+async function renderGalleryPage() {
+  loading('Loading media gallery...');
+  try {
+    const media = await apiGet('/admin/gallery');
+    const container = document.getElementById('pageContent');
+    
+    container.innerHTML = `
+      <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
+        <div class="card-header border-0 bg-white pt-4 pb-2">
+          <h5 class="fw-bold text-dark mb-0"><i class="fas fa-images text-primary me-2"></i>Media Gallery</h5>
+          <p class="text-muted small mb-0 mt-1">Upload and manage image assets to use in courses, batches, blogs, and other platform content.</p>
+        </div>
+        <div class="card-body">
+          <!-- Upload Box -->
+          <div class="p-4 mb-4 rounded border text-center text-dark bg-light d-flex flex-column align-items-center justify-content-center" 
+               style="border-style: dashed !important; border-width: 2px !important; border-color: #0d7a6d !important;">
+            <i class="fas fa-cloud-upload-alt text-primary fa-3x mb-3"></i>
+            <h6 class="fw-bold mb-1">Select file to upload</h6>
+            <p class="text-muted small mb-3">Maximum file size: 10MB. Formats: PNG, JPG, JPEG, SVG, WEBP, GIF</p>
+            <input type="file" id="galleryFileInput" class="d-none" onchange="uploadGalleryFile()" accept="image/*">
+            <button onclick="document.getElementById('galleryFileInput').click()" class="btn btn-spx" id="uploadFileBtn">
+              <i class="fas fa-file-image me-1"></i>Choose Image
+            </button>
+            <div id="uploadProgressContainer" class="w-50 mt-3 d-none">
+              <div class="progress" style="height: 6px;">
+                <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%"></div>
+              </div>
+              <small class="text-muted mt-1 d-block" id="uploadProgressText">Uploading 0%</small>
+            </div>
+          </div>
+
+          <!-- Gallery Grid -->
+          <div class="row g-3" id="galleryGrid">
+            ${media.length === 0 ? `
+              <div class="col-12 text-center py-5 text-muted">
+                <i class="far fa-images fa-4x mb-3 opacity-25"></i>
+                <p class="mb-0">No media assets uploaded yet.</p>
+              </div>
+            ` : media.map(item => `
+              <div class="col-md-3 col-sm-6" id="gallery_item_${item.id}">
+                <div class="card border h-100 shadow-sm bg-white overflow-hidden">
+                  <div style="height: 140px; background: #f8fafc; position: relative;" class="d-flex align-items-center justify-content-center border-bottom">
+                    <img src="${escapeHtml(item.url)}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                    <span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 start-0 m-2" style="font-size: 0.7rem;">
+                      ${escapeHtml(item.mime_type?.split('/')[1]?.toUpperCase() || 'IMG')}
+                    </span>
+                  </div>
+                  <div class="card-body p-2 d-flex flex-column justify-content-between">
+                    <div>
+                      <div class="text-dark fw-bold small text-truncate" title="${escapeHtml(item.filename)}">${escapeHtml(item.filename)}</div>
+                      <div class="text-muted extra-small mb-2">${(item.file_size / 1024).toFixed(1)} KB</div>
+                      <input type="text" readonly class="form-control form-control-sm text-center font-monospace extra-small bg-light mb-2 text-dark" 
+                             value="${escapeHtml(item.url)}" style="font-size:0.75rem;" onclick="this.select()">
+                    </div>
+                    <div class="d-flex gap-1">
+                      <button onclick="copyGalleryUrl('${escapeHtml(item.url)}', this)" class="btn btn-sm btn-spx w-100 py-1" style="font-size:0.75rem;">
+                        <i class="fas fa-copy me-1"></i>Copy URL
+                      </button>
+                      <button onclick="deleteGalleryItem(${item.id})" class="btn btn-sm btn-outline-danger px-2 py-1" title="Delete">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function uploadGalleryFile() {
+  const fileInput = document.getElementById('galleryFileInput');
+  if (!fileInput || !fileInput.files.length) return;
+  
+  const file = fileInput.files[0];
+  const btn = document.getElementById('uploadFileBtn');
+  const progContainer = document.getElementById('uploadProgressContainer');
+  const progBar = document.getElementById('uploadProgressBar');
+  const progText = document.getElementById('uploadProgressText');
+  
+  btn.disabled = true;
+  progContainer.classList.remove('d-none');
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${API}/admin/gallery/upload`, true);
+  xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+  
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      progBar.style.width = `${pct}%`;
+      progText.textContent = `Uploading ${pct}%`;
+    }
+  };
+  
+  xhr.onload = () => {
+    btn.disabled = false;
+    progContainer.classList.add('d-none');
+    
+    if (xhr.status === 200) {
+      try {
+        const res = JSON.parse(xhr.responseText);
+        showToast(res.message || 'File uploaded successfully!');
+        renderGalleryPage();
+      } catch (err) {
+        showToast('Upload succeeded but response parse failed', 'error');
+      }
+    } else {
+      try {
+        const err = JSON.parse(xhr.responseText);
+        showToast(err.error || 'Upload failed', 'error');
+      } catch (e) {
+        showToast('Upload failed', 'error');
+      }
+    }
+  };
+  
+  xhr.onerror = () => {
+    btn.disabled = false;
+    progContainer.classList.add('d-none');
+    showToast('Network error during upload', 'error');
+  };
+  
+  xhr.send(formData);
+}
+
+function copyGalleryUrl(url, button) {
+  navigator.clipboard.writeText(url).then(() => {
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+    button.classList.remove('btn-spx');
+    button.classList.add('btn-success');
+    
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.classList.remove('btn-success');
+      button.classList.add('btn-spx');
+    }, 2000);
+  }).catch(() => {
+    showToast('Failed to copy URL to clipboard', 'error');
+  });
+}
+
+async function deleteGalleryItem(id) {
+  confirm('Delete Image', 'Are you sure you want to delete this image? Any content linking to this URL will break. This action cannot be undone.', async () => {
+    try {
+      const res = await apiDelete(`/admin/gallery/${id}`);
+      showToast(res.message || 'Image deleted successfully');
+      renderGalleryPage();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+

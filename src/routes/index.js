@@ -116,4 +116,41 @@ router.get('/public/certificates/verify/:id', async (req, res) => {
   }
 });
 
+// Public blogs listing
+router.get('/public/blogs', async (req, res) => {
+  try {
+    const db = require('../db');
+    const result = await db.query("SELECT * FROM blogs ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public single blog by slug
+router.get('/public/blogs/:slug', async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const db = require('../db');
+    const result = await db.query("SELECT * FROM blogs WHERE slug = $1", [slug]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Blog post not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public FAQs listing
+router.get('/public/faqs', async (req, res) => {
+  try {
+    const db = require('../db');
+    const result = await db.query("SELECT * FROM faqs ORDER BY sort_order ASC, created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

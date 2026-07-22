@@ -54,9 +54,9 @@
 <!-- Page Header -->
 <section class="pt-5 pb-3 bg-dark-alt text-center" style="margin-top: 80px; background: radial-gradient(ellipse at center, rgba(60,189,176,0.1) 0%, transparent 70%);">
   <div class="container py-2">
-    <div class="section-badge mb-2">Platform Policies</div>
-    <h1 class="display-4 fw-bold text-white mb-3">Terms of <span class="gradient-text">Service</span></h1>
-    <p class="lead text-muted mx-auto" style="max-width: 600px;">Please read these terms carefully before accessing the SPEAXA portals.</p>
+    <div class="section-badge mb-2" id="termsOfServiceBadge">Platform Policies</div>
+    <h1 class="display-4 fw-bold text-white mb-3" id="termsOfServiceTitle">Terms of <span class="gradient-text">Service</span></h1>
+    <p class="lead text-muted mx-auto" style="max-width: 600px;" id="termsOfServiceDesc">Please read these terms carefully before accessing the SPEAXA portals.</p>
   </div>
 </section>
 
@@ -65,7 +65,7 @@
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-lg-10" data-aos="fade-up">
-        <div class="spx-card p-5 text-muted">
+        <div class="spx-card p-5 text-muted" id="termsOfServiceContent">
           <h4 class="text-white mb-3">1. Account Security</h4>
           <p>Portal access (Admin, Student, Teacher, Parent) requires standard password/OTP authentication credentials. You are solely responsible for preventing unauthorized login access to your account dashboards. Please notify us immediately if you suspect security compromise.</p>
           
@@ -177,6 +177,32 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script src="/app.js"></script>
-<script>AOS.init({ once: true });</script>
+<script>
+  AOS.init({ once: true });
+
+  async function loadTerms() {
+    try {
+      const res = await fetch('/api/admin/settings/public');
+      if (!res.ok) throw new Error('Failed to load settings');
+      const settings = await res.json();
+      if (settings.terms_of_service_content) {
+        document.getElementById('termsOfServiceContent').innerHTML = settings.terms_of_service_content;
+      }
+      if (settings.terms_of_service_badge) {
+        document.getElementById('termsOfServiceBadge').textContent = settings.terms_of_service_badge;
+      }
+      if (settings.terms_of_service_title) {
+        document.getElementById('termsOfServiceTitle').innerHTML = settings.terms_of_service_title;
+      }
+      if (settings.terms_of_service_desc) {
+        document.getElementById('termsOfServiceDesc').textContent = settings.terms_of_service_desc;
+      }
+    } catch (err) {
+      console.warn("Could not load dynamic Terms of Service, showing fallback:", err);
+    }
+  }
+
+  loadTerms();
+</script>
 </body>
 </html>

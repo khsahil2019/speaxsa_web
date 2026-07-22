@@ -244,6 +244,19 @@ db.query(`
     ('home_footer_twitter', 'https://twitter.com/speaxa'),
     ('home_footer_play_store_url', 'https://play.google.com/store/apps/details?id=com.speaxa'),
     ('home_footer_app_store_url', 'https://apps.apple.com/app/speaxa'),
+    ('home_footer_url_about', '/about.html'),
+    ('home_footer_url_contact', '/contact.html'),
+    ('home_footer_url_blog', '/blog.html'),
+    ('home_footer_url_results', '/success-stories.html'),
+    ('home_footer_url_safety', '/privacy.html'),
+    ('privacy_policy_content', '<h3>Speaxa Privacy & Child Safety Policy</h3><p>We are committed to maintaining a safe learning environment for all students...</p>'),
+    ('privacy_policy_badge', 'Legal Agreements'),
+    ('privacy_policy_title', 'Privacy Policy'),
+    ('privacy_policy_desc', 'How we collect, store, and process your data securely at SPEAXA.'),
+    ('terms_of_service_content', '<h4 class="text-white mb-3">1. Account Security</h4><p>Portal access (Admin, Student, Teacher, Parent) requires standard password/OTP authentication credentials. You are solely responsible for preventing unauthorized login access to your account dashboards. Please notify us immediately if you suspect security compromise.</p><h4 class="text-white mb-3 mt-4">2. Interactive Code of Conduct</h4><p>Our virtual live classroom room relies on respectful interactive communication. Any student or parent found engaging in harassment, chat spamming, whiteboard vandalism, or inappropriate video streams will have their account immediately suspended or banned without refund.</p><h4 class="text-white mb-3 mt-4">3. Teacher Commitments</h4><p>Educators must submit accurate credentials and follow correct SOP video upload instructions. Live classes must start on the scheduled batch time. Auto-attendance reports calculate class durations, and payout commissions depend strictly on completing these classes.</p><h4 class="text-white mb-3 mt-4">4. Intellectual Property</h4><p>All curriculum material, live stream feeds, whiteboard drawings, course videos, and dashboard software belong exclusively to SPEAXA. Copying, recording external feeds, or reproducing material elsewhere is strictly prohibited.</p>'),
+    ('terms_of_service_badge', 'Platform Policies'),
+    ('terms_of_service_title', 'Terms of Service'),
+    ('terms_of_service_desc', 'Please read these terms carefully before accessing the SPEAXA portals.'),
     ('sms_provider', 'dev'),
     ('email_provider', 'smtp'),
     ('msg91_auth_key', ''),
@@ -281,6 +294,18 @@ db.query(`
   );
   CREATE INDEX IF NOT EXISTS idx_pt_chats_lookup ON parent_teacher_chats (parent_id, teacher_id, student_id);
 
+  CREATE TABLE IF NOT EXISTS teacher_ratings (
+    id SERIAL PRIMARY KEY,
+    teacher_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    parent_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    feedback TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(teacher_id, parent_id, student_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_teacher_ratings_lookup ON teacher_ratings (teacher_id);
+
   CREATE TABLE IF NOT EXISTS email_logs (
     id VARCHAR(100) PRIMARY KEY,
     recipient_email VARCHAR(200) NOT NULL,
@@ -301,8 +326,117 @@ db.query(`
     sent_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
   );
-`).then(() => {
+
+  CREATE TABLE IF NOT EXISTS blogs (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    content TEXT NOT NULL,
+    summary TEXT,
+    banner_url TEXT,
+    author VARCHAR(100) DEFAULT 'Admin',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS faqs (
+    id SERIAL PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    category VARCHAR(100) DEFAULT 'General',
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS media_gallery (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    url TEXT NOT NULL,
+    file_size INT,
+    mime_type VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+`).then(async () => {
   console.log("PostgreSQL: Database self-healing migrations verified/created.");
+
+  // Seed blogs if empty
+  try {
+    const blogCount = await db.query("SELECT COUNT(*) FROM blogs");
+    if (parseInt(blogCount.rows[0].count) === 0) {
+      await db.query(`
+        INSERT INTO blogs (title, slug, content, summary, banner_url, author, created_at)
+        VALUES 
+        (
+          'How to Plan Your CBSE Class 10 Revision Schedule',
+          'how-to-plan-your-cbse-class-10-revision-schedule',
+          '<p>Managing multiple subjects can feel overwhelming. In this post, we explain how to plan your CBSE Class 10 revision schedule effectively. Structure your daily physics and math routines for maximum retention, take regular breaks, practice previous years question papers, and ensure concept clarity over blind memorization. Our elite mentors suggest a balanced approach focusing on weak chapters first.</p>',
+          'Managing multiple subjects can feel overwhelming. Learn how to structure your daily physics and math routines for maximum retention.',
+          '/uploads/blog/blog_revision.png',
+          'Admin',
+          NOW()
+        ),
+        (
+          'Visualizing Organic Chemistry: Tips and Tricks',
+          'visualizing-organic-chemistry-tips-and-tricks',
+          '<p>Organic Chemistry does not have to be about boring rote learning. Forget memorizing equations blindly. Our elite chemistry mentors share simple visual techniques to master chemical reactions. By understanding reaction mechanisms, visualizing electron shifts, and drawing structure trees, you can build an intuitive understanding of complex compounds and reactions.</p>',
+          'Forget memorizing equations blindly. Our elite chemistry mentors share simple visual techniques to master chemical reactions.',
+          '/uploads/blog/blog_chemistry.png',
+          'Admin',
+          NOW()
+        ),
+        (
+          'The Role of Parents in Remote EdTech Success',
+          'the-role-of-parents-in-remote-edtech-success',
+          '<p>Online learning is highly interactive, but parental support can play a vital role. Supporting your child in online classrooms doesn''t require teaching them the subject. Instead, focus on creating a quiet, distraction-free study space, monitoring their dashboard telemetry (attendance and class participation logs), and encouraging active participation during live quizzes and group discussions.</p>',
+          'Supporting your child in online classrooms doesn''t require teaching. Understand how to monitor telemetry and encourage active participation.',
+          '/uploads/blog/blog_parenting.png',
+          'Admin',
+          NOW()
+        )
+      `);
+      console.log("PostgreSQL: Seeded 3 default blogs.");
+    }
+  } catch (err) {
+    console.error("PostgreSQL Blogs Seeding Error:", err.message);
+  }
+
+  // Seed FAQs if empty
+  try {
+    const faqCount = await db.query("SELECT COUNT(*) FROM faqs");
+    if (parseInt(faqCount.rows[0].count) === 0) {
+      await db.query(`
+        INSERT INTO faqs (question, answer, category, sort_order)
+        VALUES 
+        (
+          'How do students join a live class room?',
+          'Students simply login to their student dashboard, click on ''My Batches'', select the scheduled class, and click the ''Join Class'' button. It will open our custom Agora live room directly inside their browser — no external apps required!',
+          'Classes',
+          1
+        ),
+        (
+          'What parameters does the parent dashboard track?',
+          'The parent portal links directly to the student via code SPX-STU-XXXXXX and visualizes: Real-time attendance status (Present, Late, Half-Day, Absent), Graded assignments scores, and 7 key student observation ratings graded by teachers (Curiosity, Communication, Concept clarity, Logical reasoning, Homework completion, In-class responses, and Behavioral growth).',
+          'Analytics',
+          2
+        ),
+        (
+          'How does the teacher verification process (SOP) work?',
+          'Every teacher wishing to host live classes must submit their professional qualification credentials and upload 5 specific Standard Operating Procedure (SOP) training videos. The platform administrator reviews these submissions via an interactive review panel and manually approves the account before they can schedule batches.',
+          'Verification',
+          3
+        ),
+        (
+          'What is the refund policy for enrollment fees?',
+          'If a student is unsatisfied, they can request a refund. The administrator can verify and process the refund status directly to the Razorpay gateway through the admin portal.',
+          'Billing',
+          4
+        )
+      `);
+      console.log("PostgreSQL: Seeded 4 default FAQs.");
+    }
+  } catch (err) {
+    console.error("PostgreSQL FAQs Seeding Error:", err.message);
+  }
 }).catch((err) => {
   console.error("PostgreSQL Migration Warning:", err.message);
 });

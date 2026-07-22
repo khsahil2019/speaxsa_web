@@ -106,6 +106,10 @@ async function doRegister() {
       throw new Error('Please fill all required fields');
     }
 
+    if (document.getElementById('regTermsAgree') && !document.getElementById('regTermsAgree').checked) {
+      throw new Error('You must agree to the Terms of Service & Privacy Policy');
+    }
+
     if (window._regPhoneOtpPending) {
       payload.phoneOtp = window._regPhoneOtpPending;
     }
@@ -604,7 +608,7 @@ async function showCourseDetails(courseId) {
           <div class="p-4 rounded-3 shadow-sm" style="background:var(--bg-card); border:1px solid var(--border);">
             <span class="badge bg-primary mb-2 px-3 py-2 rounded-2" style="font-size:0.75rem; font-weight:600; letter-spacing:0.5px;">${course.subject}</span>
             <h4 class="fw-bold mb-3" style="color:var(--text-primary); font-family:'Outfit',sans-serif;">${course.title}</h4>
-            <div class="text-muted small mb-4" style="line-height:1.6;">${formatRichText(course.description) || 'No description provided.'}</div>
+            <div class="text-muted small mb-4" style="line-height:1.6;">${formatCollapsibleText(course.description) || 'No description provided.'}</div>
             <div class="d-flex justify-content-between mb-2 small text-muted">
               <span>Grade & Board:</span>
               <strong style="color:var(--text-primary);">${course.grade} (${course.board})</strong>
@@ -654,7 +658,7 @@ async function showCourseDetails(courseId) {
               
               let methodologyHtml = '';
               if (b.teaching_method) {
-                methodologyHtml = `<div class="mt-2 p-2 rounded text-secondary small" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border);"><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i><strong>Methodology:</strong><div class="mt-1">${formatRichText(b.teaching_method)}</div></div>`;
+                methodologyHtml = `<div class="mt-2 p-2 rounded text-secondary small" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border);"><i class="fas fa-chalkboard-teacher me-2 text-primary" style="width: 14px;"></i><strong>Methodology:</strong><div class="mt-1">${formatCollapsibleText(b.teaching_method)}</div></div>`;
               }
 
               let instructionsHtml = '';
@@ -662,7 +666,7 @@ async function showCourseDetails(courseId) {
                 instructionsHtml = `
                   <div class="p-2.5 rounded-3 mb-2 small text-muted" style="background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border); font-size: 0.72rem; line-height: 1.4;">
                     <strong class="text-primary d-block mb-1"><i class="fas fa-info-circle me-1"></i>Batch Instructions & Policies:</strong>
-                    ${formatRichText(b.batch_instructions)}
+                    ${formatCollapsibleText(b.batch_instructions)}
                   </div>
                 `;
               }

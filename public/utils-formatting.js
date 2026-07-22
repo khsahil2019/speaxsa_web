@@ -20,38 +20,50 @@ window.formatRichText = function(text) {
   // 3. Parse italic text: *text* -> <em>$1</em>
   escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-  // 4. Split text into lines to process bullet points and lists
+  // 4. Split text into lines
   const lines = escaped.split('\n');
-  const processedLines = lines.map(line => {
-    const trimmed = line.trim();
-    // Match line starting with standard bullet indicators: - or * or •
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
-      const content = trimmed.substring(2).trim();
-      return `<div class="d-flex align-items-start mb-1.5"><span class="me-2 text-primary fw-bold" style="color: var(--primary, #3CBDB0) !important;">•</span><span>${content}</span></div>`;
-    }
-    return line;
-  });
-
-  // 5. Rejoin lines with <br> where bullet points are not used (to preserve basic paragraphs)
-  // But avoid double-break spacing for bullet list blocks
-  let result = '';
-  for (let i = 0; i < processedLines.length; i++) {
-    const current = processedLines[i];
-    const isBullet = current.startsWith('<div class="d-flex');
-    
-    if (i > 0) {
-      const prevBullet = processedLines[i - 1].startsWith('<div class="d-flex');
-      if (isBullet && prevBullet) {
-        // Bullet consecutive: no extra line break
-        result += '';
-      } else {
-        result += '<br>';
-      }
-    }
-    result += current;
+  
+  // If there is only one line, return the formatted line
+  if (lines.length <= 1) {
+    return escaped;
   }
 
-  return result;
+  // 5. Process lines as a structured list
+  const processedLines = lines.map(line => {
+    let trimmed = line.trim();
+    if (!trimmed) return '';
+
+    // Regex to match starting numbers (e.g. "1. ", "1) ", "a. ")
+    const numMatch = trimmed.match(/^([0-9a-zA-Z]+[\.\)]\s*)/);
+    // Regex to match starting standard bullets (e.g. "- ", "* ", "• ")
+    const bulletMatch = trimmed.match(/^([\-\*•⁃‣▪▫◦●■]\s*)/);
+    // Regex to match starting emojis (Unicode emoji range)
+    const emojiMatch = trimmed.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83C[\uDDE6-\uDDFF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF]|\uD83D[\uDE00-\uDE4F]|\uD83D[\uDE80-\uDEFF]|\uD83E[\uDD00-\uDDFF]|[\u2000-\u3300]\s*)/);
+
+    let prefix = '•'; // Default premium bullet
+    let content = trimmed;
+
+    if (numMatch) {
+      prefix = numMatch[1].trim();
+      content = trimmed.substring(numMatch[1].length).trim();
+    } else if (bulletMatch) {
+      prefix = '•';
+      content = trimmed.substring(bulletMatch[1].length).trim();
+    } else if (emojiMatch) {
+      prefix = emojiMatch[1].trim();
+      content = trimmed.substring(emojiMatch[1].length).trim();
+    }
+
+    // Return a beautifully formatted flex row with bullet alignment
+    return `
+      <div class="d-flex align-items-start mb-2" style="gap: 8px;">
+        <span style="color: var(--primary, #3CBDB0) !important; font-weight: 700; flex-shrink: 0; min-width: 14px; text-align: center;">${prefix}</span>
+        <span style="line-height: 1.5; text-align: left;">${content}</span>
+      </div>
+    `.trim();
+  });
+
+  return processedLines.filter(l => l !== '').join('');
 };
 
 /**
@@ -227,3 +239,40 @@ if (typeof Response !== 'undefined' && Response.prototype && Response.prototype.
     return originalJson.call(this);
   };
 }
+
+/**
+ * Wraps rich formatted text in a collapsible container if it exceeds the specified character limit.
+ * @param {string} text - Raw text input
+ * @param {number} limit - Character limit before truncating (default: 250)
+ * @returns {string} Collapsible HTML string
+ */
+window.formatCollapsibleText = function(text, limit = 250) {
+  if (!text) return '';
+  if (text.length <= limit) {
+    return window.formatRichText(text);
+  }
+  const id = 'col_' + Math.random().toString(36).substr(2, 9);
+  return `
+    <div id="parent_${id}">
+      <div id="text_${id}" style="max-height: 80px; overflow: hidden; position: relative; transition: max-height 0.3s ease;">
+        ${window.formatRichText(text)}
+      </div>
+      <button class="read-more-btn" id="btn_${id}" onclick="window.toggleCollapsibleText('${id}')" style="background:none; border:none; color:var(--primary, #3CBDB0); font-weight:600; font-size:0.75rem; padding:4px 0; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+        Read More <i class="fas fa-chevron-down small" style="font-size:0.65rem;"></i>
+      </button>
+    </div>
+  `.trim();
+};
+
+window.toggleCollapsibleText = function(id) {
+  const container = document.getElementById(`text_${id}`);
+  const button = document.getElementById(`btn_${id}`);
+  
+  if (container.style.maxHeight === 'none') {
+    container.style.maxHeight = '80px';
+    button.innerHTML = 'Read More <i class="fas fa-chevron-down small" style="font-size:0.65rem;"></i>';
+  } else {
+    container.style.maxHeight = 'none';
+    button.innerHTML = 'Read Less <i class="fas fa-chevron-up small" style="font-size:0.65rem;"></i>';
+  }
+};

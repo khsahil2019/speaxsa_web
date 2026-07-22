@@ -241,7 +241,44 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script src="/app.js"></script>
-  <script>AOS.init({ once: true });</script>
-</body>
+  <script>
+    AOS.init({ once: true });
 
+    // Load FAQs dynamically
+    async function loadFaqs() {
+      try {
+        const res = await fetch('/api/public/faqs');
+        if (!res.ok) throw new Error('Failed to load');
+        const faqs = await res.json();
+        if (faqs && faqs.length > 0) {
+          const accordion = document.getElementById('faqAccordion');
+          accordion.innerHTML = faqs.map((f, idx) => `
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="faqHead_${f.id}">
+                <button class="accordion-button ${idx === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse"
+                  data-bs-target="#faqCollapse_${f.id}" aria-expanded="${idx === 0 ? 'true' : 'false'}">
+                  ${escapeHtml(f.question)}
+                </button>
+              </h2>
+              <div id="faqCollapse_${f.id}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  ${escapeHtml(f.answer)}
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.warn("Could not load dynamic FAQs, showing fallback:", err);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    loadFaqs();
+  </script>
+</body>
 </html>

@@ -14,7 +14,7 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800;900&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="parent.css">
+  <link rel="stylesheet" href="parent.css?v=2.0.5">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
@@ -157,6 +157,42 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" onclick="closeModal('linkModal')">Cancel</button>
           <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Send Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Teacher Rating Modal ────────────────────────────────────── -->
+  <div class="modal" id="ratingModal">
+    <div class="modal-box" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-star" style="color:#F59E0B;margin-right:8px;"></i>Rate Teacher</h3>
+        <button class="modal-close" onclick="closeModal('ratingModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleTeacherRatingSubmit(event)">
+        <input type="hidden" id="ratingTeacherId">
+        <input type="hidden" id="ratingStudentId">
+        <div class="modal-body text-center">
+          <p id="ratingTeacherSubtitle" class="mb-3" style="font-weight:600; color:var(--text-secondary);">Rate your experience with Teacher</p>
+          
+          <!-- Interactive Star Selector -->
+          <div class="d-flex justify-content-center gap-2 mb-4" id="ratingStarsContainer" style="display:flex; justify-content:center; gap:8px; font-size: 2rem; cursor: pointer; margin-bottom: 20px;">
+            <i class="fa-regular fa-star star-btn" data-star="1" onclick="setModalRatingValue(1)" style="color:#e2e8f0; transition: color 0.15s ease;"></i>
+            <i class="fa-regular fa-star star-btn" data-star="2" onclick="setModalRatingValue(2)" style="color:#e2e8f0; transition: color 0.15s ease;"></i>
+            <i class="fa-regular fa-star star-btn" data-star="3" onclick="setModalRatingValue(3)" style="color:#e2e8f0; transition: color 0.15s ease;"></i>
+            <i class="fa-regular fa-star star-btn" data-star="4" onclick="setModalRatingValue(4)" style="color:#e2e8f0; transition: color 0.15s ease;"></i>
+            <i class="fa-regular fa-star star-btn" data-star="5" onclick="setModalRatingValue(5)" style="color:#e2e8f0; transition: color 0.15s ease;"></i>
+          </div>
+          <input type="hidden" id="ratingValueInput" value="0">
+
+          <div class="form-group text-start" style="text-align:left;">
+            <label style="font-weight:600; color:var(--text-secondary); margin-bottom:6px; display:block;">Feedback / Remarks (Optional)</label>
+            <textarea id="ratingFeedbackInput" class="form-control" rows="3" placeholder="Share your experience (e.g. Explains concepts very clearly, highly responsive...)"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('ratingModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background:#F59E0B; border-color:#F59E0B; color:white;"><i class="fa-solid fa-check"></i> Submit Rating</button>
         </div>
       </form>
     </div>
@@ -1480,6 +1516,80 @@
       }
     }
 
+    window.setModalRatingValue = function(rating) {
+      document.getElementById('ratingValueInput').value = rating;
+      const stars = document.querySelectorAll('#ratingStarsContainer .star-btn');
+      stars.forEach((star, idx) => {
+        if (idx < rating) {
+          star.className = 'fa-solid fa-star star-btn';
+          star.style.color = '#F59E0B';
+        } else {
+          star.className = 'fa-regular fa-star star-btn';
+          star.style.color = '#e2e8f0';
+        }
+      });
+    };
+
+    window.openTeacherRatingModal = async function(teacherId, teacherName, studentId) {
+      document.getElementById('ratingTeacherId').value = teacherId;
+      document.getElementById('ratingStudentId').value = studentId;
+      document.getElementById('ratingTeacherSubtitle').textContent = `Rate your experience with ${teacherName}`;
+      
+      // Reset stars & feedback
+      window.setModalRatingValue(0);
+      document.getElementById('ratingFeedbackInput').value = '';
+      
+      // Pre-fill existing rating if it exists
+      try {
+        const res = await fetch(`/api/parent/connect/ratings?teacherId=${teacherId}&studentId=${studentId}`);
+        if (res.ok) {
+          const ratingData = await res.json();
+          if (ratingData) {
+            window.setModalRatingValue(ratingData.rating);
+            document.getElementById('ratingFeedbackInput').value = ratingData.feedback || '';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch existing rating:', err);
+      }
+      
+      openModal('ratingModal');
+    };
+
+    window.handleTeacherRatingSubmit = async function(e) {
+      e.preventDefault();
+      const teacherId = document.getElementById('ratingTeacherId').value;
+      const studentId = document.getElementById('ratingStudentId').value;
+      const rating = parseInt(document.getElementById('ratingValueInput').value);
+      const feedback = document.getElementById('ratingFeedbackInput').value;
+
+      if (!rating || rating < 1 || rating > 5) {
+        showToast('Please select a star rating (1 to 5 stars).', 'warning');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/parent/connect/ratings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teacherId, studentId, rating, feedback })
+        });
+        if (res.ok) {
+          showToast('Thank you! Teacher rated successfully.', 'success');
+          closeModal('ratingModal');
+          // Reload observations to show new details
+          if (window.loadObservationsAndSyllabus) {
+            window.loadObservationsAndSyllabus();
+          }
+        } else {
+          const err = await res.json();
+          showToast(err.error || 'Failed to submit rating.', 'danger');
+        }
+      } catch (err) {
+        showToast('Server connection error.', 'danger');
+      }
+    };
+
     let activeChatTeacherId = null;
     let activeChatStudentId = null;
     let chatPollInterval = null;
@@ -2044,9 +2154,14 @@
                 `).join('')}
               </div>
             ` : ''}
-            <button class="btn btn-primary" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px;" onclick="openTeacherChat('${obs.teacher_id}', '${name.replace(/'/g, "\\'")}', '${activeStudentId}', '${studentName.replace(/'/g, "\\'")}')">
-              <i class="fa-solid fa-envelope"></i> Message Teacher
-            </button>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="btn btn-primary" style="flex:1;justify-content:center;display:flex;align-items:center;gap:6px;font-size:0.75rem;" onclick="openTeacherChat('${obs.teacher_id}', '${name.replace(/'/g, "\\'")}', '${activeStudentId}', '${studentName.replace(/'/g, "\\'")}')">
+                <i class="fa-solid fa-envelope"></i> Message
+              </button>
+              <button class="btn" style="flex:1;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.25);color:#D97706;justify-content:center;display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:600;" onclick="openTeacherRatingModal('${obs.teacher_id}', '${name.replace(/'/g, "\\'")}', '${activeStudentId}')">
+                <i class="fa-solid fa-star" style="color:#D97706;"></i> Rate
+              </button>
+            </div>
           </div>
         `;
           }).join('');

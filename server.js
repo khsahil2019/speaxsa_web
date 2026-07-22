@@ -293,7 +293,7 @@ process.on('SIGTERM', () => {
 
 process.on('uncaughtException', (err) => {
   console.error('[Server] Uncaught Exception:', err);
-  process.exit(1);
+  // Log the error but keep the process alive to prevent server downtime/unexpected shutdowns
 });
 
 process.on('unhandledRejection', (reason) => {

@@ -113,6 +113,10 @@ async function doRegister() {
       throw new Error('Please fill all required fields');
     }
 
+    if (document.getElementById('regTermsAgree') && !document.getElementById('regTermsAgree').checked) {
+      throw new Error('You must agree to the Terms of Service & Privacy Policy');
+    }
+
     if (window._tRegPhoneOtpPending) {
       payload.phoneOtp = window._tRegPhoneOtpPending;
     }
@@ -330,6 +334,26 @@ function showApp() {
     document.getElementById('levelSidebar').textContent = user.teacher_level || 'New Joiner';
   }
   checkSopStatus();
+  loadTeacherNotificationCounts();
+
+  // Poll for counts every 5 seconds
+  if (window._teacherNotifPollInterval) clearInterval(window._teacherNotifPollInterval);
+  window._teacherNotifPollInterval = setInterval(() => {
+    loadTeacherNotificationCounts();
+  }, 5000);
+}
+
+async function loadTeacherNotificationCounts() {
+  try {
+    const data = await api('/teacher/pending-counts');
+    const badge = document.getElementById('teacherNotifBadge');
+    if (badge) {
+      badge.textContent = data.total || 0;
+      badge.style.display = data.total > 0 ? '' : 'none';
+    }
+  } catch (err) {
+    console.error('Failed to load teacher notifications count:', err);
+  }
 }
 
 async function checkSopStatus() {
@@ -1271,6 +1295,18 @@ async function renderSop() {
     if (window._sopActiveTab === 'video' && !isSubmitted) {
       toggleSopSubmitBtn();
     }
+
+    // Set up auto-saves for SOP Setup tabs
+    if (window._sopActiveTab === 'profile' && !isSubmitted) {
+      setupAutoSave('autosave_teacher_sop_profile', [
+        'onboardSubjects', 'onboardLanguages', 'onboardExp', 'onboardQual', 
+        'onboardAltEmail', 'onboardMobileNumber', 'onboardLinkedIn', 'onboardTwitter', 'onboardBio'
+      ]);
+    } else if (window._sopActiveTab === 'video' && !isSubmitted) {
+      setupAutoSave('autosave_teacher_sop_video_links', [
+        'link_camera_sop', 'link_lighting_sop', 'link_audio_sop', 'link_internet_proof', 'link_demo_teaching'
+      ]);
+    }
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
@@ -1397,6 +1433,15 @@ async function saveSopLink(fieldId) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     showToast(`${fieldId.replace('_',' ')} link saved successfully!`);
+    
+    // Clear item from links autosave cache
+    try {
+      const key = 'autosave_teacher_sop_video_links';
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      delete saved[`link_${fieldId}`];
+      localStorage.setItem(key, JSON.stringify(saved));
+    } catch {}
+    
     renderSop();
   } catch (e) {
     showToast(e.message, 'error');
@@ -1529,6 +1574,7 @@ async function saveProfileOnboarding(e) {
       })
     });
     showToast(data.message || 'Profile details saved successfully!');
+    clearAutoSave('autosave_teacher_sop_profile');
     renderSop();
   } catch (err) {
     showToast(err.message, 'error');

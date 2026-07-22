@@ -49,6 +49,14 @@ router.get('/settings/public', async (req, res) => {
       support_hours: settings.support_hours || 'Mon–Sat: 8 AM – 8 PM IST',
       max_batch_capacity: settings.max_batch_capacity || 30,
       require_registration_otp: settings.require_registration_otp !== undefined ? (String(settings.require_registration_otp) === 'true' || settings.require_registration_otp === true) : true,
+      privacy_policy_content: settings.privacy_policy_content || '<h3>Speaxa Privacy & Child Safety Policy</h3><p>We are committed to maintaining a safe learning environment for all students...</p>',
+      privacy_policy_badge: settings.privacy_policy_badge || 'Legal Agreements',
+      privacy_policy_title: settings.privacy_policy_title || 'Privacy Policy',
+      privacy_policy_desc: settings.privacy_policy_desc || 'How we collect, store, and process your data securely at SPEAXA.',
+      terms_of_service_content: settings.terms_of_service_content || '<h4>Terms of Service</h4><p>Please read these terms carefully...</p>',
+      terms_of_service_badge: settings.terms_of_service_badge || 'Platform Policies',
+      terms_of_service_title: settings.terms_of_service_title || 'Terms of Service',
+      terms_of_service_desc: settings.terms_of_service_desc || 'Please read these terms carefully before accessing the SPEAXA portals.',
     };
     for (const [key, value] of Object.entries(settings)) {
       if (key.startsWith('home_')) {
@@ -172,6 +180,31 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
+// ── Pending Action Counts ─────────────────────────────────────
+router.get('/pending-counts', async (req, res) => {
+  try {
+    const [payouts, sops, courses, links] = await Promise.all([
+      db.query("SELECT COUNT(*) as count FROM teacher_payouts WHERE status = 'requested'"),
+      db.query("SELECT COUNT(*) as count FROM teacher_sop WHERE status = 'sop_pending'"),
+      db.query("SELECT COUNT(*) as count FROM courses WHERE status = 'pending'"),
+      db.query("SELECT COUNT(*) as count FROM parent_student_links WHERE status = 'pending'")
+    ]);
+    const total = parseInt(payouts.rows[0].count) + 
+                  parseInt(sops.rows[0].count) + 
+                  parseInt(courses.rows[0].count) + 
+                  parseInt(links.rows[0].count);
+    res.json({
+      total,
+      payouts: parseInt(payouts.rows[0].count),
+      sops: parseInt(sops.rows[0].count),
+      courses: parseInt(courses.rows[0].count),
+      links: parseInt(links.rows[0].count)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Teacher Management ────────────────────────────────────────
 router.get('/teachers', async (req, res) => {
   try {
@@ -196,6 +229,59 @@ router.get('/teachers/:id', async (req, res) => {
       documents: docsRes.rows,
       wallet: walletRes.rows[0] || null,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/teachers/:id/ratings - Fetch all reviews and ratings for a teacher
+router.get('/teachers/:id/ratings', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const ratings = await db.query(`
+      SELECT r.*, 
+             p.name as parent_name, p.email as parent_email,
+             s.name as student_name
+      FROM teacher_ratings r
+      JOIN users p ON p.id = r.parent_id
+      LEFT JOIN users s ON s.id = r.student_id
+      WHERE r.teacher_id = $1
+      ORDER BY r.created_at DESC
+    `, [id]);
+    res.json(ratings.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /admin/ratings/:ratingId - Delete a teacher rating
+router.delete('/ratings/:ratingId', async (req, res) => {
+  const { ratingId } = req.params;
+  try {
+    const ratingRes = await db.query('SELECT teacher_id FROM teacher_ratings WHERE id = $1', [ratingId]);
+    if (!ratingRes.rows.length) {
+      return res.status(404).json({ error: 'Rating not found' });
+    }
+    const teacherId = ratingRes.rows[0].teacher_id;
+
+    await db.query('DELETE FROM teacher_ratings WHERE id = $1', [ratingId]);
+
+    // Recalculate teacher aggregate rating & count
+    await db.query(`
+      UPDATE users 
+      SET rating = COALESCE((SELECT ROUND(AVG(rating), 2) FROM teacher_ratings WHERE teacher_id = $1), 5.0),
+          total_ratings = (SELECT COUNT(*) FROM teacher_ratings WHERE teacher_id = $1)
+      WHERE id = $1
+    `, [teacherId]);
+
+    try {
+      const levelService = require('../services/teacherLevel.service');
+      await levelService.updateTeacherLevel(teacherId);
+    } catch (lvlErr) {
+      console.error('[AdminRatingDelete] Level update trigger failed:', lvlErr.message);
+    }
+
+    res.json({ message: 'Rating deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1835,6 +1921,160 @@ router.post('/emails/send', async (req, res) => {
       console.error(`[Email Campaign Error] Campaign ${campaignId} background send failed:`, err.message);
     });
 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Blogs CRUD
+router.get('/blogs', async (req, res) => {
+  try {
+    const result = await db.query("SELECT * FROM blogs ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/blogs', async (req, res) => {
+  const { id, title, content, summary, banner_url, author } = req.body;
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Title and content are required' });
+  }
+  
+  // Create simple slug
+  const slug = title.toString().toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-');
+
+  try {
+    if (id) {
+      const result = await db.query(`
+        UPDATE blogs
+        SET title = $1, slug = $2, content = $3, summary = $4, banner_url = $5, author = $6, updated_at = NOW()
+        WHERE id = $7
+        RETURNING *
+      `, [title, slug, content, summary, banner_url, author || 'Admin', id]);
+      res.json({ message: 'Blog updated successfully', blog: result.rows[0] });
+    } else {
+      const result = await db.query(`
+        INSERT INTO blogs (title, slug, content, summary, banner_url, author)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `, [title, slug, content, summary, banner_url, author || 'Admin']);
+      res.json({ message: 'Blog created successfully', blog: result.rows[0] });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/blogs/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query("DELETE FROM blogs WHERE id = $1", [id]);
+    res.json({ message: 'Blog deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin FAQs CRUD
+router.get('/faqs', async (req, res) => {
+  try {
+    const result = await db.query("SELECT * FROM faqs ORDER BY sort_order ASC, created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/faqs', async (req, res) => {
+  const { id, question, answer, category, sort_order } = req.body;
+  if (!question || !answer) {
+    return res.status(400).json({ error: 'Question and answer are required' });
+  }
+
+  try {
+    if (id) {
+      const result = await db.query(`
+        UPDATE faqs
+        SET question = $1, answer = $2, category = $3, sort_order = $4
+        WHERE id = $5
+        RETURNING *
+      `, [question, answer, category || 'General', parseInt(sort_order) || 0, id]);
+      res.json({ message: 'FAQ updated successfully', faq: result.rows[0] });
+    } else {
+      const result = await db.query(`
+        INSERT INTO faqs (question, answer, category, sort_order)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `, [question, answer, category || 'General', parseInt(sort_order) || 0]);
+      res.json({ message: 'FAQ created successfully', faq: result.rows[0] });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/faqs/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query("DELETE FROM faqs WHERE id = $1", [id]);
+    res.json({ message: 'FAQ deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Media Gallery CRUD Setup
+const galleryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '../../public/uploads/gallery');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const cleanName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    cb(null, `${Date.now()}_${cleanName}`);
+  },
+});
+const galleryUpload = multer({ storage: galleryStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+router.get('/gallery', async (req, res) => {
+  try {
+    const result = await db.query("SELECT * FROM media_gallery ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/gallery/upload', galleryUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const url = `/uploads/gallery/${req.file.filename}`;
+    const result = await db.query(`
+      INSERT INTO media_gallery (filename, url, file_size, mime_type)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [req.file.originalname, url, req.file.size, req.file.mimetype]);
+    res.json({ message: 'File uploaded successfully', file: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/gallery/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const findResult = await db.query("SELECT * FROM media_gallery WHERE id = $1", [id]);
+    if (findResult.rows.length === 0) return res.status(404).json({ error: 'File not found' });
+    const file = findResult.rows[0];
+    const filepath = path.join(__dirname, '../../public', file.url);
+    if (fs.existsSync(filepath)) {
+      fs.unlinkSync(filepath);
+    }
+    await db.query("DELETE FROM media_gallery WHERE id = $1", [id]);
+    res.json({ message: 'File deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

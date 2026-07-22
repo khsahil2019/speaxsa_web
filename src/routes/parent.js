@@ -190,12 +190,28 @@ router.get('/children/:studentId/observations', verifyChildLink, async (req, res
   const { studentId } = req.params;
   try {
     const result = await db.query(`
-      SELECT so.*, u.name as teacher_name, b.batch_name
-      FROM student_observations so
-      LEFT JOIN users u ON u.id = so.teacher_id
-      LEFT JOIN batches b ON b.id = so.batch_id
-      WHERE so.student_id = $1
-      ORDER BY so.observation_date DESC
+      SELECT DISTINCT ON (b.teacher_id)
+        so.id,
+        $1 AS student_id,
+        b.teacher_id,
+        u.name AS teacher_name,
+        b.id AS batch_id,
+        b.batch_name,
+        so.curiosity,
+        so.understanding,
+        so.consistency,
+        so.communication,
+        so.participation,
+        so.discipline,
+        so.observation_date
+      FROM batch_students bs
+      JOIN batches b ON b.id = bs.batch_id
+      JOIN users u ON u.id = b.teacher_id
+      LEFT JOIN student_observations so ON so.student_id = bs.student_id 
+                                       AND so.teacher_id = b.teacher_id 
+                                       AND so.batch_id = b.id
+      WHERE bs.student_id = $1
+      ORDER BY b.teacher_id, so.observation_date DESC
     `, [studentId]);
     res.json(result.rows);
   } catch (err) {
@@ -233,6 +249,13 @@ router.get('/connect/messages', async (req, res) => {
     if (!link.rows.length) {
       return res.status(403).json({ error: 'Access denied. You are not linked to this student.' });
     }
+
+    // Mark incoming messages as read
+    await db.query(`
+      UPDATE parent_teacher_chats 
+      SET is_read = true 
+      WHERE parent_id = $1 AND teacher_id = $2 AND student_id = $3 AND sender_id != $1
+    `, [req.user.id, teacherId, studentId]);
 
     const messages = await db.query(`
       SELECT chat.*, 
@@ -289,6 +312,73 @@ router.post('/connect/messages', async (req, res) => {
     ]);
 
     res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Get Parent's Rating for Teacher ───────────────────────────
+router.get('/connect/ratings', async (req, res) => {
+  const { teacherId, studentId } = req.query;
+  if (!teacherId || !studentId) {
+    return res.status(400).json({ error: 'teacherId and studentId are required' });
+  }
+  try {
+    const result = await db.query(`
+      SELECT * FROM teacher_ratings 
+      WHERE parent_id = $1 AND teacher_id = $2 AND student_id = $3
+    `, [req.user.id, teacherId, studentId]);
+    res.json(result.rows[0] || null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Submit/Update Teacher Rating ──────────────────────────────
+router.post('/connect/ratings', async (req, res) => {
+  const { teacherId, studentId, rating, feedback } = req.body;
+  if (!teacherId || !studentId || !rating) {
+    return res.status(400).json({ error: 'teacherId, studentId, and rating are required' });
+  }
+  const ratingInt = parseInt(rating);
+  if (isNaN(ratingInt) || ratingInt < 1 || ratingInt > 5) {
+    return res.status(400).json({ error: 'Rating must be an integer between 1 and 5' });
+  }
+  try {
+    // Verify student link
+    const link = await db.query(
+      'SELECT id FROM parent_student_links WHERE parent_id = $1 AND student_id = $2 AND status = \'approved\'',
+      [req.user.id, studentId]
+    );
+    if (!link.rows.length) {
+      return res.status(403).json({ error: 'Access denied. You are not linked to this student.' });
+    }
+
+    // Upsert rating
+    await db.query(`
+      INSERT INTO teacher_ratings (teacher_id, parent_id, student_id, rating, feedback)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (teacher_id, parent_id, student_id)
+      DO UPDATE SET rating = $4, feedback = $5, created_at = NOW()
+    `, [teacherId, req.user.id, studentId, ratingInt, feedback || null]);
+
+    // Recalculate teacher aggregate rating & count
+    await db.query(`
+      UPDATE users 
+      SET rating = COALESCE((SELECT ROUND(AVG(rating), 2) FROM teacher_ratings WHERE teacher_id = $1), 5.0),
+          total_ratings = (SELECT COUNT(*) FROM teacher_ratings WHERE teacher_id = $1)
+      WHERE id = $1
+    `, [teacherId]);
+
+    // Trigger level update trigger
+    try {
+      const levelService = require('../services/teacherLevel.service');
+      await levelService.updateTeacherLevel(teacherId);
+    } catch (lvlErr) {
+      console.error('[ParentRating] Level update trigger failed:', lvlErr.message);
+    }
+
+    res.json({ message: 'Rating submitted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

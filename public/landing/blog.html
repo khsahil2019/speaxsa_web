@@ -262,6 +262,87 @@
       }
     });
   }
+
+  // Load blogs dynamically
+  async function loadBlogs() {
+    try {
+      const res = await fetch('/api/public/blogs');
+      if (!res.ok) throw new Error('Failed to load');
+      const blogs = await res.json();
+      if (blogs && blogs.length > 0) {
+        const grid = document.getElementById('blogGrid');
+        grid.innerHTML = blogs.map((b, idx) => `
+          <div class="col-md-6 col-lg-4 blog-post-item" data-category="ALL" data-aos="fade-up" data-aos-delay="${idx * 100}">
+            <div class="blog-card h-100 d-flex flex-column" onclick="viewBlogPost(${b.id})" style="cursor: pointer;">
+              <div class="blog-card-img-wrapper">
+                <img src="${escapeHtml(b.banner_url || '/uploads/blog/blog_revision.png')}" class="blog-card-img" alt="${escapeHtml(b.title)}">
+              </div>
+              <div class="p-4 d-flex flex-grow-1 flex-column" style="background: var(--bg-card);">
+                <span class="text-primary small fw-bold mb-2">ARTICLE</span>
+                <h5 class="text-white mb-2 blog-title" style="font-size: 1.15rem; line-height: 1.4;">${escapeHtml(b.title)}</h5>
+                <p class="text-muted small blog-desc" style="line-height: 1.6;">${escapeHtml(b.summary || '')}</p>
+                <div class="mt-auto d-flex align-items-center justify-content-between text-muted pt-3 border-top" style="border-color: var(--border) !important;">
+                  <small><i class="far fa-calendar-alt me-1"></i>${new Date(b.created_at).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</small>
+                  <small><i class="far fa-user me-1"></i>${escapeHtml(b.author || 'Admin')}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        
+        window._cachedBlogs = blogs;
+        AOS.refresh();
+      }
+    } catch (err) {
+      console.warn("Could not load dynamic blogs, showing fallback:", err);
+    }
+  }
+
+  function viewBlogPost(id) {
+    const blog = window._cachedBlogs?.find(b => b.id === id);
+    if (!blog) return;
+    
+    let detailModal = document.getElementById('blogDetailModal');
+    if (!detailModal) {
+      detailModal = document.createElement('div');
+      detailModal.id = 'blogDetailModal';
+      detailModal.className = 'modal fade';
+      detailModal.setAttribute('tabindex', '-1');
+      detailModal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content text-light" style="background: var(--bg-card); border: 1px solid var(--border);">
+            <div class="modal-header border-0 pb-0">
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-0" id="blogDetailBody" style="max-height: 80vh; overflow-y: auto;"></div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(detailModal);
+    }
+    
+    document.getElementById('blogDetailBody').innerHTML = `
+      ${blog.banner_url ? `<img src="${escapeHtml(blog.banner_url)}" class="img-fluid rounded mb-4 w-100" style="max-height: 350px; object-fit: cover;">` : ''}
+      <h2 class="fw-bold text-white mb-2">${escapeHtml(blog.title)}</h2>
+      <div class="d-flex gap-3 text-muted mb-4 small border-bottom pb-3" style="border-color: var(--border) !important;">
+        <span><i class="far fa-calendar-alt me-1"></i>${new Date(blog.created_at).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</span>
+        <span><i class="far fa-user me-1"></i>By ${escapeHtml(blog.author || 'Admin')}</span>
+      </div>
+      <div class="blog-full-content text-white-50" style="line-height: 1.8; font-size:1.05rem;">
+        ${blog.content}
+      </div>
+    `;
+    
+    const bootstrapModal = new bootstrap.Modal(detailModal);
+    bootstrapModal.show();
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
+  loadBlogs();
 </script>
 </body>
 </html>

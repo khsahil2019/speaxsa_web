@@ -77,10 +77,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .auth-visual-panel {
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.93), rgba(13, 92, 86, 0.97)), url('/logo.png');
-  background-size: cover, 180px;
-  background-position: center, center right -40px;
-  background-repeat: no-repeat, no-repeat;
+  background: linear-gradient(135deg, #0f766e, #115e59);
   position: relative;
   padding: 60px;
   color: white !important;

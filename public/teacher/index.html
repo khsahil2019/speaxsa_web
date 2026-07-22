@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="teacher.css">
+  <link rel="stylesheet" href="teacher.css?v=2.0.5">
 </head>
 <body>
 <div id="authScreen" class="auth-screen">
@@ -117,6 +117,14 @@
             <div class="col-6"><input class="form-control spx-input" id="regExp" type="number" placeholder="Experience (years) *" required></div>
             <div class="col-12"><input class="form-control spx-input" id="regLanguages" placeholder="Teaching Languages (e.g. English, Hindi) *" required></div>
             <div class="col-12"><input class="form-control spx-input" id="regReferralCode" placeholder="Referral Code (Optional)"></div>
+            <div class="col-12 mt-1">
+              <div class="form-check text-start">
+                <input class="form-check-input spx-checkbox" type="checkbox" id="regTermsAgree" checked>
+                <label class="form-check-label text-muted small" for="regTermsAgree" style="cursor:pointer; user-select:none;">
+                  I agree to the <a href="/terms.html" target="_blank" class="text-primary text-decoration-none">Terms of Service</a> & <a href="/privacy.html" target="_blank" class="text-primary text-decoration-none">Privacy Policy</a>
+                </label>
+              </div>
+            </div>
             <div id="registerError" class="col-12 alert alert-danger d-none small"></div>
             <div class="col-12"><button class="btn btn-spx w-100" onclick="doRegister()">Register as Teacher</button></div>
             <div class="col-12 text-muted text-center" style="font-size:.75rem">Your account will be reviewed by admin before you can start teaching.</div>
@@ -202,7 +210,13 @@
         <button class="btn btn-icon" onclick="document.getElementById('sidebar').classList.toggle('show')"><i class="fas fa-bars"></i></button>
         <div class="page-title" id="pageTitle">Dashboard</div>
       </div>
-      <img id="avatarHeader" src="" class="header-avatar" alt="">
+      <div class="d-flex align-items-center gap-3">
+        <div class="notification-bell position-relative" id="notifBell" onclick="navigateTo('chats')" style="cursor: pointer; font-size: 1.15rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--bg-hover); margin-right: 8px;">
+          <i class="fas fa-bell"></i>
+          <span class="badge rounded-pill bg-danger position-absolute" id="teacherNotifBadge" style="top: -4px; right: -4px; font-size: 0.625rem; padding: 3px 5px; display: none;">0</span>
+        </div>
+        <img id="avatarHeader" src="" class="header-avatar" alt="">
+      </div>
     </div>
     <div id="sopBanner" class="d-none" style="background:rgba(245,158,11,.1);border-bottom:1px solid rgba(245,158,11,.3);padding:10px 20px;display:flex;align-items:center;justify-content:space-between">
       <span style="color:#F59E0B;font-size:.875rem"><i class="fas fa-exclamation-triangle me-2"></i><strong>SOP Pending:</strong> Complete your SOP setup to start teaching</span>
