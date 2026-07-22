@@ -74,13 +74,20 @@ router.post('/register', async (req, res) => {
         const { otp: emailOtpVal, tokenId: emailTokenId } = await createOTP(email, 'register_email');
 
         await sendOTPEmail(email, emailOtpVal, 'register_email', emailTokenId);
+        
+        // Also send the same OTP to the mobile number to verify ownership
+        try {
+          await sendOTPSms(phone, emailOtpVal, 'register_email', emailTokenId);
+        } catch (smsErr) {
+          console.error('[Auth] Failed to send registration SMS OTP:', smsErr.message);
+        }
 
         const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
         const showDevOtp = String(devOtpSetting) === 'true';
 
         return res.status(200).json({
           status: 'otp_sent',
-          message: 'Verification code has been sent to your email. Please enter it to complete registration.',
+          message: 'Verification code has been sent to your email and mobile number. Please enter it to complete registration.',
           ...(showDevOtp && { otp_email: emailOtpVal, otp: emailOtpVal })
         });
       } else {

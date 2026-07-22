@@ -980,10 +980,7 @@ html, body {
 
 .parent-visual-panel {
   flex: 1;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.93), rgba(13, 92, 86, 0.97)), url('/logo.png');
-  background-size: cover, 180px;
-  background-position: center, center right -40px;
-  background-repeat: no-repeat, no-repeat;
+  background: linear-gradient(135deg, #0f766e, #115e59);
   padding: 60px;
   color: white;
   display: flex;

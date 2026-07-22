@@ -1259,7 +1259,9 @@
       return n > 10 ? n / 10 : n;
     }
     // ── Fetch interceptor (auth token injection + 401 auto-logout) ─────────────
-    const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
+    const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
+      ? (window.location.port === '5002' ? '' : 'http://localhost:5002')
+      : '';
     const _fetch = window.fetch;
     window.fetch = async (url, opts = {}) => {
       const token = localStorage.getItem('spx_parent_token');
