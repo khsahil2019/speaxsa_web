@@ -486,7 +486,7 @@ app.use(cors({
 
 // ── Rate Limiting ─────────────────────────────────────────────
 const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'Too many auth requests', code: 'RATE_LIMITED' } });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, message: { error: 'Too many auth requests', code: 'RATE_LIMITED' } });
 
 // Protect sensitive authentication endpoints from abuse
 app.use('/api/auth/login', authLimiter);

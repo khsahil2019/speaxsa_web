@@ -241,39 +241,56 @@ if (typeof Response !== 'undefined' && Response.prototype && Response.prototype.
 }
 
 /**
- * Wraps rich formatted text in a collapsible container if it exceeds the specified character limit.
+ * Wraps rich formatted text in a collapsible container with a "See More / See Less" toggle if it exceeds the limit.
  * @param {string} text - Raw text input
- * @param {number} limit - Character limit before truncating (default: 250)
+ * @param {number} limit - Character limit before truncating (default: 150)
  * @returns {string} Collapsible HTML string
  */
-window.formatCollapsibleText = function(text, limit = 250) {
-  if (!text) return '';
-  if (text.length <= limit) {
-    return window.formatRichText(text);
+window.formatCollapsibleText = function(text, limit = 150) {
+  if (!text || typeof text !== 'string') return '';
+  const clean = text.trim();
+  if (clean.length <= limit) {
+    return window.formatRichText(clean);
   }
-  const id = 'col_' + Math.random().toString(36).substr(2, 9);
+  const id = 'col_' + Math.random().toString(36).substring(2, 9);
+  
+  // Truncate cleanly at a word boundary near the limit
+  let truncated = clean.substring(0, limit);
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > limit * 0.6) {
+    truncated = truncated.substring(0, lastSpace);
+  }
+
   return `
-    <div id="parent_${id}">
-      <div id="text_${id}" style="max-height: 80px; overflow: hidden; position: relative; transition: max-height 0.3s ease;">
-        ${window.formatRichText(text)}
-      </div>
-      <button class="read-more-btn" id="btn_${id}" onclick="window.toggleCollapsibleText('${id}')" style="background:none; border:none; color:var(--primary, #3CBDB0); font-weight:600; font-size:0.75rem; padding:4px 0; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
-        Read More <i class="fas fa-chevron-down small" style="font-size:0.65rem;"></i>
-      </button>
+    <div id="parent_${id}" class="spx-collapsible-wrapper" style="display:inline;">
+      <span id="short_${id}" class="spx-collapsible-short">
+        ${window.formatRichText(truncated)}...
+        <button type="button" class="btn btn-link p-0 ms-1 fw-bold text-primary text-decoration-none shadow-none" style="font-size:0.8rem; vertical-align:baseline; border:none; background:none; line-height:1;" onclick="window.toggleCollapsibleText('${id}')">
+          See More <i class="fas fa-chevron-down ms-1" style="font-size:0.65rem;"></i>
+        </button>
+      </span>
+      <span id="full_${id}" class="spx-collapsible-full d-none">
+        ${window.formatRichText(clean)}
+        <button type="button" class="btn btn-link p-0 ms-1 fw-bold text-primary text-decoration-none shadow-none" style="font-size:0.8rem; vertical-align:baseline; border:none; background:none; line-height:1;" onclick="window.toggleCollapsibleText('${id}')">
+          See Less <i class="fas fa-chevron-up ms-1" style="font-size:0.65rem;"></i>
+        </button>
+      </span>
     </div>
   `.trim();
 };
 
 window.toggleCollapsibleText = function(id) {
-  const container = document.getElementById(`text_${id}`);
-  const button = document.getElementById(`btn_${id}`);
-  
-  if (container.style.maxHeight === 'none') {
-    container.style.maxHeight = '80px';
-    button.innerHTML = 'Read More <i class="fas fa-chevron-down small" style="font-size:0.65rem;"></i>';
-  } else {
-    container.style.maxHeight = 'none';
-    button.innerHTML = 'Read Less <i class="fas fa-chevron-up small" style="font-size:0.65rem;"></i>';
+  const shortEl = document.getElementById(`short_${id}`);
+  const fullEl = document.getElementById(`full_${id}`);
+  if (shortEl && fullEl) {
+    const isShortHidden = shortEl.classList.contains('d-none');
+    if (isShortHidden) {
+      shortEl.classList.remove('d-none');
+      fullEl.classList.add('d-none');
+    } else {
+      shortEl.classList.add('d-none');
+      fullEl.classList.remove('d-none');
+    }
   }
 };
 
@@ -340,3 +357,96 @@ window.startResendCooldown = function(btnOrId, durationSeconds = 300) {
     }
   }, 1000);
 };
+
+/**
+ * Strict Email Address Validator
+ * @param {string} email
+ * @returns {boolean}
+ */
+window.isValidEmail = function(email) {
+  if (!email || typeof email !== 'string') return false;
+  const cleanEmail = email.trim();
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(cleanEmail);
+};
+
+/**
+ * Strict 10-Digit Mobile Number Validator
+ * Validates that the input contains EXACTLY 10 digits (excluding optional +91 prefix).
+ * @param {string} phone
+ * @returns {{ valid: boolean, cleanPhone: string, formattedPhone: string, error?: string }}
+ */
+window.isValidMobile10 = function(phone) {
+  if (!phone || typeof phone !== 'string') {
+    return { valid: false, cleanPhone: '', formattedPhone: '', error: 'Mobile number is required.' };
+  }
+
+  let raw = phone.trim();
+  let digits = raw.replace(/[^0-9]/g, '');
+
+  // Strip leading 91 if length is 12 and starts with 91
+  if (digits.length === 12 && digits.startsWith('91')) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+
+  if (digits.length === 0) {
+    return { valid: false, cleanPhone: '', formattedPhone: '', error: 'Please enter a 10-digit mobile number.' };
+  }
+
+  if (digits.length !== 10) {
+    return { valid: false, cleanPhone: digits, formattedPhone: '+91' + digits, error: `Mobile number must contain exactly 10 digits (you entered ${digits.length} digits).` };
+  }
+
+  if (!/^[6-9]/.test(digits)) {
+    return { valid: false, cleanPhone: digits, formattedPhone: '+91' + digits, error: 'Mobile number must start with 6, 7, 8, or 9.' };
+  }
+
+  return { valid: true, cleanPhone: digits, formattedPhone: '+91' + digits };
+};
+
+/**
+ * Attaches real-time 10-digit phone restrictions to an input element.
+ * Automatically strips non-digit characters and caps input length to 10 digits.
+ * @param {HTMLInputElement|string} inputOrId
+ */
+window.attachPhone10DigitRestriction = function(inputOrId) {
+  const el = typeof inputOrId === 'string' ? document.getElementById(inputOrId) : inputOrId;
+  if (!el || el._phoneRestricted) return;
+  el._phoneRestricted = true;
+
+  el.setAttribute('maxlength', '13'); // Allow +91 plus 10 digits or 10 digits
+  el.addEventListener('input', function() {
+    let val = this.value;
+    if (val.startsWith('+91')) {
+      let digits = val.slice(3).replace(/[^0-9]/g, '').slice(0, 10);
+      this.value = '+91 ' + digits;
+    } else if (val.startsWith('+')) {
+      let digits = val.slice(1).replace(/[^0-9]/g, '').slice(0, 12);
+      this.value = '+' + digits;
+    } else {
+      let digits = val.replace(/[^0-9]/g, '').slice(0, 10);
+      this.value = digits;
+    }
+  });
+};
+
+// Automatically bind 10-digit phone restriction for phone inputs
+document.addEventListener('DOMContentLoaded', function() {
+  const phoneSelectors = [
+    'input[type="tel"]',
+    '#regPhone',
+    '#otpPhone',
+    '#regMobileNumber',
+    '#checkoutPhone',
+    '#contactPhone',
+    '#smsPhone',
+    '#verifyPhoneNumberInput'
+  ];
+  phoneSelectors.forEach(selector => {
+    document.querySelectorAll(selector).forEach(el => {
+      window.attachPhone10DigitRestriction(el);
+    });
+  });
+});

@@ -14,7 +14,8 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800;900&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="parent.css?v=2.0.5">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="parent.css?v=2.0.6">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
@@ -87,7 +88,10 @@
                 <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
               </div>
             </div>
-            <button type="submit" class="btn-login">Sign In to Parent Portal</button>
+            <div class="d-flex justify-content-end mb-3">
+              <a href="#" onclick="showForgot(event)" style="color:var(--teal); font-weight:500; font-size:0.82rem; text-decoration:none;">Forgot Password?</a>
+            </div>
+            <button type="submit" class="btn-login" id="btnParentLogin">Sign In to Parent Portal</button>
             <div class="text-center mt-3" style="font-size:0.82rem; color:var(--text-3);">
               Don't have an account? <a href="#" onclick="showRegister(event)"
                 style="color:var(--teal); font-weight:600; text-decoration:none;">Register here</a>
@@ -96,38 +100,99 @@
 
           <!-- Register Form -->
           <form id="registerForm" onsubmit="handleRegister(event)" style="display:none;">
-            <div class="form-group">
-              <label for="regName">Full Name</label>
-              <div class="input-group">
-                <span class="spx-input-prefix"><i class="fa-solid fa-user"></i></span>
-                <input type="text" id="regName" class="form-control" placeholder="Your Name" required>
+            <div id="parentRegInputs">
+              <div class="form-group mb-2">
+                <label for="regName">Full Name</label>
+                <div class="input-group">
+                  <span class="spx-input-prefix"><i class="fa-solid fa-user"></i></span>
+                  <input type="text" id="regName" class="form-control" placeholder="Your Name" required>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label for="regEmail">Email Address</label>
+                <div class="input-group">
+                  <span class="spx-input-prefix"><i class="fa-solid fa-envelope"></i></span>
+                  <input type="email" id="regEmail" class="form-control" placeholder="parent@speaxa.com" required>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label for="regPhone">Phone Number</label>
+                <div class="input-group">
+                  <span class="spx-input-prefix"><i class="fa-solid fa-phone"></i></span>
+                  <input type="tel" id="regPhone" class="form-control" placeholder="10-digit Mobile Number" maxlength="10" required>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label for="regPass">Password</label>
+                <div class="input-group">
+                  <span class="spx-input-prefix"><i class="fa-solid fa-lock"></i></span>
+                  <input type="password" id="regPass" class="form-control" placeholder="••••••••" required>
+                </div>
               </div>
             </div>
-            <div class="form-group">
-              <label for="regEmail">Email Address</label>
-              <div class="input-group">
-                <span class="spx-input-prefix"><i class="fa-solid fa-envelope"></i></span>
-                <input type="email" id="regEmail" class="form-control" placeholder="parent@speaxa.com" required>
+
+            <!-- Inline Register OTP Section -->
+            <div id="parentRegisterOtpSection" style="display:none; background: rgba(13, 122, 109, 0.05); border: 1.5px solid rgba(13, 122, 109, 0.2);" class="mt-3 p-3 rounded-4">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span style="background: rgba(13, 122, 109, 0.12); color: #0d7a6d; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 700;">
+                  <i class="fas fa-shield-halved me-1"></i> SMS Verification
+                </span>
+                <button type="button" onclick="cancelParentOtp(event)" style="background: transparent; border: none; color: #64748b; font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0;">
+                  <i class="fas fa-pen me-1"></i>Edit Details
+                </button>
+              </div>
+              <div class="text-muted mb-2 text-start" style="font-size: 0.8rem; line-height: 1.4;">
+                Enter 6-digit SMS verification code sent to <br>
+                <strong id="parentPhoneDisplay" class="text-dark font-monospace fw-bold" style="font-size: 0.92rem; white-space: nowrap;"></strong>
+              </div>
+              <div class="d-flex justify-content-center gap-2 my-3" id="parentOtpBoxesContainer">
+                <input type="text" class="form-control text-center font-monospace fw-bold p-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="0" style="width: 40px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #ffffff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold p-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="1" style="width: 40px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #ffffff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold p-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="2" style="width: 40px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #ffffff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold p-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="3" style="width: 40px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #ffffff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold p-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="4" style="width: 40px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #ffffff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold p-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="5" style="width: 40px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #ffffff;">
+              </div>
+              <input type="hidden" id="parentRegOtpInput">
+              <div class="d-flex justify-content-between align-items-center mt-2 pt-2" style="border-top: 1px solid rgba(0,0,0,0.08);">
+                <button type="button" id="btnParentResendOtp" onclick="resendParentRegisterOtp(event)" style="background: transparent; border: none; color: #0d7a6d; font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 0;">
+                  <i class="fas fa-rotate-right me-1"></i>Resend OTP
+                </button>
+                <span id="parentOtpTimer" style="background: #e2e8f0; color: #475569; font-size: 0.72rem; padding: 3px 8px; border-radius: 12px; font-weight: 600; display: none;"></span>
               </div>
             </div>
-            <div class="form-group">
-              <label for="regPhone">Phone Number</label>
-              <div class="input-group">
-                <span class="spx-input-prefix"><i class="fa-solid fa-phone"></i></span>
-                <input type="tel" id="regPhone" class="form-control" placeholder="Mobile Number" required>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="regPass">Password</label>
-              <div class="input-group">
-                <span class="spx-input-prefix"><i class="fa-solid fa-lock"></i></span>
-                <input type="password" id="regPass" class="form-control" placeholder="••••••••" required>
-              </div>
-            </div>
-            <button type="submit" class="btn-login">Register Parent Account</button>
+
+            <button type="submit" class="btn-login mt-3" id="btnParentRegister">Register Parent Account</button>
             <div class="text-center mt-3" style="font-size:0.82rem; color:var(--text-3);">
               Already have an account? <a href="#" onclick="showLogin(event)"
                 style="color:var(--teal); font-weight:600; text-decoration:none;">Sign In here</a>
+            </div>
+          </form>
+
+          <!-- Forgot Password Form -->
+          <form id="forgotForm" onsubmit="handleParentForgot(event)" style="display:none;">
+            <div class="form-group mb-3">
+              <label for="parentForgotEmail">Registered Email Address</label>
+              <div class="input-group">
+                <span class="spx-input-prefix"><i class="fa-solid fa-envelope"></i></span>
+                <input type="email" id="parentForgotEmail" class="form-control" placeholder="parent@speaxa.com" required>
+              </div>
+            </div>
+            <button type="submit" class="btn-login mb-2" id="btnParentSendForgot">Send Reset OTP</button>
+
+            <div id="parentResetSection" style="display:none;" class="mt-3 p-3 border rounded">
+              <div class="form-group mb-2">
+                <label for="parentResetOtp">6-Digit OTP Code</label>
+                <input type="text" id="parentResetOtp" class="form-control" placeholder="123456" maxlength="6">
+              </div>
+              <div class="form-group mb-3">
+                <label for="parentResetPass">New Password</label>
+                <input type="password" id="parentResetPass" class="form-control" placeholder="••••••••">
+              </div>
+              <button type="button" class="btn-login" id="btnParentDoReset" onclick="handleParentReset(event)">Reset Password</button>
+            </div>
+            <div class="text-center mt-3" style="font-size:0.82rem; color:var(--text-3);">
+              <a href="#" onclick="showLogin(event)" style="color:var(--teal); font-weight:600; text-decoration:none;">← Back to Sign In</a>
             </div>
           </form>
 
@@ -310,6 +375,26 @@
 
       <!-- Page Content -->
       <main class="page-content" id="pageContent">
+
+        <!-- Top Email Verification Banner -->
+        <div id="emailVerificationBanner" class="alert alert-warning border-warning d-flex align-items-center justify-content-between rounded-4 shadow-sm mb-4 px-4 py-3 d-none" style="background: #fffbeb; border: 1.5px solid #fef3c7;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-warning bg-opacity-20 text-warning p-2 rounded-circle d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+              <i class="fas fa-envelope-open-text fs-5" style="color: #d97706;"></i>
+            </div>
+            <div>
+              <div class="fw-bold text-dark mb-0.5" style="font-size:0.92rem;">Please verify your email address</div>
+              <div class="text-muted small">
+                We sent a verification link to <strong id="bannerEmailDisplay" class="text-dark font-monospace"></strong>. Please check your inbox and click the link to verify your email ID.
+              </div>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-warning fw-bold px-3 py-1.5 rounded-pill" id="btnBannerResendEmail" onclick="resendParentEmailVerificationLink(this)">
+              Resend Link
+            </button>
+          </div>
+        </div>
 
         <!-- ── State: No child linked ─────────────────── -->
         <div id="stateNoChild" style="display:none;">
@@ -1700,14 +1785,25 @@
     };
 
     // ── Login handler ──────────────────────────────────────────────────────────
+    // ── Login handler ──────────────────────────────────────────────────────────
     async function handleLogin(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
+      const btn = document.getElementById('btnParentLogin');
       const email = document.getElementById('loginEmail').value.trim();
       const pass = document.getElementById('loginPass').value;
       const errEl = document.getElementById('loginError');
       errEl.style.display = 'none';
+
+      if (!email || (window.isValidEmail && !window.isValidEmail(email))) {
+        errEl.textContent = 'Please enter a valid email address (e.g. name@example.com).';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Signing in...');
+
       try {
-        const res = await _fetch(API + '/api/auth/login', {
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password: pass, role: 'parent' })
@@ -1715,7 +1811,13 @@
         if (res.status === 403) {
           const data = await res.json();
           if (data.status === 'verification_pending') {
-            window.location.href = `/verify.html?email=${encodeURIComponent(data.email)}&step=${data.step}&firebaseCustomToken=${encodeURIComponent(data.firebaseCustomToken || '')}`;
+            window.location.href = `/verify.html?email=${encodeURIComponent(data.email || email)}&step=${data.step || 'mobile'}&firebaseCustomToken=${encodeURIComponent(data.firebaseCustomToken || '')}`;
+            return;
+          }
+          if (data.status === 'email_not_verified') {
+            showParentEmailVerificationModal(data.email || email);
+            errEl.textContent = data.error || 'Please verify your email address before logging in. A verification link has been sent to your email inbox.';
+            errEl.style.display = 'block';
             return;
           }
         }
@@ -1736,9 +1838,11 @@
           errEl.textContent = toFriendlyError(err.error || 'Invalid credentials.');
           errEl.style.display = 'block';
         }
-      } catch {
-        errEl.textContent = toFriendlyError('Server connection error. Please try again.');
+      } catch (err) {
+        errEl.textContent = toFriendlyError(err.message || 'Server connection error. Please try again.');
         errEl.style.display = 'block';
+      } finally {
+        if (window.setButtonLoading) window.setButtonLoading(btn, false);
       }
     }
 
@@ -1746,6 +1850,7 @@
       if (e) e.preventDefault();
       document.getElementById('loginForm').style.display = 'none';
       document.getElementById('registerForm').style.display = 'block';
+      document.getElementById('forgotForm').style.display = 'none';
       document.getElementById('formTitle').textContent = 'Create Parent Account';
       document.getElementById('formSubtitle').textContent = 'Register to track your child\'s performance';
       document.getElementById('loginError').style.display = 'none';
@@ -1755,29 +1860,160 @@
       if (e) e.preventDefault();
       document.getElementById('loginForm').style.display = 'block';
       document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('forgotForm').style.display = 'none';
       document.getElementById('formTitle').textContent = 'Parent Portal';
       document.getElementById('formSubtitle').textContent = 'Track your child\'s academic journey in real time';
       document.getElementById('loginError').style.display = 'none';
     }
 
-    let _pRegOtpPending = null;
+    function showForgot(e) {
+      if (e) e.preventDefault();
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('forgotForm').style.display = 'block';
+      document.getElementById('formTitle').textContent = 'Reset Password';
+      document.getElementById('formSubtitle').textContent = 'Enter your email to receive a password reset code';
+      document.getElementById('loginError').style.display = 'none';
+    }
+
+    let _parentCurrentEmail = '';
+
+    function setupParentOtpBoxes() {
+      const container = document.getElementById('parentOtpBoxesContainer');
+      if (!container) return;
+      const boxes = Array.from(container.querySelectorAll('input'));
+      const hiddenInput = document.getElementById('parentRegOtpInput');
+
+      function syncHidden() {
+        const val = boxes.map(b => b.value).join('');
+        if (hiddenInput) hiddenInput.value = val;
+      }
+
+      boxes.forEach((box, idx) => {
+        box.addEventListener('input', () => {
+          const val = box.value.replace(/\D/g, '');
+          box.value = val ? val.slice(-1) : '';
+          if (box.value) {
+            box.style.borderColor = 'var(--teal)';
+            box.style.background = 'rgba(13, 122, 109, 0.08)';
+            if (idx < boxes.length - 1) boxes[idx + 1].focus();
+          } else {
+            box.style.borderColor = '#cbd5e1';
+            box.style.background = '#ffffff';
+          }
+          syncHidden();
+        });
+
+        box.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !box.value && idx > 0) {
+            boxes[idx - 1].focus();
+            boxes[idx - 1].value = '';
+            boxes[idx - 1].style.borderColor = '#cbd5e1';
+            boxes[idx - 1].style.background = '#ffffff';
+            syncHidden();
+          }
+        });
+
+        box.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+          paste.split('').forEach((char, i) => {
+            if (boxes[i]) {
+              boxes[i].value = char;
+              boxes[i].style.borderColor = 'var(--teal)';
+              boxes[i].style.background = 'rgba(13, 122, 109, 0.08)';
+            }
+          });
+          syncHidden();
+          if (boxes[Math.min(paste.length, 5)]) boxes[Math.min(paste.length, 5)].focus();
+        });
+      });
+    }
+
+    function autofillParentOtp(otpStr) {
+      if (!otpStr) return;
+      const container = document.getElementById('parentOtpBoxesContainer');
+      const hiddenInput = document.getElementById('parentRegOtpInput');
+      if (!container) return;
+      const boxes = Array.from(container.querySelectorAll('input'));
+      const digits = String(otpStr).replace(/\D/g, '').slice(0, 6).split('');
+      digits.forEach((d, idx) => {
+        if (boxes[idx]) {
+          boxes[idx].value = d;
+          boxes[idx].style.borderColor = 'var(--teal)';
+          boxes[idx].style.background = 'rgba(13, 122, 109, 0.08)';
+        }
+      });
+      if (hiddenInput) hiddenInput.value = digits.join('');
+    }
+
+    function cancelParentOtp(e) {
+      if (e) e.preventDefault();
+      const otpSection = document.getElementById('parentRegisterOtpSection');
+      const inputsSection = document.getElementById('parentRegInputs');
+      const btn = document.getElementById('btnParentRegister');
+      const errEl = document.getElementById('loginError');
+      if (otpSection) otpSection.style.display = 'none';
+      if (inputsSection) inputsSection.style.display = 'block';
+      if (btn) btn.textContent = 'Register Parent Account';
+      if (errEl) errEl.style.display = 'none';
+    }
 
     async function handleRegister(e) {
       if (e) e.preventDefault();
+      const btn = document.getElementById('btnParentRegister');
       const name = document.getElementById('regName').value.trim();
       const email = document.getElementById('regEmail').value.trim();
       const phone = document.getElementById('regPhone').value.trim();
       const password = document.getElementById('regPass').value;
+      const otpSection = document.getElementById('parentRegisterOtpSection');
+      const inputsSection = document.getElementById('parentRegInputs');
+      const otpInput = document.getElementById('parentRegOtpInput');
       const errEl = document.getElementById('loginError');
       errEl.style.display = 'none';
 
-      try {
-        const payload = { name, email, phone, password, role: 'parent' };
-        if (_pRegOtpPending) {
-          payload.otp = _pRegOtpPending;
-        }
+      if (!name) {
+        errEl.textContent = 'Please enter your Full Name.';
+        errEl.style.display = 'block';
+        return;
+      }
 
-        const res = await _fetch(API + '/api/auth/register', {
+      if (!email || (window.isValidEmail && !window.isValidEmail(email))) {
+        errEl.textContent = 'Please enter a valid email address (e.g. name@example.com).';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (window.isValidMobile10) {
+        const mobCheck = window.isValidMobile10(phone);
+        if (!mobCheck.valid) {
+          errEl.textContent = mobCheck.error;
+          errEl.style.display = 'block';
+          return;
+        }
+      }
+
+      _parentCurrentEmail = email;
+
+      const payload = { name, email, phone, password, role: 'parent' };
+
+      const isOtpStep = otpSection && otpSection.style.display !== 'none';
+      if (isOtpStep) {
+        const otpVal = otpInput ? otpInput.value.trim() : '';
+        if (!otpVal || otpVal.length < 6) {
+          errEl.textContent = 'Please enter the 6-digit SMS verification code.';
+          errEl.style.display = 'block';
+          return;
+        }
+        payload.emailOtp = otpVal;
+        payload.phoneOtp = otpVal;
+        payload.otp = otpVal;
+      }
+
+      if (window.setButtonLoading) window.setButtonLoading(btn, true, isOtpStep ? 'Verifying OTP...' : 'Creating Account...');
+
+      try {
+        const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -1786,38 +2022,208 @@
         const data = await res.json();
         if (res.ok) {
           if (data.status === 'otp_sent') {
+            if (inputsSection) inputsSection.style.display = 'none';
+            if (otpSection) otpSection.style.display = 'block';
+            setupParentOtpBoxes();
+
             if (data.otp) {
               showToast(`Dev OTP: ${data.otp}`, 'info');
+              autofillParentOtp(data.otp);
             }
-            const otpInput = prompt(data.message || 'Please enter the registration OTP sent to your email:');
-            if (otpInput === null) {
-              _pRegOtpPending = null;
-              return;
-            }
-            _pRegOtpPending = otpInput.trim();
-            return handleRegister();
-          }
+            
+            const dispPhone = phone.startsWith('+') ? phone : '+91 ' + phone;
+            const phoneDisp = document.getElementById('parentPhoneDisplay');
+            if (phoneDisp) phoneDisp.textContent = dispPhone;
+            if (btn) btn.textContent = 'Verify OTP & Create Account';
 
-          _pRegOtpPending = null;
-          clearAutoSave('autosave_parent_register');
-          if (data.status === 'verification_pending') {
-            window.location.href = `/verify.html?email=${encodeURIComponent(data.email)}&step=${data.step}&firebaseCustomToken=${encodeURIComponent(data.firebaseCustomToken || '')}`;
+            showToast(data.message || 'SMS OTP sent to mobile number', 'success');
+            startParentOtpTimer();
             return;
           }
+
+          clearAutoSave('autosave_parent_register');
+
           localStorage.setItem('spx_parent_token', data.token);
           localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
           hideLoginOverlay();
           initDashboard();
-          showToast('Registration successful! Welcome to Speaxa.', 'success');
+          showToast('Registration successful! Welcome to Speaxa Parent Portal.', 'success');
         } else {
-          _pRegOtpPending = null;
           errEl.textContent = toFriendlyError(data.error || 'Registration failed.');
           errEl.style.display = 'block';
         }
       } catch (err) {
-        _pRegOtpPending = null;
-        errEl.textContent = toFriendlyError('Server connection error. Please try again.');
+        errEl.textContent = toFriendlyError(err.message || 'Server connection error. Please try again.');
         errEl.style.display = 'block';
+      } finally {
+        if (window.setButtonLoading) window.setButtonLoading(btn, false);
+      }
+    }
+
+    function showParentEmailVerificationModal(emailStr) {
+      const emailModalEl = document.getElementById('emailVerificationModal');
+      const emailDisp = document.getElementById('modalEmailDisplay');
+      if (emailDisp) emailDisp.textContent = emailStr || _parentCurrentEmail || 'your email inbox';
+      if (emailModalEl) {
+        if (window.bootstrap && window.bootstrap.Modal) {
+          const modal = window.bootstrap.Modal.getOrCreateInstance(emailModalEl);
+          modal.show();
+        } else {
+          emailModalEl.classList.add('show');
+          emailModalEl.style.display = 'block';
+        }
+      }
+    }
+
+    async function resendParentEmailVerificationLink(btnEl) {
+      const emailStr = document.getElementById('modalEmailDisplay')?.textContent || _parentCurrentEmail;
+      if (!emailStr) return;
+      if (window.setButtonLoading) window.setButtonLoading(btnEl, true, 'Sending link...');
+      try {
+        const res = await fetch('/api/auth/send-email-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: emailStr })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send link');
+        showToast(data.message || 'Verification link sent! Please check your email.', 'success');
+        btnEl.disabled = true;
+        let left = 60;
+        const interval = setInterval(() => {
+          left--;
+          btnEl.textContent = `Resend Link (${left}s)`;
+          if (left <= 0) {
+            clearInterval(interval);
+            btnEl.disabled = false;
+            btnEl.textContent = 'Resend Verification Link';
+          }
+        }, 1000);
+      } catch(e) {
+        showToast(e.message, 'danger');
+      } finally {
+        if (window.setButtonLoading) window.setButtonLoading(btnEl, false);
+      }
+    }
+
+    let _parentOtpTimerInterval = null;
+    function startParentOtpTimer() {
+      const timerEl = document.getElementById('parentOtpTimer');
+      const resendBtn = document.getElementById('btnParentResendOtp');
+      if (resendBtn) {
+        resendBtn.style.pointerEvents = 'none';
+        resendBtn.style.opacity = '0.5';
+      }
+      if (timerEl) {
+        timerEl.style.display = 'inline-block';
+        timerEl.textContent = 'Resend in 60s';
+      }
+      let left = 60;
+      if (_parentOtpTimerInterval) clearInterval(_parentOtpTimerInterval);
+      _parentOtpTimerInterval = setInterval(() => {
+        left--;
+        if (timerEl) timerEl.textContent = `(${left}s)`;
+        if (left <= 0) {
+          clearInterval(_parentOtpTimerInterval);
+          if (timerEl) timerEl.textContent = '';
+          if (resendBtn) resendBtn.style.pointerEvents = 'auto';
+        }
+      }, 1000);
+    }
+
+    async function resendParentRegisterOtp(e) {
+      if (e) e.preventDefault();
+      const phone = document.getElementById('regPhone')?.value.trim();
+      if (!phone) return;
+      try {
+        const res = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, identifier: phone, purpose: 'verify_mobile' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to resend OTP');
+        if (data.otp) {
+          showToast(`Dev OTP: ${data.otp}`, 'info');
+          const otpInput = document.getElementById('parentRegOtpInput');
+          if (otpInput) otpInput.value = data.otp;
+        }
+        showToast('New verification OTP sent via SMS', 'success');
+        startParentOtpTimer();
+      } catch (err) {
+        showToast(err.message, 'danger');
+      }
+    }
+
+    async function handleParentForgot(e) {
+      if (e) e.preventDefault();
+      const btn = document.getElementById('btnParentSendForgot');
+      const email = document.getElementById('parentForgotEmail').value.trim();
+      const errEl = document.getElementById('loginError');
+      errEl.style.display = 'none';
+      if (!email) {
+        errEl.textContent = 'Please enter your registered email address.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Sending OTP...');
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send reset OTP.');
+        showToast(data.message || 'Reset OTP sent to your email!', 'success');
+        if (data.otp) {
+          document.getElementById('parentResetOtp').value = data.otp;
+          showToast(`Dev OTP: ${data.otp}`, 'info');
+        }
+        document.getElementById('parentResetSection').style.display = 'block';
+      } catch (err) {
+        errEl.textContent = toFriendlyError(err.message);
+        errEl.style.display = 'block';
+      } finally {
+        if (window.setButtonLoading) window.setButtonLoading(btn, false);
+      }
+    }
+
+    async function handleParentReset(e) {
+      if (e) e.preventDefault();
+      const btn = document.getElementById('btnParentDoReset');
+      const email = document.getElementById('parentForgotEmail').value.trim();
+      const otp = document.getElementById('parentResetOtp').value.trim();
+      const newPassword = document.getElementById('parentResetPass').value;
+      const errEl = document.getElementById('loginError');
+      errEl.style.display = 'none';
+
+      if (!email) return showToast('Please enter your email address', 'error');
+      if (!otp) return showToast('Please enter the OTP code', 'error');
+      if (!newPassword || newPassword.length < 6) return showToast('Password must be at least 6 characters', 'error');
+
+      if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Resetting...');
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp, newPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Password reset failed.');
+        showToast(data.message || 'Password reset successful! Please login with your new password.', 'success');
+
+        document.getElementById('parentResetSection').style.display = 'none';
+        document.getElementById('parentResetOtp').value = '';
+        document.getElementById('parentResetPass').value = '';
+        document.getElementById('parentForgotEmail').value = '';
+        showLogin();
+      } catch (err) {
+        errEl.textContent = toFriendlyError(err.message);
+        errEl.style.display = 'block';
+      } finally {
+        if (window.setButtonLoading) window.setButtonLoading(btn, false);
       }
     }
 
@@ -2451,6 +2857,49 @@
 
       await reloadChildren();
       renderChildDropdown();
+      checkEmailVerificationReminder();
+    }
+
+    async function checkEmailVerificationReminder() {
+      const profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
+      const banner = document.getElementById('emailVerificationBanner');
+      const bannerEmailDisp = document.getElementById('bannerEmailDisplay');
+      const modalEmailDisp = document.getElementById('modalEmailDisplay');
+
+      if (!profile || !profile.id || profile.email_verified) {
+        if (banner) banner.classList.add('d-none');
+        return;
+      }
+
+      const userEmail = profile.email || _parentCurrentEmail || 'your registered email';
+
+      if (banner) {
+        if (bannerEmailDisp) bannerEmailDisp.textContent = userEmail;
+        banner.classList.remove('d-none');
+      }
+
+      if (modalEmailDisp) modalEmailDisp.textContent = userEmail;
+
+      const now = Date.now();
+      const lastSent = parseInt(sessionStorage.getItem('last_auto_parent_email_link_time') || '0', 10);
+
+      if (now - lastSent > 300000) {
+        sessionStorage.setItem('last_auto_parent_email_link_time', String(now));
+        try {
+          await fetch('/api/auth/send-email-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: userEmail })
+          });
+          showToast(`Verification link sent to ${userEmail}. Please check your inbox.`, 'info');
+        } catch (e) {
+          console.warn('Auto email link error:', e);
+        }
+      }
+
+      setTimeout(() => {
+        showParentEmailVerificationModal(userEmail);
+      }, 500);
     }
 
     async function uploadParentAvatar(input) {
@@ -2506,7 +2955,38 @@
     });
   </script>
 
-  <!-- Firebase compatibility SDKs & notifications launcher -->
+  <!-- Email Verification Dialog Modal -->
+  <div class="modal fade" id="emailVerificationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius:16px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+        <div class="modal-header border-0 pb-0 justify-content-center text-center position-relative pt-4">
+          <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle" style="width:64px; height:64px;">
+            <i class="fas fa-envelope-open-text fa-2x"></i>
+          </div>
+        </div>
+        <div class="modal-body text-center px-4 py-3">
+          <h4 class="fw-bold text-dark mb-2">Please Verify Your Email Address</h4>
+          <p class="text-muted small mb-3">
+            We have sent a verification link to your email address:
+            <br><strong class="text-dark font-monospace" id="modalEmailDisplay">user@email.com</strong>
+          </p>
+          <div class="alert alert-info border-0 rounded-3 p-3 text-start small mb-3" style="background: rgba(13,122,109,0.08); color:#08544b;">
+            <i class="fas fa-info-circle me-1" style="color:#0d7a6d;"></i> Please check your inbox (or spam folder) and click the link to verify your email ID.
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0 px-4 pb-4 d-flex justify-content-between align-items-center">
+          <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">I'll do it later</button>
+          <button type="button" class="btn btn-spx rounded-pill px-4 fw-bold" id="btnModalResendEmail" onclick="resendParentEmailVerificationLink(this)">
+            Resend Verification Link
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap & Firebase compatibility SDKs -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
   <script src="/firebase-notifications.js"></script>

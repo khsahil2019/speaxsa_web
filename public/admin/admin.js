@@ -50,6 +50,15 @@ async function handleLogin(e) {
   e.preventDefault();
   const btn = document.getElementById('loginBtn');
   const errEl = document.getElementById('loginError');
+  const emailVal = document.getElementById('loginEmail').value.trim();
+  const passVal = document.getElementById('loginPassword').value;
+
+  if (!emailVal || (window.isValidEmail && !window.isValidEmail(emailVal))) {
+    errEl.textContent = 'Please enter a valid admin email address (e.g. admin@speaxa.com).';
+    errEl.classList.remove('d-none');
+    return;
+  }
+
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
   btn.disabled = true;
   errEl.classList.add('d-none');
@@ -59,8 +68,8 @@ async function handleLogin(e) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: document.getElementById('loginEmail').value,
-        password: document.getElementById('loginPassword').value,
+        email: emailVal,
+        password: passVal,
       }),
     });
     const data = await res.json();

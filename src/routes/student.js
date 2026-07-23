@@ -226,6 +226,16 @@ router.post('/assignments/:assignmentId/submit', submissionUpload.single('file')
     `, [id, assignmentId, req.user.id, fileUrl, notes, isLate ? 'late' : 'submitted']);
 
     await logAudit(req.user.id, 'ASSIGNMENT_SUBMITTED', 'assignment', assignmentId, { isLate });
+
+    // Trigger email notification for teacher
+    const { notifyAssignmentSubmitted } = require('../services/notification.service');
+    notifyAssignmentSubmitted({
+      assignmentId,
+      studentId: req.user.id,
+      studentName: req.user.name,
+      fileUrl
+    }).catch(err => console.error('[StudentRoute] notifyAssignmentSubmitted error:', err));
+
     res.status(201).json({ message: isLate ? 'Submitted (late)' : 'Assignment submitted', id });
   } catch (err) {
     res.status(500).json({ error: err.message });

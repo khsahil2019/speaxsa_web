@@ -260,6 +260,17 @@ async function markAutoAttendance(classId, studentId, joinTime, exitTime, durati
       ON CONFLICT DO NOTHING
     `, [attId, classId, liveClass.batch_id, studentId, liveClass.teacher_id,
         joinTime, exitTime, durationMins, classDuration, status, new Date().toISOString().split('T')[0]]);
+
+    // Trigger email notification for student and parent
+    const { notifyAttendanceReport } = require('../services/notification.service');
+    notifyAttendanceReport({
+      studentId,
+      classId,
+      classTitle: liveClass.title,
+      status,
+      durationMinutes: durationMins,
+      totalDurationMinutes: classDuration
+    }).catch(err => console.error('[LiveClass] notifyAttendanceReport error:', err));
   } catch (err) {
     console.error('[LiveClass] Auto-attendance error:', err.message);
   }

@@ -601,6 +601,22 @@ router.post('/observations', async (req, res) => {
     `, [id, studentId, req.user.id, batchId, classId || null,
         curiosity || 0, understanding || 0, consistency || 0,
         communication || 0, observation_score || 0, participation || 0, discipline || 0, notes || null]);
+
+    // Trigger email & in-app notifications for student and parent
+    const { notifyObservationCreated } = require('../services/notification.service');
+    notifyObservationCreated({
+      studentId,
+      teacherName: req.user.name,
+      observationScore: observation_score,
+      notes,
+      curiosity,
+      understanding,
+      consistency,
+      communication,
+      participation,
+      discipline
+    }).catch(err => console.error('[TeacherRoute] notifyObservationCreated error:', err));
+
     res.status(201).json({ message: 'Observation saved', id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -644,6 +660,19 @@ router.post('/assignments', assignUpload.single('file'), async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     `, [id, batchId, req.user.id, title, description, fileUrl, due_date, parseInt(max_marks) || 100]);
     await logAudit(req.user.id, 'ASSIGNMENT_CREATED', 'assignment', id, { title, batchId });
+
+    // Trigger email & in-app notifications for students and parents
+    const { notifyNewAssignment } = require('../services/notification.service');
+    notifyNewAssignment({
+      batchId,
+      title,
+      description,
+      dueDate: due_date,
+      maxMarks: parseInt(max_marks) || 100,
+      fileUrl,
+      teacherName: req.user.name
+    }).catch(err => console.error('[TeacherRoute] notifyNewAssignment error:', err));
+
     res.status(201).json({ message: 'Assignment created', id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -675,6 +704,16 @@ router.post('/assignments/submissions/:submissionId/grade', async (req, res) => 
       WHERE id = $4
     `, [marks_obtained, feedback, req.user.id, submissionId]);
     await logAudit(req.user.id, 'ASSIGNMENT_GRADED', 'assignment_submission', submissionId, { marks_obtained });
+
+    // Trigger email & in-app notifications for student and parent
+    const { notifyAssignmentGraded } = require('../services/notification.service');
+    notifyAssignmentGraded({
+      submissionId,
+      marksObtained: marks_obtained,
+      feedback,
+      teacherId: req.user.id
+    }).catch(err => console.error('[TeacherRoute] notifyAssignmentGraded error:', err));
+
     res.json({ message: 'Assignment graded' });
   } catch (err) {
     res.status(500).json({ error: err.message });

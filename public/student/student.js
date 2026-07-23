@@ -85,9 +85,19 @@ async function sendMobileLoginOTP() {
   const phone = document.getElementById('otpPhone')?.value.trim();
   const errEl = document.getElementById('loginError');
   if (errEl) errEl.classList.add('d-none');
-  if (!phone || phone.length < 8) {
+
+  if (window.isValidMobile10) {
+    const mobCheck = window.isValidMobile10(phone);
+    if (!mobCheck.valid) {
+      if (errEl) {
+        errEl.textContent = mobCheck.error;
+        errEl.classList.remove('d-none');
+      }
+      return;
+    }
+  } else if (!phone || phone.length < 10) {
     if (errEl) {
-      errEl.textContent = 'Please enter a valid registered mobile number';
+      errEl.textContent = 'Please enter a valid 10-digit registered mobile number';
       errEl.classList.remove('d-none');
     }
     return;
@@ -174,9 +184,9 @@ async function doLogin() {
   const emailVal = emailEl ? emailEl.value.trim() : '';
   const passVal = passEl ? passEl.value.trim() : '';
 
-  if (!emailVal) {
+  if (!emailVal || (window.isValidEmail && !window.isValidEmail(emailVal))) {
     if (errEl) {
-      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter your registered email address.';
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter a valid registered email address (e.g. name@example.com).';
       errEl.classList.remove('d-none');
     }
     if (emailEl) emailEl.focus();
@@ -283,6 +293,27 @@ async function doRegister() {
       }
       const listItems = missingFields.map(f => `<li>${f}</li>`).join('');
       throw new Error(`Please fill in the following required fields:<ul class="mb-0 mt-1 pl-3 text-start">${listItems}</ul>`);
+    }
+
+    if (window.isValidEmail && !window.isValidEmail(payload.email)) {
+      const emailEl = document.getElementById('regEmail');
+      if (emailEl) {
+        emailEl.classList.add('is-invalid', 'border-danger');
+        emailEl.focus();
+      }
+      throw new Error('Please enter a valid email address (e.g. name@example.com).');
+    }
+
+    if (window.isValidMobile10) {
+      const mobCheck = window.isValidMobile10(payload.phone);
+      if (!mobCheck.valid) {
+        const phoneEl = document.getElementById('regPhone');
+        if (phoneEl) {
+          phoneEl.classList.add('is-invalid', 'border-danger');
+          phoneEl.focus();
+        }
+        throw new Error(mobCheck.error);
+      }
     }
 
     if (document.getElementById('regTermsAgree') && !document.getElementById('regTermsAgree').checked) {
@@ -405,27 +436,72 @@ async function resendRegisterOtp(evtBtn) {
 }
 
 async function sendForgotOTP() {
-  const email = document.getElementById('forgotEmail').value;
-  if (!email) return showToast('Enter email', 'error');
+  const btn = document.getElementById('btnSendForgot') || event?.target;
+  const emailEl = document.getElementById('forgotEmail');
+  const email = emailEl ? emailEl.value.trim() : '';
+  if (!email) {
+    showToast('Please enter your email address', 'error');
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Sending OTP...');
   try {
-    const data = await (await fetch(`${API}/auth/forgot-password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) })).json();
-    if (data.error) throw new Error(data.error);
-    showToast('OTP sent!');
-    if (data.otp) { document.getElementById('resetOTP').value = data.otp; }
-    document.getElementById('resetSection').classList.remove('d-none');
-  } catch(e) { showToast(e.message,'error'); }
+    const res = await fetch(`${API}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to send reset OTP');
+    showToast(data.message || 'OTP sent to your email!', 'success');
+    if (data.otp) {
+      const resetOtpInput = document.getElementById('resetOTP');
+      if (resetOtpInput) resetOtpInput.value = data.otp;
+      showToast(`Dev OTP: ${data.otp}`, 'info');
+    }
+    const resetSec = document.getElementById('resetSection');
+    if (resetSec) resetSec.classList.remove('d-none');
+  } catch(e) {
+    showToast(toFriendlyError(e.message), 'error');
+  } finally {
+    if (window.setButtonLoading) window.setButtonLoading(btn, false);
+  }
 }
 
 async function doReset() {
-  const email = document.getElementById('forgotEmail').value;
-  const otp = document.getElementById('resetOTP').value;
-  const newPassword = document.getElementById('resetPass').value;
+  const btn = document.getElementById('btnDoReset') || event?.target;
+  const email = document.getElementById('forgotEmail')?.value.trim();
+  const otp = document.getElementById('resetOTP')?.value.trim();
+  const newPassword = document.getElementById('resetPass')?.value;
+
+  if (!email) return showToast('Please enter your email address', 'error');
+  if (!otp) return showToast('Please enter the OTP code', 'error');
+  if (!newPassword || newPassword.length < 6) return showToast('Password must be at least 6 characters', 'error');
+
+  if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Resetting...');
   try {
-    const data = await (await fetch(`${API}/auth/reset-password`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, otp, newPassword }) })).json();
-    if (data.error) throw new Error(data.error);
-    showToast('Password reset! Please login.');
+    const res = await fetch(`${API}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Password reset failed');
+    showToast(data.message || 'Password reset successful! Please login with your new password.', 'success');
+
+    const resetSec = document.getElementById('resetSection');
+    if (resetSec) resetSec.classList.add('d-none');
+    if (document.getElementById('resetOTP')) document.getElementById('resetOTP').value = '';
+    if (document.getElementById('resetPass')) document.getElementById('resetPass').value = '';
+    if (document.getElementById('forgotEmail')) document.getElementById('forgotEmail').value = '';
+
     switchTab('login');
-  } catch(e) { showToast(e.message,'error'); }
+  } catch(e) {
+    showToast(toFriendlyError(e.message), 'error');
+  } finally {
+    if (window.setButtonLoading) window.setButtonLoading(btn, false);
+  }
 }
 
 function saveAuth(tok, usr) {
@@ -524,18 +600,74 @@ function showApp() {
     document.getElementById('nameSidebar').textContent = user.name;
     document.getElementById('codeSidebar').textContent = user.student_code || user.role;
   }
+  checkEmailVerificationReminder();
   loadFCMToken();
 }
 
-function checkEmailVerificationReminder() {
-  // Banner will only be triggered manually when Resend Link button is clicked
+function startEmailVerificationCooldown(durationSeconds = 300) {
+  const btnBanner = document.getElementById('btnBannerResendEmail');
+  const btnModal = document.getElementById('btnModalResendEmail');
+  if (window.startResendCooldown) {
+    if (btnBanner) window.startResendCooldown(btnBanner, durationSeconds);
+    if (btnModal) window.startResendCooldown(btnModal, durationSeconds);
+  }
+}
+
+async function checkEmailVerificationReminder() {
+  const banner = document.getElementById('emailVerificationBanner');
+  const bannerEmailDisp = document.getElementById('bannerEmailDisplay');
+  const modalEmailDisp = document.getElementById('modalEmailDisplay');
+
+  if (!user || user.email_verified) {
+    if (banner) banner.classList.add('d-none');
+    return;
+  }
+
+  // User's email is pending verification
+  const userEmail = user.email || 'your registered email';
+
+  // 1. Show top notification banner in panel
+  if (banner) {
+    if (bannerEmailDisp) bannerEmailDisp.textContent = userEmail;
+    banner.classList.remove('d-none');
+  }
+
+  // 2. Set Email address in Modal display
+  if (modalEmailDisp) modalEmailDisp.textContent = userEmail;
+
+  // 3. Start 5-minute disabled cooldown timer on Resend buttons
+  startEmailVerificationCooldown(300);
+
+  // 4. Automatically dispatch verification link if not sent recently
+  const now = Date.now();
+  const lastSent = parseInt(sessionStorage.getItem('last_auto_email_link_time') || '0', 10);
+
+  if (now - lastSent > 300000) {
+    sessionStorage.setItem('last_auto_email_link_time', String(now));
+    try {
+      await fetch('/api/auth/send-email-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: userEmail })
+      });
+      showToast(`Verification link automatically sent to ${userEmail}. Please check your inbox.`, 'info');
+    } catch (e) {
+      console.warn('Auto email link error:', e);
+    }
+  }
+
+  // 5. Open Email Verification Dialog Modal after brief delay
+  setTimeout(() => {
+    const modalEl = document.getElementById('emailVerificationModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+      const modalObj = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+      modalObj.show();
+    }
+  }, 400);
 }
 
 async function resendEmailVerificationLink(evtBtn) {
-  const btn = evtBtn || document.querySelector('#emailVerificationReminderBanner button') || event?.target;
-  if (window.startResendCooldown && btn) {
-    window.startResendCooldown(btn, 300);
-  }
+  startEmailVerificationCooldown(300);
   try {
     const emailToUse = user ? user.email : '';
     const res = await fetch('/api/auth/send-email-link', {
@@ -775,7 +907,7 @@ function renderCoursesGrid(q = '') {
             <span style="font-size:.7rem;background:rgba(16,185,129,.15);color:#10B981;border-radius:6px;padding:2px 8px">${c.grade||''}</span>
           </div>
           <div class="fw-bold text-dark mb-1">${c.title}</div>
-          <p class="text-muted" style="font-size:.8rem;margin:0">${(c.description||'').substr(0,60)}...</p>
+          <div class="text-muted" style="font-size:.8rem;margin:0">${formatCollapsibleText(c.description, 80) || ''}</div>
           <div class="d-flex align-items-center justify-content-between mt-3">
             <span style="font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:800;color:#3CBDB0">₹${parseFloat(c.fees||0).toLocaleString('en-IN')}</span>
             <span class="text-muted" style="font-size:.75rem">${c.batch_count||0} batches</span>
@@ -830,7 +962,7 @@ async function showCourseDetails(courseId) {
       objectiveHtml = `
         <div class="mt-3 p-3 rounded-3" style="background: rgba(60, 189, 176, 0.03); border: 1px solid var(--border);">
           <h6 class="fw-bold mb-2 small text-primary"><i class="fas fa-bullseye me-2"></i>Course Objective</h6>
-          <div class="text-muted small mb-0" style="line-height:1.5;">${formatRichText(course.objective)}</div>
+          <div class="text-muted small mb-0" style="line-height:1.5;">${formatCollapsibleText(course.objective, 120)}</div>
         </div>
       `;
     }
@@ -840,7 +972,7 @@ async function showCourseDetails(courseId) {
       learningOutcomeHtml = `
         <div class="mt-3 p-3 rounded-3" style="background: rgba(16, 185, 129, 0.03); border: 1px solid var(--border);">
           <h6 class="fw-bold mb-2 small text-success"><i class="fas fa-trophy me-2"></i>Learning Outcomes</h6>
-          <div class="text-muted small mb-0" style="line-height:1.5;">${formatRichText(course.learning_outcome)}</div>
+          <div class="text-muted small mb-0" style="line-height:1.5;">${formatCollapsibleText(course.learning_outcome, 120)}</div>
         </div>
       `;
     }
@@ -850,11 +982,11 @@ async function showCourseDetails(courseId) {
       syllabusHtml = `
         <hr style="border-color:var(--border); margin: 1.5rem 0;">
         <h6 class="fw-bold mb-2 text-primary" style="font-size: 0.85rem;"><i class="fas fa-book-open me-2"></i>Syllabus & Sections</h6>
-        <div class="d-flex flex-column gap-2" style="max-height: 150px; overflow-y: auto;">
+        <div class="d-flex flex-column gap-2" style="max-height: 180px; overflow-y: auto;">
           ${modules.map((m, idx) => `
             <div class="p-2 rounded" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
               <div class="fw-bold small text-white" style="font-size: 0.75rem;">${idx + 1}. ${m.title}</div>
-              <div class="text-muted" style="font-size: 0.65rem;">${formatRichText(m.description) || ''}</div>
+              <div class="text-muted" style="font-size: 0.65rem;">${formatCollapsibleText(m.description, 100) || ''}</div>
             </div>
           `).join('')}
         </div>
@@ -1319,8 +1451,15 @@ async function renderAssignments() {
               <div class="d-flex align-items-start justify-content-between">
                 <div class="flex-grow-1">
                   <div class="fw-bold text-white mb-1">${a.title}</div>
-                  <div class="text-muted small mb-2">${a.batch_name||'—'} • Due: ${fmtDate(a.due_date)}</div>
-                  <p class="text-muted small">${(a.description||'').substr(0,100)}</p>
+                  <div class="text-muted small mb-2">${a.batch_name||'—'} • Due: ${fmtDate(a.due_date)} • Max Marks: ${a.max_marks || 100}</div>
+                  <div class="text-muted small mb-2">${formatCollapsibleText(a.description, 100)}</div>
+                  ${a.file_url ? `
+                    <div class="mb-2">
+                      <a href="${a.file_url}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-3 fw-bold" style="font-size:0.75rem; border-radius:6px;">
+                        <i class="fas fa-paperclip me-1"></i>View Teacher Attachment
+                      </a>
+                    </div>
+                  ` : ''}
                   ${submitted ? `
                     <div class="mt-2" style="background:rgba(16,185,129,.1);border-radius:8px;padding:8px 12px">
                       <div class="small text-success">✓ Submitted${a.marks_obtained != null ? ` — ${a.marks_obtained}/${a.max_marks} marks` : ''}</div>
@@ -1769,7 +1908,7 @@ window.filterLiveClasses = function(status) {
   }
 };
 
-async function viewBatchDetails(batchId) {
+async function openMyBatchDetailsModal(batchId) {
   try {
     const myBatches = await api('/student/my-batches');
     const batch = myBatches.find(b => b.id === batchId);
@@ -1800,6 +1939,62 @@ async function viewBatchDetails(batchId) {
       `;
     }
 
+    const hasModules = modules && modules.length > 0;
+    const hasNotes = notes && notes.length > 0;
+    const hasMaterialsTab = hasModules || hasNotes;
+
+    let modulesColHtml = '';
+    let notesColHtml = '';
+    if (hasMaterialsTab) {
+      const colClass = (hasModules && hasNotes) ? 'col-md-6' : 'col-12';
+      
+      if (hasModules) {
+        modulesColHtml = `
+          <div class="${colClass}">
+            <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-book-open me-2 text-primary"></i>Course Syllabus & Sections</h6>
+            <div class="d-flex flex-column gap-2 mb-3" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
+              ${modules.map((m, idx) => `
+                <div class="p-2 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                  <div class="fw-bold text-dark" style="font-size:0.75rem;">${idx + 1}. ${m.title}</div>
+                  <div class="text-muted" style="font-size:0.7rem;">${formatCollapsibleText(m.description, 100) || ''}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (hasNotes) {
+        const borderStyle = (hasModules && hasNotes) ? 'border-left: 1px solid var(--border);' : '';
+        notesColHtml = `
+          <div class="${colClass}" style="${borderStyle}">
+            <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-file-alt me-2 text-primary"></i>Study Materials & Notes</h6>
+            <div class="d-flex flex-column gap-3" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
+              ${notes.map(n => `
+                <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <h6 class="fw-bold text-dark small mb-1">${n.title}</h6>
+                      <div class="text-muted" style="font-size: 0.7rem;">${formatCollapsibleText(n.description, 100) || ''}</div>
+                    </div>
+                    <span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">
+                      ${(n.file_type || 'link').toUpperCase()}
+                    </span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="text-muted" style="font-size: 0.65rem;">Uploaded: ${fmtDate(n.uploaded_at)}</span>
+                    <a href="${n.file_url}" target="_blank" class="btn btn-sm btn-spx py-1 px-3" style="font-size: 0.75rem;">
+                      <i class="fas fa-download me-1"></i> Access
+                    </a>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+    }
+
     bodyEl.innerHTML = `
       <!-- Batch Summary Information -->
       <div class="p-3 rounded-3 mb-4" style="background:var(--bg-card); border:1px solid var(--border);">
@@ -1827,11 +2022,13 @@ async function viewBatchDetails(batchId) {
             <i class="fas fa-video me-2"></i>Live Classes Schedule
           </button>
         </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="materials-tab" data-bs-toggle="tab" data-bs-target="#materials-panel" type="button" role="tab" aria-controls="materials-panel" aria-selected="false">
-            <i class="fas fa-book-open me-2"></i>Syllabus & Materials
-          </button>
-        </li>
+        ${hasMaterialsTab ? `
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="materials-tab" data-bs-toggle="tab" data-bs-target="#materials-panel" type="button" role="tab" aria-controls="materials-panel" aria-selected="false">
+              <i class="fas fa-book-open me-2"></i>Syllabus & Materials
+            </button>
+          </li>
+        ` : ''}
       </ul>
 
       <!-- Tab Panels -->
@@ -1901,47 +2098,15 @@ async function viewBatchDetails(batchId) {
           </div>
         </div>
 
-        <!-- Panel 2: Syllabus & Materials -->
-        <div class="tab-pane fade" id="materials-panel" role="tabpanel" aria-labelledby="materials-tab">
-          <div class="row g-4">
-            <div class="col-md-6">
-              <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-book-open me-2 text-primary"></i>Course Syllabus & Sections</h6>
-              <div class="d-flex flex-column gap-2 mb-3" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
-                ${modules.length ? modules.map((m, idx) => `
-                  <div class="p-2 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
-                    <div class="fw-bold text-dark" style="font-size:0.75rem;">${idx + 1}. ${m.title}</div>
-                    <div class="text-muted" style="font-size:0.7rem;">${m.description || ''}</div>
-                  </div>
-                `).join('') : '<p class="text-muted small text-center py-3">No sections/modules uploaded for this course yet.</p>'}
-              </div>
-            </div>
-
-            <div class="col-md-6" style="border-left: 1px solid var(--border);">
-              <h6 class="fw-bold mb-3" style="color:var(--text-primary);"><i class="fas fa-file-alt me-2 text-primary"></i>Study Materials & Notes</h6>
-              <div class="d-flex flex-column gap-3" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
-                ${notes.length ? notes.map(n => `
-                  <div class="p-3 rounded-3" style="background:rgba(255,255,255,0.01); border:1px solid var(--border);">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                      <div>
-                        <h6 class="fw-bold text-dark small mb-1">${n.title}</h6>
-                        <div class="text-muted" style="font-size: 0.7rem;">${n.description || ''}</div>
-                      </div>
-                      <span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.65rem; border: 1px solid currentColor;">
-                        ${(n.file_type || 'link').toUpperCase()}
-                      </span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                      <span class="text-muted" style="font-size: 0.65rem;">Uploaded: ${fmtDate(n.uploaded_at)}</span>
-                      <a href="${n.file_url}" target="_blank" class="btn btn-sm btn-spx py-1 px-3" style="font-size: 0.75rem;">
-                        <i class="fas fa-download me-1"></i> Access
-                      </a>
-                    </div>
-                  </div>
-                `).join('') : '<p class="text-muted small text-center py-4">No study materials shared for this batch yet.</p>'}
-              </div>
+        ${hasMaterialsTab ? `
+          <!-- Panel 2: Syllabus & Materials -->
+          <div class="tab-pane fade" id="materials-panel" role="tabpanel" aria-labelledby="materials-tab">
+            <div class="row g-4">
+              ${modulesColHtml}
+              ${notesColHtml}
             </div>
           </div>
-        </div>
+        ` : ''}
       </div>
     `;
 

@@ -93,9 +93,19 @@ async function sendMobileLoginOTP() {
   const phone = document.getElementById('otpPhone')?.value.trim();
   const errEl = document.getElementById('loginError');
   if (errEl) errEl.classList.add('d-none');
-  if (!phone || phone.length < 8) {
+
+  if (window.isValidMobile10) {
+    const mobCheck = window.isValidMobile10(phone);
+    if (!mobCheck.valid) {
+      if (errEl) {
+        errEl.textContent = mobCheck.error;
+        errEl.classList.remove('d-none');
+      }
+      return;
+    }
+  } else if (!phone || phone.length < 10) {
     if (errEl) {
-      errEl.textContent = 'Please enter a valid registered mobile number';
+      errEl.textContent = 'Please enter a valid 10-digit registered mobile number';
       errEl.classList.remove('d-none');
     }
     return;
@@ -182,9 +192,9 @@ async function doLogin() {
   const emailVal = emailEl ? emailEl.value.trim() : '';
   const passVal = passEl ? passEl.value.trim() : '';
 
-  if (!emailVal) {
+  if (!emailVal || (window.isValidEmail && !window.isValidEmail(emailVal))) {
     if (errEl) {
-      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter your registered email address.';
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter a valid registered email address (e.g. name@example.com).';
       errEl.classList.remove('d-none');
     }
     if (emailEl) emailEl.focus();
@@ -302,6 +312,45 @@ async function doRegister() {
       }
       const listItems = missingFields.map(f => `<li>${f}</li>`).join('');
       throw new Error(`Please fill in the following required fields:<ul class="mb-0 mt-1 pl-3 text-start">${listItems}</ul>`);
+    }
+
+    if (window.isValidEmail && !window.isValidEmail(payload.email)) {
+      const emailEl = document.getElementById('regEmail');
+      if (emailEl) {
+        emailEl.classList.add('is-invalid', 'border-danger');
+        emailEl.focus();
+      }
+      throw new Error('Please enter a valid email address (e.g. name@example.com).');
+    }
+
+    if (window.isValidEmail && payload.alt_email && !window.isValidEmail(payload.alt_email)) {
+      const altEmailEl = document.getElementById('regAltEmail');
+      if (altEmailEl) {
+        altEmailEl.classList.add('is-invalid', 'border-danger');
+        altEmailEl.focus();
+      }
+      throw new Error('Please enter a valid alternative email address.');
+    }
+
+    if (window.isValidMobile10) {
+      const mobCheck = window.isValidMobile10(payload.phone);
+      if (!mobCheck.valid) {
+        const phoneEl = document.getElementById('regPhone');
+        if (phoneEl) {
+          phoneEl.classList.add('is-invalid', 'border-danger');
+          phoneEl.focus();
+        }
+        throw new Error(mobCheck.error);
+      }
+      const whatsappCheck = window.isValidMobile10(payload.mobile_number);
+      if (!whatsappCheck.valid) {
+        const mobEl = document.getElementById('regMobileNumber');
+        if (mobEl) {
+          mobEl.classList.add('is-invalid', 'border-danger');
+          mobEl.focus();
+        }
+        throw new Error('WhatsApp / Mobile Number: ' + whatsappCheck.error);
+      }
     }
 
     if (document.getElementById('regTermsAgree') && !document.getElementById('regTermsAgree').checked) {
@@ -424,38 +473,72 @@ async function resendRegisterOtp(evtBtn) {
 }
 
 async function sendForgotOTP() {
-  const email = document.getElementById('forgotEmail').value;
-  if (!email) return showToast('Enter email', 'error');
+  const btn = document.getElementById('btnSendForgot') || event?.target;
+  const emailEl = document.getElementById('forgotEmail');
+  const email = emailEl ? emailEl.value.trim() : '';
+  if (!email) {
+    showToast('Please enter your email address', 'error');
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Sending OTP...');
   try {
-    const data = await (await fetch(`${API}/auth/forgot-password`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    const res = await fetch(`${API}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })
-    })).json();
-    if (data.error) throw new Error(data.error);
-    showToast('OTP sent!');
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to send reset OTP');
+    showToast(data.message || 'OTP sent to your email!', 'success');
     if (data.otp) {
-      document.getElementById('resetOTP').value = data.otp;
+      const resetOtpInput = document.getElementById('resetOTP');
+      if (resetOtpInput) resetOtpInput.value = data.otp;
       showToast(`Dev OTP: ${data.otp}`, 'info');
     }
-    document.getElementById('resetSection').classList.remove('d-none');
-  } catch(e) { showToast(e.message,'error'); }
+    const resetSec = document.getElementById('resetSection');
+    if (resetSec) resetSec.classList.remove('d-none');
+  } catch(e) {
+    showToast(toFriendlyError(e.message), 'error');
+  } finally {
+    if (window.setButtonLoading) window.setButtonLoading(btn, false);
+  }
 }
 
 async function doReset() {
-  const email = document.getElementById('forgotEmail').value;
-  const otp = document.getElementById('resetOTP').value;
-  const newPassword = document.getElementById('resetPass').value;
+  const btn = document.getElementById('btnDoReset') || event?.target;
+  const email = document.getElementById('forgotEmail')?.value.trim();
+  const otp = document.getElementById('resetOTP')?.value.trim();
+  const newPassword = document.getElementById('resetPass')?.value;
+
+  if (!email) return showToast('Please enter your email address', 'error');
+  if (!otp) return showToast('Please enter the OTP code', 'error');
+  if (!newPassword || newPassword.length < 6) return showToast('Password must be at least 6 characters', 'error');
+
+  if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Resetting...');
   try {
-    const data = await (await fetch(`${API}/auth/reset-password`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    const res = await fetch(`${API}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp, newPassword })
-    })).json();
-    if (data.error) throw new Error(data.error);
-    showToast('Password reset! Please login.');
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Password reset failed');
+    showToast(data.message || 'Password reset successful! Please login with your new password.', 'success');
+
+    const resetSec = document.getElementById('resetSection');
+    if (resetSec) resetSec.classList.add('d-none');
+    if (document.getElementById('resetOTP')) document.getElementById('resetOTP').value = '';
+    if (document.getElementById('resetPass')) document.getElementById('resetPass').value = '';
+    if (document.getElementById('forgotEmail')) document.getElementById('forgotEmail').value = '';
+
     switchTab('login');
-  } catch(e) { showToast(e.message,'error'); }
+  } catch(e) {
+    showToast(toFriendlyError(e.message), 'error');
+  } finally {
+    if (window.setButtonLoading) window.setButtonLoading(btn, false);
+  }
 }
 
 function saveAuth(tok, usr) {
@@ -556,6 +639,7 @@ function showApp() {
   }
   checkSopStatus();
   loadTeacherNotificationCounts();
+  checkEmailVerificationReminder();
 
   // Poll for counts every 5 seconds
   if (window._teacherNotifPollInterval) clearInterval(window._teacherNotifPollInterval);
@@ -564,15 +648,70 @@ function showApp() {
   }, 5000);
 }
 
-function checkEmailVerificationReminder() {
-  // Banner will only be triggered manually when Resend Link button is clicked
+function startEmailVerificationCooldown(durationSeconds = 300) {
+  const btnBanner = document.getElementById('btnBannerResendEmail');
+  const btnModal = document.getElementById('btnModalResendEmail');
+  if (window.startResendCooldown) {
+    if (btnBanner) window.startResendCooldown(btnBanner, durationSeconds);
+    if (btnModal) window.startResendCooldown(btnModal, durationSeconds);
+  }
+}
+
+async function checkEmailVerificationReminder() {
+  const banner = document.getElementById('emailVerificationBanner');
+  const bannerEmailDisp = document.getElementById('bannerEmailDisplay');
+  const modalEmailDisp = document.getElementById('modalEmailDisplay');
+
+  if (!user || user.email_verified) {
+    if (banner) banner.classList.add('d-none');
+    return;
+  }
+
+  // User's email is pending verification
+  const userEmail = user.email || 'your registered email';
+
+  // 1. Show top notification banner in panel
+  if (banner) {
+    if (bannerEmailDisp) bannerEmailDisp.textContent = userEmail;
+    banner.classList.remove('d-none');
+  }
+
+  // 2. Set Email address in Modal display
+  if (modalEmailDisp) modalEmailDisp.textContent = userEmail;
+
+  // 3. Start 5-minute disabled cooldown timer on Resend buttons
+  startEmailVerificationCooldown(300);
+
+  // 4. Automatically dispatch verification link if not sent recently
+  const now = Date.now();
+  const lastSent = parseInt(sessionStorage.getItem('last_auto_teacher_email_link_time') || '0', 10);
+
+  if (now - lastSent > 300000) {
+    sessionStorage.setItem('last_auto_teacher_email_link_time', String(now));
+    try {
+      await fetch('/api/auth/send-email-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: userEmail })
+      });
+      showToast(`Verification link automatically sent to ${userEmail}. Please check your inbox.`, 'info');
+    } catch (e) {
+      console.warn('Auto email link error:', e);
+    }
+  }
+
+  // 5. Open Email Verification Dialog Modal after brief delay
+  setTimeout(() => {
+    const modalEl = document.getElementById('emailVerificationModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+      const modalObj = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+      modalObj.show();
+    }
+  }, 400);
 }
 
 async function resendEmailVerificationLink(evtBtn) {
-  const btn = evtBtn || document.querySelector('#emailVerificationReminderBanner button') || event?.target;
-  if (window.startResendCooldown && btn) {
-    window.startResendCooldown(btn, 300);
-  }
+  startEmailVerificationCooldown(300);
   try {
     const emailToUse = user ? user.email : '';
     const res = await fetch('/api/auth/send-email-link', {
@@ -2000,7 +2139,7 @@ async function renderBatches() {
                       ${b.planner_desc ? `
                         <div class="mt-2 p-2 rounded text-secondary" style="background:rgba(255,255,255,0.02); font-size:0.78rem; line-height: 1.4; border: 1px solid rgba(255,255,255,0.03);">
                           <strong class="text-dark d-block mb-1"><i class="fas fa-list-ol me-1 text-primary"></i>Learning Schedule:</strong>
-                          <div>${formatRichText(b.planner_desc)}</div>
+                          <div>${formatCollapsibleText(b.planner_desc, 130)}</div>
                         </div>
                       ` : ''}
                     </div>
@@ -2169,23 +2308,12 @@ function switchBatchTab(tab) {
 async function handleCourseChange(courseId) {
   if (!courseId) {
     window._selectedCourse = null;
-    window._selectedCourseModules = [];
     updateBatchPreview();
     return;
   }
 
   const course = (window._coursesCache || []).find(c => c.id === courseId);
   window._selectedCourse = course;
-  window._selectedCourseModules = null; // indicates loading
-  updateBatchPreview();
-
-  try {
-    const modules = await api(`/courses/${courseId}/modules`);
-    window._selectedCourseModules = modules || [];
-  } catch (err) {
-    showToast('Failed to load course modules: ' + err.message, 'error');
-    window._selectedCourseModules = [];
-  }
   updateBatchPreview();
 }
 
@@ -2257,7 +2385,7 @@ function updateBatchPreview() {
       </div>
       <div class="text-muted small mb-3">${formatRichText(window._selectedCourse.description) || 'No description available for this course.'}</div>
       
-      <div class="row mb-4 text-muted small g-3">
+      <div class="row text-muted small g-3">
         <div class="col-6">
           <span class="d-block text-muted small" style="font-size: 9px; letter-spacing: 0.5px;">SUBJECT</span>
           <span class="text-dark fw-semibold"><i class="fas fa-book-open me-1 text-primary"></i> ${window._selectedCourse.subject}</span>
@@ -2270,24 +2398,6 @@ function updateBatchPreview() {
           <span class="d-block text-muted small" style="font-size: 9px; letter-spacing: 0.5px;">COURSE FEES</span>
           <span class="text-dark fw-semibold"><i class="fas fa-rupee-sign me-1 text-primary"></i> ₹${window._selectedCourse.fees}</span>
         </div>
-      </div>
-      
-      <h6 class="text-white fw-bold mb-2 small" style="letter-spacing: 0.5px; font-size: 11px; text-transform: uppercase;">Syllabus / Course Modules</h6>
-      <div class="syllabus-list pe-1" style="max-height: 220px; overflow-y: auto;">
-        ${window._selectedCourseModules === null ? `
-          <div class="text-center py-3 text-muted">
-            <span class="spinner-border spinner-border-sm me-2 text-primary" role="status" aria-hidden="true"></span>
-            Loading modules...
-          </div>
-        ` : window._selectedCourseModules.length ? 
-          window._selectedCourseModules.map((m, idx) => `
-            <div class="p-2 mb-2 rounded border" style="background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.05) !important;">
-              <div class="small fw-bold text-white-50" style="font-size: 9px;">MODULE ${idx + 1}</div>
-              <div class="small text-dark fw-semibold mb-1">${m.title}</div>
-              <div class="text-muted" style="font-size: 11px;">${formatRichText(m.description) || ''}</div>
-            </div>
-          `).join('') : '<p class="text-muted small">No modules created for this course yet.</p>'
-        }
       </div>
     </div>
   `;
@@ -2508,7 +2618,7 @@ async function renderCourses() {
               <div class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.board || 'Any'}</div>
                   <span class="badge bg-secondary-subtle text-muted" style="font-size: 0.65rem;">${c.duration_weeks || 12} Wks</span>
                 </div>
-                <p class="text-muted small" style="line-height:1.5; font-size:0.8rem;">${(c.description || 'No description provided.').substr(0, 100)}${c.description?.length > 100 ? '...' : ''}</p>
+                <div class="text-muted small" style="line-height:1.5; font-size:0.8rem;">${formatCollapsibleText(c.description, 100) || 'No description provided.'}</div>
               </div>
               <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center" style="border-color: var(--border) !important;">
                 <span class="fw-bold text-dark">₹${fees}</span>
@@ -3182,28 +3292,44 @@ async function viewSubmissions(assignId) {
   }
 }
 
-function openGradePopup(subId, name) {
-  const marks = prompt(`Enter marks obtained by ${name}:`);
-  if (marks === null) return;
-  const feedback = prompt('Enter educator feedback notes:');
-  if (feedback === null) return;
+window.openGradePopup = function(subId, name) {
+  document.getElementById('gradeSubmissionId').value = subId;
+  document.getElementById('gradeStudentNameDisplay').textContent = name || 'Student';
+  document.getElementById('gradeMarksInput').value = '';
+  document.getElementById('gradeFeedbackInput').value = '';
 
-  api(`/teacher/assignments/submissions/${subId}/grade`, {
-    method: 'POST',
-    body: JSON.stringify({ marks_obtained: parseInt(marks) || 0, feedback })
-  }).then(res => {
-    showToast('Submission graded successfully!');
-    // Close open modals
-    const openModals = document.querySelectorAll('.modal.show');
-    openModals.forEach(m => {
-      const modalInstance = bootstrap.Modal.getInstance(m);
-      modalInstance?.hide();
+  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeAssignmentModal'));
+  modal.show();
+};
+
+window.submitGradeAssignment = async function(e) {
+  e.preventDefault();
+  const subId = document.getElementById('gradeSubmissionId').value;
+  const marks = document.getElementById('gradeMarksInput').value;
+  const feedback = document.getElementById('gradeFeedbackInput').value;
+  const btn = document.getElementById('btnSubmitGrade');
+
+  setButtonLoading(btn, true);
+  try {
+    await api(`/teacher/assignments/submissions/${subId}/grade`, {
+      method: 'POST',
+      body: JSON.stringify({ marks_obtained: parseInt(marks) || 0, feedback })
     });
+    showToast('Submission graded and notifications dispatched!');
+
+    const gradeModal = bootstrap.Modal.getInstance(document.getElementById('gradeAssignmentModal'));
+    gradeModal?.hide();
+
+    const subsModal = bootstrap.Modal.getInstance(document.getElementById('subsModal'));
+    subsModal?.hide();
+
     renderAssignments();
-  }).catch(err => {
+  } catch (err) {
     showToast(err.message, 'error');
-  });
-}
+  } finally {
+    setButtonLoading(btn, false);
+  }
+};
 
 // ── Student Observations ──────────────────────────────────────
 async function renderObservations() {
