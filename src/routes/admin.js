@@ -429,6 +429,28 @@ router.post('/sop/:teacherId/approve', async (req, res) => {
 
     await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1", [teacherId]);
     await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, { note: 'Auto Approved Full' });
+
+    try {
+      const teacherRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
+      if (teacherRes.rows.length > 0 && teacherRes.rows[0].email) {
+        const { sendEmail } = require('../services/EmailService');
+        await sendEmail({
+          to: teacherRes.rows[0].email,
+          subject: 'SPEAXA — SOP & Teacher Profile Approved!',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #0d7a6d;">Congratulations ${teacherRes.rows[0].name}!</h2>
+              <p>Your <strong>SOP Verification & Profile Onboarding</strong> has been reviewed and <strong style="color: #10b981;">APPROVED</strong> by the SPEAXA Admin team!</p>
+              <p>Please log in to your Teacher Dashboard to sign the digital agreement and activate live class hosting.</p>
+            </div>
+          `,
+          type: 'notification'
+        });
+      }
+    } catch (mailErr) {
+      console.error('[Admin SOP Approval Email Error]:', mailErr.message);
+    }
+
     res.json({ message: 'SOP approved. Waiting for teacher to sign agreement.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -668,7 +690,7 @@ router.put('/users/:id', async (req, res) => {
   try {
     const updates = [], values = [];
     let idx = 1;
-    const fields = { name, email, phone, qualification, board, grade };
+    const fields = { name, email, phone, qualification, board, grade, phone_verified, email_verified };
     for (const [key, val] of Object.entries(fields)) {
       if (val !== undefined) { updates.push(`${key} = $${idx++}`); values.push(val); }
     }
@@ -682,6 +704,28 @@ router.put('/users/:id', async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
     await logAudit(req.user.id, 'USER_UPDATED', 'user', id, { fields: Object.keys(fields) });
     res.json({ message: 'User updated', user: sanitizeUser(result.rows[0]) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/users/:id/toggle-verification', async (req, res) => {
+  const { id } = req.params;
+  const { phone_verified, email_verified } = req.body;
+  try {
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    if (phone_verified !== undefined) { updates.push(`phone_verified = $${idx++}`); values.push(phone_verified); }
+    if (email_verified !== undefined) { updates.push(`email_verified = $${idx++}`); values.push(email_verified); }
+    if (!updates.length) {
+      updates.push(`phone_verified = true`, `email_verified = true`);
+    }
+    values.push(id);
+    const result = await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`, values);
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    await logAudit(req.user.id, 'USER_VERIFIED_BY_ADMIN', 'user', id, { phone_verified, email_verified });
+    res.json({ message: 'User verification updated by Admin', user: sanitizeUser(result.rows[0]) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1095,6 +1139,32 @@ router.post('/payouts/:id/approve', async (req, res) => {
   try {
     await db.query("UPDATE teacher_payouts SET status = 'approved', reviewed_at = NOW(), processed_by = $1 WHERE id = $2", [req.user.id, id]);
     await logAudit(req.user.id, 'PAYOUT_APPROVED', 'payout', id, {});
+
+    try {
+      const payoutRes = await db.query('SELECT p.*, u.email, u.name FROM teacher_payouts p JOIN users u ON u.id = p.teacher_id WHERE p.id = $1', [id]);
+      if (payoutRes.rows.length > 0 && payoutRes.rows[0].email) {
+        const p = payoutRes.rows[0];
+        const { sendEmail } = require('../services/EmailService');
+        await sendEmail({
+          to: p.email,
+          subject: 'SPEAXA — Payout Request Approved',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #0d7a6d;">Payout Request Approved!</h2>
+              <p>Hello <strong>${p.name}</strong>,</p>
+              <p>Your withdrawal payout request for <strong>₹${p.amount}</strong> has been approved by the Admin team.</p>
+              <div style="background: #f8fafc; border-left: 4px solid #0d7a6d; padding: 14px; margin: 16px 0; border-radius: 6px;">
+                <div>Amount: <strong>₹${p.amount}</strong></div>
+                <div>Payment Method: <strong>${p.payment_method || 'Bank Transfer / UPI'}</strong></div>
+                <div>Request ID: <code>${p.id}</code></div>
+              </div>
+            </div>
+          `,
+          type: 'notification'
+        });
+      }
+    } catch (e) { console.error('[Admin Payout Email Error]:', e.message); }
+
     res.json({ message: 'Payout approved' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1132,6 +1202,26 @@ router.post('/payouts/:id/mark-paid', async (req, res) => {
     `, [p.amount, p.teacher_id]);
 
     await logAudit(req.user.id, 'PAYOUT_PAID', 'payout', id, { amount: p.amount, teacher_id: p.teacher_id });
+
+    try {
+      const userRes = await db.query('SELECT name, email FROM users WHERE id = $1', [p.teacher_id]);
+      if (userRes.rows.length > 0 && userRes.rows[0].email) {
+        const { sendEmail } = require('../services/EmailService');
+        await sendEmail({
+          to: userRes.rows[0].email,
+          subject: 'SPEAXA — Funds Transferred to Your Account',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #10b981;">Payout Completed!</h2>
+              <p>Hello <strong>${userRes.rows[0].name}</strong>,</p>
+              <p>Great news! The payout of <strong>₹${p.amount}</strong> has been transferred to your registered bank account / UPI ID.</p>
+            </div>
+          `,
+          type: 'notification'
+        });
+      }
+    } catch (e) { console.error('[Admin Payout Paid Email Error]:', e.message); }
+
     res.json({ message: 'Payout marked as paid' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1445,6 +1535,33 @@ router.post('/teachers/:id/certificates', async (req, res) => {
       RETURNING *
     `, [certId, id, certificate_type, title, description]);
     await logAudit(req.user.id, 'CERTIFICATE_ISSUED', 'teacher', id, { title, type: certificate_type });
+
+    try {
+      const userRes = await db.query('SELECT name, email FROM users WHERE id = $1', [id]);
+      if (userRes.rows.length > 0 && userRes.rows[0].email) {
+        const { sendEmail } = require('../services/EmailService');
+        await sendEmail({
+          to: userRes.rows[0].email,
+          subject: `SPEAXA — Certificate Issued: ${title}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #0d7a6d;">Congratulations ${userRes.rows[0].name}!</h2>
+              <p>You have been issued an official <strong>SPEAXA Certificate</strong>:</p>
+              <div style="background: #f8fafc; border-left: 4px solid #0d7a6d; padding: 16px; margin: 20px 0; border-radius: 6px;">
+                <h3 style="margin: 0 0 8px 0; color: #0f172a;">${title}</h3>
+                <p style="margin: 0; color: #475569; font-size: 14px;">${description}</p>
+                <div style="margin-top: 12px; font-size: 12px; color: #64748b;">Certificate ID: <code>${certId}</code></div>
+              </div>
+              <p>You can view and download your official certificate anytime from your Speaxa portal under <strong>Certificates</strong>.</p>
+            </div>
+          `,
+          type: 'notification'
+        });
+      }
+    } catch (mailErr) {
+      console.error('[Admin Certificate Email Error]:', mailErr.message);
+    }
+
     res.status(201).json({ message: 'Certificate issued successfully', certificate: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });

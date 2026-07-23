@@ -858,6 +858,7 @@ async function viewTeacher(id) {
             <button class="btn btn-sm btn-spx" onclick="setTeacherLevel('${data.teacher?.id}')">Set Level</button>
             <button class="btn btn-sm btn-outline-primary" onclick="resetCredentials('${data.teacher?.id}')">Reset Password</button>
             <button class="btn btn-sm btn-outline-secondary" onclick="impersonate('${data.teacher?.id}', 'teacher')">Login As</button>
+            <button class="btn btn-sm btn-outline-success" onclick="adminMarkVerified('${data.teacher?.id}')"><i class="fas fa-check-circle me-1"></i>Verify Mobile & Email</button>
             ${data.teacher?.approval_status === 'pending' || data.teacher?.approval_status === 'sop_pending' ? `
               <button class="btn btn-sm btn-success" onclick="approveTeacher('${data.teacher?.id}')">Approve</button>
               <button class="btn btn-sm btn-danger" onclick="rejectTeacher('${data.teacher?.id}')">Reject</button>
@@ -1143,6 +1144,18 @@ async function impersonate(userId, role) {
   } catch (err) { showToast(err.message, 'error'); }
 }
 
+async function adminMarkVerified(userId) {
+  try {
+    const data = await apiPost(`/admin/users/${userId}/toggle-verification`, { phone_verified: true, email_verified: true });
+    showToast(data.message || 'User mobile and email marked as verified by Admin!', 'success');
+    if (window.formModal) formModal.hide();
+    if (typeof renderTeachers === 'function') renderTeachers();
+    if (typeof renderStudents === 'function') renderStudents();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 async function resetCredentials(userId) {
   adminPrompt('Reset User Password', 'Enter new password:', '', async (password) => {
     if (password.length < 6) { showToast('Password must be at least 6 chars', 'error'); return; }
@@ -1219,20 +1232,24 @@ async function renderStudents() {
           <input type="text" class="form-control spx-input" placeholder="Search students..." style="width:220px" oninput="filterTable(this.value, 'studentsTable', 0, 3)">
         </div>
         ${table(
-          ['Student','Code','Grade','Board','Email','Joined','Actions'],
+          ['Student','Code','Grade/Board','Email','Mobile Verified','Email Verified','Joined','Actions'],
           students.map(s => `
             <tr>
               <td><div class="d-flex align-items-center gap-2">${avatar(s.photo_url, s.name)}<span class="fw-semibold text-white">${s.name}</span></div></td>
               <td><code style="color:var(--primary)">${s.student_code||'—'}</code></td>
-              <td>${s.grade||'—'}</td>
-              <td>${s.board||'—'}</td>
+              <td>${s.grade||'—'} (${s.board||'—'})</td>
               <td>${s.email}</td>
+              <td>${s.phone_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-danger">Unverified</span>'}</td>
+              <td>${s.email_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-warning text-dark">Pending</span>'}</td>
               <td>${fmtDate(s.created_at)}</td>
               <td>
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="impersonate('${s.id}','student')">Login As</button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleUser('${s.id}')">
-                  ${s.is_disabled ? 'Enable' : 'Disable'}
-                </button>
+                <div class="d-flex gap-1 flex-wrap">
+                  <button class="btn btn-sm btn-outline-primary" onclick="impersonate('${s.id}','student')">Login As</button>
+                  <button class="btn btn-sm btn-outline-success" onclick="adminMarkVerified('${s.id}')">Verify</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="toggleUser('${s.id}')">
+                    ${s.is_disabled ? 'Enable' : 'Disable'}
+                  </button>
+                </div>
               </td>
             </tr>`).join(''),
           true
@@ -1540,6 +1557,9 @@ function filterAndRenderCourseCards() {
     if (c.status === 'active' || c.status === 'approved') {
       badgeClass = 'badge-approved';
       label = 'Active';
+    } else if (c.status === 'pending_approval' || c.status === 'pending' || c.status === 'review') {
+      badgeClass = 'badge-warning text-dark';
+      label = 'Pending Review';
     } else if (c.status === 'rejected') {
       badgeClass = 'badge-rejected';
       label = 'Rejected';
@@ -1592,7 +1612,7 @@ function filterAndRenderCourseCards() {
               <div>Creator: ${creatorHtml}</div>
             </div>
 
-            ${c.status === 'pending_approval' && c.teacher_name ? `
+            ${(c.status === 'pending_approval' || c.status === 'pending' || c.status === 'draft') && c.teacher_name ? `
               <div class="course-card-review-panel">
                 <div class="course-card-review-header">
                   <i class="fas fa-clipboard-check"></i> Teacher Profile details
@@ -1627,23 +1647,23 @@ function filterAndRenderCourseCards() {
         <div class="course-card-footer">
           <div class="course-card-price">${fmtCurrency(c.fees)}</div>
           <div class="course-card-actions">
-            ${c.status === 'pending_approval' ? `
-              <button class="btn btn-sm btn-success py-1.5 px-2.5" style="font-size:0.75rem;" onclick="approveCourse('${c.id}')" title="Approve Course">
-                <i class="fas fa-check"></i> Approve
+            ${(c.status === 'pending_approval' || c.status === 'draft' || c.status === 'pending') ? `
+              <button class="btn btn-sm btn-success py-1.5 px-3 rounded-2 fw-bold" onclick="approveCourse('${c.id}')" title="Approve Course">
+                <i class="fas fa-check-circle me-1"></i> Approve
               </button>
-              <button class="btn btn-sm btn-danger py-1.5 px-2.5" style="font-size:0.75rem;" onclick="rejectCourse('${c.id}')" title="Reject Course">
-                <i class="fas fa-times"></i> Reject
+              <button class="btn btn-sm btn-danger py-1.5 px-3 rounded-2 fw-bold" onclick="rejectCourse('${c.id}')" title="Reject Course">
+                <i class="fas fa-times-circle me-1"></i> Reject
               </button>
             ` : ''}
-            <button class="btn btn-sm btn-outline-secondary py-1.5 px-2.5" style="font-size:0.75rem;" onclick="editCourse('${c.id}')" title="Edit Course">
+            <button class="btn btn-sm btn-outline-secondary py-1.5 px-2.5" onclick="editCourse('${c.id}')" title="Edit Course">
               <i class="fas fa-edit"></i> Edit
             </button>
             ${c.status === 'archived' ? `
-              <button class="btn btn-sm btn-outline-success py-1.5 px-2.5" style="font-size:0.75rem;" onclick="unarchiveCourse('${c.id}')" title="Unarchive Course">
+              <button class="btn btn-sm btn-outline-success py-1.5 px-2.5" onclick="unarchiveCourse('${c.id}')" title="Unarchive Course">
                 <i class="fas fa-undo"></i> Restore
               </button>
             ` : `
-              <button class="btn btn-sm btn-outline-danger py-1.5 px-2.5" style="font-size:0.75rem;" onclick="archiveCourse('${c.id}')" title="Archive Course">
+              <button class="btn btn-sm btn-outline-danger py-1.5 px-2.5" onclick="archiveCourse('${c.id}')" title="Archive Course">
                 <i class="fas fa-archive"></i> Archive
               </button>
             `}

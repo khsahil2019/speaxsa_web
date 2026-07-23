@@ -276,3 +276,67 @@ window.toggleCollapsibleText = function(id) {
     button.innerHTML = 'Read Less <i class="fas fa-chevron-up small" style="font-size:0.65rem;"></i>';
   }
 };
+
+/**
+ * Sets button loading state with spinner animation and disables button during async operation.
+ * @param {HTMLElement|string} btnOrId - Button element or button element ID
+ * @param {boolean} isLoading - True to show loading state, false to restore
+ * @param {string} [loadingText='Please wait...'] - Text to show during loading state
+ */
+window.setButtonLoading = function(btnOrId, isLoading, loadingText = 'Please wait...') {
+  const btn = typeof btnOrId === 'string' ? document.getElementById(btnOrId) : btnOrId;
+  if (!btn) return;
+  if (isLoading) {
+    if (!btn.dataset.origHtml) {
+      btn.dataset.origHtml = btn.innerHTML;
+    }
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${loadingText}`;
+  } else {
+    if (btn.dataset.origHtml) {
+      btn.innerHTML = btn.dataset.origHtml;
+      delete btn.dataset.origHtml;
+    }
+    btn.disabled = false;
+  }
+};
+
+/**
+ * Starts a 5-minute (300 seconds) disabled cooldown timer for Resend buttons.
+ * Displays countdown timer format e.g. "Resend in 04:59".
+ * @param {HTMLElement|string} btnOrId - Button element or element ID
+ * @param {number} [durationSeconds=300] - Cooldown duration in seconds (default 300s / 5 mins)
+ */
+window.startResendCooldown = function(btnOrId, durationSeconds = 300) {
+  const btn = typeof btnOrId === 'string' ? document.getElementById(btnOrId) : btnOrId;
+  if (!btn) return;
+  
+  if (btn._cooldownInterval) clearInterval(btn._cooldownInterval);
+
+  let remaining = durationSeconds;
+  btn.disabled = true;
+  if (!btn.dataset.origResendHtml) {
+    btn.dataset.origResendHtml = btn.innerHTML;
+  }
+
+  function updateDisplay() {
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    const timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    btn.innerHTML = `<i class="fas fa-clock me-1"></i>Resend in ${timeStr}`;
+  }
+
+  updateDisplay();
+
+  btn._cooldownInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(btn._cooldownInterval);
+      btn.innerHTML = btn.dataset.origResendHtml || 'Resend';
+      btn.disabled = false;
+      delete btn.dataset.origResendHtml;
+    } else {
+      updateDisplay();
+    }
+  }, 1000);
+};

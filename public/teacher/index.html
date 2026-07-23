@@ -77,29 +77,87 @@
         </div>
         <!-- Login -->
         <div id="loginSection">
-          <div class="mb-3">
-            <label class="spx-label">Email Address</label>
-            <div class="input-group">
-              <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
-              <input class="form-control spx-input" id="loginEmail" type="email" placeholder="your@email.com">
+          <div class="btn-group w-100 mb-3 p-1 rounded-3" style="background: rgba(13,122,109,0.06); border: 1px solid rgba(13,122,109,0.15);">
+            <button type="button" class="btn btn-sm fw-bold active-login-mode" id="btnModePassword" onclick="switchLoginMode('password')" style="border-radius: 6px; font-size: 0.85rem; padding: 6px 12px; background: #0d7a6d; color: white;">
+              <i class="fas fa-key me-1"></i> Email & Password
+            </button>
+            <button type="button" class="btn btn-sm fw-bold text-muted" id="btnModeOtp" onclick="switchLoginMode('otp')" style="border-radius: 6px; font-size: 0.85rem; padding: 6px 12px; background: transparent;">
+              <i class="fas fa-mobile-alt me-1"></i> Mobile SMS OTP
+            </button>
+          </div>
+
+          <!-- Email & Password Form -->
+          <div id="loginPassForm">
+            <div class="mb-3">
+              <label class="spx-label">Email Address</label>
+              <div class="input-group">
+                <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
+                <input class="form-control spx-input" id="loginEmail" type="email" placeholder="your@email.com">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="spx-label">Password</label>
+              <div class="input-group">
+                <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
+                <input class="form-control spx-input" id="loginPassword" type="password" placeholder="••••••••">
+              </div>
+            </div>
+            <div class="mb-3 d-flex align-items-center justify-content-between">
+              <div class="form-check">
+                <input class="form-check-input spx-checkbox" type="checkbox" id="rememberMe">
+                <label class="form-check-label text-muted small" for="rememberMe" style="cursor:pointer; user-select:none;">Remember Me</label>
+              </div>
+              <a href="#" onclick="switchTab('forgot')" class="text-primary small text-decoration-none" style="font-weight: 500;">Forgot Password?</a>
+            </div>
+            <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnLogin" onclick="doLogin()">
+              <i class="fas fa-sign-in-alt me-1"></i> Login with Password
+            </button>
+          </div>
+
+          <!-- Mobile SMS OTP Form -->
+          <div id="loginOtpForm" class="d-none">
+            <div id="loginOtpStep1">
+              <div class="mb-3">
+                <label class="spx-label">Registered Mobile Number</label>
+                <div class="input-group">
+                  <span class="input-group-text spx-input-prefix"><i class="fas fa-phone"></i></span>
+                  <input class="form-control spx-input" id="otpPhone" type="tel" placeholder="+91 99999 99999">
+                </div>
+                <small class="text-muted d-block mt-1" style="font-size: 0.78rem;">We will send a 6-digit SMS OTP to your mobile phone inbox.</small>
+              </div>
+              <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnSendLoginSms" onclick="sendMobileLoginOTP()">
+                <i class="fas fa-paper-plane me-1"></i> Send SMS OTP
+              </button>
+            </div>
+
+            <div id="loginOtpStep2" class="d-none">
+              <div class="alert alert-info border-0 rounded-3 p-3 my-2 text-start shadow-sm" style="background: rgba(13, 122, 109, 0.08); border-left: 4px solid #0d7a6d !important;">
+                <div class="small text-muted mb-1">OTP sent to mobile number:</div>
+                <div class="fw-bold text-dark font-monospace fs-5" id="loginPhoneDisplay">+91 Mobile</div>
+              </div>
+              <div class="mb-3 text-center">
+                <label class="spx-label fw-bold text-dark mb-2" style="font-size:0.88rem;">Enter 6-Digit SMS OTP *</label>
+                <div class="d-flex justify-content-center gap-2 my-2" id="tLoginOtpBoxes">
+                  <input type="text" class="form-control text-center font-monospace fw-bold t-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                  <input type="text" class="form-control text-center font-monospace fw-bold t-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                  <input type="text" class="form-control text-center font-monospace fw-bold t-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                  <input type="text" class="form-control text-center font-monospace fw-bold t-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                  <input type="text" class="form-control text-center font-monospace fw-bold t-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                  <input type="text" class="form-control text-center font-monospace fw-bold t-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                </div>
+                <input type="hidden" id="loginOtpVal">
+              </div>
+              <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnVerifyLoginSms" onclick="verifyMobileLoginOTP()">
+                <i class="fas fa-check-circle me-1"></i> Verify OTP & Login
+              </button>
+              <div class="d-flex justify-content-between align-items-center mt-3">
+                <button type="button" class="btn btn-link text-muted p-0 small text-decoration-none" onclick="cancelMobileLoginOtp()">← Change Number</button>
+                <button type="button" class="btn btn-link text-primary p-0 small text-decoration-none fw-bold" onclick="sendMobileLoginOTP()">Resend SMS OTP</button>
+              </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label class="spx-label">Password</label>
-            <div class="input-group">
-              <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
-              <input class="form-control spx-input" id="loginPassword" type="password" placeholder="••••••••">
-            </div>
-          </div>
-          <div class="mb-3 d-flex align-items-center justify-content-between">
-            <div class="form-check">
-              <input class="form-check-input spx-checkbox" type="checkbox" id="rememberMe">
-              <label class="form-check-label text-muted small" for="rememberMe" style="cursor:pointer; user-select:none;">Remember Me</label>
-            </div>
-            <a href="#" onclick="switchTab('forgot')" class="text-primary small text-decoration-none" style="font-weight: 500;">Forgot Password?</a>
-          </div>
-          <div id="loginError" class="alert alert-danger d-none small"></div>
-          <button class="btn btn-spx w-100 mt-2" onclick="doLogin()">Login</button>
+
+          <div id="loginError" class="alert alert-danger d-none small mt-3"></div>
         </div>
         <!-- Register -->
         <div id="registerSection" class="d-none">
@@ -126,40 +184,51 @@
               </div>
             </div>
             <div id="registerError" class="col-12 alert alert-danger d-none small"></div>
-            <div class="col-12"><button class="btn btn-spx w-100" onclick="doRegister()">Register as Teacher</button></div>
+            <div class="col-12"><button class="btn btn-spx w-100 fw-bold" id="btnRegister" onclick="doRegister()"><i class="fas fa-user-plus me-1"></i> Register as Teacher</button></div>
             <div class="col-12 text-muted text-center" style="font-size:.75rem">Your account will be reviewed by admin before you can start teaching.</div>
           </div>
         </div>
         <!-- Registration OTP Screen (Web Dedicated Screen) -->
         <div id="registerOtpSection" class="d-none">
-          <div class="text-center mb-3">
+          <div class="text-center mb-2">
             <div class="badge bg-light text-primary border px-3 py-1 rounded-pill d-inline-block mb-2 font-semibold" style="font-size:0.8rem;">
               <i class="fas fa-shield-alt me-1"></i> Verification Required
             </div>
             <h4 class="fw-bold mb-1">Verify Registration</h4>
-            <p class="text-muted small mb-0" id="regOtpInstruction">We've sent a verification code to your email.</p>
           </div>
-          <div class="mb-3 d-none">
-            <label class="spx-label">Mobile OTP Code</label>
-            <div class="input-group">
-              <span class="input-group-text spx-input-prefix"><i class="fas fa-key"></i></span>
-              <input class="form-control spx-input text-center font-monospace fw-bold" id="regPhoneOtpInput" value="111111" maxlength="6" placeholder="• • • • • •" style="letter-spacing:4px; font-size:1.2rem;">
+
+          <div class="alert alert-info border-0 rounded-3 p-3 my-3 text-start shadow-sm" style="background: rgba(13, 122, 109, 0.08); border-left: 4px solid #0d7a6d !important;">
+            <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem; color: #08544b !important;">
+              <i class="fas fa-sms me-2" style="color: #0d7a6d;"></i> Step 1: Mobile OTP Verification
             </div>
+            <div class="small text-muted mb-1">
+              We sent a 6-digit code to your mobile phone:
+            </div>
+            <div class="fw-bold text-dark font-monospace my-1 fs-5" id="regPhoneDisplay" style="color: #0d7a6d !important;">
+              +91 Mobile Number
+            </div>
+            <small class="text-muted d-block mt-1" style="font-size: 0.78rem;">Please check your mobile phone SMS inbox and enter the 6 digits below.</small>
           </div>
-          <div class="mb-3">
-            <label class="spx-label">Email OTP Code</label>
-            <div class="input-group">
-              <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
-              <input class="form-control spx-input text-center font-monospace fw-bold" id="regEmailOtpInput" maxlength="6" placeholder="• • • • • •" style="letter-spacing:4px; font-size:1.2rem;">
+
+          <div class="mb-3 text-center">
+            <label class="spx-label fw-bold text-dark mb-2" style="font-size:0.9rem;">Enter 6-Digit SMS OTP *</label>
+            <div class="d-flex justify-content-center gap-2 my-2" id="tRegOtpBoxes">
+              <input type="text" class="form-control text-center font-monospace fw-bold t-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="0" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+              <input type="text" class="form-control text-center font-monospace fw-bold t-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="1" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+              <input type="text" class="form-control text-center font-monospace fw-bold t-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="2" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+              <input type="text" class="form-control text-center font-monospace fw-bold t-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="3" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+              <input type="text" class="form-control text-center font-monospace fw-bold t-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="4" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+              <input type="text" class="form-control text-center font-monospace fw-bold t-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="5" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
             </div>
+            <input type="hidden" id="regEmailOtpInput">
           </div>
           <div id="registerOtpError" class="alert alert-danger d-none small"></div>
-          <button class="btn btn-spx w-100 mb-2" id="btnVerifyRegOtp" onclick="submitRegisterOtp()">
-            <i class="fas fa-check-circle me-1"></i> Verify & Complete Registration
+          <button class="btn btn-spx w-100 mb-2 py-2 fs-6 fw-bold" id="btnVerifyRegOtp" onclick="submitRegisterOtp()">
+            <i class="fas fa-check-circle me-1"></i> Verify OTP & Complete Registration
           </button>
           <div class="d-flex justify-content-between align-items-center mt-3">
             <button class="btn btn-link text-muted p-0 small text-decoration-none" onclick="cancelRegisterOtp()">← Edit Details</button>
-            <button class="btn btn-link text-primary p-0 small text-decoration-none" onclick="resendRegisterOtp()">Resend OTP</button>
+            <button class="btn btn-link text-primary p-0 small text-decoration-none fw-bold" onclick="resendRegisterOtp()">Resend SMS OTP</button>
           </div>
         </div>
         <!-- Forgot -->
@@ -259,6 +328,11 @@
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
   <div id="toastEl" class="toast"><div class="toast-body d-flex align-items-center gap-2"><i class="fas" id="toastIcon"></i><span id="toastMsg"></span></div></div>
 </div>
+
+<!-- Firebase compatibility SDKs & notifications launcher -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
+<script src="/firebase-notifications.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/utils-formatting.js"></script>

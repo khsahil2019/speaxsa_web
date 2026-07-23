@@ -1712,6 +1712,13 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password: pass, role: 'parent' })
         });
+        if (res.status === 403) {
+          const data = await res.json();
+          if (data.status === 'verification_pending') {
+            window.location.href = `/verify.html?email=${encodeURIComponent(data.email)}&step=${data.step}&firebaseCustomToken=${encodeURIComponent(data.firebaseCustomToken || '')}`;
+            return;
+          }
+        }
         if (res.ok) {
           const data = await res.json();
           if (data.user.role !== 'parent') {
@@ -1793,6 +1800,10 @@
 
           _pRegOtpPending = null;
           clearAutoSave('autosave_parent_register');
+          if (data.status === 'verification_pending') {
+            window.location.href = `/verify.html?email=${encodeURIComponent(data.email)}&step=${data.step}&firebaseCustomToken=${encodeURIComponent(data.firebaseCustomToken || '')}`;
+            return;
+          }
           localStorage.setItem('spx_parent_token', data.token);
           localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
           hideLoginOverlay();
@@ -2494,6 +2505,11 @@
       }
     });
   </script>
+
+  <!-- Firebase compatibility SDKs & notifications launcher -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
+  <script src="/firebase-notifications.js"></script>
 </body>
 
 </html>

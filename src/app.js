@@ -257,9 +257,9 @@ db.query(`
     ('terms_of_service_badge', 'Platform Policies'),
     ('terms_of_service_title', 'Terms of Service'),
     ('terms_of_service_desc', 'Please read these terms carefully before accessing the SPEAXA portals.'),
-    ('sms_provider', 'dev'),
+    ('sms_provider', 'msg91'),
     ('email_provider', 'smtp'),
-    ('msg91_auth_key', ''),
+    ('msg91_auth_key', '553058AYf7gbSf7ue6a60dfb6P1'),
     ('msg91_template_id', ''),
     ('msg91_sender_id', 'SPXSA'),
     ('twilio_account_sid', ''),
@@ -275,12 +275,35 @@ db.query(`
     ('otp_expiry_minutes', '5'),
     ('otp_length', '6'),
     ('dev_otp_in_response', 'true'),
-    ('master_otp', '')
+    ('master_otp', ''),
+    ('firebase_api_key', ''),
+    ('firebase_auth_domain', ''),
+    ('firebase_project_id', ''),
+    ('firebase_storage_bucket', ''),
+    ('firebase_messaging_sender_id', ''),
+    ('firebase_app_id', ''),
+    ('firebase_measurement_id', '')
   ON CONFLICT (key) DO NOTHING;
+
+  INSERT INTO platform_settings (key, value) VALUES ('msg91_auth_key', '553058AYf7gbSf7ue6a60dfb6P1')
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value WHERE platform_settings.value = '' OR platform_settings.value IS NULL;
+
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+
+  CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
 
   ALTER TABLE otp_tokens ADD COLUMN IF NOT EXISTS delivery_method VARCHAR(50);
   ALTER TABLE otp_tokens ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(50) DEFAULT 'pending';
   ALTER TABLE otp_tokens ADD COLUMN IF NOT EXISTS delivery_error TEXT;
+  ALTER TABLE otp_tokens ADD COLUMN IF NOT EXISTS attempts INT DEFAULT 0;
 
   CREATE TABLE IF NOT EXISTS parent_teacher_chats (
     id SERIAL PRIMARY KEY,
@@ -488,8 +511,11 @@ app.use('/logo.png', (req, res) => res.sendFile(path.join(__dirname, '../public/
 app.use('/admin/logo.png', (req, res) => res.sendFile(path.join(__dirname, '../public/logo.png')));
 app.use('/utils-formatting.js', (req, res) => res.sendFile(path.join(__dirname, '../public/utils-formatting.js')));
 app.use('/utils-autosave.js', (req, res) => res.sendFile(path.join(__dirname, '../public/utils-autosave.js')));
+app.use('/firebase-notifications.js', (req, res) => res.sendFile(path.join(__dirname, '../public/firebase-notifications.js')));
+app.use('/firebase-messaging-sw.js', (req, res) => res.sendFile(path.join(__dirname, '../public/firebase-messaging-sw.js')));
 app.use('/api-center.html', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/api-center.html')));
 app.use(express.static(path.join(__dirname, '../public/landing')));
+app.use(express.static(path.join(__dirname, '../public')));
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
 app.use('/teacher', express.static(path.join(__dirname, '../public/teacher')));
 app.use('/parent', express.static(path.join(__dirname, '../public/parent')));

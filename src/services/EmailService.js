@@ -5,7 +5,8 @@ const nodemailer = require('nodemailer');
  * Unified Email Service
  * Sends email via configured SMTP settings and logs all transactions in the email_logs table.
  */
-async function sendEmail({ to, subject, html, type = 'custom' }) {
+async function sendEmail(options) {
+  const { to, subject, html, type = 'custom', headerTitle, badgeLabel } = options || {};
   try {
     // 1. Fetch platform & SMTP settings
     const settingsRes = await db.query(
@@ -38,25 +39,27 @@ async function sendEmail({ to, subject, html, type = 'custom' }) {
       let titleLabel = 'Security Verification';
       let badgeHtml = '';
 
+      const { headerTitle, badgeLabel } = options || {};
       if (type === 'otp') {
         headerGradient = 'linear-gradient(135deg, #0d7a6d, #08544b)';
         headerIcon = '🔐';
-        titleLabel = 'Verification Code';
-        badgeHtml = `<span style="background: rgba(13, 122, 109, 0.1); color: #0d7a6d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">Secure Portal</span>`;
+        titleLabel = headerTitle || 'Verification Code';
+        badgeHtml = `<span style="background: rgba(13, 122, 109, 0.1); color: #0d7a6d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Secure Portal'}</span>`;
       } else if (type === 'advertisement' || type === 'campaign') {
         headerGradient = 'linear-gradient(135deg, #4f46e5, #3730a3)'; // Royal Indigo
         headerIcon = '📢';
-        titleLabel = 'Special Announcement';
-        badgeHtml = `<span style="background: rgba(79, 70, 229, 0.1); color: #4f46e5; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">Community</span>`;
+        titleLabel = headerTitle || 'Special Announcement';
+        badgeHtml = `<span style="background: rgba(79, 70, 229, 0.1); color: #4f46e5; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Community'}</span>`;
       } else if (type === 'notification') {
         headerGradient = 'linear-gradient(135deg, #0284c7, #075985)'; // Ocean Blue
-        headerIcon = '📅';
-        titleLabel = 'Class Schedule Update';
-        badgeHtml = `<span style="background: rgba(2, 132, 199, 0.1); color: #0284c7; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">Live Session</span>`;
+        headerIcon = '🔔';
+        titleLabel = headerTitle || (subject ? subject : 'Official Update');
+        badgeHtml = `<span style="background: rgba(2, 132, 199, 0.1); color: #0284c7; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Official Notification'}</span>`;
       } else {
         headerGradient = 'linear-gradient(135deg, #1e293b, #0f172a)'; // Charcoal Dark
         headerIcon = '✉️';
-        titleLabel = 'System Notification';
+        titleLabel = headerTitle || (subject ? subject : 'System Notification');
+        badgeHtml = `<span style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Speaxa System'}</span>`;
       }
 
       finalHtml = `

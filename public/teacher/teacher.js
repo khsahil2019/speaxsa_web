@@ -63,57 +63,251 @@ function switchTab(tab) {
   document.getElementById(`tab${tab.charAt(0).toUpperCase()+tab.slice(1)}`)?.classList.add('active');
 }
 
-async function doLogin() {
+function switchLoginMode(mode) {
+  const errEl = document.getElementById('loginError');
+  if (errEl) errEl.classList.add('d-none');
+  const btnPass = document.getElementById('btnModePassword');
+  const btnOtp = document.getElementById('btnModeOtp');
+  const formPass = document.getElementById('loginPassForm');
+  const formOtp = document.getElementById('loginOtpForm');
+
+  if (mode === 'password') {
+    btnPass.style.background = '#0d7a6d';
+    btnPass.style.color = '#ffffff';
+    btnOtp.style.background = 'transparent';
+    btnOtp.style.color = '#64748b';
+    formPass.classList.remove('d-none');
+    formOtp.classList.add('d-none');
+  } else {
+    btnOtp.style.background = '#0d7a6d';
+    btnOtp.style.color = '#ffffff';
+    btnPass.style.background = 'transparent';
+    btnPass.style.color = '#64748b';
+    formOtp.classList.remove('d-none');
+    formPass.classList.add('d-none');
+    setupOtpBoxListeners('tLoginOtpBoxes', 'loginOtpVal');
+  }
+}
+
+async function sendMobileLoginOTP() {
+  const phone = document.getElementById('otpPhone')?.value.trim();
+  const errEl = document.getElementById('loginError');
+  if (errEl) errEl.classList.add('d-none');
+  if (!phone || phone.length < 8) {
+    if (errEl) {
+      errEl.textContent = 'Please enter a valid registered mobile number';
+      errEl.classList.remove('d-none');
+    }
+    return;
+  }
+
+  setButtonLoading('btnSendLoginSms', true, 'Sending SMS...');
   try {
-    const emailEl = document.getElementById('loginEmail');
-    const passEl = document.getElementById('loginPassword');
-    const errEl = document.getElementById('loginError');
+    const res = await fetch(`${API}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, identifier: phone, purpose: 'login' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to send SMS OTP');
+
+    document.getElementById('loginOtpStep1').classList.add('d-none');
+    document.getElementById('loginOtpStep2').classList.remove('d-none');
+    const disp = document.getElementById('loginPhoneDisplay');
+    if (disp) disp.textContent = phone.startsWith('+') ? phone : '+91 ' + phone.replace(/^91/, '');
+    setupOtpBoxListeners('tLoginOtpBoxes', 'loginOtpVal');
+    showToast(data.message || 'SMS OTP sent to mobile number', 'success');
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = toFriendlyError(err.message);
+      errEl.classList.remove('d-none');
+    }
+  } finally {
+    setButtonLoading('btnSendLoginSms', false);
+  }
+}
+
+async function verifyMobileLoginOTP() {
+  const phone = document.getElementById('otpPhone')?.value.trim();
+  const otpCode = document.getElementById('loginOtpVal')?.value.trim();
+  const errEl = document.getElementById('loginError');
+  if (errEl) errEl.classList.add('d-none');
+
+  if (!otpCode || otpCode.length < 6) {
+    if (errEl) {
+      errEl.textContent = 'Please enter the 6-digit SMS OTP code';
+      errEl.classList.remove('d-none');
+    }
+    return;
+  }
+
+  setButtonLoading('btnVerifyLoginSms', true, 'Verifying...');
+  try {
+    const res = await fetch(`${API}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, identifier: phone, otp: otpCode, purpose: 'login' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Invalid OTP code');
+
+    saveAuth(data.token, data.user);
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = toFriendlyError(err.message);
+      errEl.classList.remove('d-none');
+    }
+  } finally {
+    setButtonLoading('btnVerifyLoginSms', false);
+  }
+}
+
+function cancelMobileLoginOtp() {
+  document.getElementById('loginOtpStep2').classList.add('d-none');
+  document.getElementById('loginOtpStep1').classList.remove('d-none');
+  const errEl = document.getElementById('loginError');
+  if (errEl) errEl.classList.add('d-none');
+}
+
+async function doLogin() {
+  const btn = document.getElementById('btnLogin');
+  const errEl = document.getElementById('loginError');
+  if (errEl) {
     errEl.classList.add('d-none');
+    errEl.innerHTML = '';
+  }
 
-    const data = await (await fetch(`${API}/auth/login`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ email: emailEl.value, password: passEl.value, role: 'teacher' })
-    })).json();
+  const emailEl = document.getElementById('loginEmail');
+  const passEl = document.getElementById('loginPassword');
+  const emailVal = emailEl ? emailEl.value.trim() : '';
+  const passVal = passEl ? passEl.value.trim() : '';
 
-    if (data.error) throw new Error(data.error);
+  if (!emailVal) {
+    if (errEl) {
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter your registered email address.';
+      errEl.classList.remove('d-none');
+    }
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  if (!passVal) {
+    if (errEl) {
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter your password.';
+      errEl.classList.remove('d-none');
+    }
+    if (passEl) passEl.focus();
+    return;
+  }
+
+  if (window.setButtonLoading) window.setButtonLoading(btn, true, 'Logging in...');
+
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailVal, password: passVal, role: 'teacher' })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (data.status === 'email_not_verified') {
+        throw new Error(`Please verify your email address (${data.email || emailVal}) before logging in. A verification link has been sent to your email inbox.`);
+      }
+      throw new Error(data.error || 'Login failed. Please check your credentials.');
+    }
     saveAuth(data.token, data.user);
   } catch(e) {
-    const errEl = document.getElementById('loginError');
-    errEl.textContent = toFriendlyError(e.message);
-    errEl.classList.remove('d-none');
+    if (errEl) {
+      errEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> ${toFriendlyError(e.message)}`;
+      errEl.classList.remove('d-none');
+    }
+  } finally {
+    if (window.setButtonLoading) window.setButtonLoading(btn, false);
   }
 }
 
 async function doRegister() {
-  try {
-    const errEl = document.getElementById('registerError');
+  const isOtpStep = document.getElementById('registerOtpSection') && !document.getElementById('registerOtpSection').classList.contains('d-none');
+  const targetBtn = isOtpStep ? document.getElementById('btnVerifyRegOtp') : document.getElementById('btnRegister');
+  if (window.setButtonLoading) window.setButtonLoading(targetBtn, true, isOtpStep ? 'Verifying OTP...' : 'Creating Account...');
+  
+  const errEl = document.getElementById('registerError');
+  if (errEl) {
     errEl.classList.add('d-none');
+    errEl.innerHTML = '';
+  }
 
+  try {
     const payload = {
-      name: document.getElementById('regName').value,
-      email: document.getElementById('regEmail').value,
-      phone: document.getElementById('regPhone').value,
-      password: document.getElementById('regPassword').value,
-      alt_email: document.getElementById('regAltEmail').value,
-      mobile_number: document.getElementById('regMobileNumber').value,
+      name: document.getElementById('regName')?.value.trim() || '',
+      email: document.getElementById('regEmail')?.value.trim() || '',
+      phone: document.getElementById('regPhone')?.value.trim() || '',
+      password: document.getElementById('regPassword')?.value || '',
+      alt_email: document.getElementById('regAltEmail')?.value.trim() || '',
+      mobile_number: document.getElementById('regMobileNumber')?.value.trim() || '',
       social_links: {
-        linkedin: document.getElementById('regLinkedIn').value,
-        twitter: document.getElementById('regTwitter').value
+        linkedin: document.getElementById('regLinkedIn')?.value.trim() || '',
+        twitter: document.getElementById('regTwitter')?.value.trim() || ''
       },
-      qualification: document.getElementById('regQualification').value,
-      subject_expertise: document.getElementById('regSubjects').value,
-      experience_years: parseInt(document.getElementById('regExp').value) || 0,
-      languages: document.getElementById('regLanguages').value,
+      qualification: document.getElementById('regQualification')?.value.trim() || '',
+      subject_expertise: document.getElementById('regSubjects')?.value.trim() || '',
+      experience_years: parseInt(document.getElementById('regExp')?.value) || 0,
+      languages: document.getElementById('regLanguages')?.value.trim() || '',
       referred_by_code: document.getElementById('regReferralCode') ? document.getElementById('regReferralCode').value.trim() : '',
       role: 'teacher',
     };
 
-    if (!payload.name || !payload.email || !payload.phone || !payload.password || !payload.alt_email || !payload.mobile_number) {
-      throw new Error('Please fill all required fields');
+    // List of required fields for teacher registration validation
+    const requiredFields = [
+      { id: 'regName', label: 'Full Name' },
+      { id: 'regEmail', label: 'Email Address' },
+      { id: 'regPhone', label: 'Contact Phone' },
+      { id: 'regPassword', label: 'Password' },
+      { id: 'regAltEmail', label: 'Alternative Email' },
+      { id: 'regMobileNumber', label: 'WhatsApp / Mobile Number' },
+      { id: 'regQualification', label: 'Highest Academic Qualification' },
+      { id: 'regSubjects', label: 'Subject Expertise' },
+      { id: 'regExp', label: 'Experience Years' },
+      { id: 'regLanguages', label: 'Languages of Instruction' }
+    ];
+
+    // Clear previous invalid markings
+    requiredFields.forEach(f => {
+      const el = document.getElementById(f.id);
+      if (el) {
+        el.classList.remove('is-invalid', 'border-danger');
+      }
+    });
+
+    const missingFields = [];
+    let firstInvalidEl = null;
+
+    requiredFields.forEach(f => {
+      const el = document.getElementById(f.id);
+      if (el) {
+        const val = el.value ? el.value.trim() : '';
+        if (!val) {
+          missingFields.push(f.label);
+          el.classList.add('is-invalid', 'border-danger');
+          if (!firstInvalidEl) firstInvalidEl = el;
+        }
+      }
+    });
+
+    if (missingFields.length > 0) {
+      if (firstInvalidEl) {
+        firstInvalidEl.focus();
+        firstInvalidEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      const listItems = missingFields.map(f => `<li>${f}</li>`).join('');
+      throw new Error(`Please fill in the following required fields:<ul class="mb-0 mt-1 pl-3 text-start">${listItems}</ul>`);
     }
 
     if (document.getElementById('regTermsAgree') && !document.getElementById('regTermsAgree').checked) {
+      const termsEl = document.getElementById('regTermsAgree');
+      termsEl.focus();
+      termsEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       throw new Error('You must agree to the Terms of Service & Privacy Policy');
     }
 
@@ -124,21 +318,22 @@ async function doRegister() {
       payload.emailOtp = window._tRegEmailOtpPending;
     }
 
-    const data = await (await fetch(`${API}/auth/register`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    const res = await fetch(`${API}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    })).json();
+    });
+    const data = await res.json();
 
-    if (data.error) {
+    if (!res.ok || data.error) {
       if (document.getElementById('registerOtpSection') && !document.getElementById('registerOtpSection').classList.contains('d-none')) {
         const otpErr = document.getElementById('registerOtpError');
         if (otpErr) {
-          otpErr.textContent = toFriendlyError(data.error);
+          otpErr.innerHTML = toFriendlyError(data.error || 'Registration failed');
           otpErr.classList.remove('d-none');
         }
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'Registration failed');
       }
       window._tRegPhoneOtpPending = null;
       window._tRegEmailOtpPending = null;
@@ -148,13 +343,21 @@ async function doRegister() {
     if (data.status === 'otp_sent') {
       document.getElementById('registerSection').classList.add('d-none');
       document.getElementById('registerOtpSection').classList.remove('d-none');
-      document.getElementById('regOtpInstruction').textContent = data.message || `Code sent to ${payload.email}`;
+      const phoneDisp = document.getElementById('regPhoneDisplay');
+      if (phoneDisp) {
+        phoneDisp.textContent = payload.phone ? ('+91 ' + payload.phone.replace(/^91/, '')) : 'Mobile Number';
+      }
+      setupOtpBoxListeners('tRegOtpBoxes', 'regEmailOtpInput');
       return;
     }
 
     window._tRegPhoneOtpPending = null;
     window._tRegEmailOtpPending = null;
     clearAutoSave('autosave_teacher_register');
+    if (data.status === 'verification_pending') {
+      window.location.href = `/verify.html?email=${encodeURIComponent(data.email)}&step=${data.step}&firebaseCustomToken=${encodeURIComponent(data.firebaseCustomToken || '')}`;
+      return;
+    }
     if (data.token) {
       saveAuth(data.token, data.user);
     } else {
@@ -162,13 +365,23 @@ async function doRegister() {
       switchTab('login');
     }
   } catch(e) {
-    window._tRegPhoneOtpPending = null;
-    window._tRegEmailOtpPending = null;
-    const errEl = document.getElementById('registerError');
-    if (errEl) {
-      errEl.textContent = toFriendlyError(e.message);
-      errEl.classList.remove('d-none');
+    if (document.getElementById('registerOtpSection') && !document.getElementById('registerOtpSection').classList.contains('d-none')) {
+      const otpErr = document.getElementById('registerOtpError');
+      if (otpErr) {
+        otpErr.textContent = toFriendlyError(e.message);
+        otpErr.classList.remove('d-none');
+      }
+    } else {
+      window._tRegPhoneOtpPending = null;
+      window._tRegEmailOtpPending = null;
+      const errEl = document.getElementById('registerError');
+      if (errEl) {
+        errEl.innerHTML = toFriendlyError(e.message);
+        errEl.classList.remove('d-none');
+      }
     }
+  } finally {
+    if (window.setButtonLoading) window.setButtonLoading(targetBtn, false);
   }
 }
 
@@ -178,7 +391,7 @@ async function submitRegisterOtp() {
   if (otpErr) otpErr.classList.add('d-none');
   if (!emailOtpVal || emailOtpVal.length < 4) {
     if (otpErr) {
-      otpErr.textContent = 'Please enter your Email verification code';
+      otpErr.textContent = 'Please enter your 6-digit verification code';
       otpErr.classList.remove('d-none');
     }
     return;
@@ -191,14 +404,22 @@ async function submitRegisterOtp() {
 function cancelRegisterOtp() {
   window._tRegPhoneOtpPending = null;
   window._tRegEmailOtpPending = null;
+  const otpErr = document.getElementById('registerOtpError');
+  if (otpErr) otpErr.classList.add('d-none');
   document.getElementById('registerOtpSection').classList.add('d-none');
   document.getElementById('registerSection').classList.remove('d-none');
 }
 
-async function resendRegisterOtp() {
+async function resendRegisterOtp(evtBtn) {
+  const btn = evtBtn || document.querySelector('#registerOtpSection button[onclick*="resendRegisterOtp"]') || event?.target;
+  if (window.startResendCooldown && btn) {
+    window.startResendCooldown(btn, 300);
+  }
   window._tRegPhoneOtpPending = null;
   window._tRegEmailOtpPending = null;
-  showToast('Resending verification codes...', 'info');
+  const otpErr = document.getElementById('registerOtpError');
+  if (otpErr) otpErr.classList.add('d-none');
+  showToast('Resending verification code...', 'info');
   doRegister();
 }
 
@@ -341,6 +562,56 @@ function showApp() {
   window._teacherNotifPollInterval = setInterval(() => {
     loadTeacherNotificationCounts();
   }, 5000);
+}
+
+function checkEmailVerificationReminder() {
+  // Banner will only be triggered manually when Resend Link button is clicked
+}
+
+async function resendEmailVerificationLink(evtBtn) {
+  const btn = evtBtn || document.querySelector('#emailVerificationReminderBanner button') || event?.target;
+  if (window.startResendCooldown && btn) {
+    window.startResendCooldown(btn, 300);
+  }
+  try {
+    const emailToUse = user ? user.email : '';
+    const res = await fetch('/api/auth/send-email-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: emailToUse })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || `Verification link sent to ${emailToUse || 'your email'} (valid for 30 minutes). Please check your inbox.`, 'success');
+    } else {
+      showToast(data.error || 'Failed to send verification link', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function resendProfileEmailLink(emailToUse, evtBtn) {
+  const btn = evtBtn || event?.target;
+  if (window.startResendCooldown && btn) {
+    window.startResendCooldown(btn, 300);
+  }
+  try {
+    const targetEmail = emailToUse || (user ? user.email : '');
+    const res = await fetch('/api/auth/send-email-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: targetEmail })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || `Verification link sent to ${targetEmail} (valid for 30 mins)`, 'success');
+    } else {
+      showToast(data.error || 'Failed to send verification link', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 async function loadTeacherNotificationCounts() {
@@ -3549,10 +3820,9 @@ async function renderProfile() {
               <div class="mb-2 text-secondary"><i class="fas fa-book text-primary me-2" style="width:16px;"></i>Subject: <strong style="color:var(--text-primary);">${profile.subject_expertise || '—'}</strong></div>
               <div class="mb-2 text-secondary"><i class="fas fa-history text-primary me-2" style="width:16px;"></i>Experience: <strong style="color:var(--text-primary);">${profile.experience_years || 0} Years</strong></div>
               <div class="mb-2 text-secondary"><i class="fas fa-language text-primary me-2" style="width:16px;"></i>Languages: <strong style="color:var(--text-primary);">${profile.languages || '—'}</strong></div>
-              <div class="mb-2 text-secondary"><i class="far fa-envelope text-primary me-2" style="width:16px;"></i>Email: <strong style="color:var(--text-primary);">${profile.email}</strong></div>
+              <div class="mb-2 text-secondary"><i class="fas fa-mobile-screen-button text-primary me-2" style="width:16px;"></i>Mobile: <strong style="color:var(--text-primary);">${profile.phone || '—'}</strong> ${profile.phone_verified ? '<span class="badge bg-success ms-1"><i class="fas fa-check-circle me-1"></i>Verified</span>' : '<span class="badge bg-danger ms-1">Unverified</span>'}</div>
+              <div class="mb-2 text-secondary"><i class="far fa-envelope text-primary me-2" style="width:16px;"></i>Email: <strong style="color:var(--text-primary);">${profile.email}</strong> ${profile.email_verified ? '<span class="badge bg-success ms-1"><i class="fas fa-check-circle me-1"></i>Verified</span>' : `<span class="badge bg-warning text-dark ms-1"><i class="fas fa-clock me-1"></i>Pending</span> <button class="btn btn-xs btn-outline-warning ms-1 py-0 px-2" style="font-size:0.75rem; border-radius:4px;" onclick="resendProfileEmailLink('${profile.email}')">Resend Link</button>`}</div>
               <div class="mb-2 text-secondary"><i class="far fa-envelope text-primary me-2" style="width:16px;"></i>Alt Email: <strong style="color:var(--text-primary);">${profile.alt_email || '—'}</strong></div>
-              <div class="mb-2 text-secondary"><i class="fas fa-phone-alt text-primary me-2" style="width:16px;"></i>Phone: <strong style="color:var(--text-primary);">${profile.phone || '—'}</strong></div>
-              <div class="mb-2 text-secondary"><i class="fas fa-phone-alt text-primary me-2" style="width:16px;"></i>Mobile: <strong style="color:var(--text-primary);">${profile.mobile_number || '—'}</strong></div>
               <div class="mb-2 text-secondary"><i class="fab fa-linkedin text-primary me-2" style="width:16px;"></i>LinkedIn: <strong style="color:var(--text-primary);">${profile.social_links?.linkedin ? `<a href="${profile.social_links.linkedin}" target="_blank" class="text-primary text-decoration-none fw-semibold">${profile.social_links.linkedin}</a>` : '—'}</strong></div>
               <div class="text-secondary"><i class="fab fa-twitter text-primary me-2" style="width:16px;"></i>Twitter/Other: <strong style="color:var(--text-primary);">${profile.social_links?.twitter ? `<a href="${profile.social_links.twitter}" target="_blank" class="text-primary text-decoration-none fw-semibold">${profile.social_links.twitter}</a>` : '—'}</strong></div>
             </div>
@@ -4874,3 +5144,70 @@ setupAutoSave('autosave_teacher_register', [
   'regLinkedIn', 'regTwitter', 'regQualification', 'regSubjects', 'regExp', 'regLanguages', 'regReferralCode'
 ]);
 
+// Clear invalid validation markings dynamically on typing
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.classList.contains('is-invalid')) {
+    e.target.classList.remove('is-invalid', 'border-danger');
+  }
+});
+
+function setupOtpBoxListeners(containerId, hiddenInputId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const boxes = Array.from(container.querySelectorAll('input'));
+  const hiddenInput = document.getElementById(hiddenInputId);
+
+  function syncHidden() {
+    const val = boxes.map(b => b.value).join('');
+    if (hiddenInput) hiddenInput.value = val;
+  }
+
+  boxes.forEach((box, idx) => {
+    box.addEventListener('input', (e) => {
+      const val = box.value.replace(/\D/g, '');
+      box.value = val ? val.slice(-1) : '';
+      if (box.value) {
+        box.style.borderColor = '#0d7a6d';
+        box.style.background = 'rgba(13, 122, 109, 0.06)';
+        if (idx < boxes.length - 1) {
+          boxes[idx + 1].focus();
+        }
+      } else {
+        box.style.borderColor = '#cbd5e1';
+        box.style.background = '#f8fafc';
+      }
+      syncHidden();
+    });
+
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !box.value && idx > 0) {
+        boxes[idx - 1].focus();
+        boxes[idx - 1].value = '';
+        boxes[idx - 1].style.borderColor = '#cbd5e1';
+        boxes[idx - 1].style.background = '#f8fafc';
+        syncHidden();
+      }
+    });
+
+    box.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      if (pasteData) {
+        for (let i = 0; i < boxes.length; i++) {
+          if (i < pasteData.length) {
+            boxes[i].value = pasteData[i];
+            boxes[i].style.borderColor = '#0d7a6d';
+            boxes[i].style.background = 'rgba(13, 122, 109, 0.06)';
+          } else {
+            boxes[i].value = '';
+            boxes[i].style.borderColor = '#cbd5e1';
+            boxes[i].style.background = '#f8fafc';
+          }
+        }
+        const lastIdx = Math.min(pasteData.length - 1, boxes.length - 1);
+        if (lastIdx >= 0) boxes[lastIdx].focus();
+        syncHidden();
+      }
+    });
+  });
+}

@@ -378,6 +378,11 @@ h1, h2, h3, h4, h5, h6 {
   transition: var(--transition);
 }
 
+.auth-card .spx-input.is-invalid {
+  border: 1.5px solid var(--bs-danger) !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15) !important;
+}
+
 .auth-card .spx-input:focus {
   border-color: rgba(60, 189, 176, 0.6) !important;
   box-shadow: 0 0 0 4px rgba(60, 189, 176, 0.15) !important;

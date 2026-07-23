@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Verification — SPEAXA</title>
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Firebase Compatibility SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+  <style>
+    :root {
+      --primary: #0d7a6d;
+      --primary-dark: #08544b;
+      --primary-light: rgba(13, 122, 109, 0.1);
+      --secondary: #3CBDB0;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --error: #ef4444;
+      --success: #10b981;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .verify-container {
+      max-width: 480px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05), 0 10px 20px -10px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+      padding: 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      text-decoration: none;
+      margin-bottom: 24px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-logo i {
+      margin-right: 8px;
+    }
+
+    .steps-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .step-dot {
+      width: 32px;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      transition: all 0.3s ease;
+    }
+
+    .step-dot.active {
+      background: var(--primary);
+      width: 48px;
+    }
+
+    .step-dot.completed {
+      background: var(--success);
+    }
+
+    .icon-box {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 24px;
+    }
+
+    .icon-box.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    h4 {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+
+    .spx-input {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-weight: 500;
+      background-color: #f8fafc;
+      transition: all 0.2s ease;
+      color: var(--text);
+      text-align: center;
+      letter-spacing: 2px;
+    }
+
+    .spx-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background-color: #ffffff;
+      box-shadow: 0 0 0 4px var(--primary-light);
+    }
+
+    .btn-spx {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      width: 100%;
+      box-shadow: 0 4px 6px -1px rgba(13, 122, 109, 0.1);
+    }
+
+    .btn-spx:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-spx:disabled {
+      background: var(--border);
+      color: var(--text-muted);
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-link-spx {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .btn-link-spx:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+
+    .btn-link-spx:disabled {
+      color: var(--text-muted);
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+
+    .alert-custom {
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13.5px;
+      margin-bottom: 24px;
+      display: none;
+      text-align: left;
+    }
+
+    .alert-custom.alert-error {
+      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(239, 68, 68, 0.15);
+      color: var(--error);
+    }
+
+    .alert-custom.alert-info {
+      background: var(--primary-light);
+      border: 1px solid rgba(13, 122, 109, 0.15);
+      color: var(--primary-dark);
+    }
+
+    .timer-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .footer-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 30px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      border-radius: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .loading-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Form transition blocks */
+    .view-pane {
+      display: none;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .view-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="verify-container">
+    <!-- Invisible recaptcha anchor -->
+    <div id="recaptcha-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+      <div class="spinner-border text-primary mb-3" role="status"></div>
+      <div class="fw-semibold text-dark" id="loadingText">Processing...</div>
+    </div>
+
+    <!-- Header Logo -->
+    <a href="/" class="brand-logo">
+      <i class="fas fa-shield-halved"></i> SPEAXA
+    </a>
+
+    <!-- Steps Dots -->
+    <div class="steps-indicator">
+      <div id="dot1" class="step-dot active"></div>
+      <div id="dot2" class="step-dot"></div>
+    </div>
+
+    <!-- Common Error Alert Box -->
+    <div id="errorAlert" class="alert-custom alert-error">
+      <i class="fas fa-exclamation-circle me-2"></i> <span id="errorMsg"></span>
+    </div>
+
+    <!-- Common Info Alert Box -->
+    <div id="infoAlert" class="alert-custom alert-info">
+      <i class="fas fa-info-circle me-2"></i> <span id="infoMsg"></span>
+    </div>
+
+    <!-- STEP 1: MOBILE OTP PANE -->
+    <div id="mobilePane" class="view-pane active">
+      <div class="icon-box">
+        <i class="fas fa-sms"></i>
+      </div>
+      <h4>Step 1: Mobile OTP Verification</h4>
+      
+      <div class="alert alert-info border-0 rounded-3 p-3 my-3 text-start shadow-sm" style="background: rgba(13, 122, 109, 0.08); border-left: 4px solid #0d7a6d !important;">
+        <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem; color: #08544b !important;">
+          <i class="fas fa-paper-plane me-2" style="color: #0d7a6d;"></i> SMS Verification Code Dispatched
+        </div>
+        <div class="small text-muted mb-1">
+          We sent a 6-digit code to your mobile number:
+        </div>
+        <div class="fw-bold text-dark font-monospace my-1 fs-5" id="mobileDisplayTarget" style="color: #0d7a6d !important;">
+          +91 Mobile Number
+        </div>
+        <small class="text-muted d-block mt-1" style="font-size: 0.8rem;">Check your Mobile Phone SMS Inbox and enter the 6 digits below.</small>
+      </div>
+
+      <!-- Step 1a: Phone number confirmation / edit -->
+      <div id="phoneInputSection">
+        <div class="mb-3 text-start">
+          <label class="form-label fw-bold small text-dark mb-1">Your Mobile Phone Number</label>
+          <input type="tel" id="verifyPhoneNumberInput" class="form-control spx-input" placeholder="+919876543210" required style="letter-spacing: 0.5px; text-align: left;">
+        </div>
+        <button class="btn btn-spx mb-3" onclick="handleSendFbSms()">Send SMS Verification Code</button>
+      </div>
+
+      <!-- Step 1b: Enter 6-Digit SMS OTP code -->
+      <form id="otpForm" onsubmit="handleVerifyFbSms(event)" style="display:none;">
+        <div class="mb-3 text-center">
+          <label class="form-label fw-bold text-dark small mb-2">Enter 6-Digit Mobile OTP *</label>
+          <div class="d-flex justify-content-center gap-2 my-2" id="vOtpBoxContainer">
+            <input type="text" class="form-control text-center font-monospace fw-bold v-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="0" style="width: 46px; height: 54px; font-size: 1.4rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+            <input type="text" class="form-control text-center font-monospace fw-bold v-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="1" style="width: 46px; height: 54px; font-size: 1.4rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+            <input type="text" class="form-control text-center font-monospace fw-bold v-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="2" style="width: 46px; height: 54px; font-size: 1.4rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+            <input type="text" class="form-control text-center font-monospace fw-bold v-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="3" style="width: 46px; height: 54px; font-size: 1.4rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+            <input type="text" class="form-control text-center font-monospace fw-bold v-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="4" style="width: 46px; height: 54px; font-size: 1.4rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+            <input type="text" class="form-control text-center font-monospace fw-bold v-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="5" style="width: 46px; height: 54px; font-size: 1.4rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+          </div>
+          <input type="hidden" id="otpCode" name="otpCode">
+        </div>
+        <button type="submit" class="btn btn-spx mb-3 py-2.5 fs-6 fw-bold">Verify OTP & Unlock Access</button>
+        
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <button id="btnResendOtp" type="button" class="btn-link-spx fw-bold" onclick="handleResendOtp()" disabled>Resend SMS OTP</button>
+          <span id="otpTimer" class="small text-muted font-monospace">Resend in 60s</span>
+        </div>
+      </form>
+    </div>
+
+    <!-- STEP 2: EMAIL PENDING PANE -->
+    <div id="emailPane" class="view-pane">
+      <div class="icon-box">
+        <i class="fas fa-envelope-open-text"></i>
+      </div>
+      <h4>Email Verification Sent</h4>
+
+      <div class="alert alert-warning border-0 rounded-3 p-3 my-3 text-start shadow-sm" style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b !important;">
+        <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem; color: #92400e !important;">
+          <i class="fas fa-paper-plane me-2" style="color: #f59e0b;"></i> Email Verification Link Dispatched
+        </div>
+        <p class="mb-2 fw-bold text-dark" style="font-size: 0.9rem; line-height: 1.5;" id="emailSubtitle">
+          A secure verification link has been sent to your registered email address. Please click the link in your email mailbox to activate your account.
+        </p>
+        <div class="p-2 rounded bg-white text-danger fw-semibold small border" style="font-size: 0.83rem;">
+          <i class="fas fa-exclamation-circle me-1"></i> <strong>Important Tip:</strong> If you don't find the email in your main Inbox, <u>please check your Spam or Junk folder</u>.
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <button class="btn btn-spx mb-3 py-2 fs-6" onclick="checkFbEmailStatus(true)">
+          <i class="fas fa-rotate me-2"></i> Click Here After Verifying Email
+        </button>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <button id="btnResendEmail" class="btn-link-spx fw-bold" onclick="handleResendEmail()" disabled>Resend Email Link</button>
+        <span id="emailTimer" class="small text-muted font-monospace">Resend in 60s</span>
+      </div>
+
+      <div class="mt-4 p-3 bg-light rounded-3 text-center border" style="font-size: 0.82rem; color: #475569;">
+        <i class="fas fa-shield-halved text-primary me-1"></i> <strong>Verification Policy:</strong> Both Mobile Number and Email Address must be verified before full account login is enabled.
+      </div>
+    </div>
+
+    <!-- SUCCESS PANE -->
+    <div id="successPane" class="view-pane">
+      <div class="icon-box success">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <h4>Verification Complete!</h4>
+      <p class="subtitle">
+        Your account is fully verified. Redirecting you to the dashboard...
+      </p>
+      <button class="btn btn-spx" onclick="redirectToDashboard()">Go to Dashboard Now</button>
+    </div>
+
+    <!-- Footer Logout Option -->
+    <div class="footer-note">
+      <span class="text-muted">Logged in as different user?</span>
+      <button class="btn-link-spx ms-1" onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    let email = urlParams.get('email') || '';
+    let startStep = urlParams.get('step') || 'mobile';
+    let firebaseCustomToken = urlParams.get('firebaseCustomToken') || '';
+    const isVerifiedQuery = urlParams.get('verified') === 'true';
+
+    // State
+    let otpCountdown = 0;
+    let emailCountdown = 0;
+    let otpInterval = null;
+    let emailInterval = null;
+    let pollingInterval = null;
+    let userRole = null;
+    let phoneNum = '';
+
+    // Firebase Auth State
+    let recaptchaVerifier = null;
+    let confirmationResult = null;
+
+    // View Elements
+    const mobilePane = document.getElementById('mobilePane');
+    const emailPane = document.getElementById('emailPane');
+    const successPane = document.getElementById('successPane');
+    const dot1 = document.getElementById('dot1');
+    const dot2 = document.getElementById('dot2');
+    const errorAlert = document.getElementById('errorAlert');
+    const errorMsg = document.getElementById('errorMsg');
+    const infoAlert = document.getElementById('infoAlert');
+    const infoMsg = document.getElementById('infoMsg');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (isVerifiedQuery) {
+        showSuccessView();
+        return;
+      }
+
+      if (!email) {
+        // Attempt fallback to local storage profiles
+        try {
+          const studentProfile = JSON.parse(localStorage.getItem('spx_student_profile'));
+          const teacherProfile = JSON.parse(localStorage.getItem('spx_teacher_profile'));
+          const parentProfile = JSON.parse(localStorage.getItem('spx_parent_profile'));
+          const profile = studentProfile || teacherProfile || parentProfile;
+          if (profile && profile.email) email = profile.email;
+        } catch (e) {}
+      }
+
+      if (!email) {
+        showError('No user details found. Please log in first.');
+        setTimeout(() => { window.location.href = '/'; }, 3000);
+        return;
+      }
+
+      // 1. Initialize Firebase JS SDK dynamically using API settings
+      await initFirebaseClient();
+    });
+
+    async function initFirebaseClient() {
+      showLoading('Connecting to verification engine...');
+      try {
+        const configRes = await fetch('/api/auth/firebase-config');
+        if (!configRes.ok) throw new Error('Failed to retrieve verification configuration');
+        const firebaseConfig = await configRes.json();
+
+        // Initialize Firebase
+        if (firebase.apps.length === 0) {
+          firebase.initializeApp(firebaseConfig);
+        }
+
+        // Initialize invisible recaptcha verifier
+        recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+          size: 'invisible',
+          callback: (response) => {
+            console.log('Recaptcha verification completed');
+          }
+        });
+
+        // 2. Sign in with Custom Token if available
+        if (firebaseCustomToken) {
+          await firebase.auth().signInWithCustomToken(firebaseCustomToken);
+          console.log('[Firebase] Successfully authenticated with custom token');
+        }
+
+        // 3. Load verification status from PostgreSQL backend
+        await checkVerificationStatus(false);
+      } catch (err) {
+        showError('Verification engine load warning: ' + err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function checkVerificationStatus(explicitClick = false) {
+      hideError();
+      hideInfo();
+
+      try {
+        const statusRes = await fetch(`/api/auth/verification-status?identifier=${encodeURIComponent(email)}`);
+        if (!statusRes.ok) throw new Error('Could not pull registration status');
+        const data = await statusRes.json();
+
+        userRole = data.role;
+        phoneNum = data.phone;
+        
+        // Auto-fill phone field
+        const phoneInput = document.getElementById('verifyPhoneNumberInput');
+        if (phoneInput && !phoneInput.value) {
+          // Format phone to international if missing E.164 code
+          phoneInput.value = phoneNum.startsWith('+') ? phoneNum : '+91' + phoneNum;
+        }
+
+        document.getElementById('emailSubtitle').innerHTML = `A secure verification link has been sent to: <strong>${data.email}</strong>. Check your inbox and click the activation link.`;
+
+        if (data.phone_verified && data.email_verified) {
+          showSuccessView();
+        } else if (data.phone_verified) {
+          showEmailView();
+          if (explicitClick) {
+            showInfo('Email verification status is still pending in the database. Please check your inbox.');
+          }
+        } else {
+          showMobileView();
+        }
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function showMobileView() {
+      deactivateAllPanes();
+      mobilePane.classList.add('active');
+      dot1.className = 'step-dot active';
+      dot2.className = 'step-dot';
+      stopEmailPolling();
+    }
+
+    function showEmailView() {
+      deactivateAllPanes();
+      emailPane.classList.add('active');
+      dot1.className = 'step-dot completed';
+      dot2.className = 'step-dot active';
+      startEmailPolling();
+      
+      // Send Firebase Email Verification if not sent already
+      sendFbEmailVerificationLink();
+    }
+
+    function showSuccessView() {
+      deactivateAllPanes();
+      successPane.classList.add('active');
+      dot1.className = 'step-dot completed';
+      dot2.className = 'step-dot completed';
+      stopEmailPolling();
+
+      setTimeout(() => { redirectToDashboard(); }, 3000);
+    }
+
+    function deactivateAllPanes() {
+      mobilePane.classList.remove('active');
+      emailPane.classList.remove('active');
+      successPane.classList.remove('active');
+    }
+
+    // Step 1: Send SMS OTP via MSG91 Gateway
+    async function handleSendFbSms() {
+      const fullPhone = document.getElementById('verifyPhoneNumberInput').value.trim();
+      if (!fullPhone || fullPhone.length < 10) {
+        return showError('Please enter a valid phone number with country code (e.g. +919999999999).');
+      }
+
+      showLoading('Sending verification SMS via MSG91...');
+      hideError();
+      hideInfo();
+      setButtonLoading('btnSendSms', true, 'Sending SMS...');
+
+      try {
+        const res = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email, phone: fullPhone, purpose: 'verify_mobile' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send SMS OTP.');
+
+        // Toggle Views
+        document.getElementById('phoneInputSection').style.display = 'none';
+        document.getElementById('otpForm').style.display = 'block';
+        
+        const targetEl = document.getElementById('mobileDisplayTarget');
+        if (targetEl) targetEl.textContent = fullPhone.startsWith('+') ? fullPhone : '+91 ' + fullPhone.replace(/^91/, '');
+        
+        setupOtpBoxListeners('vOtpBoxContainer', 'otpCode');
+        
+        showInfo(`Verification code sent to ${fullPhone}. Check your phone SMS inbox.`);
+        startOtpTimer(300);
+      } catch (err) {
+        showError('Failed to send verification SMS: ' + err.message);
+      } finally {
+        hideLoading();
+        setButtonLoading('btnSendSms', false);
+      }
+    }
+
+    // Step 1b: Verify OTP & update database state
+    async function handleVerifyFbSms(e) {
+      if (e) e.preventDefault();
+      const code = document.getElementById('otpCode').value.trim();
+      if (code.length !== 6) return showError('Please enter the 6-digit verification code.');
+
+      showLoading('Validating OTP...');
+      hideError();
+      hideInfo();
+      setButtonLoading('btnVerifySms', true, 'Verifying...');
+
+      try {
+        const fullPhone = document.getElementById('verifyPhoneNumberInput').value.trim();
+        const verifyRes = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email, phone: fullPhone, otp: code, purpose: 'verify_mobile' })
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok) throw new Error(verifyData.error || 'Invalid OTP code.');
+
+        if (typeof showToast === 'function') showToast('Mobile number verified!', 'success');
+        if (verifyData.status === 'verified' || (verifyData.phone_verified && verifyData.email_verified)) {
+          showSuccessView();
+        } else {
+          showEmailView();
+        }
+      } catch (err) {
+        showError('SMS verification failed: ' + err.message);
+      } finally {
+        hideLoading();
+        setButtonLoading('btnVerifySms', false);
+      }
+    }
+
+    // Step 2: Send Email Verification Link via Brevo
+    async function sendFbEmailVerificationLink() {
+      try {
+        const linkRes = await fetch('/api/auth/send-email-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email })
+        });
+        if (linkRes.ok) {
+          console.log('[EmailService] Real-time verification link dispatched via Brevo');
+        }
+      } catch (err) {
+        console.warn('Could not auto-send email verification link:', err.message);
+      }
+    }
+
+    // Manual email status check trigger
+    async function checkFbEmailStatus(explicit = false) {
+      showLoading('Checking verification status...');
+      try {
+        await checkVerificationStatus(explicit);
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Resend Email Link Trigger
+    async function handleResendEmail() {
+      showLoading('Resending verification email link...');
+      hideError();
+      hideInfo();
+      try {
+        const linkRes = await fetch('/api/auth/send-email-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email })
+        });
+        const linkData = await linkRes.json();
+        if (!linkRes.ok) throw new Error(linkData.error || 'Failed to resend verification email.');
+
+        showInfo(`Verification email link sent to ${email}. Please check your inbox or spam folder.`);
+        startEmailTimer(300);
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Polling status checker for Email verification
+    function startEmailPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(async () => {
+        const user = firebase.auth().currentUser;
+        if (user) {
+          await user.reload();
+          if (user.emailVerified) {
+            const idToken = await user.getIdToken(true);
+            const syncRes = await fetch('/api/auth/firebase-verify-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken, identifier: email })
+            });
+            if (syncRes.ok) {
+              showSuccessView();
+            }
+          }
+        }
+      }, 4000);
+    }
+
+    function stopEmailPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    }
+
+    // Resend Timer logic
+    function startOtpTimer(seconds = 300) {
+      otpCountdown = seconds;
+      const btn = document.getElementById('btnResendOtp');
+      const text = document.getElementById('otpTimer');
+      if (btn) btn.disabled = true;
+
+      if (otpInterval) clearInterval(otpInterval);
+      otpInterval = setInterval(() => {
+        otpCountdown--;
+        if (otpCountdown <= 0) {
+          clearInterval(otpInterval);
+          if (btn) btn.disabled = false;
+          if (text) text.textContent = 'Ready';
+        } else {
+          const mins = Math.floor(otpCountdown / 60);
+          const secs = otpCountdown % 60;
+          if (text) text.textContent = `Resend in ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+      }, 1000);
+    }
+
+    function startEmailTimer(seconds = 300) {
+      emailCountdown = seconds;
+      const btn = document.getElementById('btnResendEmail');
+      const text = document.getElementById('emailTimer');
+      if (btn) btn.disabled = true;
+
+      if (emailInterval) clearInterval(emailInterval);
+      emailInterval = setInterval(() => {
+        emailCountdown--;
+        if (emailCountdown <= 0) {
+          clearInterval(emailInterval);
+          if (btn) btn.disabled = false;
+          if (text) text.textContent = 'Ready';
+        } else {
+          const mins = Math.floor(emailCountdown / 60);
+          const secs = emailCountdown % 60;
+          if (text) text.textContent = `Resend in ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+      }, 1000);
+    }
+
+    function handleResendOtp() {
+      handleSendFbSms();
+    }
+
+    function redirectToDashboard() {
+      let targetUrl = '/';
+      const role = userRole || urlParams.get('role');
+      if (role === 'student') targetUrl = '/student/';
+      else if (role === 'teacher') targetUrl = '/teacher/';
+      else if (role === 'parent') targetUrl = '/parent/';
+      else if (role === 'admin') targetUrl = '/admin/';
+      window.location.href = targetUrl;
+    }
+
+    async function handleLogout() {
+      showLoading('Signing out...');
+      try {
+        if (firebase.apps.length > 0) {
+          await firebase.auth().signOut();
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        await fetch('/api/auth/logout', { method: 'POST' });
+      } catch (e) {}
+      window.location.href = '/';
+    }
+
+    function showLoading(txt) {
+      loadingText.textContent = txt;
+      loadingOverlay.classList.add('active');
+    }
+
+    function hideLoading() {
+      loadingOverlay.classList.remove('active');
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorAlert.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function hideError() {
+      errorAlert.style.display = 'none';
+    }
+
+    function showInfo(msg) {
+      infoMsg.textContent = msg;
+      infoAlert.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function hideInfo() {
+      infoAlert.style.display = 'none';
+    }
+
+    function showToast(msg, type = 'info') {
+      console.log(`[Toast ${type}] ${msg}`);
+    }
+
+    function setupOtpBoxListeners(containerId, hiddenInputId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const boxes = Array.from(container.querySelectorAll('input'));
+      const hiddenInput = document.getElementById(hiddenInputId);
+
+      function syncHidden() {
+        const val = boxes.map(b => b.value).join('');
+        if (hiddenInput) hiddenInput.value = val;
+      }
+
+      boxes.forEach((box, idx) => {
+        box.addEventListener('input', (e) => {
+          const val = box.value.replace(/\D/g, '');
+          box.value = val ? val.slice(-1) : '';
+          if (box.value) {
+            box.style.borderColor = '#0d7a6d';
+            box.style.background = 'rgba(13, 122, 109, 0.06)';
+            if (idx < boxes.length - 1) {
+              boxes[idx + 1].focus();
+            }
+          } else {
+            box.style.borderColor = '#cbd5e1';
+            box.style.background = '#f8fafc';
+          }
+          syncHidden();
+        });
+
+        box.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !box.value && idx > 0) {
+            boxes[idx - 1].focus();
+            boxes[idx - 1].value = '';
+            boxes[idx - 1].style.borderColor = '#cbd5e1';
+            boxes[idx - 1].style.background = '#f8fafc';
+            syncHidden();
+          }
+        });
+
+        box.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+          if (pasteData) {
+            for (let i = 0; i < boxes.length; i++) {
+              if (i < pasteData.length) {
+                boxes[i].value = pasteData[i];
+                boxes[i].style.borderColor = '#0d7a6d';
+                boxes[i].style.background = 'rgba(13, 122, 109, 0.06)';
+              } else {
+                boxes[i].value = '';
+                boxes[i].style.borderColor = '#cbd5e1';
+                boxes[i].style.background = '#f8fafc';
+              }
+            }
+            const lastIdx = Math.min(pasteData.length - 1, boxes.length - 1);
+            if (lastIdx >= 0) boxes[lastIdx].focus();
+            syncHidden();
+          }
+        });
+      });
+    }
+  </script>
+</body>
+</html>
