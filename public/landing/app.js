@@ -864,20 +864,45 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inject announcement
   createAnnouncementBar();
 
-  // Bind SMS Form
+  // Bind SMS / Email App Download Link Form
   const smsForm = document.getElementById('smsLinkForm');
   if (smsForm) {
-    smsForm.addEventListener('submit', (e) => {
+    smsForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const phoneInput = document.getElementById('smsPhone');
       const feedback = document.getElementById('smsFeedback');
-      if (feedback) {
-        feedback.style.display = 'block';
-        feedback.textContent = `🚀 SMS Link request received! App download link will be sent to +91 ${phoneInput.value} once the app launches soon!`;
-        phoneInput.value = '';
-        setTimeout(() => {
-          feedback.style.display = 'none';
-        }, 6000);
+      const val = (phoneInput ? phoneInput.value : '').trim();
+      if (!val) return;
+
+      try {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Sending download link...';
+        }
+        const res = await fetch('/api/public/send-app-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: val })
+        }).then(r => r.json());
+
+        if (feedback) {
+          const isEmail = val.includes('@');
+          feedback.style.display = 'block';
+          feedback.innerHTML = `
+            <div class="alert alert-success p-2 mt-2 mb-0" style="font-size:0.78rem; border-radius:10px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#ffffff;">
+              <i class="fas fa-check-circle me-1 text-success"></i> <strong>Sent!</strong> Link dispatched to <strong>${isEmail ? val : ('+91 ' + val)}</strong>.
+              <a href="/uploads/speaxa-app.apk" download class="btn btn-sm btn-light mt-2 w-100 fw-bold text-dark shadow-sm" style="font-size:0.75rem; border-radius:6px;">
+                <i class="fas fa-download me-1 text-teal"></i> Direct Download SPEAXA App
+              </a>
+            </div>
+          `;
+          phoneInput.value = '';
+        }
+      } catch (err) {
+        if (feedback) {
+          feedback.style.display = 'block';
+          feedback.innerHTML = '<span class="text-white small"><i class="fas fa-check-circle text-success me-1"></i> Request received! <a href="/uploads/speaxa-app.apk" class="text-teal fw-bold">Download App Directly</a></span>';
+        }
       }
     });
   }

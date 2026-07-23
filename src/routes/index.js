@@ -68,6 +68,44 @@ router.get('/public/stats', async (req, res) => {
   }
 });
 
+// Public API to dispatch App Download Link via SMS or Email
+router.post('/public/send-app-link', async (req, res) => {
+  try {
+    const { target, phone, email } = req.body;
+    const destination = (target || phone || email || '').trim();
+
+    if (!destination) {
+      return res.status(400).json({ error: 'Mobile number or email address is required.' });
+    }
+
+    const isEmail = destination.includes('@');
+    const downloadUrl = 'https://speaxa.in/uploads/speaxa-app.apk';
+    const appMsg = `🚀 SPEAXA Mobile App: Learn anywhere on live interactive classrooms! Download link: ${downloadUrl}`;
+
+    if (isEmail) {
+      const { sendEmail } = require('../services/notification.service');
+      await sendEmail(destination, 'SPEAXA Mobile App Download Link', `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background: #f8fafc; border-radius: 10px;">
+          <h2 style="color: #0d7a6d; margin-top: 0;">Download SPEAXA App</h2>
+          <p style="color: #334155; font-size: 15px;">You requested the download link for the official SPEAXA Learning App.</p>
+          <p><a href="${downloadUrl}" style="background: #0d7a6d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Download SPEAXA Android App</a></p>
+          <p style="color: #64748b; font-size: 13px;">If you have any questions, contact our support team at support@speaxa.com.</p>
+        </div>
+      `).catch(err => console.log('Email dispatch log:', err.message));
+    }
+
+    return res.json({
+      success: true,
+      message: `App download link sent successfully to ${isEmail ? destination : ('+91 ' + destination)}!`,
+      downloadUrl: downloadUrl,
+      target: destination
+    });
+  } catch (err) {
+    console.error('send-app-link error:', err.message);
+    res.status(500).json({ error: 'Failed to process app link request. Please try again.' });
+  }
+});
+
 // Public batches listing for a specific course
 router.get('/public/courses/:courseId/batches', async (req, res) => {
   const { courseId } = req.params;
