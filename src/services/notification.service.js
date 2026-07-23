@@ -505,6 +505,13 @@ async function notifyObservationCreated({ studentId, teacherName, observationSco
       studentId
     ]);
 
+    const fmtMetric = (val) => {
+      const n = parseFloat(val || 0);
+      if (n <= 0) return '0 / 10';
+      const score10 = n > 10 ? (n / 10).toFixed(1) : n.toFixed(1);
+      return `${score10} / 10`;
+    };
+
     // Student Email
     const studentHtml = `
       <p style="font-size: 16px; color: #334155;">Hello <strong>${student.name}</strong>,</p>
@@ -515,12 +522,12 @@ async function notifyObservationCreated({ studentId, teacherName, observationSco
         <h3 style="margin-top: 0; color: #0d7a6d; font-size: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">Performance Report Overview</h3>
         <p style="margin: 8px 0; font-size: 16px;"><strong>Overall Observation Score:</strong> <span style="color: #0d7a6d; font-weight: bold;">${observationScore} / 100</span></p>
         <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px;">
-          <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Curiosity & Questions</td><td style="padding: 6px 10px; font-weight: bold;">${curiosity || 0} / 5</td></tr>
-          <tr><td style="padding: 6px 10px;">Concept Understanding</td><td style="padding: 6px 10px; font-weight: bold;">${understanding || 0} / 5</td></tr>
-          <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Consistency & Homework</td><td style="padding: 6px 10px; font-weight: bold;">${consistency || 0} / 5</td></tr>
-          <tr><td style="padding: 6px 10px;">Communication Skills</td><td style="padding: 6px 10px; font-weight: bold;">${communication || 0} / 5</td></tr>
-          <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Classroom Participation</td><td style="padding: 6px 10px; font-weight: bold;">${participation || 0} / 5</td></tr>
-          <tr><td style="padding: 6px 10px;">Behavior & Discipline</td><td style="padding: 6px 10px; font-weight: bold;">${discipline || 0} / 5</td></tr>
+          <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Curiosity & Questions</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(curiosity)}</td></tr>
+          <tr><td style="padding: 6px 10px;">Concept Understanding</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(understanding)}</td></tr>
+          <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Consistency & Homework</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(consistency)}</td></tr>
+          <tr><td style="padding: 6px 10px;">Communication Skills</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(communication)}</td></tr>
+          <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Classroom Participation</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(participation)}</td></tr>
+          <tr><td style="padding: 6px 10px;">Behavior & Discipline</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(discipline)}</td></tr>
         </table>
         <p style="margin: 8px 0; font-size: 14px; white-space: pre-wrap;"><strong>Teacher Remarks:</strong> ${notes || 'Keep up the good progress!'}</p>
       </div>
@@ -558,12 +565,12 @@ async function notifyObservationCreated({ studentId, teacherName, observationSco
           <p style="margin: 8px 0; font-size: 14px;"><strong>Student Name:</strong> ${student.name}</p>
           <p style="margin: 8px 0; font-size: 16px;"><strong>Overall Observation Index:</strong> <span style="color: #0d7a6d; font-weight: bold;">${observationScore} / 100</span></p>
           <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px;">
-            <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Curiosity & Questions</td><td style="padding: 6px 10px; font-weight: bold;">${curiosity || 0} / 5</td></tr>
-            <tr><td style="padding: 6px 10px;">Concept Understanding</td><td style="padding: 6px 10px; font-weight: bold;">${understanding || 0} / 5</td></tr>
-            <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Consistency & Homework</td><td style="padding: 6px 10px; font-weight: bold;">${consistency || 0} / 5</td></tr>
-            <tr><td style="padding: 6px 10px;">Communication Skills</td><td style="padding: 6px 10px; font-weight: bold;">${communication || 0} / 5</td></tr>
-            <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Classroom Participation</td><td style="padding: 6px 10px; font-weight: bold;">${participation || 0} / 5</td></tr>
-            <tr><td style="padding: 6px 10px;">Behavior & Discipline</td><td style="padding: 6px 10px; font-weight: bold;">${discipline || 0} / 5</td></tr>
+            <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Curiosity & Questions</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(curiosity)}</td></tr>
+            <tr><td style="padding: 6px 10px;">Concept Understanding</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(understanding)}</td></tr>
+            <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Consistency & Homework</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(consistency)}</td></tr>
+            <tr><td style="padding: 6px 10px;">Communication Skills</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(communication)}</td></tr>
+            <tr style="background: #edf2f7;"><td style="padding: 6px 10px;">Classroom Participation</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(participation)}</td></tr>
+            <tr><td style="padding: 6px 10px;">Behavior & Discipline</td><td style="padding: 6px 10px; font-weight: bold;">${fmtMetric(discipline)}</td></tr>
           </table>
           <p style="margin: 8px 0; font-size: 14px; white-space: pre-wrap;"><strong>Teacher Remarks:</strong> ${notes || 'Keep supporting their learning journey!'}</p>
         </div>

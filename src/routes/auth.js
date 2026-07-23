@@ -227,11 +227,15 @@ router.post('/login', async (req, res) => {
   const { email, password, role } = req.body;
   try {
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: 'Email/Phone and password are required' });
     }
 
-    let queryText = 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)';
-    const queryParams = [email];
+    const identifier = email.trim();
+    const isEmailInput = identifier.includes('@');
+    let queryText = isEmailInput
+      ? 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)'
+      : 'SELECT * FROM users WHERE phone = $1 OR mobile_number = $1';
+    const queryParams = [identifier];
 
     if (role) {
       queryText += ' AND role = $2';
@@ -241,8 +245,8 @@ router.post('/login', async (req, res) => {
     const result = await db.query(queryText, queryParams);
     if (result.rows.length === 0) {
       const errMsg = role === 'student' 
-        ? 'This email is not registered with us as a student'
-        : (role ? `User not found with this email registered as a ${role}` : 'User not found with this email');
+        ? 'This email/phone is not registered with us as a student'
+        : (role ? `User not found with this email/phone registered as a ${role}` : 'User not found with this email/phone');
       return res.status(404).json({ error: errMsg });
     }
 
@@ -259,8 +263,8 @@ router.post('/login', async (req, res) => {
     }
     if (user.is_disabled) return res.status(403).json({ error: 'Account disabled. Contact admin.' });
 
-    // Enforce Email Verification for non-admin accounts
-    if (user.role !== 'admin') {
+    // Enforce Email Verification for non-admin accounts except parents entering panel
+    if (user.role !== 'admin' && user.role !== 'parent') {
       if (!user.email_verified) {
         try {
           await sendEmailVerificationLink(user.id, req);

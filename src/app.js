@@ -315,6 +315,7 @@ db.query(`
     created_at TIMESTAMPTZ DEFAULT NOW(),
     is_read BOOLEAN DEFAULT false
   );
+  ALTER TABLE parent_teacher_chats ADD COLUMN IF NOT EXISTS image_url TEXT;
   CREATE INDEX IF NOT EXISTS idx_pt_chats_lookup ON parent_teacher_chats (parent_id, teacher_id, student_id);
 
   CREATE TABLE IF NOT EXISTS teacher_ratings (
@@ -485,8 +486,19 @@ app.use(cors({
 }));
 
 // ── Rate Limiting ─────────────────────────────────────────────
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, message: { error: 'Too many auth requests', code: 'RATE_LIMITED' } });
+const globalLimiter = rateLimit({ 
+  windowMs: 15 * 60 * 1000, 
+  max: 10000, 
+  standardHeaders: true, 
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== 'production'
+});
+const authLimiter = rateLimit({ 
+  windowMs: 15 * 60 * 1000, 
+  max: 5000, 
+  message: { error: 'Too many auth requests. Please wait a moment.', code: 'RATE_LIMITED' },
+  skip: () => process.env.NODE_ENV !== 'production'
+});
 
 // Protect sensitive authentication endpoints from abuse
 app.use('/api/auth/login', authLimiter);
@@ -549,7 +561,44 @@ app.get('/live/*', (req, res) => res.sendFile(path.join(__dirname, '../public/li
 // ── 404 ───────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ error: 'Route not found', code: 'ROUTE_NOT_FOUND' }));
 
-// ── Error Handler ─────────────────────────────────────────────
-app.use(errorHandler);
+// ── Auto Cleanup Old Chat Attachments (Older than 10 days) ──────
+async function cleanupOldChatAttachments() {
+  try {
+    const db = require('./db');
+    const oldChats = await db.query(`
+      SELECT id, image_url 
+      FROM parent_teacher_chats 
+      WHERE image_url IS NOT NULL 
+        AND image_url != '' 
+        AND created_at < NOW() - INTERVAL '10 days'
+    `);
+
+    for (const chat of oldChats.rows) {
+      if (chat.image_url) {
+        const filePath = path.join(__dirname, '../public', chat.image_url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    }
+
+    if (oldChats.rows.length > 0) {
+      await db.query(`
+        UPDATE parent_teacher_chats 
+        SET image_url = NULL 
+        WHERE image_url IS NOT NULL 
+          AND image_url != '' 
+          AND created_at < NOW() - INTERVAL '10 days'
+      `);
+      console.log(`Cleaned up ${oldChats.rows.length} expired chat image attachments (older than 10 days).`);
+    }
+  } catch (err) {
+    console.warn('Chat attachment cleanup error:', err.message);
+  }
+}
+
+// Run cleanup on server startup and every 24 hours
+setTimeout(cleanupOldChatAttachments, 5000);
+setInterval(cleanupOldChatAttachments, 24 * 60 * 60 * 1000);
 
 module.exports = app;

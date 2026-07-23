@@ -761,6 +761,15 @@ async function loadTeacherNotificationCounts() {
       badge.textContent = data.total || 0;
       badge.style.display = data.total > 0 ? '' : 'none';
     }
+    const connectBadge = document.getElementById('teacherConnectBadge');
+    if (connectBadge) {
+      if (data.chats && data.chats > 0) {
+        connectBadge.textContent = data.chats;
+        connectBadge.style.display = 'inline-block';
+      } else {
+        connectBadge.style.display = 'none';
+      }
+    }
   } catch (err) {
     console.error('Failed to load teacher notifications count:', err);
   }
@@ -5094,7 +5103,10 @@ async function renderChats() {
                     <div class="flex-grow-1 min-w-0" style="text-align: left;">
                       <div class="d-flex justify-content-between align-items-center mb-1">
                         <strong class="text-dark truncate" style="font-size: 0.88rem;">${c.parent_name}</strong>
-                        <span class="text-muted" style="font-size: 0.72rem;">${timeStr}</span>
+                        <div class="d-flex align-items-center gap-1">
+                          ${parseInt(c.unread_count || 0) > 0 ? `<span class="badge bg-danger rounded-pill px-2 py-0.5" style="font-size:0.65rem;">${c.unread_count} new</span>` : ''}
+                          <span class="text-muted" style="font-size: 0.72rem;">${timeStr}</span>
+                        </div>
                       </div>
                       <div class="text-muted small truncate mb-1" style="font-size:0.75rem;">
                         Child: <strong>${c.student_name}</strong> (${c.student_grade} • ${c.student_code})
@@ -5148,14 +5160,50 @@ window.selectTeacherConversation = function(event, parentId, parentName, student
         </div>
       </div>
 
+      <!-- Notice Banner for 10-Day Auto-Deletion -->
+      <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between" style="background:rgba(245,158,11,0.12); color:#92400E; font-size:0.75rem; flex-shrink:0;">
+        <span><i class="fas fa-info-circle me-1 text-warning"></i><strong>10-Day Storage Policy:</strong> Shared images (max 5 MB) are auto-deleted after 10 days. Download important files.</span>
+      </div>
+
       <!-- Messages body -->
       <div id="teacherChatMessagesBody" style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; background:rgba(15,23,42,0.01);">
         <div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading chat history...</div>
       </div>
 
+      <!-- Image Preview Container -->
+      <div id="teacherChatImagePreviewBar" class="px-3 py-2 border-top bg-light align-items-center justify-content-between" style="display:none; flex-shrink:0;">
+        <div class="d-flex align-items-center gap-2">
+          <img id="teacherChatImagePreviewImg" src="" style="width:36px; height:36px; object-fit:cover; border-radius:6px;">
+          <div>
+            <div id="teacherChatImagePreviewName" class="small fw-semibold text-dark text-truncate" style="max-width:180px; font-size:0.75rem;">image.png</div>
+            <div id="teacherChatImagePreviewSize" class="text-muted" style="font-size:0.68rem;">1.2 MB</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.7rem;" onclick="clearSelectedChatImage('teacherChatImagePreviewBar', 'teacherChatImageInput')"><i class="fas fa-times me-1"></i>Remove</button>
+      </div>
+
+      <!-- Quick Emoji Bar -->
+      <div class="emoji-toolbar px-3 py-2 border-top d-flex align-items-center gap-2 overflow-auto" style="background:#f8fafc; flex-shrink:0;">
+        <span class="small text-muted fw-semibold me-1" style="font-size:0.72rem; white-space:nowrap;">Quick Emojis:</span>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '😀')">😀</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '👍')">👍</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '👏')">👏</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '⭐')">⭐</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '📚')">📚</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '🎯')">🎯</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '🎓')">🎓</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '✍️')">✍️</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '💪')">💪</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('teacherChatMessageInput', '🙏')">🙏</button>
+      </div>
+
       <!-- Footer input -->
-      <form onsubmit="sendTeacherChatMessage(event)" style="padding:16px; border-top:1px solid var(--border); display:flex; gap:10px; align-items:center; flex-shrink:0;">
-        <input type="text" id="teacherChatMessageInput" class="form-control spx-input" placeholder="Type your reply regarding ${studentName}..." required style="flex:1; border-radius:10px;">
+      <form onsubmit="sendTeacherChatMessage(event)" style="padding:14px 16px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center; flex-shrink:0;">
+        <input type="file" id="teacherChatImageInput" accept="image/*" style="display:none;" onchange="handleChatImageSelection(this, 'teacherChatImagePreviewBar', 'teacherChatImagePreviewImg', 'teacherChatImagePreviewName', 'teacherChatImagePreviewSize')">
+        <button type="button" class="btn btn-light border p-2" style="border-radius:10px; font-size:1rem;" onclick="document.getElementById('teacherChatImageInput').click()" title="Attach image (Max 5 MB)">
+          <i class="fa-solid fa-camera text-primary"></i>
+        </button>
+        <input type="text" id="teacherChatMessageInput" class="form-control spx-input" placeholder="Type your reply regarding ${studentName}..." style="flex:1; border-radius:10px;">
         <button type="submit" class="btn btn-spx px-4" style="border-radius:10px;"><i class="fa-solid fa-paper-plane me-1"></i> Send</button>
       </form>
     </div>
@@ -5213,11 +5261,24 @@ async function loadTeacherChatMessages(silent = false) {
 
         const timeStr = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+        const imgSrc = m.image_url ? (m.image_url.startsWith('/') ? m.image_url : '/' + m.image_url) : '';
+        const imageHtml = imgSrc ? `
+          <div class="my-1">
+            <img src="${imgSrc}" style="max-width:240px; max-height:240px; border-radius:10px; cursor:pointer; object-fit:cover; border: 1px solid rgba(0,0,0,0.1);" onclick="window.open('${imgSrc}', '_blank')">
+            <div class="mt-1 text-end">
+              <a href="${imgSrc}" download="attachment_${m.id}.png" target="_blank" class="btn btn-sm btn-light border py-0 px-2" style="font-size:0.65rem; border-radius:6px;" title="Download image to local storage before 10-day auto-deletion">
+                <i class="fas fa-download me-1 text-primary"></i>Download Image
+              </a>
+            </div>
+          </div>
+        ` : '';
+
         return `
           <div class="chat-bubble ${bubbleClass}" style="${alignSelf} ${bgColor} ${radiusStyle} max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 0.85rem; line-height: 1.45; word-wrap: break-word; margin-bottom: 8px; text-align: left;">
             <div style="font-weight: 700; font-size: 0.7rem; opacity: 0.85; margin-bottom: 4px;">
               ${isMe ? teacherName : m.sender_name}
             </div>
+            ${imageHtml}
             <div>${m.message}</div>
             <div style="font-size: 0.6rem; opacity: 0.7; text-align: right; margin-top: 4px;">
               ${timeStr}
@@ -5228,33 +5289,101 @@ async function loadTeacherChatMessages(silent = false) {
 
       // Scroll to bottom
       body.scrollTop = body.scrollHeight;
+
+      // Refresh teacher notification counts & badges
+      if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
     }
   } catch (e) {
     console.error('Failed to load teacher messages:', e);
   }
 }
 
+window.insertEmoji = function(inputId, emoji) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const start = el.selectionStart || el.value.length;
+  const end = el.selectionEnd || el.value.length;
+  el.value = el.value.substring(0, start) + emoji + el.value.substring(end);
+  el.focus();
+  el.selectionStart = el.selectionEnd = start + emoji.length;
+};
+
+window.handleChatImageSelection = function(input, previewBarId, previewImgId, nameId, sizeId) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('⚠️ Image file size exceeds 5 MB limit. Please select a smaller image file.', 'error');
+    input.value = '';
+    return;
+  }
+  const previewBar = document.getElementById(previewBarId);
+  const previewImg = document.getElementById(previewImgId);
+  const nameEl = document.getElementById(nameId);
+  const sizeEl = document.getElementById(sizeId);
+
+  if (previewBar && previewImg) {
+    const reader = new FileReader();
+    reader.onload = e => previewImg.src = e.target.result;
+    reader.readAsDataURL(file);
+    if (nameEl) nameEl.textContent = file.name;
+    if (sizeEl) sizeEl.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+    previewBar.style.display = 'flex';
+  }
+};
+
+window.clearSelectedChatImage = function(previewBarId, inputId) {
+  const input = document.getElementById(inputId);
+  const previewBar = document.getElementById(previewBarId);
+  if (input) input.value = '';
+  if (previewBar) previewBar.style.display = 'none';
+};
+
+function checkTeacherProhibitedContact(text) {
+  if (!text) return false;
+  const digitsOnly = text.replace(/\D/g, '');
+  if (digitsOnly.length >= 10) return true;
+  const phonePattern = /(?:\+?\d{1,4}[-.\s]*)?\(?\d{2,5}\)?[-.\s]*\d{3,5}[-.\s]*\d{3,5}/;
+  if (phonePattern.test(text)) return true;
+  const emailPattern = /[a-zA-Z0-9._%+-]+(?:\s*@\s*|\s*\[at\]\s*|\s*\(at\)\s*|\s+at\s+)[a-zA-Z0-9.-]+(?:\s*\.\s*|\s*\[dot\]\s*|\s*\(dot\)\s*|\s+dot\s+)[a-zA-Z]{2,}/i;
+  if (emailPattern.test(text)) return true;
+  const socialPattern = /(?:whatsapp|insta|instagram|facebook|fb|telegram|tg|snapchat|linkedin|twitter|x\.com|wa\.me|t\.me|connect on|add me|call me|message me|ping me|reach me|handle is|my id|my number|contact no|mobile no)[\s:]*@?[\w.-]+/i;
+  if (socialPattern.test(text)) return true;
+  const urlPattern = /(?:https?:\/\/|www\.)[^\s]+/i;
+  if (urlPattern.test(text)) return true;
+  return false;
+}
+
 window.sendTeacherChatMessage = async function(e) {
   if (e) e.preventDefault();
   const input = document.getElementById('teacherChatMessageInput');
+  const fileInput = document.getElementById('teacherChatImageInput');
   const message = input.value.trim();
-  if (!message || !window.teacherActiveParentId || !window.teacherActiveStudentId) return;
+  const file = fileInput ? fileInput.files[0] : null;
+
+  if ((!message && !file) || !window.teacherActiveParentId || !window.teacherActiveStudentId) return;
+
+  if (message && checkTeacherProhibitedContact(message)) {
+    showToast('⚠️ Privacy Notice: Sharing phone numbers, email IDs, or social handles is strictly prohibited. Keep messages focused on student progress.', 'error');
+    return;
+  }
 
   try {
+    const formData = new FormData();
+    formData.append('parentId', window.teacherActiveParentId);
+    formData.append('studentId', window.teacherActiveStudentId);
+    formData.append('message', message);
+    if (file) formData.append('image', file);
+
     const res = await fetch(`${API}/teacher/connect/messages`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        parentId: window.teacherActiveParentId,
-        studentId: window.teacherActiveStudentId,
-        message
-      })
+      body: formData
     });
     if (res.ok) {
       input.value = '';
+      clearSelectedChatImage('teacherChatImagePreviewBar', 'teacherChatImageInput');
       loadTeacherChatMessages();
     } else {
       const err = await res.json();

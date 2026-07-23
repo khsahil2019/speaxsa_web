@@ -234,6 +234,61 @@ router.get('/notifications', async (req, res) => {
   }
 });
 
+// ── Get Parent Unread Message Count ───────────────────────────
+router.get('/unread-count', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT COUNT(*) as count 
+      FROM parent_teacher_chats 
+      WHERE parent_id = $1 AND sender_id != $1 AND is_read = false
+    `, [req.user.id]);
+    res.json({ unread: parseInt(result.rows[0]?.count || '0', 10) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Get Enrolled / Available Teachers for Student with Unread Message Counts ──
+router.get('/teachers', async (req, res) => {
+  const { studentId } = req.query;
+  if (!studentId) {
+    return res.status(400).json({ error: 'studentId is required' });
+  }
+  try {
+    // Verify student link
+    const link = await db.query(
+      'SELECT id FROM parent_student_links WHERE parent_id = $1 AND student_id = $2 AND status = \'approved\'',
+      [req.user.id, studentId]
+    );
+    if (!link.rows.length) {
+      return res.status(403).json({ error: 'Access denied. You are not linked to this student.' });
+    }
+
+    const teachersRes = await db.query(`
+      SELECT DISTINCT ON (u.id) 
+             u.id as teacher_id, u.name as teacher_name, u.photo_url, u.email as teacher_email,
+             COALESCE(b.name, 'Educator') as batch_name, COALESCE(c.title, 'Subject Mentor') as course_title,
+             (SELECT COUNT(*) FROM parent_teacher_chats 
+              WHERE parent_id = $1 AND teacher_id = u.id AND student_id = $2 AND sender_id != $1 AND is_read = false) as unread_count,
+             (SELECT MAX(created_at) FROM parent_teacher_chats 
+              WHERE parent_id = $1 AND teacher_id = u.id AND student_id = $2) as last_chat_at,
+             (SELECT message FROM parent_teacher_chats 
+              WHERE parent_id = $1 AND teacher_id = u.id AND student_id = $2 ORDER BY created_at DESC LIMIT 1) as last_message,
+             (SELECT sender_id FROM parent_teacher_chats 
+              WHERE parent_id = $1 AND teacher_id = u.id AND student_id = $2 ORDER BY created_at DESC LIMIT 1) as last_sender_id
+      FROM users u
+      LEFT JOIN batches b ON b.teacher_id = u.id
+      LEFT JOIN courses c ON c.id = b.course_id
+      WHERE u.role = 'teacher' AND (u.is_active IS NULL OR u.is_active = true)
+      ORDER BY u.id, unread_count DESC, last_chat_at DESC NULLS LAST, u.name ASC
+    `, [req.user.id, studentId]);
+
+    res.json(teachersRes.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Get Teacher Connect Messages ──────────────────────────────
 router.get('/connect/messages', async (req, res) => {
   const { teacherId, studentId } = req.query;
@@ -272,11 +327,66 @@ router.get('/connect/messages', async (req, res) => {
   }
 });
 
+function isProhibitedContactContent(text) {
+  if (!text) return false;
+  const digitsOnly = text.replace(/\D/g, '');
+  if (digitsOnly.length >= 10) return true;
+  const phonePattern = /(?:\+?\d{1,4}[-.\s]*)?\(?\d{2,5}\)?[-.\s]*\d{3,5}[-.\s]*\d{3,5}/;
+  if (phonePattern.test(text)) return true;
+  const emailPattern = /[a-zA-Z0-9._%+-]+(?:\s*@\s*|\s*\[at\]\s*|\s*\(at\)\s*|\s+at\s+)[a-zA-Z0-9.-]+(?:\s*\.\s*|\s*\[dot\]\s*|\s*\(dot\)\s*|\s+dot\s+)[a-zA-Z]{2,}/i;
+  if (emailPattern.test(text)) return true;
+  const socialPattern = /(?:whatsapp|insta|instagram|facebook|fb|telegram|tg|snapchat|linkedin|twitter|x\.com|wa\.me|t\.me|connect on|add me|call me|message me|ping me|reach me|handle is|my id|my number|contact no|mobile no)[\s:]*@?[\w.-]+/i;
+  if (socialPattern.test(text)) return true;
+  const urlPattern = /(?:https?:\/\/|www\.)[^\s]+/i;
+  if (urlPattern.test(text)) return true;
+  return false;
+}
+
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const chatUploadDir = path.join(__dirname, '../../public/uploads/chat_attachments');
+if (!fs.existsSync(chatUploadDir)) {
+  fs.mkdirSync(chatUploadDir, { recursive: true });
+}
+
+const chatStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, chatUploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.png';
+    cb(null, `chat_${Date.now()}_${Math.random().toString(36).substr(2, 6)}${ext}`);
+  }
+});
+
+const chatUpload = multer({
+  storage: chatStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (PNG, JPG, WEBP) up to 5 MB are allowed.'));
+    }
+  }
+});
+
 // ── Send Teacher Connect Message ──────────────────────────────
-router.post('/connect/messages', async (req, res) => {
+router.post('/connect/messages', chatUpload.single('image'), async (req, res) => {
   const { teacherId, studentId, message } = req.body;
-  if (!teacherId || !studentId || !message) {
-    return res.status(400).json({ error: 'teacherId, studentId, and message are required' });
+  const imageUrl = req.file ? `/uploads/chat_attachments/${req.file.filename}` : null;
+  const chatMsg = (message || '').trim() || (imageUrl ? '📷 Sent an image attachment' : '');
+
+  if (!teacherId || !studentId || (!chatMsg && !imageUrl)) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'teacherId, studentId, and message or image are required' });
+  }
+
+  if (isProhibitedContactContent(chatMsg)) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    return res.status(400).json({
+      error: 'For safety & privacy, sharing phone numbers, email IDs, or social media handles is strictly prohibited. Messages must remain focused on student progress only.'
+    });
   }
   try {
     // Verify student link
@@ -285,14 +395,15 @@ router.post('/connect/messages', async (req, res) => {
       [req.user.id, studentId]
     );
     if (!link.rows.length) {
+      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(403).json({ error: 'Access denied. You are not linked to this student.' });
     }
 
     const result = await db.query(`
-      INSERT INTO parent_teacher_chats (parent_id, teacher_id, student_id, sender_id, message)
-      VALUES ($1, $2, $3, $1, $4)
+      INSERT INTO parent_teacher_chats (parent_id, teacher_id, student_id, sender_id, message, image_url)
+      VALUES ($1, $2, $3, $1, $4, $5)
       RETURNING *
-    `, [req.user.id, teacherId, studentId, message]);
+    `, [req.user.id, teacherId, studentId, chatMsg, imageUrl]);
 
     // Also send an in-app notification to the teacher
     const parentRes = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);

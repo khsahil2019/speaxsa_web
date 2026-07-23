@@ -1276,12 +1276,14 @@ router.get('/connect/conversations', async (req, res) => {
       )
       SELECT rc.parent_id, rc.student_id, rc.message as last_message, rc.created_at as last_message_at,
              parent.name as parent_name, parent.email as parent_email, parent.phone as parent_phone,
-             student.name as student_name, student.student_code as student_code, student.grade as student_grade, student.board as student_board
+             student.name as student_name, student.student_code as student_code, student.grade as student_grade, student.board as student_board,
+             (SELECT COUNT(*) FROM parent_teacher_chats 
+              WHERE teacher_id = $1 AND parent_id = rc.parent_id AND student_id = rc.student_id AND sender_id != $1 AND is_read = false) as unread_count
       FROM ranked_chats rc
       JOIN users parent ON parent.id = rc.parent_id
       JOIN users student ON student.id = rc.student_id
       WHERE rc.rn = 1
-      ORDER BY rc.created_at DESC
+      ORDER BY unread_count DESC, rc.created_at DESC
     `, [req.user.id]);
     res.json(result.rows);
   } catch (err) {
@@ -1317,18 +1319,69 @@ router.get('/connect/messages', async (req, res) => {
   }
 });
 
+function isProhibitedContactContent(text) {
+  if (!text) return false;
+  const digitsOnly = text.replace(/\D/g, '');
+  if (digitsOnly.length >= 10) return true;
+  const phonePattern = /(?:\+?\d{1,4}[-.\s]*)?\(?\d{2,5}\)?[-.\s]*\d{3,5}[-.\s]*\d{3,5}/;
+  if (phonePattern.test(text)) return true;
+  const emailPattern = /[a-zA-Z0-9._%+-]+(?:\s*@\s*|\s*\[at\]\s*|\s*\(at\)\s*|\s+at\s+)[a-zA-Z0-9.-]+(?:\s*\.\s*|\s*\[dot\]\s*|\s*\(dot\)\s*|\s+dot\s+)[a-zA-Z]{2,}/i;
+  if (emailPattern.test(text)) return true;
+  const socialPattern = /(?:whatsapp|insta|instagram|facebook|fb|telegram|tg|snapchat|linkedin|twitter|x\.com|wa\.me|t\.me|connect on|add me|call me|message me|ping me|reach me|handle is|my id|my number|contact no|mobile no)[\s:]*@?[\w.-]+/i;
+  if (socialPattern.test(text)) return true;
+  const urlPattern = /(?:https?:\/\/|www\.)[^\s]+/i;
+  if (urlPattern.test(text)) return true;
+  return false;
+}
+
+const chatUploadDir = path.join(__dirname, '../../public/uploads/chat_attachments');
+if (!fs.existsSync(chatUploadDir)) {
+  fs.mkdirSync(chatUploadDir, { recursive: true });
+}
+
+const chatStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, chatUploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.png';
+    cb(null, `chat_${Date.now()}_${Math.random().toString(36).substr(2, 6)}${ext}`);
+  }
+});
+
+const chatUpload = multer({
+  storage: chatStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (PNG, JPG, WEBP) up to 5 MB are allowed.'));
+    }
+  }
+});
+
 // ── Send Teacher Connect Message ──────────────────────────────
-router.post('/connect/messages', async (req, res) => {
+router.post('/connect/messages', chatUpload.single('image'), async (req, res) => {
   const { parentId, studentId, message } = req.body;
-  if (!parentId || !studentId || !message) {
-    return res.status(400).json({ error: 'parentId, studentId, and message are required' });
+  const imageUrl = req.file ? `/uploads/chat_attachments/${req.file.filename}` : null;
+  const chatMsg = (message || '').trim() || (imageUrl ? '📷 Sent an image attachment' : '');
+
+  if (!parentId || !studentId || (!chatMsg && !imageUrl)) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'parentId, studentId, and message or image are required' });
+  }
+
+  if (isProhibitedContactContent(chatMsg)) {
+    if (req.file) fs.unlinkSync(req.file.path);
+    return res.status(400).json({
+      error: 'For safety & privacy, sharing phone numbers, email IDs, or social media handles is strictly prohibited. Messages must remain focused on student progress only.'
+    });
   }
   try {
     const result = await db.query(`
-      INSERT INTO parent_teacher_chats (parent_id, teacher_id, student_id, sender_id, message)
-      VALUES ($1, $2, $3, $2, $4)
+      INSERT INTO parent_teacher_chats (parent_id, teacher_id, student_id, sender_id, message, image_url)
+      VALUES ($1, $2, $3, $2, $4, $5)
       RETURNING *
-    `, [parentId, req.user.id, studentId, message]);
+    `, [parentId, req.user.id, studentId, chatMsg, imageUrl]);
 
     // Also send an in-app notification to the parent
     const teacherRes = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
