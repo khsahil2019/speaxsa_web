@@ -1754,6 +1754,36 @@ async function renderProfile() {
                 </div>
               </div>
             </form>
+
+            <hr class="my-4" style="border-color: rgba(255,255,255,0.08);">
+
+            <h5 class="fw-bold mb-3" style="font-family:'Outfit',sans-serif;color:var(--text-primary);"><i class="fas fa-gavel text-primary me-2"></i>Student Guidelines & Code of Conduct</h5>
+            <p class="text-muted small mb-3">Official guidelines for live classroom participation, examination integrity, and platform usage.</p>
+            <div class="list-group gap-2">
+              <a href="/policies/community-guidelines-code-of-conduct-digital-classroom-behaviour-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+                <div>
+                  <div class="fw-bold text-dark small"><i class="fas fa-users-slash text-teal me-2"></i>Community Guidelines & Digital Classroom Behavior Policy</div>
+                  <div class="text-muted small" style="font-size:0.72rem;">Live class chat decorum, respect for teachers & peer interaction rules</div>
+                </div>
+                <i class="fas fa-external-link-alt text-muted small"></i>
+              </a>
+
+              <a href="/policies/live-class-recording-digital-consent-online-examination-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+                <div>
+                  <div class="fw-bold text-dark small"><i class="fas fa-video text-warning me-2"></i>Live Class Recording & Online Examination Policy</div>
+                  <div class="text-muted small" style="font-size:0.72rem;">Classroom session recordings, exam proctoring & digital consent</div>
+                </div>
+                <i class="fas fa-external-link-alt text-muted small"></i>
+              </a>
+
+              <a href="/policies/artificial-intelligence-ai-academic-integrity-responsible-technology-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+                <div>
+                  <div class="fw-bold text-dark small"><i class="fas fa-robot text-primary me-2"></i>AI, Academic Integrity & Responsible Technology Policy</div>
+                  <div class="text-muted small" style="font-size:0.72rem;">Academic honesty, original submission rules & AI assistance guidelines</div>
+                </div>
+                <i class="fas fa-external-link-alt text-muted small"></i>
+              </a>
+            </div>
           </div>
         </div>
       </div>`;

@@ -186,6 +186,13 @@
               </div>
             </div>
 
+            <div class="form-check mt-3 text-start">
+              <input class="form-check-input" type="checkbox" id="parentPolicyConsent" required style="cursor:pointer;">
+              <label class="form-check-label text-muted" for="parentPolicyConsent" style="font-size:0.75rem; cursor:pointer;">
+                I agree to SPEAXA's <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Terms of Use</a>, <a href="/policies/privacy-policy.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Privacy Policy</a>, <a href="/policies/children-s-privacy-parent-consent-safe-learning-policy.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Parent Consent Policy</a> & <a href="/policies/refund-cancellation-payment-policy.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Refund Terms</a>.
+              </label>
+            </div>
+
             <button type="submit" class="btn-login mt-3" id="btnParentRegister">Register Parent Account</button>
             <div class="text-center mt-3" style="font-size:0.82rem; color:var(--text-3);">
               Already have an account? <a href="#" onclick="showLogin(event)"
@@ -1313,6 +1320,9 @@
             <button class="profile-subnav-btn" onclick="switchProfileSubTab('portal-security', this)">
               <i class="fas fa-lock"></i>Security & Credentials
             </button>
+            <button class="profile-subnav-btn" onclick="switchProfileSubTab('parent-policies', this)">
+              <i class="fas fa-scale-balanced"></i>Parent Safeguards & Terms
+            </button>
           </div>
 
           <!-- Sub Tab: Guardian Details -->
@@ -1432,6 +1442,48 @@
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Sub Tab: Parent Safeguards & Terms -->
+  <div id="profile-tab-parent-policies" class="profile-tab-pane">
+    <div class="profile-card">
+      <h5 class="fw-bold mb-3" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Parent Governance & Safeguard Terms</h5>
+      <p class="text-muted mb-4" style="font-size: 0.8rem;">Official Speaxa legal policies, parent consent guidelines, refund terms, and child data protection rights.</p>
+
+      <div class="list-group gap-2">
+        <a href="/policies/children-s-privacy-parent-consent-safe-learning-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+          <div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-child-reaching text-teal me-2"></i>Children's Privacy, Parent Consent & Safe Learning Policy</div>
+            <div class="small text-muted" style="font-size:0.75rem;">Parental rights, digital consent, student safety & LMS interaction rules</div>
+          </div>
+          <i class="fas fa-external-link-alt text-muted"></i>
+        </a>
+
+        <a href="/policies/refund-cancellation-payment-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+          <div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-receipt text-warning me-2"></i>Refund, Cancellation & Payment Policy</div>
+            <div class="small text-muted" style="font-size:0.75rem;">Fee payments, subscription cancellation, refund eligibility & billing terms</div>
+          </div>
+          <i class="fas fa-external-link-alt text-muted"></i>
+        </a>
+
+        <a href="/policies/data-collection-usage-data-protection-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+          <div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-user-lock text-primary me-2"></i>Data Collection, Usage & Data Protection Policy</div>
+            <div class="small text-muted" style="font-size:0.75rem;">Encryption, profile privacy, data retention & telemetry protection</div>
+          </div>
+          <i class="fas fa-external-link-alt text-muted"></i>
+        </a>
+
+        <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+          <div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-file-contract text-secondary me-2"></i>Terms of Use & Terms and Conditions</div>
+            <div class="small text-muted" style="font-size:0.75rem;">General platform usage terms for parent and student accounts</div>
+          </div>
+          <i class="fas fa-external-link-alt text-muted"></i>
+        </a>
+      </div>
     </div>
   </div>
   </div>

@@ -1582,6 +1582,18 @@ async function renderSop() {
                   <div class="seal-text">SPEAXA<br>COMPLIANCE<br>BOARD</div>
                 </div>
 
+                <div class="card p-3 mb-4 bg-light border-0" style="border-radius: 12px; border: 1px solid var(--border) !important;">
+                  <h6 class="fw-bold text-dark mb-2" style="font-size: 0.85rem;"><i class="fas fa-file-contract text-primary me-2"></i>Associated Legal Governance & Partnership Policies</h6>
+                  <div class="row g-2">
+                    <div class="col-md-6"><a href="/policies/speaxa-teacher-partnership-governance-agreement-part-1.html" target="_blank" class="small text-decoration-none fw-semibold text-primary"><i class="fas fa-external-link-alt me-1"></i>Teacher Governance Agreement Part 1</a></div>
+                    <div class="col-md-6"><a href="/policies/speaxa-teacher-partnership-governance-agreement-part-2.html" target="_blank" class="small text-decoration-none fw-semibold text-primary"><i class="fas fa-external-link-alt me-1"></i>Academic Delivery & Batch Rules (Part 2)</a></div>
+                    <div class="col-md-6"><a href="/policies/speaxa-teacher-partnership-governance-agreement-part-3.html" target="_blank" class="small text-decoration-none fw-semibold text-primary"><i class="fas fa-external-link-alt me-1"></i>Commercial Terms & IP Rights (Part 3)</a></div>
+                    <div class="col-md-6"><a href="/policies/speaxa-teacher-partnership-governance-agreement-part-4.html" target="_blank" class="small text-decoration-none fw-semibold text-primary"><i class="fas fa-external-link-alt me-1"></i>Protection of Business & Goodwill (Part 4)</a></div>
+                    <div class="col-md-6"><a href="/policies/speaxa-teacher-partnership-governance-agreement-part-5.html" target="_blank" class="small text-decoration-none fw-semibold text-primary"><i class="fas fa-external-link-alt me-1"></i>Training Cost Recovery (Part 5)</a></div>
+                    <div class="col-md-6"><a href="/policies/teacher-standards-performance-evaluation-academic-quality-assurance-policy.html" target="_blank" class="small text-decoration-none fw-semibold text-primary"><i class="fas fa-external-link-alt me-1"></i>Teacher Standards & Quality Assurance</a></div>
+                  </div>
+                </div>
+
                 <p>I, <strong>${user.name}</strong>, having been approved as an educator on the SPEAXA Edtech Platform, do hereby solemnly declare, depose, and state on oath as follows:</p>
                 
                 <ol class="mt-3" style="padding-left: 20px;">
