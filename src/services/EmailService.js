@@ -130,28 +130,8 @@ async function sendEmail(options) {
       console.log(`Body (truncated): ${html.substring(0, 300)}...`);
       console.log(`========================================`);
       sent = true;
-    } else if (cleanHost) {
-      // Nodemailer SMTP Mode (Primary mode when SMTP is configured via Admin panel or settings)
-      console.log(`[EmailService] Sending email to ${to} via SMTP server (${cleanHost}:${smtpPort})...`);
-      const transporter = nodemailer.createTransport({
-        host: cleanHost,
-        port: parseInt(smtpPort, 10),
-        secure: parseInt(smtpPort, 10) === 465,
-        auth: cleanUser ? { user: cleanUser, pass: smtpPass } : undefined,
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await transporter.sendMail({
-        from: `"${platformName}" <${fromEmail}>`,
-        to,
-        subject,
-        html: finalHtml,
-      });
-      sent = true;
-    } else if (brevoApiKey) {
-      // Brevo REST API Mode with Primary Inbox anti-spam headers
+    } else if (brevoApiKey && (smtpPass?.trim().startsWith('xkeysib-') || !cleanHost || cleanHost.includes('brevo'))) {
+      // Brevo REST API Mode for xkeysib- API Keys (bypasses SMTP 535 authentication errors)
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
       const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -177,6 +157,80 @@ async function sendEmail(options) {
       if (!response.ok) {
         const errBody = await response.text();
         console.error(`[EmailService] Brevo API error (status ${response.status}):`, errBody);
+        throw new Error(`Brevo REST API failed (status ${response.status}): ${errBody}`);
+      }
+      sent = true;
+    } else if (cleanHost) {
+      // Nodemailer SMTP Mode (Primary mode when SMTP is configured via Admin panel or settings)
+      try {
+        console.log(`[EmailService] Sending email to ${to} via SMTP server (${cleanHost}:${smtpPort})...`);
+        const transporter = nodemailer.createTransport({
+          host: cleanHost,
+          port: parseInt(smtpPort, 10),
+          secure: parseInt(smtpPort, 10) === 465,
+          auth: cleanUser ? { user: cleanUser, pass: smtpPass } : undefined,
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
+
+        await transporter.sendMail({
+          from: `"${platformName}" <${fromEmail}>`,
+          to,
+          subject,
+          html: finalHtml,
+        });
+        sent = true;
+      } catch (smtpErr) {
+        console.warn(`[EmailService] Nodemailer SMTP failed (${smtpErr.message}).`);
+        if (brevoApiKey) {
+          console.log(`[EmailService] Falling back to Brevo REST API...`);
+          const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
+          const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+              'accept': 'application/json',
+              'api-key': brevoApiKey,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              sender: { name: `${platformName}`, email: senderEmail },
+              to: [{ email: to }],
+              subject: subject,
+              htmlContent: finalHtml
+            })
+          });
+
+          if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`SMTP failed (${smtpErr.message}) & Brevo Fallback failed (status ${response.status}): ${errBody}`);
+          }
+          sent = true;
+        } else {
+          throw smtpErr;
+        }
+      }
+    } else if (brevoApiKey) {
+      // Brevo REST API Fallback
+      console.log(`[EmailService] Sending email to ${to} via Brevo REST API fallback...`);
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: `${platformName}`, email: senderEmail },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: finalHtml
+        })
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text();
         throw new Error(`Brevo REST API failed (status ${response.status}): ${errBody}`);
       }
       sent = true;
