@@ -65,11 +65,31 @@ db.query(`
   ALTER TABLE courses ADD COLUMN IF NOT EXISTS assessment_days VARCHAR(100);
   ALTER TABLE courses DROP CONSTRAINT IF EXISTS courses_status_check;
   ALTER TABLE courses ADD CONSTRAINT courses_status_check CHECK (status IN ('active', 'archived', 'draft', 'pending_approval', 'rejected'));
-  ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_url TEXT;
-  ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_name VARCHAR(255);
-  ALTER TABLE batches ADD COLUMN IF NOT EXISTS planner_desc TEXT;
-  ALTER TABLE batches ADD COLUMN IF NOT EXISTS teaching_method TEXT;
-  ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_instructions TEXT;
+  ALTER TABLE batches ADD COLUMN IF NOT EXISTS deletion_requested BOOLEAN DEFAULT FALSE;
+  ALTER TABLE batches ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
+
+  ALTER TABLE assignments ADD COLUMN IF NOT EXISTS deletion_requested BOOLEAN DEFAULT FALSE;
+  ALTER TABLE assignments ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
+
+  ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS deletion_requested BOOLEAN DEFAULT FALSE;
+  ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
+
+  ALTER TABLE study_materials ADD COLUMN IF NOT EXISTS deletion_requested BOOLEAN DEFAULT FALSE;
+  ALTER TABLE study_materials ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
+
+  CREATE TABLE IF NOT EXISTS recycle_bin (
+    id VARCHAR(100) PRIMARY KEY,
+    item_type VARCHAR(50) NOT NULL,
+    item_id VARCHAR(100) NOT NULL,
+    item_name VARCHAR(255) NOT NULL,
+    requested_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+    requested_by_role VARCHAR(50),
+    metadata JSONB DEFAULT '{}',
+    status VARCHAR(30) DEFAULT 'pending' CHECK (status IN ('pending', 'approved_deleted', 'restored')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    processed_at TIMESTAMPTZ,
+    processed_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL
+  );
 
   -- Drop UNIQUE constraint on users(email) to allow duplicate emails (handled programmatically by signup rules)
   ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;

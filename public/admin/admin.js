@@ -238,6 +238,7 @@ function navigateTo(page) {
     settings_general: renderSettingsGeneral, settings_reg_payouts: renderSettingsRegPayouts,
     settings_gateways: renderSettingsGateways, settings_tester: renderSettingsTester,
     settings_credentials: renderSettingsCredentials, settings_otp_logs: renderSettingsOtpLogs,
+    restore_system: renderRestoreSystem, recycle_bin: renderRestoreSystem
   };
 
   const render = renders[page];
@@ -5701,5 +5702,118 @@ async function deleteSubscriber(id) {
       showToast(err.message, 'error');
     }
   });
+}
+
+// ── Admin Restore System / Recycle Bin UI & Purge API Console ────
+async function renderRestoreSystem() {
+  loading();
+  try {
+    const items = await apiGet('/admin/recycle-bin');
+    document.getElementById('pageContent').innerHTML = `
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom" style="border-color: var(--border) !important;">
+        <div>
+          <h5 class="fw-bold text-dark mb-1" style="font-family: 'Outfit', sans-serif;"><i class="fas fa-trash-restore text-warning me-2"></i>Admin Restore System & Purge API</h5>
+          <small class="text-muted">Review teacher deletion requests, restore items back to live status, or execute real-time permanent database purges.</small>
+        </div>
+        <button class="btn btn-sm btn-outline-primary" onclick="renderRestoreSystem()"><i class="fas fa-sync-alt me-1"></i> Refresh Queue</button>
+      </div>
+
+      <div class="spx-card mb-4 border-start border-4 border-warning" style="background: rgba(245,158,11,0.03); border-radius: 12px;">
+        <h6 class="fw-bold text-warning mb-2"><i class="fas fa-info-circle me-2"></i>How the Admin Restore System Works (Simple Explanation)</h6>
+        <p class="text-dark small mb-2" style="line-height:1.6;">
+          Whenever a teacher clicks <strong>Delete</strong> on a <strong>Batch, Assignment, Live Class, or Study Material</strong>, the platform <strong>DOES NOT delete it immediately</strong>. Instead, it is moved to this <strong>Restore System Trash Queue</strong> for safety.
+        </p>
+        <div class="row g-3 mt-2">
+          <div class="col-md-6">
+            <div class="p-3 rounded border" style="background:rgba(16,185,129,0.05); border-color:rgba(16,185,129,0.2) !important;">
+              <strong class="text-success d-block mb-1"><i class="fas fa-undo me-1"></i> Option 1: Approve Restore</strong>
+              <small class="text-muted d-block">Clicking <strong>Approve Restore</strong> recovers the item and brings it back live. The teacher and students will see it active again in their dashboard.</small>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-3 rounded border" style="background:rgba(239,68,68,0.05); border-color:rgba(239,68,68,0.2) !important;">
+              <strong class="text-danger d-block mb-1"><i class="fas fa-trash-alt me-1"></i> Option 2: Permanently Purge</strong>
+              <small class="text-muted d-block">Clicking <strong>Permanently Purge</strong> permanently erases the item and all its connected records from the PostgreSQL database forever.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spx-card mb-4">
+        <h6 class="mb-3 fw-bold"><i class="fas fa-clock text-warning me-2"></i>Pending Deletion Requests (${items.length})</h6>
+        ${items.length === 0 ? `
+          <div class="text-center py-5 text-muted">
+            <i class="fas fa-check-circle text-success display-5 d-block mb-2"></i>
+            <p class="mb-0">No pending deletion requests. The restore queue is clean.</p>
+          </div>
+        ` : table(
+          ['Item Name', 'Category', 'Requested By', 'Requested Date', 'Status', 'Actions'],
+          items.map(item => `
+            <tr>
+              <td class="fw-bold text-dark">${item.item_name}</td>
+              <td><span class="badge bg-secondary-subtle text-uppercase px-2 py-1">${item.item_type}</span></td>
+              <td>
+                <div class="fw-semibold text-dark">${item.requested_by_name || 'Teacher'}</div>
+                <small class="text-muted">${item.requested_by_email || ''}</small>
+              </td>
+              <td>${fmtDate(item.created_at)}</td>
+              <td><span class="badge bg-warning-subtle text-warning"><i class="fas fa-clock me-1"></i>Pending Admin Action</span></td>
+              <td>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-xs btn-success px-2.5 py-1" onclick="restoreRecycleItem('${item.id}', '${item.item_name.replace(/'/g, "\\'")}')">
+                    <i class="fas fa-undo me-1"></i> Approve Restore
+                  </button>
+                  <button class="btn btn-xs btn-danger px-2.5 py-1" onclick="approvePurgeItem('${item.id}', '${item.item_name.replace(/'/g, "\\'")}')">
+                    <i class="fas fa-trash-alt me-1"></i> Permanently Purge
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `).join(''),
+          false
+        )}
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function restoreRecycleItem(id, name) {
+  const ok = await window.spxConfirm({
+    title: 'Restore Item Confirmation',
+    badge: 'Admin Restore System',
+    message: `Restore <strong>"${name}"</strong> back to live status?<br><br><small class="text-muted">This item will immediately reappear as active for teachers and students.</small>`,
+    confirmText: 'Restore Item',
+    cancelText: 'Cancel'
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiPost(`/admin/recycle-bin/${id}/restore`);
+    showToast(res.message || 'Item successfully restored!');
+    renderRestoreSystem();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function approvePurgeItem(id, name) {
+  const ok = await window.spxConfirm({
+    title: 'Permanent Purge Warning',
+    badge: 'Database Purge',
+    message: `PERMANENTLY PURGE <strong>"${name}"</strong> from database?<br><br><small class="text-danger">⚠️ Warning: This record will be erased forever and cannot be undone.</small>`,
+    confirmText: 'Permanently Purge',
+    cancelText: 'Cancel'
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiPost(`/admin/recycle-bin/${id}/approve`);
+    showToast(res.message || 'Item permanently purged!');
+    renderRestoreSystem();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 

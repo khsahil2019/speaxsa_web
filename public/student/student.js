@@ -1179,6 +1179,7 @@ async function showCourseDetails(courseId) {
 function showCheckout(courseId, batchId, batchName, fees) {
   const bodyEl = document.getElementById('courseDetailsBody');
   const studentUser = user || { name: '', email: '', phone: '' };
+  window._appliedCoupon = null;
 
   bodyEl.innerHTML = `
     <div class="p-2">
@@ -1197,17 +1198,31 @@ function showCheckout(courseId, batchId, batchName, fees) {
             <div class="fw-bold mb-3" style="color:var(--text-primary);">${batchName}</div>
             
             <div class="d-flex justify-content-between small text-muted mb-2">
-              <span>Fees:</span>
+              <span>Original Fees:</span>
               <strong style="color:var(--text-primary);">₹${fees.toLocaleString('en-IN')}</strong>
+            </div>
+            <div id="discountRow" class="d-flex justify-content-between small text-success mb-2" style="display:none !important;">
+              <span><i class="fas fa-tags me-1"></i>Coupon Discount:</span>
+              <strong id="discountAmountVal" class="text-success">-₹0</strong>
             </div>
             <div class="d-flex justify-content-between small text-muted mb-2">
               <span>Platform Tax:</span>
               <strong style="color:var(--text-primary);">₹0.00</strong>
             </div>
             <hr style="border-color:var(--border);">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center mb-3">
               <span class="fw-bold" style="color:var(--text-primary);">Total Amount:</span>
-              <span class="fs-5 fw-bold text-success" style="font-family:'Outfit',sans-serif; font-weight:800;">₹${fees.toLocaleString('en-IN')}</span>
+              <span class="fs-5 fw-bold text-success" id="totalAmountVal" style="font-family:'Outfit',sans-serif; font-weight:800;">₹${fees.toLocaleString('en-IN')}</span>
+            </div>
+
+            <!-- Promo Coupon Field -->
+            <div class="p-2.5 rounded-3" style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border);">
+              <label class="spx-label mb-1" style="font-size:0.75rem;"><i class="fas fa-ticket-alt me-1 text-primary"></i>Have a Promo Coupon?</label>
+              <div class="input-group input-group-sm">
+                <input type="text" class="form-control spx-input text-uppercase" id="couponCodeInput" placeholder="e.g. SPEAXA50" style="font-size: 0.8rem; background: #0f172a; color: #fff; border: 1px solid var(--border);">
+                <button class="btn btn-sm btn-outline-primary px-3 fw-bold" type="button" id="btnApplyCoupon" onclick="applyCheckoutCoupon(${fees})">Apply</button>
+              </div>
+              <div id="couponStatusMsg" class="small mt-1" style="display:none; font-size: 0.73rem;"></div>
             </div>
           </div>
           <div class="text-muted" style="font-size:0.75rem;">
@@ -1232,7 +1247,7 @@ function showCheckout(courseId, batchId, batchName, fees) {
             </div>
             <div class="mb-3">
               <label class="spx-label">Payment Method</label>
-              <select class="form-select spx-input" id="billMethod" required>
+              <select class="form-select spx-input" id="billMethod" required style="background:#0f172a; color:#fff;">
                 <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
                 <option value="card">Credit / Debit Card</option>
                 <option value="netbanking">Net Banking</option>
@@ -1249,6 +1264,66 @@ function showCheckout(courseId, batchId, batchName, fees) {
   `;
 }
 
+window._appliedCoupon = null;
+
+async function applyCheckoutCoupon(originalFees) {
+  const inputEl = document.getElementById('couponCodeInput');
+  const code = (inputEl?.value || '').trim().toUpperCase();
+  const statusEl = document.getElementById('couponStatusMsg');
+  const btn = document.getElementById('btnApplyCoupon');
+  
+  if (!code) {
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.className = 'text-danger small mt-1';
+      statusEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Please enter a coupon code.';
+    }
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+
+  try {
+    const res = await api('/payments/verify-coupon', {
+      method: 'POST',
+      body: JSON.stringify({ code, amount: originalFees })
+    });
+    
+    const discountAmount = parseFloat(res.discount_amount || 0);
+    const finalAmount = Math.max(0, originalFees - discountAmount);
+    window._appliedCoupon = { code, discountPercent: res.discount_percent, discountAmount, finalAmount };
+
+    const discountRow = document.getElementById('discountRow');
+    if (discountRow) {
+      discountRow.style.setProperty('display', 'flex', 'important');
+    }
+    document.getElementById('discountAmountVal').textContent = `-₹${discountAmount.toLocaleString('en-IN')}`;
+    document.getElementById('totalAmountVal').textContent = `₹${finalAmount.toLocaleString('en-IN')}`;
+    
+    statusEl.style.display = 'block';
+    statusEl.className = 'text-success small mt-1 fw-bold';
+    statusEl.innerHTML = `<i class="fas fa-check-circle me-1"></i>Coupon "${code}" applied! Saved ${res.discount_percent}% (₹${discountAmount.toLocaleString('en-IN')})`;
+    btn.disabled = false;
+    btn.className = 'btn btn-sm btn-success px-3 fw-bold';
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>Applied';
+  } catch (err) {
+    window._appliedCoupon = null;
+    const discountRow = document.getElementById('discountRow');
+    if (discountRow) {
+      discountRow.style.setProperty('display', 'none', 'important');
+    }
+    document.getElementById('totalAmountVal').textContent = `₹${originalFees.toLocaleString('en-IN')}`;
+    statusEl.style.display = 'block';
+    statusEl.className = 'text-danger small mt-1';
+    statusEl.innerHTML = `<i class="fas fa-times-circle me-1"></i>${err.message || 'Invalid or expired coupon'}`;
+    btn.disabled = false;
+    btn.className = 'btn btn-sm btn-outline-primary px-3 fw-bold';
+    btn.innerHTML = 'Apply';
+  }
+}
+window.applyCheckoutCoupon = applyCheckoutCoupon;
+
 async function processMockEnrollment(event, courseId, batchId, fees) {
   event.preventDefault();
   const btn = document.getElementById('btnPay');
@@ -1257,10 +1332,11 @@ async function processMockEnrollment(event, courseId, batchId, fees) {
 
   try {
     const paymentId = `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const couponCode = window._appliedCoupon ? window._appliedCoupon.code : null;
     
     await api(`/student/batches/${batchId}/enroll`, {
       method: 'POST',
-      body: JSON.stringify({ paymentId })
+      body: JSON.stringify({ paymentId, couponCode })
     });
 
     const bodyEl = document.getElementById('courseDetailsBody');

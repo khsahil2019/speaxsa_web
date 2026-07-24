@@ -40,7 +40,7 @@ const batchStorage = multer.diskStorage({
     cb(null, `${req.user.id}_${Date.now()}${path.extname(file.originalname)}`);
   }
 });
-const batchUpload = multer({ storage: batchStorage, limits: { fileSize: 250 * 1024 * 1024 } });
+const batchUpload = multer({ storage: batchStorage, limits: { fileSize: 500 * 1024 * 1024 } });
 
 
 // All teacher routes require authentication
@@ -484,6 +484,32 @@ router.post('/batches/:id/planner', plannerUpload.single('planner'), async (req,
   }
 });
 
+// Teacher Request Batch Deletion -> Sent to Admin Recycle Bin / Restore System
+router.delete('/batches/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const batchRes = await db.query('SELECT id, batch_name FROM batches WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!batchRes.rows.length) return res.status(404).json({ error: 'Batch not found' });
+    const b = batchRes.rows[0];
+
+    await db.query('BEGIN');
+    await db.query("UPDATE batches SET status = 'pending_deletion', deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1", [id]);
+    
+    const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    await db.query(`
+      INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
+      VALUES ($1, 'batch', $2, $3, $4, 'teacher', 'pending')
+    `, [rId, id, b.batch_name, req.user.id]);
+    await db.query('COMMIT');
+
+    await logAudit(req.user.id, 'DELETE_BATCH_REQUEST', 'batch', id, { batch_name: b.batch_name });
+    res.json({ message: 'Batch deletion requested successfully. It has been submitted to Admin Restore System for review/purge.' });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/batches/:id/students', async (req, res) => {
   const { id } = req.params;
   try {
@@ -508,7 +534,7 @@ router.get('/live-classes', async (req, res) => {
       SELECT lc.*, b.batch_name
       FROM live_classes lc
       LEFT JOIN batches b ON b.id = lc.batch_id
-      WHERE lc.teacher_id = $1
+      WHERE lc.teacher_id = $1 AND (lc.deletion_requested = false OR lc.deletion_requested IS NULL)
       ORDER BY lc.created_at DESC
     `, [req.user.id]);
     res.json(result.rows);
@@ -541,8 +567,13 @@ router.post('/live-classes', async (req, res) => {
       return res.status(400).json({ error: 'You already have a live class in progress' });
     }
 
-    const batch = await db.query('SELECT * FROM batches WHERE id = $1 AND teacher_id = $2', [batchId, req.user.id]);
+    const batch = await db.query('SELECT b.*, c.status as course_status FROM batches b LEFT JOIN courses c ON c.id = b.course_id WHERE b.id = $1 AND b.teacher_id = $2', [batchId, req.user.id]);
     if (!batch.rows.length) return res.status(404).json({ error: 'Batch not found' });
+
+    const bRow = batch.rows[0];
+    if (['inactive', 'disabled', 'archived', 'suspended'].includes(bRow.status) || ['inactive', 'disabled', 'archived', 'suspended'].includes(bRow.course_status)) {
+      return res.status(403).json({ error: 'This batch/course has been deactivated by Admin. Please contact Admin to take necessary action to reactivate it.' });
+    }
 
     const id = generateUID('live');
     const channel = batch.rows[0].agora_channel || `speaxa_${batchId}`;
@@ -566,6 +597,55 @@ router.post('/live-classes', async (req, res) => {
     }).catch(err => console.error('[NotificationService] notifyClassScheduled async failed:', err));
 
     res.status(201).json({ message: 'Class scheduled', classId: id, channel });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Teacher Request Live Class Deletion / Cancel -> Sent to Admin Recycle Bin / Restore System
+router.delete('/live-classes/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const lcRes = await db.query('SELECT id, title FROM live_classes WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!lcRes.rows.length) return res.status(404).json({ error: 'Live class not found' });
+    const lc = lcRes.rows[0];
+
+    await db.query('BEGIN');
+    await db.query("UPDATE live_classes SET status = 'cancelled', deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1", [id]);
+    
+    const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    await db.query(`
+      INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
+      VALUES ($1, 'live_class', $2, $3, $4, 'teacher', 'pending')
+    `, [rId, id, lc.title, req.user.id]);
+    await db.query('COMMIT');
+
+    await logAudit(req.user.id, 'DELETE_LIVE_CLASS_REQUEST', 'live_class', id, { title: lc.title });
+    res.json({ message: 'Live class deletion requested. Sent to Admin Restore System for review/purge.' });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Teacher Update Live Class
+router.put('/live-classes/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, classDate, classTime } = req.body;
+  try {
+    const lcRes = await db.query('SELECT id FROM live_classes WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!lcRes.rows.length) return res.status(404).json({ error: 'Live class not found' });
+
+    await db.query(`
+      UPDATE live_classes 
+      SET title = COALESCE($1, title),
+          class_date = COALESCE($2, class_date),
+          class_time = COALESCE($3, class_time)
+      WHERE id = $4 AND teacher_id = $5
+    `, [title || null, classDate || null, classTime || null, id, req.user.id]);
+
+    await logAudit(req.user.id, 'UPDATE_LIVE_CLASS', 'live_class', id, { title });
+    res.json({ message: 'Live class updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -631,7 +711,7 @@ router.get('/assignments', async (req, res) => {
       SELECT a.*, COUNT(s.id) as submission_count
       FROM assignments a
       LEFT JOIN assignment_submissions s ON s.assignment_id = a.id
-      WHERE a.teacher_id = $1
+      WHERE a.teacher_id = $1 AND (a.deletion_requested = false OR a.deletion_requested IS NULL)
     `;
     const params = [req.user.id];
     if (batchId) { query += ' AND a.batch_id = $2'; params.push(batchId); }
@@ -674,6 +754,62 @@ router.post('/assignments', assignUpload.single('file'), async (req, res) => {
     }).catch(err => console.error('[TeacherRoute] notifyNewAssignment error:', err));
 
     res.status(201).json({ message: 'Assignment created', id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Teacher Request Assignment Deletion -> Sent to Admin Recycle Bin / Restore System
+router.delete('/assignments/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const aRes = await db.query('SELECT id, title FROM assignments WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!aRes.rows.length) return res.status(404).json({ error: 'Assignment not found' });
+    const a = aRes.rows[0];
+
+    await db.query('BEGIN');
+    await db.query('UPDATE assignments SET deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1', [id]);
+    
+    const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    await db.query(`
+      INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
+      VALUES ($1, 'assignment', $2, $3, $4, 'teacher', 'pending')
+    `, [rId, id, a.title, req.user.id]);
+    await db.query('COMMIT');
+
+    await logAudit(req.user.id, 'DELETE_ASSIGNMENT_REQUEST', 'assignment', id, { title: a.title });
+    res.json({ message: 'Assignment deletion requested. Sent to Admin Restore System for review/purge.' });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Teacher Update Assignment
+router.put('/assignments/:id', assignUpload.single('file'), async (req, res) => {
+  const { id } = req.params;
+  const { title, description, due_date, max_marks } = req.body;
+  try {
+    const aRes = await db.query('SELECT * FROM assignments WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!aRes.rows.length) return res.status(404).json({ error: 'Assignment not found' });
+
+    let fileUrl = aRes.rows[0].file_url;
+    if (req.file) {
+      fileUrl = `/uploads/assignments/${req.file.filename}`;
+    }
+
+    await db.query(`
+      UPDATE assignments 
+      SET title = COALESCE($1, title),
+          description = COALESCE($2, description),
+          due_date = COALESCE($3, due_date),
+          max_marks = COALESCE($4, max_marks),
+          file_url = $5
+      WHERE id = $6 AND teacher_id = $7
+    `, [title || null, description || null, due_date || null, max_marks ? parseInt(max_marks) : null, fileUrl, id, req.user.id]);
+
+    await logAudit(req.user.id, 'UPDATE_ASSIGNMENT', 'assignment', id, { title });
+    res.json({ message: 'Assignment updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -788,7 +924,7 @@ router.post('/payouts/request', async (req, res) => {
 router.get('/notes', async (req, res) => {
   const { batchId } = req.query;
   try {
-    let query = 'SELECT * FROM study_materials WHERE teacher_id = $1';
+    let query = 'SELECT * FROM study_materials WHERE teacher_id = $1 AND (deletion_requested = false OR deletion_requested IS NULL)';
     const params = [req.user.id];
     if (batchId) { query += ' AND batch_id = $2'; params.push(batchId); }
     query += ' ORDER BY uploaded_at DESC';
@@ -815,6 +951,67 @@ router.post('/notes', notesUpload.single('file'), async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     `, [id, title, description, courseId || null, batchId || null, req.user.id, fileUrl, fileType]);
     res.status(201).json({ message: 'Study material uploaded', id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Teacher Request Study Material Deletion -> Sent to Admin Recycle Bin / Restore System
+router.delete('/notes/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const matRes = await db.query('SELECT id, title FROM study_materials WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!matRes.rows.length) return res.status(404).json({ error: 'Study material not found' });
+    const mat = matRes.rows[0];
+
+    await db.query('BEGIN');
+    await db.query('UPDATE study_materials SET deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1', [id]);
+    
+    const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    await db.query(`
+      INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
+      VALUES ($1, 'study_material', $2, $3, $4, 'teacher', 'pending')
+    `, [rId, id, mat.title, req.user.id]);
+    await db.query('COMMIT');
+
+    await logAudit(req.user.id, 'DELETE_STUDY_MATERIAL_REQUEST', 'study_material', id, { title: mat.title });
+    res.json({ message: 'Study material deletion requested. Sent to Admin Restore System for final review/purge.' });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Teacher Update Study Material
+router.put('/notes/:id', notesUpload.single('file'), async (req, res) => {
+  const { id } = req.params;
+  const { title, description, courseId, batchId } = req.body;
+  try {
+    const matRes = await db.query('SELECT * FROM study_materials WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!matRes.rows.length) return res.status(404).json({ error: 'Study material not found' });
+
+    let fileUrl = matRes.rows[0].file_url;
+    let fileType = matRes.rows[0].file_type;
+    if (req.file) {
+      fileUrl = `/uploads/notes/${req.file.filename}`;
+      fileType = path.extname(req.file.originalname).substr(1);
+    } else if (req.body.file_url && req.body.file_url.trim()) {
+      fileUrl = req.body.file_url.trim();
+    }
+
+    await db.query(`
+      UPDATE study_materials 
+      SET title = COALESCE($1, title),
+          description = COALESCE($2, description),
+          course_id = COALESCE($3, course_id),
+          batch_id = COALESCE($4, batch_id),
+          file_url = $5,
+          file_type = $6
+      WHERE id = $7 AND teacher_id = $8
+    `, [title || null, description || null, courseId || null, batchId || null, fileUrl, fileType, id, req.user.id]);
+
+    await logAudit(req.user.id, 'UPDATE_STUDY_MATERIAL', 'study_material', id, { title });
+    res.json({ message: 'Study material updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

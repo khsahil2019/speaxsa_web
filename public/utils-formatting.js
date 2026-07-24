@@ -13,6 +13,103 @@ if (typeof document !== 'undefined') {
 }
 
 /**
+ * Custom Website Modal Confirmation Dialog (Replaces native browser window.confirm)
+ */
+window.spxConfirm = function(options) {
+  return new Promise((resolve) => {
+    let title = 'Confirm Action';
+    let message = '';
+    let confirmText = 'Confirm';
+    let cancelText = 'Cancel';
+    let badge = 'SPEAXA Confirmation';
+    let isDanger = false;
+
+    if (typeof options === 'string') {
+      message = options;
+    } else if (options && typeof options === 'object') {
+      title = options.title || title;
+      message = options.message || options.body || '';
+      confirmText = options.confirmText || confirmText;
+      cancelText = options.cancelText || cancelText;
+      badge = options.badge || badge;
+      isDanger = !!options.isDanger;
+    }
+
+    // Clean up text styling to guarantee high contrast
+    message = message.replace(/class="text-muted"/g, 'style="color: #475569 !important; font-size: 0.85rem; line-height: 1.5; display: block;"');
+    message = message.replace(/class="fw-bold text-white mb-2"/g, 'style="color: #0f172a !important; font-weight: 700 !important; font-size: 1.05rem !important; margin-bottom: 8px;"');
+
+    let modalEl = document.getElementById('spxGlobalConfirmModal');
+    if (!modalEl) {
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div class="modal fade" id="spxGlobalConfirmModal" tabindex="-1" aria-hidden="true" style="z-index: 1095 !important;">
+          <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content text-start" style="background: #ffffff !important; color: #0f172a !important; border: 1px solid #e2e8f0 !important; border-radius: 18px !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important; overflow: hidden;">
+              <div class="modal-header border-0 pb-0 pt-4 px-4 align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                  <div id="spxConfirmIconBox" style="width:42px; height:42px; border-radius:12px; background:#fef3c7 !important; color:#d97706 !important; display:flex; align-items:center; justify-content:center; font-size:18px; border:1px solid #fde68a !important;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </div>
+                  <div>
+                    <h6 class="modal-title fw-bold mb-0" id="spxConfirmTitle" style="font-family:'Outfit', sans-serif; font-size: 1.08rem !important; color: #0f172a !important;">${title}</h6>
+                    <span class="badge mt-1" id="spxConfirmBadge" style="font-size:0.65rem !important; font-weight:700 !important; text-transform:uppercase; letter-spacing:0.6px; padding: 4px 8px; border-radius: 6px; background:#fef3c7 !important; color:#d97706 !important;">${badge}</span>
+                  </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body px-4 py-3" style="font-size:0.94rem !important; color:#334155 !important; line-height:1.6 !important;" id="spxConfirmMessage">
+                ${message}
+              </div>
+              <div class="modal-footer border-0 pt-2 pb-4 px-4 d-flex gap-3">
+                <button type="button" class="btn flex-grow-1 py-2.5 fw-semibold" id="spxConfirmCancelBtn" data-bs-dismiss="modal" style="border-radius:12px !important; font-size:0.85rem !important; background: #f1f5f9 !important; color: #334155 !important; border: 1px solid #cbd5e1 !important; transition: all 0.2s;">${cancelText}</button>
+                <button type="button" class="btn flex-grow-1 py-2.5 fw-bold" id="spxConfirmOkBtn" style="border-radius:12px !important; font-size:0.85rem !important; background: #0d9488 !important; color: #ffffff !important; border: none !important; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3) !important; transition: all 0.2s;">${confirmText}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(div);
+      modalEl = document.getElementById('spxGlobalConfirmModal');
+    }
+
+    document.getElementById('spxConfirmTitle').textContent = title;
+    document.getElementById('spxConfirmBadge').textContent = badge;
+    document.getElementById('spxConfirmMessage').innerHTML = message.replace(/\n/g, '<br>');
+    document.getElementById('spxConfirmOkBtn').textContent = confirmText;
+    document.getElementById('spxConfirmCancelBtn').textContent = cancelText;
+
+    const okBtn = document.getElementById('spxConfirmOkBtn');
+    if (isDanger) {
+      okBtn.style.background = '#dc2626 !important';
+      okBtn.style.boxShadow = '0 4px 14px rgba(220, 38, 38, 0.3) !important';
+    } else {
+      okBtn.style.background = '#0d9488 !important';
+      okBtn.style.boxShadow = '0 4px 14px rgba(13, 148, 136, 0.3) !important';
+    }
+
+    const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+
+    let actionTaken = false;
+    const onOk = () => {
+      actionTaken = true;
+      bsModal.hide();
+      resolve(true);
+    };
+
+    const onHidden = () => {
+      okBtn.removeEventListener('click', onOk);
+      modalEl.removeEventListener('hidden.bs.modal', onHidden);
+      if (!actionTaken) resolve(false);
+    };
+
+    okBtn.addEventListener('click', onOk);
+    modalEl.addEventListener('hidden.bs.modal', onHidden);
+    bsModal.show();
+  });
+};
+
+/**
  * Formats plain text to preserve bullet points, newlines, bold text, and emojis.
  * @param {string} text - Raw text input
  * @returns {string} Safe HTML string with formatting applied

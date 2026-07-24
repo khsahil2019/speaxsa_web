@@ -46,9 +46,10 @@ async function parseFetchResponse(res) {
 }
 
 async function api(path, opts = {}) {
+  const options = typeof opts === 'string' ? { method: opts } : opts;
   const res = await fetch(`${API}${path}`, {
-    ...opts,
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
+    ...options,
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
   return parseFetchResponse(res);
 }
@@ -2147,13 +2148,23 @@ async function renderBatches() {
           <div class="col-lg-12">
             <div class="spx-card">
               <h6 class="mb-4 fw-bold">My Batches</h6>
-              ${batches.length ? batches.map(b => `
-                <div class="p-3 mb-3 rounded-3" style="background:rgba(255,255,255,.01);border:1px solid var(--border)">
+              ${batches.length ? batches.map(b => {
+                const isDeactivated = ['inactive', 'disabled', 'archived', 'suspended'].includes(b.status) || ['inactive', 'disabled', 'archived', 'suspended'].includes(b.course_status);
+                return `
+                <div class="p-3 mb-3 rounded-3 ${isDeactivated ? 'border-danger bg-danger-subtle bg-opacity-10' : ''}" style="background:rgba(255,255,255,.01);border:1px solid ${isDeactivated ? '#ef4444' : 'var(--border)'}">
                   <div class="d-flex align-items-start gap-3">
                     <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📚</div>
                     <div class="flex-grow-1">
-                      <h6 class="text-dark fw-bold mb-1">${b.batch_name}</h6>
-                      <div class="text-muted small">${b.course_title || 'Course'}</div>
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <h6 class="text-dark fw-bold mb-0">${b.batch_name}</h6>
+                        ${isDeactivated ? '<span class="badge bg-danger text-white px-2 py-1" style="font-size:0.7rem;"><i class="fas fa-ban me-1"></i>Deactivated by Admin</span>' : '<span class="badge bg-success-subtle text-success px-2 py-0.5" style="font-size:0.68rem;">Active</span>'}
+                      </div>
+                      <div class="text-muted small mt-0.5">${b.course_title || 'Course'}</div>
+                      ${isDeactivated ? `
+                        <div class="mt-2 p-2 rounded bg-danger-subtle text-danger border border-danger-subtle" style="font-size:0.75rem; line-height: 1.35;">
+                          <i class="fas fa-exclamation-triangle me-1"></i><strong>Deactivated by Admin:</strong> This batch/course has been toggled off by Admin. Please contact Admin to take necessary action to reactivate it.
+                        </div>
+                      ` : ''}
                       <div class="d-flex flex-wrap gap-3 mt-2 text-muted small">
                         <span><i class="fas fa-users me-1"></i>${b.enrolled_count || 0} / ${b.capacity} Students</span>
                         <span><i class="fas fa-calendar me-1"></i>${(b.days_of_week || []).join(', ')}</span>
@@ -2174,15 +2185,19 @@ async function renderBatches() {
                         </div>
                       ` : ''}
                     </div>
-                    <div class="d-flex gap-2">
-                      <button class="btn btn-sm btn-outline-primary" onclick="openUploadPlannerModal('${b.id}', '${b.batch_name.replace(/'/g, "\\'")}')">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                      <button class="btn btn-xs btn-outline-primary px-2.5 py-1" style="font-size:0.72rem;" ${isDeactivated ? 'disabled' : ''} onclick="openUploadPlannerModal('${b.id}', '${b.batch_name.replace(/'/g, "\\'")}')">
                         <i class="fas fa-upload me-1"></i> Planner
                       </button>
-                      <button class="btn btn-sm btn-spx" onclick="viewBatchStudents('${b.id}', '${b.batch_name}')">Students</button>
+                      <button class="btn btn-xs btn-spx px-2.5 py-1" style="font-size:0.72rem;" onclick="viewBatchStudents('${b.id}', '${b.batch_name}')">Students</button>
+                      <button class="btn btn-xs btn-outline-danger px-2.5 py-1" style="font-size:0.72rem;" onclick="requestDeleteBatch('${b.id}', '${b.batch_name.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-trash-alt me-1"></i> Delete
+                      </button>
                     </div>
                   </div>
                 </div>
-              `).join('') : '<p class="text-muted text-center py-4">No batches created yet.</p>'}
+              `;
+              }).join('') : '<p class="text-muted text-center py-4">No batches created yet.</p>'}
             </div>
           </div>
         </div>
@@ -2206,8 +2221,8 @@ async function renderBatches() {
                 <div class="mb-3">
                   <label class="spx-label">Course</label>
                   <div class="custom-searchable-select-container" id="customCourseContainer">
-                    <button type="button" class="form-select spx-input text-start" id="customBatchCourseTrigger" onclick="toggleCustomBatchCourseDropdown(event)" style="background-image: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3e%3cpath fill=%27none%27 stroke=%27%23ffffff%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27m2 5 6 6 6-6%27/%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 16px 12px; padding-right: 2.25rem;">
-                      <span id="customBatchCourseLabel" style="color: #64748b;">Select Course</span>
+                    <button type="button" class="form-select spx-input text-start" id="customBatchCourseTrigger" onclick="toggleCustomBatchCourseDropdown(event)" style="background-color: #0f172a !important; color: #ffffff !important; border: 1px solid var(--border) !important; background-image: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3e%3cpath fill=%27none%27 stroke=%27%23ffffff%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27m2 5 6 6 6-6%27/%3e%3c/svg%3e') !important; background-repeat: no-repeat !important; background-position: right 0.75rem center !important; background-size: 16px 12px !important; padding-right: 2.25rem !important;">
+                      <span id="customBatchCourseLabel" style="color: #94a3b8 !important; font-weight: 500;">Select Course</span>
                     </button>
                     
                     <div class="custom-searchable-select-menu" id="customBatchCourseMenu">
@@ -2305,7 +2320,7 @@ async function renderBatches() {
                   <div class="row g-2 mt-1">
                     <div class="col-sm-6">
                       <label class="small text-muted mb-1" style="font-size:0.68rem; text-transform:uppercase;">Option A: Upload Video File</label>
-                      <input type="file" class="form-control spx-input" id="batchDemoVideo" accept="video/mp4,video/webm">
+                      <input type="file" class="form-control spx-input" id="batchDemoVideo" accept="video/*,.mp4,.webm,.mov,.avi,.mkv,.m4v,.flv,.3gp,.wmv,.ts,.quicktime">
                     </div>
                     <div class="col-sm-6">
                       <label class="small text-muted mb-1" style="font-size:0.68rem; text-transform:uppercase;">Option B: Paste Video Link URL</label>
@@ -2334,6 +2349,356 @@ async function renderBatches() {
 function switchBatchTab(tab) {
   window._batchActiveTab = tab;
   renderBatches();
+}
+
+async function requestDeleteBatch(batchId, batchName) {
+  const ok = await window.spxConfirm({
+    title: 'Delete Batch Confirmation',
+    badge: 'Teacher Action',
+    message: `
+      <div style="color: #0f172a !important; font-weight: 700 !important; font-size: 1.05rem !important; margin-bottom: 10px !important;">Delete batch "${batchName}"?</div>
+      <div style="background: #fffbeb !important; border: 1px solid #fde68a !important; color: #92400e !important; padding: 12px 14px !important; border-radius: 10px !important; font-size: 0.86rem !important; line-height: 1.5 !important;">
+        <i class="fas fa-info-circle me-1" style="color: #d97706 !important;"></i> <strong>Note:</strong> It will be moved to the Admin Restore System for safety. Admin can restore it back or permanently delete it.
+      </div>
+    `,
+    confirmText: 'Move to Trash',
+    cancelText: 'Cancel'
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/teacher/batches/${batchId}`, { method: 'DELETE' });
+    showToast(res.message || 'Deletion requested. Sent to Admin Restore System.');
+    renderBatches();
+  } catch (err) {
+    showToast(err.message || 'Failed to request batch deletion.', 'error');
+  }
+}
+
+async function requestDeleteAssignment(assignmentId, title) {
+  const ok = await window.spxConfirm({
+    title: 'Delete Assignment Confirmation',
+    badge: 'Teacher Action',
+    message: `
+      <div style="color: #0f172a !important; font-weight: 700 !important; font-size: 1.05rem !important; margin-bottom: 10px !important;">Delete assignment "${title}"?</div>
+      <div style="background: #fffbeb !important; border: 1px solid #fde68a !important; color: #92400e !important; padding: 12px 14px !important; border-radius: 10px !important; font-size: 0.86rem !important; line-height: 1.5 !important;">
+        <i class="fas fa-info-circle me-1" style="color: #d97706 !important;"></i> <strong>Note:</strong> It will be moved to the Admin Restore System for safety. Admin can restore it back or permanently delete it.
+      </div>
+    `,
+    confirmText: 'Move to Trash',
+    cancelText: 'Cancel'
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/teacher/assignments/${assignmentId}`, { method: 'DELETE' });
+    showToast(res.message || 'Deletion requested. Sent to Admin Restore System.');
+    if (typeof renderAssignments === 'function') renderAssignments();
+  } catch (err) {
+    showToast(err.message || 'Failed to request assignment deletion.', 'error');
+  }
+}
+
+async function requestDeleteLiveClass(classId, title) {
+  const ok = await window.spxConfirm({
+    title: 'Delete Live Class Confirmation',
+    badge: 'Teacher Action',
+    message: `
+      <div style="color: #0f172a !important; font-weight: 700 !important; font-size: 1.05rem !important; margin-bottom: 10px !important;">Delete live class "${title}"?</div>
+      <div style="background: #fffbeb !important; border: 1px solid #fde68a !important; color: #92400e !important; padding: 12px 14px !important; border-radius: 10px !important; font-size: 0.86rem !important; line-height: 1.5 !important;">
+        <i class="fas fa-info-circle me-1" style="color: #d97706 !important;"></i> <strong>Note:</strong> It will be moved to the Admin Restore System for safety. Admin can restore it back or permanently delete it.
+      </div>
+    `,
+    confirmText: 'Move to Trash',
+    cancelText: 'Cancel'
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/teacher/live-classes/${classId}`, { method: 'DELETE' });
+    showToast(res.message || 'Deletion requested. Sent to Admin Restore System.');
+    if (typeof renderLiveClasses === 'function') renderLiveClasses();
+  } catch (err) {
+    showToast(err.message || 'Failed to request live class deletion.', 'error');
+  }
+}
+
+async function requestDeleteStudyMaterial(materialId, title) {
+  const ok = await window.spxConfirm({
+    title: 'Delete Material Confirmation',
+    badge: 'Teacher Action',
+    message: `
+      <div style="color: #0f172a !important; font-weight: 700 !important; font-size: 1.05rem !important; margin-bottom: 10px !important;">Delete study material "${title}"?</div>
+      <div style="background: #fffbeb !important; border: 1px solid #fde68a !important; color: #92400e !important; padding: 12px 14px !important; border-radius: 10px !important; font-size: 0.86rem !important; line-height: 1.5 !important;">
+        <i class="fas fa-info-circle me-1" style="color: #d97706 !important;"></i> <strong>Note:</strong> It will be moved to the Admin Restore System for safety. Admin can restore it back or permanently delete it.
+      </div>
+    `,
+    confirmText: 'Move to Trash',
+    cancelText: 'Cancel'
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/teacher/notes/${materialId}`, { method: 'DELETE' });
+    showToast(res.message || 'Deletion requested. Sent to Admin Restore System.');
+    if (typeof renderNotes === 'function') renderNotes();
+  } catch (err) {
+    showToast(err.message || 'Failed to request study material deletion.', 'error');
+  }
+}
+
+function editStudyMaterial(id, title, description, file_url) {
+  let modalEl = document.getElementById('editStudyMaterialModal');
+  if (!modalEl) {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div class="modal fade" id="editStudyMaterialModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content" style="background:#0f172a; color:#fff; border:1px solid var(--border); border-radius:12px;">
+            <div class="modal-header border-secondary">
+              <h5 class="modal-title fw-bold text-white"><i class="fas fa-edit text-primary me-2"></i>Edit Study Material</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form onsubmit="saveEditStudyMaterial(event)">
+              <input type="hidden" id="editNoteId">
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="spx-label">Material Title *</label>
+                  <input type="text" class="form-control spx-input" id="editNoteTitle" required style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Description *</label>
+                  <textarea class="form-control spx-input" id="editNoteDesc" rows="3" required style="background:#1e293b; color:#fff; border:1px solid var(--border);"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Replace File OR Update Web URL Link</label>
+                  <input type="file" class="form-control spx-input mb-2" id="editNoteFile" style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                  <input type="text" class="form-control spx-input" id="editNoteUrl" placeholder="https://..." style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                </div>
+              </div>
+              <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-spx">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+    modalEl = document.getElementById('editStudyMaterialModal');
+  }
+
+  document.getElementById('editNoteId').value = id;
+  document.getElementById('editNoteTitle').value = title;
+  document.getElementById('editNoteDesc').value = description;
+  document.getElementById('editNoteUrl').value = file_url;
+  document.getElementById('editNoteFile').value = '';
+
+  const modalObj = new bootstrap.Modal(modalEl);
+  modalObj.show();
+}
+
+async function saveEditStudyMaterial(e) {
+  e.preventDefault();
+  const id = document.getElementById('editNoteId').value;
+  const title = document.getElementById('editNoteTitle').value;
+  const description = document.getElementById('editNoteDesc').value;
+  const file_url = document.getElementById('editNoteUrl').value;
+  const fileInput = document.getElementById('editNoteFile').files[0];
+
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('description', description);
+  if (file_url) formData.append('file_url', file_url);
+  if (fileInput) formData.append('file', fileInput);
+
+  try {
+    const res = await fetch(`${API}/teacher/notes/${id}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    const data = await parseFetchResponse(res);
+    if (data.error) throw new Error(data.error);
+
+    showToast(data.message || 'Study material updated successfully!');
+    const modalEl = document.getElementById('editStudyMaterialModal');
+    const modalObj = bootstrap.Modal.getInstance(modalEl);
+    if (modalObj) modalObj.hide();
+    if (typeof renderNotes === 'function') renderNotes();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function editLiveClass(id, title, classDate, classTime) {
+  let modalEl = document.getElementById('editLiveClassModal');
+  if (!modalEl) {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div class="modal fade" id="editLiveClassModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content" style="background:#0f172a; color:#fff; border:1px solid var(--border); border-radius:12px;">
+            <div class="modal-header border-secondary">
+              <h5 class="modal-title fw-bold text-white"><i class="fas fa-edit text-primary me-2"></i>Edit Scheduled Live Class</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form onsubmit="saveEditLiveClass(event)">
+              <input type="hidden" id="editClassId">
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="spx-label">Class Title *</label>
+                  <input type="text" class="form-control spx-input" id="editClassTitle" required style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Class Date *</label>
+                  <input type="date" class="form-control spx-input" id="editClassDate" required style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Class Time *</label>
+                  <input type="time" class="form-control spx-input" id="editClassTime" required style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                </div>
+              </div>
+              <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-spx">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+    modalEl = document.getElementById('editLiveClassModal');
+  }
+
+  document.getElementById('editClassId').value = id;
+  document.getElementById('editClassTitle').value = title;
+  document.getElementById('editClassDate').value = classDate ? classDate.split('T')[0] : '';
+  document.getElementById('editClassTime').value = classTime || '';
+
+  const modalObj = new bootstrap.Modal(modalEl);
+  modalObj.show();
+}
+
+async function saveEditLiveClass(e) {
+  e.preventDefault();
+  const id = document.getElementById('editClassId').value;
+  const title = document.getElementById('editClassTitle').value;
+  const classDate = document.getElementById('editClassDate').value;
+  const classTime = document.getElementById('editClassTime').value;
+
+  try {
+    const res = await api(`/teacher/live-classes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title, classDate, classTime })
+    });
+    showToast(res.message || 'Live class updated successfully!');
+    const modalEl = document.getElementById('editLiveClassModal');
+    const modalObj = bootstrap.Modal.getInstance(modalEl);
+    if (modalObj) modalObj.hide();
+    if (typeof renderLiveClasses === 'function') renderLiveClasses();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function editAssignment(id, title, description, due_date, max_marks) {
+  let modalEl = document.getElementById('editAssignmentModal');
+  if (!modalEl) {
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div class="modal fade" id="editAssignmentModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content" style="background:#0f172a; color:#fff; border:1px solid var(--border); border-radius:12px;">
+            <div class="modal-header border-secondary">
+              <h5 class="modal-title fw-bold text-white"><i class="fas fa-edit text-primary me-2"></i>Edit Assignment</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form onsubmit="saveEditAssignment(event)">
+              <input type="hidden" id="editAssignId">
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="spx-label">Assignment Title *</label>
+                  <input type="text" class="form-control spx-input" id="editAssignTitle" required style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Description *</label>
+                  <textarea class="form-control spx-input" id="editAssignDesc" rows="3" required style="background:#1e293b; color:#fff; border:1px solid var(--border);"></textarea>
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="spx-label">Due Date *</label>
+                    <input type="date" class="form-control spx-input" id="editAssignDueDate" required style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                  </div>
+                  <div class="col-6">
+                    <label class="spx-label">Max Marks *</label>
+                    <input type="number" class="form-control spx-input" id="editAssignMaxMarks" required style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="spx-label">Replace Attachment File (Optional)</label>
+                  <input type="file" class="form-control spx-input" id="editAssignFile" style="background:#1e293b; color:#fff; border:1px solid var(--border);">
+                </div>
+              </div>
+              <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-spx">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+    modalEl = document.getElementById('editAssignmentModal');
+  }
+
+  document.getElementById('editAssignId').value = id;
+  document.getElementById('editAssignTitle').value = title;
+  document.getElementById('editAssignDesc').value = description;
+  document.getElementById('editAssignDueDate').value = due_date ? due_date.split('T')[0] : '';
+  document.getElementById('editAssignMaxMarks').value = max_marks || 100;
+  document.getElementById('editAssignFile').value = '';
+
+  const modalObj = new bootstrap.Modal(modalEl);
+  modalObj.show();
+}
+
+async function saveEditAssignment(e) {
+  e.preventDefault();
+  const id = document.getElementById('editAssignId').value;
+  const title = document.getElementById('editAssignTitle').value;
+  const description = document.getElementById('editAssignDesc').value;
+  const due_date = document.getElementById('editAssignDueDate').value;
+  const max_marks = document.getElementById('editAssignMaxMarks').value;
+  const fileInput = document.getElementById('editAssignFile').files[0];
+
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('description', description);
+  formData.append('due_date', due_date);
+  formData.append('max_marks', max_marks);
+  if (fileInput) formData.append('file', fileInput);
+
+  try {
+    const res = await fetch(`${API}/teacher/assignments/${id}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    const data = await parseFetchResponse(res);
+    if (data.error) throw new Error(data.error);
+
+    showToast(data.message || 'Assignment updated successfully!');
+    const modalEl = document.getElementById('editAssignmentModal');
+    const modalObj = bootstrap.Modal.getInstance(modalEl);
+    if (modalObj) modalObj.hide();
+    if (typeof renderAssignments === 'function') renderAssignments();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 async function handleCourseChange(courseId) {
@@ -3039,13 +3404,18 @@ async function renderLiveClasses() {
                       <td>${c.batch_name || 'Batch'}</td>
                       <td><span class="badge ${c.status === 'live' ? 'bg-danger' : c.status === 'ended' ? 'bg-secondary' : 'bg-primary'}">${c.status.toUpperCase()}</span></td>
                       <td>
-                        ${c.status === 'scheduled' ? `
-                          <button class="btn btn-sm btn-spx" onclick="startClass('${c.id}')">Start Class</button>
-                        ` : c.status === 'live' ? `
-                          <a href="/live/room.html?classId=${c.id}&role=teacher" class="btn btn-sm btn-danger">Enter Room</a>
-                        ` : `
-                          <span class="text-muted">Completed</span>
-                        `}
+                        <div class="d-flex gap-2 align-items-center">
+                          ${c.status === 'scheduled' ? `
+                            <button class="btn btn-xs btn-spx px-2.5 py-1 fw-bold" style="font-size:0.72rem; border-radius:6px; height:28px;" onclick="startClass('${c.id}')">Start Class</button>
+                          ` : c.status === 'live' ? `
+                            <a href="/live/room.html?classId=${c.id}&role=teacher" class="btn btn-xs btn-danger px-2.5 py-1 fw-bold" style="font-size:0.72rem; border-radius:6px; height:28px;">Enter Room</a>
+                          ` : `
+                            <span class="text-muted small">Completed</span>
+                          `}
+                          <button class="btn btn-xs btn-outline-danger px-2 py-1 d-inline-flex align-items-center gap-1" style="font-size:0.7rem; border-radius:6px; height:28px;" onclick="requestDeleteLiveClass('${c.id}', '${c.title.replace(/'/g, "\\'")}')">
+                            <i class="fas fa-trash-alt" style="font-size:0.68rem;"></i> <span>Delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   `).join('') || '<tr><td colspan="6" class="text-center text-muted">No live classes scheduled.</td></tr>'}
@@ -3189,9 +3559,12 @@ async function renderAssignments() {
                     <div class="text-muted small mt-2 mb-0">${formatRichText(a.description) || ''}</div>
                     ${a.file_url ? `<a href="${a.file_url}" target="_blank" class="d-inline-block mt-2 small text-primary"><i class="fas fa-file-pdf"></i> View Attachment</a>` : ''}
                   </div>
-                  <div>
-                    <button class="btn btn-sm btn-spx" onclick="viewSubmissions('${a.id}')">
+                  <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-xs btn-spx px-2.5 py-1" style="font-size:0.72rem;" onclick="viewSubmissions('${a.id}')">
                       Submissions (${a.submission_count || 0})
+                    </button>
+                    <button class="btn btn-xs btn-outline-danger px-2.5 py-1" style="font-size:0.72rem;" onclick="requestDeleteAssignment('${a.id}', '${a.title.replace(/'/g, "\\'")}')">
+                      <i class="fas fa-trash-alt me-1"></i> Delete
                     </button>
                   </div>
                 </div>
@@ -3603,7 +3976,15 @@ async function renderNotes() {
                     <div class="text-muted small">${formatRichText(n.description) || ''}</div>
                     <div class="text-muted" style="font-size:.7rem;margin-top:4px;">Uploaded: ${fmtDate(n.uploaded_at)} • Type: <strong>${n.file_type.toUpperCase()}</strong></div>
                   </div>
-                  <a href="${n.file_url}" target="_blank" class="btn btn-sm btn-spx"><i class="fas fa-external-link-alt"></i> Access</a>
+                  <div class="d-flex gap-2 align-items-center">
+                    <a href="${n.file_url}" target="_blank" class="btn btn-xs btn-spx px-2.5 py-1" style="font-size:0.72rem;"><i class="fas fa-external-link-alt me-1"></i> Access</a>
+                    <button class="btn btn-xs btn-outline-primary px-2.5 py-1" style="font-size:0.72rem;" onclick="editStudyMaterial('${n.id}', '${n.title.replace(/'/g, "\\'")}', '${(n.description || '').replace(/'/g, "\\'")}', '${(n.file_url || '').replace(/'/g, "\\'")}')">
+                      <i class="fas fa-edit me-1"></i> Edit
+                    </button>
+                    <button class="btn btn-xs btn-outline-danger px-2.5 py-1" style="font-size:0.72rem;" onclick="requestDeleteStudyMaterial('${n.id}', '${n.title.replace(/'/g, "\\'")}')">
+                      <i class="fas fa-trash-alt me-1"></i> Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             `).join('') : '<p class="text-muted text-center">No study materials published yet.</p>'}
@@ -4503,24 +4884,25 @@ style.innerHTML = `
     scrollbar-color: rgba(255,255,255,0.1) transparent;
   }
   .custom-searchable-select-option {
-    padding: 8px 12px;
+    padding: 10px 12px;
     cursor: pointer;
     border-radius: 6px;
-    color: #cbd5e1;
+    color: #f8fafc !important;
+    background: #0f172a !important;
     transition: background 0.2s, color 0.2s;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
   }
   .custom-searchable-select-option:hover {
-    background: rgba(60, 189, 176, 0.15);
-    color: var(--primary);
+    background: rgba(13, 148, 136, 0.25) !important;
+    color: #14b8a6 !important;
   }
   .custom-searchable-select-option.selected {
-    background: rgba(60, 189, 176, 0.25);
-    color: var(--primary) !important;
-    font-weight: 600;
+    background: rgba(13, 148, 136, 0.35) !important;
+    color: #14b8a6 !important;
+    font-weight: 700;
   }
   .custom-searchable-select-option.no-results {
-    color: #64748b;
+    color: #94a3b8 !important;
     text-align: center;
     cursor: default;
     pointer-events: none;
@@ -4585,7 +4967,8 @@ function selectCustomBatchCourse(id, labelText, event) {
   const label = document.getElementById('customBatchCourseLabel');
   if (label) {
     label.textContent = labelText;
-    label.style.color = '#ffffff';
+    label.style.setProperty('color', '#ffffff', 'important');
+    label.style.setProperty('font-weight', '600', 'important');
   }
   
   const nativeSelect = document.getElementById('batchCourse');

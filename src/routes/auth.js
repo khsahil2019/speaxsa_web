@@ -181,9 +181,6 @@ router.post('/register', async (req, res) => {
       `);
     } catch (sErr) {}
 
-    const reqEmailSetting = await SystemConfigService.getSetting('require_email_verification', 'false');
-    const emailVerifiedOnInit = String(reqEmailSetting) !== 'true';
-
     await db.query(`
       INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url,
         approval_status, teacher_level, qualification, experience_years, subject_expertise,
@@ -195,7 +192,7 @@ router.post('/register', async (req, res) => {
       subject_expertise || null, languages || null, address || null, board || null,
       grade || null, studentCode, referralCode, alt_email || null, mobile_number || null,
       typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}'),
-      referredById, isVerifiedOnInit, emailVerifiedOnInit
+      referredById, isVerifiedOnInit, false
     ]);
 
     // Create teacher SOP entry if teacher
@@ -776,7 +773,7 @@ async function sendEmailVerificationLink(userId, req) {
   const verificationLink = `${baseUrl}/api/auth/verify-email?token=${token}`;
 
   const { sendEmail } = require('../services/EmailService');
-  await sendEmail({
+  const mailRes = await sendEmail({
     to: user.email,
     subject: 'Verify your Speaxa Email Address',
     html: `
@@ -798,12 +795,12 @@ async function sendEmailVerificationLink(userId, req) {
                 SPEAXA
               </h1>
               <p style="margin:6px 0 0 0; color:#b4e5df; font-size:13px; font-weight:500;">
-                Empowering Next-Gen Education
+                Empowering Minds, Shaping Futures
               </p>
             </td>
           </tr>
           <tr>
-            <td style="padding:40px 40px 30px 40px;">
+            <td style="padding:36px 40px; background-color:#ffffff;">
               <h2 style="margin:0 0 16px 0; color:#0f172a; font-size:20px; font-weight:700;">
                 Verify Your Email Address
               </h2>
@@ -855,6 +852,11 @@ async function sendEmailVerificationLink(userId, req) {
     `,
     type: 'otp'
   });
+
+  if (mailRes && mailRes.sent === false) {
+    console.error('[sendEmailVerificationLink] Email delivery failed:', mailRes.error);
+    throw new Error(mailRes.error || 'Failed to deliver email verification link');
+  }
 }
 
 // ── GET /api/auth/verification-status ───────────────────────

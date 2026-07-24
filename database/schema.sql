@@ -5,6 +5,11 @@
 -- ============================================================
 
 -- Drop all tables in reverse dependency order
+DROP TABLE IF EXISTS email_campaigns CASCADE;
+DROP TABLE IF EXISTS email_logs CASCADE;
+DROP TABLE IF EXISTS parent_teacher_chats CASCADE;
+DROP TABLE IF EXISTS email_verification_tokens CASCADE;
+DROP TABLE IF EXISTS recycle_bin CASCADE;
 DROP TABLE IF EXISTS teacher_wallet_ledger CASCADE;
 DROP TABLE IF EXISTS teacher_rewards CASCADE;
 DROP TABLE IF EXISTS teacher_allowances CASCADE;
@@ -203,6 +208,8 @@ CREATE TABLE batches (
   batch_instructions TEXT,
   is_free_demo    BOOLEAN DEFAULT false,
   demo_video_url  TEXT,
+  deletion_requested BOOLEAN DEFAULT false,
+  deletion_requested_at TIMESTAMPTZ,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
@@ -239,6 +246,8 @@ CREATE TABLE live_classes (
   end_reason      VARCHAR(100),
   recording_url   TEXT,
   is_free_demo    BOOLEAN DEFAULT false,
+  deletion_requested BOOLEAN DEFAULT false,
+  deletion_requested_at TIMESTAMPTZ,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -327,6 +336,8 @@ CREATE TABLE assignments (
   due_date        TIMESTAMPTZ,
   max_marks       INT DEFAULT 100,
   status          VARCHAR(20) DEFAULT 'active', -- active, closed
+  deletion_requested BOOLEAN DEFAULT false,
+  deletion_requested_at TIMESTAMPTZ,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -602,6 +613,7 @@ CREATE TABLE otp_tokens (
   delivery_method VARCHAR(50),
   delivery_status VARCHAR(50) DEFAULT 'pending',
   delivery_error  TEXT,
+  attempts        INT DEFAULT 0,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -662,6 +674,8 @@ CREATE TABLE study_materials (
   teacher_id  VARCHAR(100) REFERENCES users(id),
   file_url    TEXT,
   file_type   VARCHAR(50), -- pdf, video, image, link
+  deletion_requested BOOLEAN DEFAULT false,
+  deletion_requested_at TIMESTAMPTZ,
   uploaded_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -865,6 +879,79 @@ CREATE TABLE IF NOT EXISTS subscribers (
   email VARCHAR(255) UNIQUE NOT NULL,
   source VARCHAR(100) DEFAULT 'landing_page',
   status VARCHAR(50) DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 40. RECYCLE BIN / ADMIN RESTORE SYSTEM
+-- ============================================================
+CREATE TABLE IF NOT EXISTS recycle_bin (
+  id                  VARCHAR(100) PRIMARY KEY,
+  item_type           VARCHAR(50) NOT NULL, -- batch, assignment, live_class, study_material
+  item_id             VARCHAR(100) NOT NULL,
+  item_name           VARCHAR(255) NOT NULL,
+  requested_by        VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+  requested_by_role   VARCHAR(50) DEFAULT 'teacher',
+  metadata            JSONB DEFAULT '{}',
+  status              VARCHAR(30) DEFAULT 'pending' CHECK (status IN ('pending', 'approved_deleted', 'restored')),
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  processed_at        TIMESTAMPTZ,
+  processed_by        VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_recycle_bin_status ON recycle_bin (status);
+
+-- ============================================================
+-- 41. EMAIL VERIFICATION TOKENS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token VARCHAR(255) NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 42. PARENT TEACHER CHATS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS parent_teacher_chats (
+  id SERIAL PRIMARY KEY,
+  parent_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  teacher_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  student_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sender_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  image_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  is_read BOOLEAN DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS idx_pt_chats_lookup ON parent_teacher_chats (parent_id, teacher_id, student_id);
+
+-- ============================================================
+-- 43. EMAIL LOGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_logs (
+  id VARCHAR(100) PRIMARY KEY,
+  recipient_email VARCHAR(200) NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  body TEXT NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  status VARCHAR(30) DEFAULT 'sent',
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 44. EMAIL CAMPAIGNS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_campaigns (
+  id VARCHAR(100) PRIMARY KEY,
+  subject VARCHAR(255) NOT NULL,
+  body TEXT NOT NULL,
+  target_role VARCHAR(50) NOT NULL,
+  recipient_count INT DEFAULT 0,
+  sent_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -2337,4 +2337,107 @@ router.post('/subscribers/send-campaign', async (req, res) => {
   }
 });
 
+// ── Admin Restore System / Recycle Bin ────────────────────────
+router.get('/recycle-bin', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT rb.*, u.name as requested_by_name, u.email as requested_by_email
+      FROM recycle_bin rb
+      LEFT JOIN users u ON u.id = rb.requested_by
+      WHERE rb.status = 'pending'
+      ORDER BY rb.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/recycle-bin/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rbRes = await db.query('SELECT * FROM recycle_bin WHERE id = $1', [id]);
+    if (!rbRes.rows.length) return res.status(404).json({ error: 'Recycle bin item not found' });
+    const item = rbRes.rows[0];
+
+    await db.query('BEGIN');
+
+    if (item.item_type === 'batch') {
+      await db.query('DELETE FROM batch_students WHERE batch_id = $1', [item.item_id]);
+      await db.query('DELETE FROM live_classes WHERE batch_id = $1', [item.item_id]);
+      await db.query('DELETE FROM assignments WHERE batch_id = $1', [item.item_id]);
+      await db.query('DELETE FROM batches WHERE id = $1', [item.item_id]);
+    } else if (item.item_type === 'assignment') {
+      await db.query('DELETE FROM assignment_submissions WHERE assignment_id = $1', [item.item_id]);
+      await db.query('DELETE FROM assignments WHERE id = $1', [item.item_id]);
+    } else if (item.item_type === 'live_class') {
+      await db.query('DELETE FROM live_classes WHERE id = $1', [item.item_id]);
+    } else if (item.item_type === 'study_material' || item.item_type === 'notes') {
+      await db.query('DELETE FROM study_materials WHERE id = $1', [item.item_id]);
+    } else if (item.item_type === 'course') {
+      await db.query('DELETE FROM courses WHERE id = $1', [item.item_id]);
+    }
+
+    await db.query("UPDATE recycle_bin SET status = 'approved_deleted', processed_at = NOW(), processed_by = $1 WHERE id = $2", [req.user.id, id]);
+    await db.query('COMMIT');
+
+    await logAudit(req.user.id, 'PURGE_ITEM_APPROVED', item.item_type, item.item_id, { item_name: item.item_name });
+    res.json({ message: `Item (${item.item_name}) has been permanently purged from the database.` });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/recycle-bin/:id/restore', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const rbRes = await db.query('SELECT * FROM recycle_bin WHERE id = $1', [id]);
+    if (!rbRes.rows.length) return res.status(404).json({ error: 'Recycle bin item not found' });
+    const item = rbRes.rows[0];
+
+    await db.query('BEGIN');
+
+    if (item.item_type === 'batch') {
+      await db.query("UPDATE batches SET status = 'active', deletion_requested = false WHERE id = $1", [item.item_id]);
+    } else if (item.item_type === 'assignment') {
+      await db.query('UPDATE assignments SET deletion_requested = false WHERE id = $1', [item.item_id]);
+    } else if (item.item_type === 'live_class') {
+      await db.query("UPDATE live_classes SET status = 'scheduled', deletion_requested = false WHERE id = $1", [item.item_id]);
+    } else if (item.item_type === 'study_material' || item.item_type === 'notes') {
+      await db.query('UPDATE study_materials SET deletion_requested = false WHERE id = $1', [item.item_id]);
+    } else if (item.item_type === 'course') {
+      await db.query("UPDATE courses SET status = 'active' WHERE id = $1", [item.item_id]);
+    }
+
+    await db.query("UPDATE recycle_bin SET status = 'restored', processed_at = NOW(), processed_by = $1 WHERE id = $2", [req.user.id, id]);
+    await db.query('COMMIT');
+
+    await logAudit(req.user.id, 'RESTORE_ITEM_APPROVED', item.item_type, item.item_id, { item_name: item.item_name });
+    res.json({ message: `Item (${item.item_name}) successfully restored.` });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Real-Time Database Purge API
+router.delete('/purge-item', async (req, res) => {
+  const { table_name, record_id } = req.body;
+  if (!table_name || !record_id) return res.status(400).json({ error: 'table_name and record_id are required' });
+
+  const allowedTables = ['batches', 'courses', 'assignments', 'live_classes', 'study_materials', 'users', 'support_tickets', 'email_logs'];
+  if (!allowedTables.includes(table_name)) {
+    return res.status(400).json({ error: 'Invalid or restricted table name' });
+  }
+
+  try {
+    await db.query(`DELETE FROM ${table_name} WHERE id = $1`, [record_id]);
+    await logAudit(req.user.id, 'REALTIME_PURGE', table_name, record_id, {});
+    res.json({ message: `Record ${record_id} permanently purged from ${table_name} in real-time.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

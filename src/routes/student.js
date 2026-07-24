@@ -7,6 +7,7 @@ const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { sanitizeUser, generateUID } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
+const { sendEmail } = require('../services/EmailService');
 
 router.use(authenticateToken);
 
@@ -125,10 +126,89 @@ router.get('/batches/:batchId/live-classes', async (req, res) => {
   }
 });
 
+async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle, batchName, amountPaid, originalFees, discountAmount, couponCode, paymentId, date }) {
+  if (!studentEmail) return;
+  const formattedDate = new Date(date || Date.now()).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  let couponLineHtml = '';
+  if (couponCode && discountAmount > 0) {
+    couponLineHtml = `
+      <tr style="border-bottom: 1px dashed #e2e8f0;">
+        <td style="padding: 10px 0; color: #16a34a; font-size: 14px;">Coupon Discount (${couponCode})</td>
+        <td style="padding: 10px 0; text-align: right; color: #16a34a; font-weight: 700; font-size: 14px;">-₹${parseFloat(discountAmount).toLocaleString('en-IN')}</td>
+      </tr>
+    `;
+  }
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; color: #334155;">
+      <h3 style="color: #0f172a; margin-top: 0; font-size: 20px;">Payment Receipt & Enrollment Confirmation</h3>
+      <p style="color: #475569; font-size: 14px; margin-bottom: 24px;">
+        Hi <strong>${studentName || 'Student'}</strong>,<br>
+        Thank you for your payment! Your enrollment in <strong>${batchName || courseTitle}</strong> has been successfully confirmed.
+      </p>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <div style="font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 12px;">Transaction Details</div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b; font-size: 13px;">Transaction ID</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 600; font-size: 13px; font-family: monospace;">${paymentId}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b; font-size: 13px;">Date & Time</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 500; font-size: 13px;">${formattedDate}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b; font-size: 13px;">Course Enrolled</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 600; font-size: 13px;">${courseTitle}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b; font-size: 13px;">Batch Name</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 600; font-size: 13px;">${batchName}</td>
+          </tr>
+        </table>
+
+        <div style="font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-top: 20px; margin-bottom: 8px;">Payment Summary</div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Course Fee</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 600; font-size: 14px;">₹${parseFloat(originalFees || amountPaid).toLocaleString('en-IN')}</td>
+          </tr>
+          ${couponLineHtml}
+          <tr>
+            <td style="padding: 12px 0 0 0; color: #0f172a; font-weight: 800; font-size: 16px;">Total Amount Paid</td>
+            <td style="padding: 12px 0 0 0; text-align: right; color: #0d7a6d; font-weight: 800; font-size: 18px;">₹${parseFloat(amountPaid).toLocaleString('en-IN')}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background: rgba(13, 122, 109, 0.05); border: 1px solid rgba(13, 122, 109, 0.2); border-radius: 10px; padding: 14px; text-align: center; font-size: 13px; color: #0d7a6d;">
+        🚀 You can now access your live classes, study notes, and assignments directly from your <strong>Student Dashboard</strong>!
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: studentEmail,
+    subject: `Payment Receipt: Enrolled in ${batchName} (${paymentId})`,
+    html,
+    type: 'notification',
+    headerTitle: 'Official Payment Receipt',
+    badgeLabel: 'SPEAXA Billing'
+  });
+}
+
 // ── Enroll in Batch (after payment) ──────────────────────────
 router.post('/batches/:batchId/enroll', async (req, res) => {
   const { batchId } = req.params;
-  const { paymentId } = req.body;
+  const { paymentId, couponCode } = req.body;
   try {
     // Check already enrolled
     const existing = await db.query(
@@ -139,22 +219,73 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
       return res.status(400).json({ error: 'You are already enrolled in this batch' });
     }
 
-    // Check capacity
-    const batch = await db.query('SELECT * FROM batches WHERE id = $1 AND status = $2', [batchId, 'active']);
-    if (!batch.rows.length) return res.status(404).json({ error: 'Batch not found or inactive' });
-    if (batch.rows[0].seats_filled >= batch.rows[0].capacity) {
+    // Check capacity & fetch batch/course info
+    const batchRes = await db.query(`
+      SELECT b.*, c.title as course_title, c.fees as course_fees
+      FROM batches b
+      LEFT JOIN courses c ON c.id = b.course_id
+      WHERE b.id = $1 AND b.status = $2
+    `, [batchId, 'active']);
+
+    if (!batchRes.rows.length) return res.status(404).json({ error: 'Batch not found or inactive' });
+    const batchObj = batchRes.rows[0];
+
+    if (batchObj.seats_filled >= batchObj.capacity) {
       return res.status(400).json({ error: 'This batch is full' });
     }
 
-    // Enroll
+    const originalFees = parseFloat(batchObj.course_fees || 0);
+    let discountAmount = 0;
+    let amountPaid = originalFees;
+
+    // Handle coupon usage if applied
+    if (couponCode && couponCode.trim()) {
+      const codeUpper = couponCode.trim().toUpperCase();
+      const cpRes = await db.query(
+        "SELECT * FROM coupons WHERE code = $1 AND is_active = true AND (valid_until IS NULL OR valid_until > NOW()) AND used_count < max_uses",
+        [codeUpper]
+      );
+      if (cpRes.rows.length > 0) {
+        const cp = cpRes.rows[0];
+        discountAmount = (originalFees * parseFloat(cp.discount_percent)) / 100;
+        amountPaid = Math.max(0, originalFees - discountAmount);
+        await db.query('UPDATE coupons SET used_count = used_count + 1 WHERE code = $1', [codeUpper]);
+      }
+    }
+
+    const pId = paymentId || `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+
+    // Enroll in batch_students table
     await db.query(
       'INSERT INTO batch_students (batch_id, student_id, payment_id, status) VALUES ($1,$2,$3,$4)',
-      [batchId, req.user.id, paymentId || null, 'active']
+      [batchId, req.user.id, pId, 'active']
     );
     await db.query('UPDATE batches SET seats_filled = seats_filled + 1 WHERE id = $1', [batchId]);
 
-    await logAudit(req.user.id, 'BATCH_ENROLLED', 'batch', batchId, { paymentId });
-    res.json({ message: 'Enrolled successfully in batch' });
+    // Insert payment row into payments ledger
+    await db.query(`
+      INSERT INTO payments (id, student_id, batch_id, course_id, amount, status, payment_method, gateway_payment_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (id) DO NOTHING
+    `, [pId, req.user.id, batchId, batchObj.course_id || null, amountPaid, 'captured', 'upi', pId]);
+
+    await logAudit(req.user.id, 'BATCH_ENROLLED', 'batch', batchId, { paymentId: pId, couponCode });
+
+    // Send Payment Receipt Email Asynchronously to Student's Email ID
+    sendPaymentReceiptEmail({
+      studentEmail: req.user.email,
+      studentName: req.user.name,
+      courseTitle: batchObj.course_title || 'EdTech Course',
+      batchName: batchObj.batch_name || 'Batch',
+      amountPaid,
+      originalFees,
+      discountAmount,
+      couponCode: couponCode ? couponCode.trim().toUpperCase() : null,
+      paymentId: pId,
+      date: new Date()
+    }).catch(e => console.error('[Enrollment Receipt Email Error]:', e.message));
+
+    res.json({ message: 'Enrolled successfully in batch! Payment receipt sent to your email.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
