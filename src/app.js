@@ -278,7 +278,7 @@ db.query(`
     ('home_footer_desc', 'Speaxa is India''s leading live interactive EdTech platform, empowering students with live classrooms, expert mentors, and performance reports.'),
     ('home_footer_toll_free', '1800-120-456-456'),
     ('home_footer_phone', '+91 9999 999 999 (9 AM - 9:30 PM)'),
-    ('home_footer_email', 'support@speaxa.com'),
+    ('home_footer_email', 'support@speaxa.in'),
     ('home_footer_instagram', 'https://instagram.com/speaxa'),
     ('home_footer_facebook', 'https://facebook.com/speaxa'),
     ('home_footer_youtube', 'https://youtube.com/speaxa'),

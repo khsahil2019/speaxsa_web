@@ -764,6 +764,48 @@ router.post('/profile/verify-phone-otp', authenticateToken, async (req, res) => 
   }
 });
 
+async function getAppBaseUrl(req) {
+  try {
+    const urlSetting = await db.query(
+      "SELECT value FROM platform_settings WHERE key IN ('app_url', 'platform_url', 'site_url', 'domain') AND value IS NOT NULL AND value != '' LIMIT 1"
+    );
+    if (urlSetting.rows.length > 0 && urlSetting.rows[0].value) {
+      let urlVal = urlSetting.rows[0].value.trim();
+      if (!urlVal.includes('localhost') && !urlVal.includes('127.0.0.1')) {
+        if (!urlVal.startsWith('http://') && !urlVal.startsWith('https://')) {
+          urlVal = 'https://' + urlVal;
+        }
+        return urlVal.replace(/\/+$/, '');
+      }
+    }
+  } catch (e) {}
+
+  const envUrl = process.env.APP_URL || process.env.PUBLIC_URL || process.env.BASE_URL || process.env.SITE_URL;
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    let urlVal = envUrl.trim();
+    if (!urlVal.startsWith('http://') && !urlVal.startsWith('https://')) {
+      urlVal = 'https://' + urlVal;
+    }
+    return urlVal.replace(/\/+$/, '');
+  }
+
+  if (req && req.headers) {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+      return `${protocol}://${host}`.replace(/\/+$/, '');
+    }
+  }
+
+  if (req && req.headers) {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    return `${protocol}://${host}`.replace(/\/+$/, '');
+  }
+
+  return 'https://speaxa.in';
+}
+
 // Helper function to send email verification link
 async function sendEmailVerificationLink(userId, req) {
   const userRes = await db.query('SELECT id, email, name FROM users WHERE id = $1', [userId]);
@@ -784,9 +826,7 @@ async function sendEmailVerificationLink(userId, req) {
     [userId, token, expiresAt]
   );
 
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = await getAppBaseUrl(req);
   const verificationLink = `${baseUrl}/api/auth/verify-email?token=${token}`;
 
   const { sendEmail } = require('../services/EmailService');

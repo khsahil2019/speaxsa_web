@@ -25,7 +25,7 @@ async function sendEmail(options) {
     if (platformName.toLowerCase() === 'speaxa') {
       platformName = 'Speaxa';
     }
-    const fromEmail = settings.smtp_from_email || settings.support_email || smtpUser || process.env.EMAIL_FROM || 'no-reply@speaxa.com';
+    const fromEmail = settings.smtp_from_email || settings.support_email || smtpUser || process.env.EMAIL_FROM || 'no-reply@speaxa.in';
 
     // Format rich premium email wrapper based on type
     let finalHtml = html;
@@ -100,7 +100,7 @@ async function sendEmail(options) {
     </div>
     <div class="footer">
       <p style="font-weight: 600; color: #475569; font-family: sans-serif;">${platformName} Support Team</p>
-      <p>If you have any questions, reply to this email or reach us at <a href="mailto:${settings.support_email || 'support@speaxa.com'}" style="color: #0d7a6d; text-decoration: none; font-weight: 500;">${settings.support_email || 'support@speaxa.com'}</a></p>
+      <p>If you have any questions, reply to this email or reach us at <a href="mailto:${settings.support_email || 'support@speaxa.in'}" style="color: #0d7a6d; text-decoration: none; font-weight: 500;">${settings.support_email || 'support@speaxa.in'}</a></p>
       <p style="margin-top: 15px; font-size: 11px; color: #94a3b8;">&copy; ${new Date().getFullYear()} ${platformName}. All rights reserved.</p>
     </div>
   </div>

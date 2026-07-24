@@ -35,7 +35,17 @@ async function notifyClassScheduled({ classId, batchId, title, classDate, classT
     console.log(`[NotificationService] Notifying ${students.rows.length} students for scheduled class in "${batchName}"`);
 
     // Direct Agora Live Room Join URL
-    const liveLink = `http://localhost:5002/live/room.html?classId=${classId}`;
+    let baseUrl = process.env.APP_URL || process.env.PUBLIC_URL || process.env.SITE_URL || 'https://speaxa.in';
+    try {
+      const urlRes = await db.query("SELECT value FROM platform_settings WHERE key IN ('app_url', 'platform_url', 'site_url', 'domain') AND value IS NOT NULL AND value != '' LIMIT 1");
+      if (urlRes.rows.length > 0 && urlRes.rows[0].value) {
+        baseUrl = urlRes.rows[0].value.trim();
+      }
+    } catch(e) {}
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) baseUrl = 'https://' + baseUrl;
+    baseUrl = baseUrl.replace(/\/+$/, '');
+
+    const liveLink = `${baseUrl}/live/room.html?classId=${classId}`;
 
     // Format display Date & Time values
     const fmtDateStr = new Date(classDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
