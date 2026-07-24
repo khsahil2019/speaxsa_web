@@ -841,60 +841,74 @@ async function sendEmailVerificationLink(userId, req) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verify your Email Address — SPEAXA</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f1f5f9; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color:#1e293b;">
-  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f1f5f9; padding:40px 10px;">
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1e293b; -webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f8fafc; padding:40px 15px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" style="max-width:560px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 25px -5px rgba(0,0,0,0.08); border:1px solid #e2e8f0;">
+        <table role="presentation" width="100%" style="max-width:580px; background-color:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 20px 40px -15px rgba(13,122,109,0.12), 0 4px 6px -2px rgba(0,0,0,0.05); border:1px solid #e2e8f0;">
+          <!-- Header Banner -->
           <tr>
-            <td style="background-color:#0d7a6d; padding:32px 40px; text-align:center;">
-              <h1 style="margin:0; color:#ffffff; font-size:26px; font-weight:800; letter-spacing:1px;">
-                SPEAXA
-              </h1>
-              <p style="margin:6px 0 0 0; color:#b4e5df; font-size:13px; font-weight:500;">
-                Empowering Minds, Shaping Futures
+            <td style="background:linear-gradient(135deg, #0d7a6d 0%, #064e45 100%); padding:40px 35px; text-align:center; position:relative;">
+              <div style="display:inline-block; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:10px 22px; margin-bottom:12px;">
+                <span style="color:#ffffff; font-size:24px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; font-family:sans-serif;">SPEAXA</span>
+              </div>
+              <p style="margin:4px 0 0 0; color:#b4e5df; font-size:13px; font-weight:500; letter-spacing:0.5px;">
+                Live Classroom & Learning Platform
               </p>
             </td>
           </tr>
+
+          <!-- Main Content -->
           <tr>
-            <td style="padding:36px 40px; background-color:#ffffff;">
-              <h2 style="margin:0 0 16px 0; color:#0f172a; font-size:20px; font-weight:700;">
+            <td style="padding:40px 35px 30px 35px; background-color:#ffffff;">
+              <div style="display:inline-block; background:rgba(13,122,109,0.08); border:1px solid rgba(13,122,109,0.2); border-radius:20px; padding:4px 14px; margin-bottom:20px;">
+                <span style="color:#0d7a6d; font-size:12px; font-weight:700; letter-spacing:0.5px;">🔒 OFFICIAL ACCOUNT VERIFICATION</span>
+              </div>
+
+              <h2 style="margin:0 0 16px 0; color:#0f172a; font-size:22px; font-weight:800; letter-spacing:-0.5px;">
                 Verify Your Email Address
               </h2>
               <p style="margin:0 0 16px 0; color:#334155; font-size:15px; line-height:1.6;">
                 Hello <strong>${user.name}</strong>,
               </p>
               <p style="margin:0 0 24px 0; color:#475569; font-size:15px; line-height:1.6;">
-                Thank you for joining <strong>SPEAXA</strong>! To complete your profile and enable official email notifications, please confirm your email address by clicking the button below.
+                Thank you for signing up with <strong>SPEAXA</strong>! To activate your account and gain full access to live classes, mentor support, and dashboard tools, please verify your email address by clicking the button below.
               </p>
-              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:28px 0;">
+
+              <!-- CTA Button Section -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:32px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${verificationLink}" target="_blank" style="background-color:#0d7a6d; color:#ffffff; text-decoration:none; padding:15px 36px; border-radius:10px; font-weight:700; font-size:16px; display:inline-block; box-shadow:0 4px 12px rgba(13,122,109,0.25);">
-                      Verify Email Address
+                    <a href="${verificationLink}" target="_blank" style="background:linear-gradient(135deg, #0d7a6d 0%, #08544b 100%); color:#ffffff; text-decoration:none; padding:17px 42px; border-radius:12px; font-weight:700; font-size:16px; display:inline-block; box-shadow:0 8px 20px -4px rgba(13,122,109,0.4); letter-spacing:0.3px;">
+                      Verify Email Address →
                     </a>
                   </td>
                 </tr>
               </table>
-              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#fffbe0; border-left:4px solid #f59e0b; border-radius:6px; margin:24px 0;">
+
+              <!-- Expiry Alert Box -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#fffbe0; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:10px; margin:28px 0;">
                 <tr>
-                  <td style="padding:14px 18px; font-size:13px; color:#78350f; line-height:1.5;">
-                    ⏳ <strong>Notice:</strong> This verification link is valid for <strong>${expiryMins} minutes</strong>. If the link expires, you can request a new link anytime from your profile/dashboard.
+                  <td style="padding:16px 20px; font-size:13px; color:#78350f; line-height:1.5;">
+                    ⏳ <strong>Security Notice:</strong> This verification link will expire in <strong>${expiryMins} minutes</strong>. If it expires, you can easily request a new link from your login or dashboard panel.
                   </td>
                 </tr>
               </table>
-              <p style="margin:20px 0 0 0; color:#64748b; font-size:13px; line-height:1.5;">
-                If you did not create an account on SPEAXA, no further action is required.
+
+              <p style="margin:24px 0 0 0; color:#64748b; font-size:13px; line-height:1.5;">
+                If you did not register for a SPEAXA account, you can safely ignore this email.
               </p>
             </td>
           </tr>
+
+          <!-- Fallback Link Section -->
           <tr>
-            <td style="background-color:#f8fafc; padding:24px 40px; border-top:1px solid #e2e8f0; font-size:12px; color:#64748b; line-height:1.6;">
-              <p style="margin:0 0 8px 0; font-weight:600; color:#475569;">Having trouble with the button?</p>
-              <p style="margin:0 0 12px 0; word-break:break-all; color:#0d7a6d;">
-                <a href="${verificationLink}" style="color:#0d7a6d; text-decoration:underline;">${verificationLink}</a>
-              </p>
-              <hr style="border:none; border-top:1px solid #e2e8f0; margin:16px 0;">
+            <td style="background-color:#f8fafc; padding:28px 35px; border-top:1px solid #f1f5f9; font-size:12px; color:#64748b; line-height:1.6;">
+              <p style="margin:0 0 8px 0; font-weight:700; color:#334155;">Button not working? Copy and paste this URL into your web browser:</p>
+              <div style="background-color:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px; word-break:break-all; color:#0d7a6d; font-family:monospace; font-size:12px;">
+                <a href="${verificationLink}" style="color:#0d7a6d; text-decoration:none;">${verificationLink}</a>
+              </div>
+              <hr style="border:none; border-top:1px solid #e2e8f0; margin:20px 0 16px 0;">
               <p style="margin:0; text-align:center; color:#94a3b8; font-size:11px;">
                 &copy; ${new Date().getFullYear()} SPEAXA EdTech Platform. All rights reserved.
               </p>

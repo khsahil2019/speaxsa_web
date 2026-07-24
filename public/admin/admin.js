@@ -3473,26 +3473,34 @@ async function renderSettingsCredentials() {
       <div class="row">
         <div class="col-12">
           <div class="spx-card mb-4 border-0 shadow-sm bg-white text-dark p-4">
-            <h6 class="mb-3 text-primary fw-bold"><i class="fas fa-key me-2"></i>API Credentials</h6>
+            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+              <h6 class="mb-0 text-primary fw-bold"><i class="fas fa-key me-2"></i>API Credentials & Email Gateway Setup</h6>
+              <span class="badge bg-success">Brevo & SMTP Ready</span>
+            </div>
+            <p class="text-muted small mb-3">
+              Configure your external payment, live video calling, and email dispatch provider credentials. Follow the inline hints for Brevo & SMTP configuration.
+            </p>
             <form onsubmit="saveAPICredentials(event)">
               ${[
-        { key: 'razorpay_key_id', label: 'Razorpay Key ID' },
-        { key: 'razorpay_key_secret', label: 'Razorpay Secret' },
-        { key: 'agora_app_id', label: 'Agora App ID' },
-        { key: 'agora_app_certificate', label: 'Agora App Certificate' },
-        { key: 'agora_customer_id', label: 'Agora Customer ID' },
-        { key: 'agora_customer_secret', label: 'Agora Customer Secret', hidden: true },
-        { key: 'smtp_host', label: 'SMTP Host' },
-        { key: 'smtp_port', label: 'SMTP Port' },
-        { key: 'smtp_user', label: 'SMTP Username' },
-        { key: 'smtp_pass', label: 'SMTP Password', hidden: true },
-        { key: 'smtp_from_email', label: 'SMTP From Email (e.g. info@speaxa.com)' },
+        { key: 'razorpay_key_id', label: 'Razorpay Key ID', hint: 'Razorpay Dashboard > Settings > API Keys' },
+        { key: 'razorpay_key_secret', label: 'Razorpay Secret', hint: 'Razorpay Dashboard > Settings > API Keys' },
+        { key: 'agora_app_id', label: 'Agora App ID', hint: 'Agora Console > Project Management' },
+        { key: 'agora_app_certificate', label: 'Agora App Certificate', hint: 'Agora Console > Primary Certificate' },
+        { key: 'agora_customer_id', label: 'Agora Customer ID', hint: 'Agora Console > RESTful API credentials' },
+        { key: 'agora_customer_secret', label: 'Agora Customer Secret', hidden: true, hint: 'Agora Console > RESTful API credentials' },
+        { key: 'smtp_host', label: 'SMTP Host / Server', placeholder: 'smtp-relay.brevo.com', hint: 'Brevo default: smtp-relay.brevo.com | Gmail default: smtp.gmail.com' },
+        { key: 'smtp_port', label: 'SMTP Port', placeholder: '587', hint: 'Default Brevo TLS: 587 | SSL: 465' },
+        { key: 'smtp_user', label: 'SMTP Username / Login', placeholder: 'e.g. b326d2001@smtp-brevo.com or speaxaindia@gmail.com', hint: 'Found in Brevo Dashboard > Settings > SMTP & API > Your SMTP Settings > Login' },
+        { key: 'smtp_pass', label: 'SMTP Password / Key', hidden: true, placeholder: 'xsmtpsib-... or xkeysib-...', hint: 'Brevo SMTP Key (xsmtpsib-...) or API Key (xkeysib-...) from Brevo > Settings > SMTP & API' },
+        { key: 'brevo_api_key', label: 'Brevo REST API Key (Optional / Direct API)', hidden: true, placeholder: 'xkeysib-...', hint: 'Found in Brevo Dashboard > Settings > SMTP & API > API keys & MCP tab' },
+        { key: 'smtp_from_email', label: 'Sender Email Address (From Email)', placeholder: 'speaxaindia@gmail.com', hint: 'Must be verified in Brevo Dashboard > Settings > Senders, domains, IPs' },
       ].map(f => `
-                <div class="mb-2">
-                  <label class="spx-label small text-dark">${f.label}</label>
-                  <input class="form-control spx-input form-control-sm" type="${f.hidden ? 'password' : 'text'}" id="cred_${f.key}" value="${settings[f.key] || ''}" placeholder="${f.hidden ? '••••••••' : ''}">
+                <div class="mb-3">
+                  <label class="spx-label small text-dark fw-bold mb-1">${f.label}</label>
+                  <input class="form-control spx-input form-control-sm" type="${f.hidden ? 'password' : 'text'}" id="cred_${f.key}" value="${settings[f.key] || ''}" placeholder="${f.placeholder || (f.hidden ? '••••••••' : '')}">
+                  ${f.hint ? `<div class="form-text text-muted micro-text mt-1"><i class="fas fa-info-circle me-1 text-primary"></i>${f.hint}</div>` : ''}
                 </div>`).join('')}
-              <button type="submit" class="btn btn-spx w-100 mt-3">Save Credentials</button>
+              <button type="submit" class="btn btn-spx w-100 mt-3"><i class="fas fa-save me-1"></i>Save Credentials</button>
             </form>
           </div>
         </div>
@@ -3702,9 +3710,9 @@ async function saveLevelPayouts(e) {
 
 async function saveAPICredentials(e) {
   e.preventDefault();
-  const keys = ['razorpay_key_id', 'razorpay_key_secret', 'agora_app_id', 'agora_app_certificate', 'agora_customer_id', 'agora_customer_secret', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_email'];
+  const keys = ['razorpay_key_id', 'razorpay_key_secret', 'agora_app_id', 'agora_app_certificate', 'agora_customer_id', 'agora_customer_secret', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'brevo_api_key', 'smtp_from_email'];
   const body = {};
-  keys.forEach(k => { const v = document.getElementById(`cred_${k}`)?.value; if (v) body[k] = v; });
+  keys.forEach(k => { const v = document.getElementById(`cred_${k}`)?.value; if (v !== undefined) body[k] = v; });
   try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'API credentials saved'); }
   catch (err) { showToast(err.message, 'error'); }
 }

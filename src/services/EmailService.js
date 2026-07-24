@@ -130,10 +130,10 @@ async function sendEmail(options) {
       console.log(`Body (truncated): ${html.substring(0, 300)}...`);
       console.log(`========================================`);
       sent = true;
-    } else if (brevoApiKey && (smtpPass?.trim().startsWith('xkeysib-') || !cleanHost || cleanHost.includes('brevo'))) {
+    } else if (emailProvider === 'brevo' || (brevoApiKey && (smtpPass?.trim().startsWith('xkeysib-') || !cleanHost || cleanHost.includes('brevo')))) {
       // Brevo REST API Mode for xkeysib- API Keys (bypasses SMTP 535 authentication errors)
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -185,7 +185,7 @@ async function sendEmail(options) {
         console.warn(`[EmailService] Nodemailer SMTP failed (${smtpErr.message}).`);
         if (brevoApiKey) {
           console.log(`[EmailService] Falling back to Brevo REST API...`);
-          const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
+          const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
           const response = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: {
@@ -213,7 +213,7 @@ async function sendEmail(options) {
     } else if (brevoApiKey) {
       // Brevo REST API Fallback
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API fallback...`);
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
