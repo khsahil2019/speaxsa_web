@@ -76,7 +76,6 @@ router.post('/register', async (req, res) => {
     if (requireOtpBool) {
       if (!verificationOtp) {
         const { otp: smsOtpVal, tokenId: smsTokenId } = await createOTP(phone, 'verify_mobile');
-        const { otp: emailOtpVal, tokenId: emailTokenId } = await createOTP(email, 'register_email');
         
         try {
           await sendOTPSms(phone, smsOtpVal, 'verify_mobile', smsTokenId);
@@ -84,19 +83,12 @@ router.post('/register', async (req, res) => {
           console.error('[Auth] Failed to send registration SMS OTP:', smsErr.message);
         }
 
-        try {
-          await sendOTPEmail(email, smsOtpVal, 'register_email', emailTokenId);
-          console.log(`[Auth] Sent registration OTP email to ${email}`);
-        } catch (emailErr) {
-          console.error('[Auth] Failed to send registration Email OTP:', emailErr.message);
-        }
-
         const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'false');
         const showDevOtp = String(devOtpSetting) === 'true';
 
         return res.status(200).json({
           status: 'otp_sent',
-          message: `Verification code sent to email (${email}) and mobile (${phone}). Please enter it below.`,
+          message: `Verification OTP sent to mobile number (${phone}). Please enter the 6 digits below.`,
           phone: phone,
           email: email,
           ...(showDevOtp && { otp: smsOtpVal })
@@ -104,13 +96,8 @@ router.post('/register', async (req, res) => {
       } else {
         // Verify mobile SMS OTP
         const mobileVerification = await verifyOTP(phone, verificationOtp, 'verify_mobile');
-        let mobileValid = mobileVerification.valid;
-        if (!mobileValid) {
-          const emailFallback = await verifyOTP(email, verificationOtp, 'register_email');
-          if (emailFallback.valid) mobileValid = true;
-        }
-        if (!mobileValid) {
-          return res.status(400).json({ error: 'Invalid or expired SMS OTP code. Please enter the 6 digits sent to your phone.' });
+        if (!mobileVerification.valid) {
+          return res.status(400).json({ error: 'Invalid or expired mobile OTP code. Please enter the 6 digits sent to your phone.' });
         }
       }
     }
