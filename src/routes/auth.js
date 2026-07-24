@@ -201,7 +201,7 @@ router.post('/register', async (req, res) => {
       subject_expertise || null, languages || null, address || null, board || null,
       grade || null, studentCode, referralCode, alt_email || null, mobile_number || null,
       typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}'),
-      referredById, isVerifiedOnInit, isVerifiedOnInit
+      referredById, isVerifiedOnInit, false
     ]);
 
     // Create teacher SOP entry if teacher
