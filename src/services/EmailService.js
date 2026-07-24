@@ -46,10 +46,10 @@ async function sendEmail(options) {
         titleLabel = headerTitle || 'Verification Code';
         badgeHtml = `<span style="background: rgba(13, 122, 109, 0.1); color: #0d7a6d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Secure Portal'}</span>`;
       } else if (type === 'advertisement' || type === 'campaign') {
-        headerGradient = 'linear-gradient(135deg, #4f46e5, #3730a3)'; // Royal Indigo
+        headerGradient = 'linear-gradient(135deg, #0d7a6d 0%, #0f766e 50%, #042f2e 100%)'; // SPEAXA Emerald
         headerIcon = '📢';
         titleLabel = headerTitle || 'Special Announcement';
-        badgeHtml = `<span style="background: rgba(79, 70, 229, 0.1); color: #4f46e5; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Community'}</span>`;
+        badgeHtml = `<span style="background: rgba(13, 122, 109, 0.12); color: #0d7a6d; border: 1px solid rgba(13, 122, 109, 0.25); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; font-family: sans-serif;">${badgeLabel || 'SPEAXA Special Offer'}</span>`;
       } else if (type === 'notification') {
         headerGradient = 'linear-gradient(135deg, #0284c7, #075985)'; // Ocean Blue
         headerIcon = '🔔';

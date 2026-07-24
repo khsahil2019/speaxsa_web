@@ -2197,4 +2197,115 @@ router.delete('/gallery/:id', async (req, res) => {
   }
 });
 
+// ── Subscriber & Email Campaign Routes ───────────────────────
+router.get('/subscribers', async (req, res) => {
+  try {
+    const result = await db.query("SELECT * FROM subscribers ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/subscribers/:id', async (req, res) => {
+  try {
+    await db.query("DELETE FROM subscribers WHERE id = $1", [req.params.id]);
+    res.json({ message: 'Subscriber removed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/subscribers/send-campaign', async (req, res) => {
+  try {
+    const { subject, body_text, body_html, image_url, cta_text, cta_link } = req.body;
+    const rawContent = (body_text || body_html || '').trim();
+
+    if (!subject || (!rawContent && !image_url)) {
+      return res.status(400).json({ error: 'Email subject and advertisement message or image are required.' });
+    }
+
+    const host = req.get('host') || 'localhost:5002';
+    const protocol = req.protocol || 'http';
+    const baseUrl = `${protocol}://${host}`;
+
+    // Fix relative image URLs so email clients (Gmail/Outlook) can render them properly
+    let finalImageUrl = (image_url || '').trim();
+    if (finalImageUrl && !finalImageUrl.startsWith('http://') && !finalImageUrl.startsWith('https://')) {
+      finalImageUrl = finalImageUrl.startsWith('/') ? `${baseUrl}${finalImageUrl}` : `${baseUrl}/${finalImageUrl}`;
+    }
+
+    // Fix CTA link URL
+    let finalCtaLink = (cta_link || '/courses.html').trim();
+    if (!finalCtaLink.startsWith('http://') && !finalCtaLink.startsWith('https://')) {
+      finalCtaLink = finalCtaLink.startsWith('/') ? `${baseUrl}${finalCtaLink}` : `${baseUrl}/${finalCtaLink}`;
+    }
+
+    const subRes = await db.query("SELECT email FROM subscribers WHERE status = 'active'");
+    const userRes = await db.query("SELECT DISTINCT email FROM users WHERE email IS NOT NULL AND email LIKE '%@%'");
+    
+    const emailSet = new Set();
+    subRes.rows.forEach(r => emailSet.add(r.email));
+    userRes.rows.forEach(r => emailSet.add(r.email));
+
+    const emailList = Array.from(emailSet);
+    if (emailList.length === 0) {
+      return res.status(400).json({ error: 'No subscribers found to send campaign.' });
+    }
+
+    // Build rich email HTML with banner image, formatted paragraphs, and action button
+    let contentHtml = '';
+
+    if (finalImageUrl) {
+      contentHtml += `
+        <div style="text-align: center; margin-bottom: 24px;">
+          <img src="${finalImageUrl}" style="width: 100%; max-width: 520px; height: auto; border-radius: 12px; box-shadow: 0 4px 16px rgba(15,23,42,0.12); border: 1px solid #e2e8f0; display: block; margin: 0 auto;" alt="Advertisement Banner">
+        </div>
+      `;
+    }
+
+    if (rawContent) {
+      if (rawContent.includes('<p>') || rawContent.includes('<div>') || rawContent.includes('<br>')) {
+        contentHtml += `<div style="font-size:15px; color:#334155; line-height:1.65;">${rawContent}</div>`;
+      } else {
+        const paragraphs = rawContent.split(/\n\s*\n/);
+        contentHtml += paragraphs.map(p => `<p style="margin-top:0; margin-bottom:16px; font-size:15px; color:#334155; line-height:1.65;">${p.replace(/\n/g, '<br>')}</p>`).join('');
+      }
+    }
+
+    // Call to action button
+    const btnText = (cta_text || 'Explore Courses & Batches').trim();
+    contentHtml += `
+      <div style="text-align: center; margin-top: 30px; margin-bottom: 10px;">
+        <a href="${finalCtaLink}" target="_blank" style="background: linear-gradient(135deg, #0d7a6d 0%, #0f766e 100%); color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(13,122,109,0.3); font-family: sans-serif;">
+          ${btnText} →
+        </a>
+      </div>
+    `;
+
+    const { sendEmail } = require('../services/EmailService');
+    
+    // Dispatch campaign asynchronously to subscribers
+    for (const recipient of emailList) {
+      sendEmail({
+        to: recipient,
+        subject: subject,
+        html: contentHtml,
+        type: 'advertisement',
+        headerTitle: subject,
+        badgeLabel: 'SPEAXA Special Offer'
+      }).catch(e => console.log('Campaign dispatch log:', e.message));
+    }
+
+    await logAudit(req.user.id, 'SEND_CAMPAIGN_EMAIL', 'subscribers', 'all', { subject, total_recipients: emailList.length }, { ip: req.ip });
+
+    res.json({
+      message: `Advertisement campaign successfully triggered for ${emailList.length} subscribers!`,
+      recipient_count: emailList.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

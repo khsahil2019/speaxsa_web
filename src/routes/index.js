@@ -83,15 +83,20 @@ router.post('/public/send-app-link', async (req, res) => {
     const appMsg = `🚀 SPEAXA Mobile App: Learn anywhere on live interactive classrooms! Download link: ${downloadUrl}`;
 
     if (isEmail) {
-      const { sendEmail } = require('../services/notification.service');
-      await sendEmail(destination, 'SPEAXA Mobile App Download Link', `
-        <div style="font-family: Arial, sans-serif; padding: 20px; background: #f8fafc; border-radius: 10px;">
-          <h2 style="color: #0d7a6d; margin-top: 0;">Download SPEAXA App</h2>
-          <p style="color: #334155; font-size: 15px;">You requested the download link for the official SPEAXA Learning App.</p>
-          <p><a href="${downloadUrl}" style="background: #0d7a6d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Download SPEAXA Android App</a></p>
-          <p style="color: #64748b; font-size: 13px;">If you have any questions, contact our support team at support@speaxa.com.</p>
-        </div>
-      `).catch(err => console.log('Email dispatch log:', err.message));
+      const { sendEmail } = require('../services/EmailService');
+      await sendEmail({
+        to: destination,
+        subject: 'SPEAXA Mobile App Download Link',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; background: #f8fafc; border-radius: 10px;">
+            <h2 style="color: #0d7a6d; margin-top: 0;">Download SPEAXA App</h2>
+            <p style="color: #334155; font-size: 15px;">You requested the download link for the official SPEAXA Learning App.</p>
+            <p><a href="${downloadUrl}" style="background: #0d7a6d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Download SPEAXA Android App</a></p>
+            <p style="color: #64748b; font-size: 13px;">If you have any questions, contact our support team at support@speaxa.com.</p>
+          </div>
+        `,
+        type: 'notification'
+      }).catch(err => console.log('Email dispatch log:', err.message));
     }
 
     return res.json({
@@ -103,6 +108,27 @@ router.post('/public/send-app-link', async (req, res) => {
   } catch (err) {
     console.error('send-app-link error:', err.message);
     res.status(500).json({ error: 'Failed to process app link request. Please try again.' });
+  }
+});
+
+// Public Newsletter Subscription Endpoint
+router.post('/public/subscribe', async (req, res) => {
+  try {
+    const { email, source } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+    const db = require('../db');
+    await db.query(`
+      INSERT INTO subscribers (email, source, status)
+      VALUES ($1, $2, 'active')
+      ON CONFLICT (email) DO UPDATE SET status = 'active', created_at = NOW()
+    `, [cleanEmail, source || 'landing_page']);
+    return res.json({ success: true, message: 'Thank you for subscribing to SPEAXA updates!' });
+  } catch (err) {
+    console.error('Subscribe Error:', err.message);
+    return res.status(500).json({ error: 'Failed to subscribe. Please try again.' });
   }
 });
 

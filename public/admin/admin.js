@@ -120,7 +120,7 @@ async function parseFetchResponse(res) {
   if (res.status === 401) { handleLogout(); throw new Error('Session expired'); }
   const contentType = res.headers.get("content-type");
   const isJson = contentType && contentType.indexOf("application/json") !== -1;
-  
+
   if (!res.ok) {
     if (isJson) {
       const err = await res.json();
@@ -130,7 +130,7 @@ async function parseFetchResponse(res) {
       throw new Error(`Server error (${res.status}): ${text.slice(0, 100)}...`);
     }
   }
-  
+
   if (isJson) {
     return res.json();
   } else {
@@ -207,19 +207,19 @@ function navigateTo(page) {
   document.getElementById(`nav-${page}`)?.classList.add('active');
 
   const titles = {
-    dashboard:'Dashboard', teachers:'Teacher Management', students:'Student Management',
-    parents:'Parent Management', courses:'Course Management', batches:'Batch Management',
-    liveclasses:'Live Classes', payments:'Payment History', payouts:'Payout Requests',
-    rewards:'Rewards & Allowances',
-    refunds:'Refunds', sop:'SOP Review',
-    coupons:'Coupon Management', notifications:'Send Notifications',
-    settings:'Platform Settings', auditlogs:'Audit Logs', support:'Connect Queries',
-    mailmanager:'Mail Manager', footer:'Landing Footer Settings',
-    blogs:'Manage Blogs', faqs:'Manage FAQs',
-    gallery:'Media Gallery',
-    settings_general:'Platform General', settings_reg_payouts:'Registration & Payouts',
-    settings_gateways:'OTP Gateways', settings_tester:'Gateway Tester',
-    settings_credentials:'API Credentials', settings_otp_logs:'OTP Audit Logs',
+    dashboard: 'Dashboard', teachers: 'Teacher Management', students: 'Student Management',
+    parents: 'Parent Management', courses: 'Course Management', batches: 'Batch Management',
+    liveclasses: 'Live Classes', payments: 'Payment History', payouts: 'Payout Requests',
+    rewards: 'Rewards & Allowances',
+    refunds: 'Refunds', sop: 'SOP Review',
+    coupons: 'Coupon Management', notifications: 'Send Notifications',
+    settings: 'Platform Settings', auditlogs: 'Audit Logs', support: 'Connect Queries',
+    mailmanager: 'Mail Manager', footer: 'Landing Footer Settings',
+    blogs: 'Manage Blogs', faqs: 'Manage FAQs', subscribers: 'Subscribers & Ad Broadcasts',
+    gallery: 'Media Gallery',
+    settings_general: 'Platform General', settings_reg_payouts: 'Registration & Payouts',
+    settings_gateways: 'OTP Gateways', settings_tester: 'Gateway Tester',
+    settings_credentials: 'API Credentials', settings_otp_logs: 'OTP Audit Logs',
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   document.getElementById('pageBreadcrumb').textContent = `Admin / ${titles[page] || page}`;
@@ -233,7 +233,7 @@ function navigateTo(page) {
     coupons: renderCoupons, notifications: renderNotifications,
     settings: renderSettingsGeneral, auditlogs: renderAuditLogs, support: renderSupport,
     mailmanager: renderMailManager, footer: renderFooterPage,
-    blogs: renderBlogsPage, faqs: renderFaqsPage,
+    blogs: renderBlogsPage, faqs: renderFaqsPage, subscribers: renderSubscribersPage,
     gallery: renderGalleryPage,
     settings_general: renderSettingsGeneral, settings_reg_payouts: renderSettingsRegPayouts,
     settings_gateways: renderSettingsGateways, settings_tester: renderSettingsTester,
@@ -303,13 +303,15 @@ function levelBadge(level) {
 }
 
 function statusBadge(status) {
-  const map = { active:'badge-active', approved:'badge-approved', pending:'badge-pending',
-    rejected:'badge-rejected', suspended:'badge-suspended', sop_pending:'badge-pending', pending_approval:'badge-pending', completed:'badge-active' };
-  return `<span class="${map[status]||'badge-pending'}">${status||'unknown'}</span>`;
+  const map = {
+    active: 'badge-active', approved: 'badge-approved', pending: 'badge-pending',
+    rejected: 'badge-rejected', suspended: 'badge-suspended', sop_pending: 'badge-pending', pending_approval: 'badge-pending', completed: 'badge-active'
+  };
+  return `<span class="${map[status] || 'badge-pending'}">${status || 'unknown'}</span>`;
 }
 
-function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—'; }
-function fmtCurrency(n) { return '₹' + (parseFloat(n)||0).toLocaleString('en-IN', { minimumFractionDigits:0 }); }
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
+function fmtCurrency(n) { return '₹' + (parseFloat(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 }); }
 
 async function loadSOPBadge() {
   try {
@@ -317,7 +319,7 @@ async function loadSOPBadge() {
     const pending = (data || []).filter(s => s.status === 'sop_pending').length;
     const badge = document.getElementById('sopBadge');
     if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? '' : 'none'; }
-  } catch {}
+  } catch { }
 }
 
 // ╔══════════════════════════════════════════════════════════════╗
@@ -327,7 +329,7 @@ async function loadSOPBadge() {
 // ── Dashboard ─────────────────────────────────────────────────
 async function renderDashboard() {
   loading('Loading dashboard data...');
-  
+
   let data = { totalTeachers: 0, totalStudents: 0, totalParents: 0, totalCourses: 0, activeBatches: 0, runningClasses: 0, totalRevenue: 0, pendingPayouts: 0 };
   let settings = {};
   let liveClasses = [];
@@ -350,7 +352,7 @@ async function renderDashboard() {
 
   // Filter only active live classes
   const activeClasses = (liveClasses || []).filter(c => c.status === 'live');
-  
+
   // Format audit log logs
   let timelineItemsHtml = '';
   if (auditLogs && auditLogs.logs && auditLogs.logs.length > 0) {
@@ -387,7 +389,7 @@ async function renderDashboard() {
   const agoraStatus = settings.agora_app_id ? 'online' : 'offline';
   const razorpayStatus = settings.razorpay_key_id ? 'online' : 'offline';
   // Firebase FCM is active by default as long as app runs
-  const fcmStatus = 'online'; 
+  const fcmStatus = 'online';
 
   // Active Classes Monitor list
   let liveClassesMonitorHtml = '';
@@ -475,15 +477,15 @@ async function renderDashboard() {
     <!-- 8 Stats Grid -->
     <div class="row g-3 mb-4">
       ${[
-        { icon:'fa-chalkboard-teacher', label:'Teachers Registered', value:data.totalTeachers || 0, color:'#3CBDB0', trend:'Active Mentors' },
-        { icon:'fa-user-graduate', label:'Students Enrolled', value:data.totalStudents || 0, color:'#10B981', trend:'LMS Learners' },
-        { icon:'fa-users', label:'Parents Linked', value:data.totalParents || 0, color:'#3B82F6', trend:'Telemetry Tracking' },
-        { icon:'fa-book', label:'Active Courses', value:data.totalCourses || 0, color:'#F59E0B', trend:'Catalog Items' },
-        { icon:'fa-layer-group', label:'Active Batches', value:data.activeBatches || 0, color:'#0F766E', trend:'Active Slots' },
-        { icon:'fa-video', label:'Live Rooms Now', value:data.runningClasses || 0, color:'#EF4444', trend:data.runningClasses > 0 ? '🔴 LIVE ROOMS' : 'No classrooms active' },
-        { icon:'fa-rupee-sign', label:'Total Revenue', value:fmtCurrency(data.totalRevenue || 0), color:'#10B981', trend:'Captured Income' },
-        { icon:'fa-wallet', label:'Pending Payouts', value:fmtCurrency(data.pendingPayouts || 0), color:'#F59E0B', trend:'Teacher Withdrawals' },
-      ].map(s => `
+      { icon: 'fa-chalkboard-teacher', label: 'Teachers Registered', value: data.totalTeachers || 0, color: '#3CBDB0', trend: 'Active Mentors' },
+      { icon: 'fa-user-graduate', label: 'Students Enrolled', value: data.totalStudents || 0, color: '#10B981', trend: 'LMS Learners' },
+      { icon: 'fa-users', label: 'Parents Linked', value: data.totalParents || 0, color: '#3B82F6', trend: 'Telemetry Tracking' },
+      { icon: 'fa-book', label: 'Active Courses', value: data.totalCourses || 0, color: '#F59E0B', trend: 'Catalog Items' },
+      { icon: 'fa-layer-group', label: 'Active Batches', value: data.activeBatches || 0, color: '#0F766E', trend: 'Active Slots' },
+      { icon: 'fa-video', label: 'Live Rooms Now', value: data.runningClasses || 0, color: '#EF4444', trend: data.runningClasses > 0 ? '🔴 LIVE ROOMS' : 'No classrooms active' },
+      { icon: 'fa-rupee-sign', label: 'Total Revenue', value: fmtCurrency(data.totalRevenue || 0), color: '#10B981', trend: 'Captured Income' },
+      { icon: 'fa-wallet', label: 'Pending Payouts', value: fmtCurrency(data.pendingPayouts || 0), color: '#F59E0B', trend: 'Teacher Withdrawals' },
+    ].map(s => `
         <div class="col-6 col-lg-3">
           <div class="stat-card-premium">
             <div class="d-flex align-items-center justify-content-between mb-2">
@@ -643,7 +645,7 @@ async function renderDashboard() {
       </div>
     </div>
   `;
-  
+
   loadRevenueChart();
 }
 
@@ -652,11 +654,11 @@ async function loadRevenueChart() {
     const data = await apiGet('/admin/revenue');
     const ctx = document.getElementById('revenueChart');
     if (!ctx) return;
-    
+
     // Sort chronological: reverse the last-12-months array if it is descending
     const months = data.monthly.reverse().map(m => m.month);
     const revenues = data.monthly.map(m => parseFloat(m.revenue));
-    
+
     new Chart(ctx, {
       type: 'line',
       data: {
@@ -686,7 +688,7 @@ async function loadRevenueChart() {
             titleFont: { family: 'Outfit' },
             bodyFont: { family: 'Inter' },
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 return ' ' + context.dataset.label + ': ' + fmtCurrency(context.parsed.y);
               }
             }
@@ -702,7 +704,7 @@ async function loadRevenueChart() {
             ticks: {
               color: '#64748B',
               font: { family: 'Inter', size: 10 },
-              callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(0) + 'K' : v)
+              callback: v => '₹' + (v >= 1000 ? (v / 1000).toFixed(0) + 'K' : v)
             }
           }
         }
@@ -743,8 +745,8 @@ function formatAuditMsg(log) {
 function fmtDateWithTime(d) {
   if (!d) return '—';
   const dateObj = new Date(d);
-  return dateObj.toLocaleDateString('en-IN', { day:'numeric', month:'short' }) + ' ' + 
-         dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' +
+    dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
 
 // ── Teachers ──────────────────────────────────────────────────
@@ -791,10 +793,10 @@ function filterTeachers() {
 
 function renderTeachersTable(teachers) {
   return table(
-    ['Teacher','Email','Level','Status','Joined','Actions'],
+    ['Teacher', 'Email', 'Level', 'Status', 'Joined', 'Actions'],
     teachers.map(t => `
       <tr>
-        <td><div class="d-flex align-items-center gap-2">${avatar(t.photo_url, t.name)} <div><div class="fw-semibold text-white">${t.name}</div><small class="text-muted">${t.subject_expertise||''}</small></div></div></td>
+        <td><div class="d-flex align-items-center gap-2">${avatar(t.photo_url, t.name)} <div><div class="fw-semibold text-white">${t.name}</div><small class="text-muted">${t.subject_expertise || ''}</small></div></div></td>
         <td>${t.email}</td>
         <td>${levelBadge(t.teacher_level)}</td>
         <td>${statusBadge(t.approval_status)}</td>
@@ -833,17 +835,17 @@ async function viewTeacher(id) {
         <div class="col-md-8 text-start text-dark">
           <div class="row g-2 text-muted small">
             <div class="col-6"><strong>Email:</strong> ${data.teacher?.email}</div>
-            <div class="col-6"><strong>Phone:</strong> ${data.teacher?.phone||'—'}</div>
-            <div class="col-6"><strong>Alternative Email:</strong> ${data.teacher?.alt_email||'—'}</div>
-            <div class="col-6"><strong>Mobile Number:</strong> ${data.teacher?.mobile_number||'—'}</div>
+            <div class="col-6"><strong>Phone:</strong> ${data.teacher?.phone || '—'}</div>
+            <div class="col-6"><strong>Alternative Email:</strong> ${data.teacher?.alt_email || '—'}</div>
+            <div class="col-6"><strong>Mobile Number:</strong> ${data.teacher?.mobile_number || '—'}</div>
             <div class="col-6"><strong>LinkedIn:</strong> ${data.teacher?.social_links?.linkedin ? `<a href="${data.teacher?.social_links.linkedin}" target="_blank" class="text-primary text-decoration-none fw-semibold">${data.teacher?.social_links.linkedin}</a>` : '—'}</div>
             <div class="col-6"><strong>Twitter/Social:</strong> ${data.teacher?.social_links?.twitter ? `<a href="${data.teacher?.social_links.twitter}" target="_blank" class="text-primary text-decoration-none fw-semibold">${data.teacher?.social_links.twitter}</a>` : '—'}</div>
-            <div class="col-6"><strong>Qualification:</strong> ${data.teacher?.qualification||'—'}</div>
-            <div class="col-6"><strong>Experience:</strong> ${data.teacher?.experience_years||0} years</div>
-            <div class="col-6"><strong>Subjects:</strong> ${data.teacher?.subject_expertise||'—'}</div>
+            <div class="col-6"><strong>Qualification:</strong> ${data.teacher?.qualification || '—'}</div>
+            <div class="col-6"><strong>Experience:</strong> ${data.teacher?.experience_years || 0} years</div>
+            <div class="col-6"><strong>Subjects:</strong> ${data.teacher?.subject_expertise || '—'}</div>
             <div class="col-6"><strong>Joined:</strong> ${fmtDate(data.teacher?.created_at)}</div>
-            <div class="col-6"><strong>Rating:</strong> ⭐ ${data.teacher?.rating||5}/5 (${data.teacher?.total_ratings||0} reviews)</div>
-            <div class="col-6"><strong>Referral Code:</strong> ${data.teacher?.referral_code||'—'}</div>
+            <div class="col-6"><strong>Rating:</strong> ⭐ ${data.teacher?.rating || 5}/5 (${data.teacher?.total_ratings || 0} reviews)</div>
+            <div class="col-6"><strong>Referral Code:</strong> ${data.teacher?.referral_code || '—'}</div>
             <div class="col-6"><strong>Agreement Signed:</strong> ${data.sop?.agreement_signed ? `<span class="badge bg-success">Signed</span>` : `<span class="badge bg-warning">Pending</span>`}</div>
             ${data.sop?.agreement_signed ? `
               <div class="col-6"><strong>Signed At:</strong> ${fmtDate(data.sop?.agreement_signed_at)}</div>
@@ -884,10 +886,10 @@ async function viewTeacher(id) {
         <div class="col-12 text-start mt-3 pt-3 border-top" style="border-color:var(--border) !important">
           <h6 class="fw-bold mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-id-card me-1"></i>Uploaded KYC Documents</h6>
           <div class="admin-doc-grid">
-            ${['aadhaar','pan','resume','qualification'].map(type => {
-              const doc = (data.documents || []).find(d => d.doc_type === type);
-              const labels = { aadhaar: 'Aadhaar Card', pan: 'PAN Card', resume: 'Resume / CV', qualification: 'Degree Certificate' };
-              return `
+            ${['aadhaar', 'pan', 'resume', 'qualification'].map(type => {
+      const doc = (data.documents || []).find(d => d.doc_type === type);
+      const labels = { aadhaar: 'Aadhaar Card', pan: 'PAN Card', resume: 'Resume / CV', qualification: 'Degree Certificate' };
+      return `
                 <div class="admin-doc-card">
                   <div>
                     <div class="admin-doc-title text-dark">${labels[type]}</div>
@@ -898,18 +900,18 @@ async function viewTeacher(id) {
                   </div>
                 </div>
               `;
-            }).join('')}
+    }).join('')}
           </div>
  
           <h6 class="fw-bold mt-4 mb-3" style="font-family:'Outfit'; font-size:0.95rem; color:var(--primary)"><i class="fas fa-video me-1"></i>SOP Video & Link Evidence</h6>
           <div class="admin-doc-grid">
             ${[
-              { label: 'Camera', url: data.sop?.camera_sop_url },
-              { label: 'Lighting', url: data.sop?.lighting_sop_url },
-              { label: 'Audio', url: data.sop?.audio_sop_url },
-              { label: 'Internet', url: data.sop?.internet_proof_url },
-              { label: 'Demo', url: data.sop?.demo_teaching_url }
-            ].map(item => `
+        { label: 'Camera', url: data.sop?.camera_sop_url },
+        { label: 'Lighting', url: data.sop?.lighting_sop_url },
+        { label: 'Audio', url: data.sop?.audio_sop_url },
+        { label: 'Internet', url: data.sop?.internet_proof_url },
+        { label: 'Demo', url: data.sop?.demo_teaching_url }
+      ].map(item => `
               <div class="admin-doc-card">
                 <div>
                   <div class="admin-doc-title text-dark">${item.label} Proof</div>
@@ -990,7 +992,7 @@ async function viewTeacher(id) {
 async function viewTeacherStatement(id) {
   try {
     const data = await apiGet(`/admin/teachers/${id}/wallet/statement`);
-    
+
     // Create ledger modal dynamically if not exists
     let ledgerModal = document.getElementById('ledgerModal');
     if (!ledgerModal) {
@@ -1013,7 +1015,7 @@ async function viewTeacherStatement(id) {
     }
 
     const bd = data.breakdown || {};
-    
+
     document.getElementById('ledgerModalBody').innerHTML = `
       <!-- Earnings Breakdown Tiles -->
       <div class="row g-3 mb-4">
@@ -1069,34 +1071,34 @@ async function viewTeacherStatement(id) {
           </thead>
           <tbody>
             ${data.statement.map(item => {
-              let typeBadge = '';
-              let amtColor = '';
-              let prefix = '+';
-              
-              if (item.type === 'course_share') {
-                typeBadge = `<span class="badge bg-success-subtle text-success border border-success">Course Share</span>`;
-                amtColor = 'text-success';
-              } else if (item.type === 'student_referral') {
-                typeBadge = `<span class="badge bg-purple-subtle text-purple border border-purple" style="color:#a855f7; border-color:#a855f7 !important;">Student Referral</span>`;
-                amtColor = 'text-success';
-              } else if (item.type === 'teacher_referral') {
-                typeBadge = `<span class="badge bg-indigo-subtle text-indigo border border-indigo" style="color:#6366f1; border-color:#6366f1 !important;">Teacher Referral</span>`;
-                amtColor = 'text-success';
-              } else if (item.type === 'slab_reward') {
-                typeBadge = `<span class="badge bg-warning-subtle text-warning border border-warning">Slab Milestone</span>`;
-                amtColor = 'text-success';
-              } else if (item.type === 'grooming_allowance') {
-                typeBadge = `<span class="badge bg-pink-subtle text-pink border border-pink" style="color:#ec4899; border-color:#ec4899 !important;">Grooming Allowance</span>`;
-                amtColor = 'text-success';
-              } else if (item.type === 'withdrawal') {
-                typeBadge = `<span class="badge bg-danger-subtle text-danger border border-danger">Withdrawal Payout</span>`;
-                amtColor = 'text-danger';
-                prefix = '-';
-              }
+      let typeBadge = '';
+      let amtColor = '';
+      let prefix = '+';
 
-              const desc = item.referred_user_name ? `${item.description} (User: ${item.referred_user_name})` : item.description;
+      if (item.type === 'course_share') {
+        typeBadge = `<span class="badge bg-success-subtle text-success border border-success">Course Share</span>`;
+        amtColor = 'text-success';
+      } else if (item.type === 'student_referral') {
+        typeBadge = `<span class="badge bg-purple-subtle text-purple border border-purple" style="color:#a855f7; border-color:#a855f7 !important;">Student Referral</span>`;
+        amtColor = 'text-success';
+      } else if (item.type === 'teacher_referral') {
+        typeBadge = `<span class="badge bg-indigo-subtle text-indigo border border-indigo" style="color:#6366f1; border-color:#6366f1 !important;">Teacher Referral</span>`;
+        amtColor = 'text-success';
+      } else if (item.type === 'slab_reward') {
+        typeBadge = `<span class="badge bg-warning-subtle text-warning border border-warning">Slab Milestone</span>`;
+        amtColor = 'text-success';
+      } else if (item.type === 'grooming_allowance') {
+        typeBadge = `<span class="badge bg-pink-subtle text-pink border border-pink" style="color:#ec4899; border-color:#ec4899 !important;">Grooming Allowance</span>`;
+        amtColor = 'text-success';
+      } else if (item.type === 'withdrawal') {
+        typeBadge = `<span class="badge bg-danger-subtle text-danger border border-danger">Withdrawal Payout</span>`;
+        amtColor = 'text-danger';
+        prefix = '-';
+      }
 
-              return `
+      const desc = item.referred_user_name ? `${item.description} (User: ${item.referred_user_name})` : item.description;
+
+      return `
                 <tr>
                   <td>${new Date(item.created_at).toLocaleString()}</td>
                   <td>${typeBadge}</td>
@@ -1104,7 +1106,7 @@ async function viewTeacherStatement(id) {
                   <td class="text-end fw-bold ${amtColor}">${prefix}${fmtCurrency(item.amount)}</td>
                 </tr>
               `;
-            }).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No transactions found in ledger statement.</td></tr>'}
+    }).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No transactions found in ledger statement.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -1141,12 +1143,12 @@ async function impersonate(userId, role) {
       const portal = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : '/parent';
       const tokenKey = role === 'parent' ? 'spx_parent_token' : `${role}_token`;
       const userKey = role === 'parent' ? 'spx_parent_profile' : `${role}_user`;
-      
+
       localStorage.setItem(tokenKey, data.token);
       localStorage.setItem(userKey, JSON.stringify(data.user));
       sessionStorage.setItem(tokenKey, data.token);
       sessionStorage.setItem(userKey, JSON.stringify(data.user));
-      
+
       window.open(`${portal}?impersonate=1`, '_blank');
       showToast(`Opened as ${data.user?.name}`, 'info');
     }
@@ -1241,12 +1243,12 @@ async function renderStudents() {
           <input type="text" class="form-control spx-input" placeholder="Search students..." style="width:220px" oninput="filterTable(this.value, 'studentsTable', 0, 3)">
         </div>
         ${table(
-          ['Student','Code','Grade/Board','Email','Mobile Verified','Email Verified','Joined','Actions'],
-          students.map(s => `
+      ['Student', 'Code', 'Grade/Board', 'Email', 'Mobile Verified', 'Email Verified', 'Joined', 'Actions'],
+      students.map(s => `
             <tr>
               <td><div class="d-flex align-items-center gap-2">${avatar(s.photo_url, s.name)}<span class="fw-semibold text-white">${s.name}</span></div></td>
-              <td><code style="color:var(--primary)">${s.student_code||'—'}</code></td>
-              <td>${s.grade||'—'} (${s.board||'—'})</td>
+              <td><code style="color:var(--primary)">${s.student_code || '—'}</code></td>
+              <td>${s.grade || '—'} (${s.board || '—'})</td>
               <td>${s.email}</td>
               <td>${s.phone_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-danger">Unverified</span>'}</td>
               <td>${s.email_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-warning text-dark">Pending</span>'}</td>
@@ -1261,8 +1263,8 @@ async function renderStudents() {
                 </div>
               </td>
             </tr>`).join(''),
-          true
-        )}
+      true
+    )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -1277,23 +1279,23 @@ async function renderParents() {
       apiGet('/admin/parents'),
       apiGet('/admin/parent-links')
     ]);
-    
+
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
         <div class="col-lg-7">
           <div class="spx-card h-100">
             <h6 class="mb-4 text-white"><i class="fas fa-users me-2 text-primary"></i>All Parents (${parents.length})</h6>
             ${table(
-              ['Parent','Email','Phone','Actions'],
-              parents.map(p => `
+      ['Parent', 'Email', 'Phone', 'Actions'],
+      parents.map(p => `
                 <tr>
-                  <td><div class="d-flex align-items-center gap-2">${avatar(p.photo_url,p.name)}<span class="fw-semibold text-white">${p.name}</span></div></td>
+                  <td><div class="d-flex align-items-center gap-2">${avatar(p.photo_url, p.name)}<span class="fw-semibold text-white">${p.name}</span></div></td>
                   <td>${p.email}</td>
-                  <td>${p.phone||'—'}</td>
+                  <td>${p.phone || '—'}</td>
                   <td><button class="btn btn-sm btn-outline-primary" onclick="impersonate('${p.id}','parent')">Login As</button></td>
                 </tr>`).join(''),
-              true
-            )}
+      true
+    )}
           </div>
         </div>
         
@@ -1311,12 +1313,12 @@ async function renderParents() {
                 </thead>
                 <tbody>
                   ${links.map(l => {
-                    let statusBadge = 'bg-secondary';
-                    if (l.status === 'approved') statusBadge = 'bg-success';
-                    else if (l.status === 'rejected') statusBadge = 'bg-danger';
-                    else if (l.status === 'pending') statusBadge = 'bg-warning text-dark';
-                    
-                    return `
+      let statusBadge = 'bg-secondary';
+      if (l.status === 'approved') statusBadge = 'bg-success';
+      else if (l.status === 'rejected') statusBadge = 'bg-danger';
+      else if (l.status === 'pending') statusBadge = 'bg-warning text-dark';
+
+      return `
                       <tr>
                         <td>
                           <div class="small">
@@ -1334,7 +1336,7 @@ async function renderParents() {
                         </td>
                       </tr>
                     `;
-                  }).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">No connections found.</td></tr>'}
+    }).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">No connections found.</td></tr>'}
                 </tbody>
               </table>
             </div>
@@ -1741,7 +1743,7 @@ function showCreateCourse() {
           <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Target student grade or class level.</small>
           <select class="form-select spx-input" id="courseGrade" required>
             <option value="">Select Grade</option>
-            ${['Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'].map(g => `<option>${g}</option>`).join('')}
+            ${['Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map(g => `<option>${g}</option>`).join('')}
           </select>
         </div>
         <div class="col-md-5">
@@ -1880,9 +1882,9 @@ function editCourse(id) {
     showToast('Course not found', 'error');
     return;
   }
-  
+
   window._currentThumbnailUrl = course.thumbnail_url || '';
- 
+
   document.getElementById('formModalTitle').textContent = 'Edit Course';
   document.getElementById('formModalBody').innerHTML = `
     <form id="courseForm">
@@ -1902,7 +1904,7 @@ function editCourse(id) {
           <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Target student grade or class level.</small>
           <select class="form-select spx-input" id="courseGrade" required>
             <option value="">Select Grade</option>
-            ${['Class 6','Class 7','Class 8','Class 9','Class 10','Class 11','Class 12'].map(g => `<option ${course.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
+            ${['Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map(g => `<option ${course.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
           </select>
         </div>
         <div class="col-md-5">
@@ -2040,7 +2042,7 @@ async function updateCourse(e, id) {
 async function uploadCourseThumbnail(file) {
   const formData = new FormData();
   formData.append('thumbnail', file);
-  
+
   const res = await fetch(`${API}/admin/courses/upload-thumbnail`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` },
@@ -2064,7 +2066,7 @@ async function handleCourseFileSelect(input) {
   const preview = document.getElementById('courseUploadPreview');
 
   spinner.classList.remove('d-none');
-  
+
   try {
     const data = await uploadCourseThumbnail(file);
     window._currentThumbnailUrl = data.thumbnailUrl;
@@ -2479,10 +2481,10 @@ function filterAndRenderBatchesTable() {
   tbody.innerHTML = filtered.map(b => `
     <tr>
       <td class="fw-semibold text-white">${b.batch_name}</td>
-      <td>${b.course_title||'—'}</td>
-      <td>${b.teacher_name||'—'}</td>
-      <td>${(b.days_of_week||[]).join(', ')}<br><small class="text-muted">${b.start_time||''} - ${b.end_time||''}</small></td>
-      <td>${b.seats_filled||0}/${b.capacity||30}</td>
+      <td>${b.course_title || '—'}</td>
+      <td>${b.teacher_name || '—'}</td>
+      <td>${(b.days_of_week || []).join(', ')}<br><small class="text-muted">${b.start_time || ''} - ${b.end_time || ''}</small></td>
+      <td>${b.seats_filled || 0}/${b.capacity || 30}</td>
       <td>${statusBadge(b.status)}</td>
       <td>
         <button class="btn btn-sm btn-outline-secondary me-1" style="font-size: 0.78rem;" onclick="toggleBatch('${b.id}')">Toggle</button>
@@ -2493,13 +2495,13 @@ function filterAndRenderBatchesTable() {
 }
 
 async function toggleBatch(id) {
-  try { const d = await apiPost(`/admin/batches/${id}/toggle`); showToast(d.message||'Batch toggled'); renderBatches(); }
-  catch (err) { showToast(err.message,'error'); }
+  try { const d = await apiPost(`/admin/batches/${id}/toggle`); showToast(d.message || 'Batch toggled'); renderBatches(); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 async function cancelBatch(id) {
   adminPrompt('Cancel Batch', 'Reason for cancellation?', '', async (reason) => {
-    try { const d = await apiPost(`/admin/batches/${id}/cancel`,{reason}); showToast(d.message||'Batch cancelled'); renderBatches(); }
-    catch (err) { showToast(err.message,'error'); }
+    try { const d = await apiPost(`/admin/batches/${id}/cancel`, { reason }); showToast(d.message || 'Batch cancelled'); renderBatches(); }
+    catch (err) { showToast(err.message, 'error'); }
   });
 }
 
@@ -2512,13 +2514,13 @@ async function renderLiveClasses() {
       <div class="spx-card">
         <h6 class="mb-4">Live Classes (${classes.length})</h6>
         ${table(
-          ['Title','Batch','Teacher','Date/Time','Status','Duration','Actions'],
-          classes.map(c => `
+      ['Title', 'Batch', 'Teacher', 'Date/Time', 'Status', 'Duration', 'Actions'],
+      classes.map(c => `
             <tr>
-              <td class="fw-semibold text-white">${c.title||'Class'}</td>
-              <td>${c.batch_name||'—'}</td>
-              <td>${c.teacher_name||'—'}</td>
-              <td>${fmtDate(c.class_date)} ${c.class_time||''}</td>
+              <td class="fw-semibold text-white">${c.title || 'Class'}</td>
+              <td>${c.batch_name || '—'}</td>
+              <td>${c.teacher_name || '—'}</td>
+              <td>${fmtDate(c.class_date)} ${c.class_time || ''}</td>
               <td>${statusBadge(c.status)}</td>
               <td>${c.duration_mins ? c.duration_mins + ' min' : '—'}</td>
               <td>
@@ -2526,8 +2528,8 @@ async function renderLiveClasses() {
                 ${c.status === 'scheduled' ? `<button class="btn btn-sm btn-outline-danger" onclick="cancelClass('${c.id}')">Cancel</button>` : ''}
               </td>
             </tr>`).join(''),
-          true
-        )}
+      true
+    )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -2536,11 +2538,11 @@ async function renderLiveClasses() {
 
 async function endClass(id) {
   try { const d = await apiPost(`/admin/live-classes/${id}/end`); showToast(d.message); renderLiveClasses(); }
-  catch (err) { showToast(err.message,'error'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 async function cancelClass(id) {
   try { const d = await apiDelete(`/admin/live-classes/${id}`); showToast(d.message); renderLiveClasses(); }
-  catch (err) { showToast(err.message,'error'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 
 // ── Payments ──────────────────────────────────────────────────
@@ -2552,19 +2554,19 @@ async function renderPayments() {
       <div class="spx-card">
         <h6 class="mb-4">All Payments (${payments.length})</h6>
         ${table(
-          ['Student','Course','Batch','Amount','Teacher Share','Status','Date'],
-          payments.map(p => `
+      ['Student', 'Course', 'Batch', 'Amount', 'Teacher Share', 'Status', 'Date'],
+      payments.map(p => `
             <tr>
-              <td class="fw-semibold text-white">${p.student_name||'—'}</td>
-              <td>${p.course_title||'—'}</td>
-              <td>${p.batch_name||'—'}</td>
+              <td class="fw-semibold text-white">${p.student_name || '—'}</td>
+              <td>${p.course_title || '—'}</td>
+              <td>${p.batch_name || '—'}</td>
               <td class="fw-semibold" style="color:var(--success)">${fmtCurrency(p.amount)}</td>
               <td>${fmtCurrency(p.teacher_share)}</td>
               <td>${statusBadge(p.status)}</td>
               <td>${fmtDate(p.created_at)}</td>
             </tr>`).join(''),
-          true
-        )}
+      true
+    )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -2580,12 +2582,12 @@ async function renderPayouts() {
       <div class="spx-card">
         <h6 class="mb-4">Payout Requests (${payouts.length})</h6>
         ${table(
-          ['Teacher','Amount','UPI/Bank','Status','Requested','Actions'],
-          payouts.map(p => `
+      ['Teacher', 'Amount', 'UPI/Bank', 'Status', 'Requested', 'Actions'],
+      payouts.map(p => `
             <tr>
-              <td class="fw-semibold text-white">${p.teacher_name||'—'}<br><small class="text-muted">${p.teacher_email||''}</small></td>
+              <td class="fw-semibold text-white">${p.teacher_name || '—'}<br><small class="text-muted">${p.teacher_email || ''}</small></td>
               <td class="fw-bold" style="color:var(--warning)">${fmtCurrency(p.amount)}</td>
-              <td><small>${p.upi_id||p.bank_account||'—'}</small></td>
+              <td><small>${p.upi_id || p.bank_account || '—'}</small></td>
               <td>${statusBadge(p.status)}</td>
               <td>${fmtDate(p.requested_at)}</td>
               <td>
@@ -2597,8 +2599,8 @@ async function renderPayouts() {
                   <button class="btn btn-sm btn-spx" onclick="payViaRazorpay(event, '${p.id}')"><i class="fas fa-money-bill-wave me-1"></i>Pay via Razorpay</button>` : ''}
               </td>
             </tr>`).join(''),
-          true
-        )}
+      true
+    )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -2607,17 +2609,17 @@ async function renderPayouts() {
 
 async function approvePayout(id) {
   try { const d = await apiPost(`/admin/payouts/${id}/approve`); showToast(d.message); renderPayouts(); }
-  catch (err) { showToast(err.message,'error'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 async function rejectPayout(id) {
   adminPrompt('Reject Payout Request', 'Reason for rejection?', '', async (notes) => {
-    try { const d = await apiPost(`/admin/payouts/${id}/reject`,{admin_notes:notes}); showToast(d.message); renderPayouts(); }
-    catch (err) { showToast(err.message,'error'); }
+    try { const d = await apiPost(`/admin/payouts/${id}/reject`, { admin_notes: notes }); showToast(d.message); renderPayouts(); }
+    catch (err) { showToast(err.message, 'error'); }
   });
 }
 async function markPaid(id) {
   try { const d = await apiPost(`/admin/payouts/${id}/mark-paid`); showToast(d.message); renderPayouts(); }
-  catch (err) { showToast(err.message,'error'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 async function payViaRazorpay(event, id) {
   try {
@@ -2644,12 +2646,12 @@ async function renderRefunds() {
       <div class="spx-card">
         <h6 class="mb-4">Refund Requests (${refunds.length})</h6>
         ${table(
-          ['Student','Amount','Reason','Status','Requested','Actions'],
-          refunds.map(r => `
+      ['Student', 'Amount', 'Reason', 'Status', 'Requested', 'Actions'],
+      refunds.map(r => `
             <tr>
-              <td class="fw-semibold text-white">${r.student_name||'—'}</td>
+              <td class="fw-semibold text-white">${r.student_name || '—'}</td>
               <td style="color:var(--danger)">${fmtCurrency(r.amount)}</td>
-              <td>${r.reason||'—'}</td>
+              <td>${r.reason || '—'}</td>
               <td>${statusBadge(r.status)}</td>
               <td>${fmtDate(r.requested_at)}</td>
               <td>
@@ -2658,8 +2660,8 @@ async function renderRefunds() {
                   <button class="btn btn-sm btn-danger" onclick="processRefund('${r.id}','reject')">Reject</button>` : statusBadge(r.status)}
               </td>
             </tr>`).join(''),
-          true
-        )}
+      true
+    )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -2668,12 +2670,12 @@ async function renderRefunds() {
 
 async function processRefund(id, action) {
   if (action === 'approve') {
-    try { const d = await apiPost(`/admin/refunds/${id}/process`,{action,notes:''}); showToast(d.message); renderRefunds(); }
-    catch (err) { showToast(err.message,'error'); }
+    try { const d = await apiPost(`/admin/refunds/${id}/process`, { action, notes: '' }); showToast(d.message); renderRefunds(); }
+    catch (err) { showToast(err.message, 'error'); }
   } else {
     adminPrompt('Reject Refund Request', 'Reason for rejection?', '', async (notes) => {
-      try { const d = await apiPost(`/admin/refunds/${id}/process`,{action,notes}); showToast(d.message); renderRefunds(); }
-      catch (err) { showToast(err.message,'error'); }
+      try { const d = await apiPost(`/admin/refunds/${id}/process`, { action, notes }); showToast(d.message); renderRefunds(); }
+      catch (err) { showToast(err.message, 'error'); }
     });
   }
 }
@@ -2687,10 +2689,10 @@ async function renderSOP() {
       <div class="spx-card">
         <h6 class="mb-4 text-start">SOP Submissions (${sops.length})</h6>
         ${table(
-          ['Teacher','Email','Status','Submitted','Videos','Actions'],
-          sops.map(s => `
+      ['Teacher', 'Email', 'Status', 'Submitted', 'Videos', 'Actions'],
+      sops.map(s => `
             <tr>
-              <td><div class="d-flex align-items-center gap-2">${avatar(s.photo_url,s.teacher_name)}<span class="fw-semibold text-white">${s.teacher_name}</span></div></td>
+              <td><div class="d-flex align-items-center gap-2">${avatar(s.photo_url, s.teacher_name)}<span class="fw-semibold text-white">${s.teacher_name}</span></div></td>
               <td>${s.teacher_email}</td>
               <td>${statusBadge(s.status)}</td>
               <td>${fmtDate(s.submitted_at)}</td>
@@ -2716,8 +2718,8 @@ async function renderSOP() {
                 </div>
               </td>
             </tr>`).join(''),
-          true
-        )}
+      true
+    )}
       </div>`;
     loadSOPBadge();
   } catch (err) {
@@ -2728,8 +2730,8 @@ async function renderSOP() {
 async function reviewSOP(teacherId, action) {
   if (action === 'reject') {
     adminPrompt('Reject SOP Submission', 'Reason for rejection?', '', async (notes) => {
-      try { const d = await apiPost(`/admin/sop/${teacherId}/reject`,{admin_notes:notes}); showToast(d.message); renderSOP(); }
-      catch (err) { showToast(err.message,'error'); }
+      try { const d = await apiPost(`/admin/sop/${teacherId}/reject`, { admin_notes: notes }); showToast(d.message); renderSOP(); }
+      catch (err) { showToast(err.message, 'error'); }
     });
     return;
   }
@@ -2783,18 +2785,18 @@ async function refreshSOPModal(teacherId) {
       { key: 'pan', label: 'PAN Card (KYC Document)', type: 'file', val: docs.find(d => d.doc_type === 'pan')?.file_url },
       { key: 'resume', label: 'Professional Resume (KYC Document)', type: 'file', val: docs.find(d => d.doc_type === 'resume')?.file_url },
       { key: 'qualification', label: 'Degree Certificate (KYC Document)', type: 'file', val: docs.find(d => d.doc_type === 'qualification')?.file_url },
-      
+
       { key: 'subject_expertise', label: 'Subject Expertise (Profile Text)', type: 'text', val: t.subject_expertise },
       { key: 'expertise_proof', label: 'Subject Expertise Proof (Doc)', type: 'file', val: docs.find(d => d.doc_type === 'expertise_proof')?.file_url },
-      
+
       { key: 'languages', label: 'Language Preference (Profile Text)', type: 'text', val: t.languages },
       { key: 'language_proof', label: 'Language Preference Proof (Doc)', type: 'file', val: docs.find(d => d.doc_type === 'language_proof')?.file_url },
-      
+
       { key: 'experience_years', label: 'Teaching Experience Years', type: 'text', val: (t.experience_years !== null && t.experience_years !== undefined) ? `${t.experience_years} Years` : null },
       { key: 'experience_proof', label: 'Experience Letter Proof (Doc)', type: 'file', val: docs.find(d => d.doc_type === 'experience_proof')?.file_url },
-      
+
       { key: 'availability', label: 'Weekly Availability Slots', type: 'html', val: availabilityHtml },
-      
+
       { key: 'camera_sop', label: 'Camera Setup SOP (Technical Proof)', type: 'file', val: s.camera_sop_url },
       { key: 'lighting_sop', label: 'Lighting Setup SOP (Technical Proof)', type: 'file', val: s.lighting_sop_url },
       { key: 'audio_sop', label: 'Audio Setup SOP (Technical Proof)', type: 'file', val: s.audio_sop_url },
@@ -2840,8 +2842,8 @@ async function refreshSOPModal(teacherId) {
         <h6 class="fw-bold mb-2 text-primary" style="font-family:'Outfit'; font-size:0.85rem;"><i class="fas fa-clipboard-check me-2"></i>Teacher Self-Declaration Checklist</h6>
         <div class="row g-2">
           ${checklistItems.map(item => {
-            const checked = !!checklist[item.key];
-            return `
+      const checked = !!checklist[item.key];
+      return `
               <div class="col-md-4 col-sm-6">
                 <div class="d-flex align-items-center gap-2 py-1 px-2 rounded" style="background: rgba(255, 255, 255, 0.01); font-size: 0.72rem; border: 1px solid var(--border);">
                   <i class="fas ${checked ? 'fa-check-circle text-success' : 'fa-times-circle text-muted'}"></i>
@@ -2849,7 +2851,7 @@ async function refreshSOPModal(teacherId) {
                 </div>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     `;
@@ -2883,21 +2885,21 @@ async function refreshSOPModal(teacherId) {
             </thead>
             <tbody>
               ${items.map(item => {
-                const hasItem = !!item.val;
-                let dataHtml = '';
-                if (item.type === 'file') {
-                  dataHtml = hasItem ? 
-                    `<a href="${item.val}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size:0.72rem"><i class="fas fa-external-link-alt me-1"></i>View File / Link</a>` : 
-                    `<span class="text-muted small">No file/link uploaded</span>`;
-                } else if (item.type === 'text') {
-                  dataHtml = hasItem ? 
-                    `<span class="fw-semibold text-dark">${item.val}</span>` : 
-                    `<span class="text-muted small">—</span>`;
-                } else if (item.type === 'html') {
-                  dataHtml = item.val;
-                }
+      const hasItem = !!item.val;
+      let dataHtml = '';
+      if (item.type === 'file') {
+        dataHtml = hasItem ?
+          `<a href="${item.val}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size:0.72rem"><i class="fas fa-external-link-alt me-1"></i>View File / Link</a>` :
+          `<span class="text-muted small">No file/link uploaded</span>`;
+      } else if (item.type === 'text') {
+        dataHtml = hasItem ?
+          `<span class="fw-semibold text-dark">${item.val}</span>` :
+          `<span class="text-muted small">—</span>`;
+      } else if (item.type === 'html') {
+        dataHtml = item.val;
+      }
 
-                return `
+      return `
                   <tr>
                     <td style="padding: 12px 16px;">
                       <div class="fw-bold text-dark">${item.label}</div>
@@ -2911,7 +2913,7 @@ async function refreshSOPModal(teacherId) {
                     </td>
                   </tr>
                 `;
-              }).join('')}
+    }).join('')}
             </tbody>
           </table>
         </div>
@@ -2940,7 +2942,7 @@ async function refreshSOPModal(teacherId) {
   }
 }
 
-window.approveSOPItem = async function(teacherId, itemKey) {
+window.approveSOPItem = async function (teacherId, itemKey) {
   try {
     showToast(`Approving ${itemKey.replace('_', ' ')}...`, 'info');
     const res = await apiPost(`/admin/sop/${teacherId}/item-approval`, {
@@ -2955,7 +2957,7 @@ window.approveSOPItem = async function(teacherId, itemKey) {
   }
 };
 
-window.rejectSOPItem = async function(teacherId, itemKey) {
+window.rejectSOPItem = async function (teacherId, itemKey) {
   adminPrompt('Reject Onboarding Item', `Specify the reason for rejecting ${itemKey.replace('_', ' ')}:`, '', async (notes) => {
     if (!notes) {
       showToast('A rejection note is required to reject an onboarding item.', 'error');
@@ -3007,7 +3009,7 @@ async function submitSOPApproval(teacherId) {
   }
 }
 
-window.deApproveTeacher = async function(teacherId) {
+window.deApproveTeacher = async function (teacherId) {
   adminPrompt('deApprove Teacher Account', 'Specify the reason for deApproving this teacher (will revert onboarding status to pending review):', '', async (notes) => {
     if (!notes) {
       showToast('A reason/note is required to deApprove.', 'error');
@@ -3037,12 +3039,12 @@ async function renderCoupons() {
           <button class="btn btn-spx" onclick="showCreateCoupon()"><i class="fas fa-plus me-2"></i>New Coupon</button>
         </div>
         ${table(
-          ['Code','Discount','Uses','Valid Until','Status','Actions'],
-          coupons.map(c => `
+      ['Code', 'Discount', 'Uses', 'Valid Until', 'Status', 'Actions'],
+      coupons.map(c => `
             <tr>
               <td><code style="color:var(--primary);font-size:1rem">${c.code}</code></td>
               <td class="fw-bold">${c.discount_percent}%</td>
-              <td>${c.used_count||0} / ${c.max_uses}</td>
+              <td>${c.used_count || 0} / ${c.max_uses}</td>
               <td>${fmtDate(c.valid_until)}</td>
               <td>${c.is_active ? '<span class="badge-active">Active</span>' : '<span class="badge-rejected">Inactive</span>'}</td>
               <td>
@@ -3050,8 +3052,8 @@ async function renderCoupons() {
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteCoupon('${c.code}')">Delete</button>
               </td>
             </tr>`).join(''),
-          true
-        )}
+      true
+    )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -3076,19 +3078,19 @@ function showCreateCoupon() {
 async function createCoupon(e) {
   e.preventDefault();
   try {
-    const d = await apiPost('/admin/coupons',{code:document.getElementById('cpCode').value,discount_percent:parseFloat(document.getElementById('cpDiscount').value),max_uses:parseInt(document.getElementById('cpMaxUses').value),valid_until:document.getElementById('cpValidity').value||null});
-    showToast(d.message||'Coupon created'); formModal.hide(); renderCoupons();
-  } catch (err) { showToast(err.message,'error'); }
+    const d = await apiPost('/admin/coupons', { code: document.getElementById('cpCode').value, discount_percent: parseFloat(document.getElementById('cpDiscount').value), max_uses: parseInt(document.getElementById('cpMaxUses').value), valid_until: document.getElementById('cpValidity').value || null });
+    showToast(d.message || 'Coupon created'); formModal.hide(); renderCoupons();
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
 async function toggleCoupon(code) {
   try { const d = await apiPost(`/admin/coupons/${code}/toggle`); showToast('Coupon toggled'); renderCoupons(); }
-  catch (err) { showToast(err.message,'error'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 async function deleteCoupon(code) {
   confirm('Delete Coupon?', `Delete coupon <strong>${code}</strong>?`, async () => {
     try { await apiDelete(`/admin/coupons/${code}`); showToast('Coupon deleted'); renderCoupons(); }
-    catch (err) { showToast(err.message,'error'); }
+    catch (err) { showToast(err.message, 'error'); }
   });
 }
 
@@ -3122,16 +3124,16 @@ async function renderNotifications() {
           <div class="spx-card">
             <h6 class="mb-4">Recent Notifications</h6>
             ${table(
-              ['Title','Target','Type','Date'],
-              notifs.slice(0,20).map(n => `
+      ['Title', 'Target', 'Type', 'Date'],
+      notifs.slice(0, 20).map(n => `
                 <tr>
                   <td class="fw-semibold text-white">${n.title}</td>
-                  <td>${n.target_role||'all'}</td>
-                  <td>${n.type||'info'}</td>
+                  <td>${n.target_role || 'all'}</td>
+                  <td>${n.type || 'info'}</td>
                   <td>${fmtDate(n.created_at)}</td>
                 </tr>`).join(''),
-              false
-            )}
+      false
+    )}
           </div>
         </div>
       </div>`;
@@ -3143,10 +3145,10 @@ async function renderNotifications() {
 async function sendNotif(e) {
   e.preventDefault();
   try {
-    const d = await apiPost('/admin/notifications',{title:document.getElementById('notifTitle').value,message:document.getElementById('notifMsg').value,target_role:document.getElementById('notifRole').value});
-    showToast(d.message||'Notification sent'); document.getElementById('notifTitle').value=''; document.getElementById('notifMsg').value='';
+    const d = await apiPost('/admin/notifications', { title: document.getElementById('notifTitle').value, message: document.getElementById('notifMsg').value, target_role: document.getElementById('notifRole').value });
+    showToast(d.message || 'Notification sent'); document.getElementById('notifTitle').value = ''; document.getElementById('notifMsg').value = '';
     renderNotifications();
-  } catch (err) { showToast(err.message,'error'); }
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
 // ── Settings & OTP System Management ──────────────────────────────
@@ -3162,17 +3164,17 @@ async function renderSettingsGeneral() {
             <h6 class="mb-4 text-primary fw-bold"><i class="fas fa-sliders-h me-2"></i>Platform Settings</h6>
             <form onsubmit="saveSettings(event)">
               ${[
-                {key:'platform_name', label:'Platform Name', type:'text'},
-                {key:'logo_text', label:'Logo Text', type:'text'},
-                {key:'support_email', label:'Support Email', type:'email'},
-                {key:'support_phone', label:'Support Phone', type:'text'},
-                {key:'support_hours', label:'Support Hours', type:'text'},
-                {key:'announcement', label:'Announcement Banner', type:'text'},
-                {key:'max_batch_capacity', label:'Max Batch Capacity', type:'number'},
-              ].map(f => `
+        { key: 'platform_name', label: 'Platform Name', type: 'text' },
+        { key: 'logo_text', label: 'Logo Text', type: 'text' },
+        { key: 'support_email', label: 'Support Email', type: 'email' },
+        { key: 'support_phone', label: 'Support Phone', type: 'text' },
+        { key: 'support_hours', label: 'Support Hours', type: 'text' },
+        { key: 'announcement', label: 'Announcement Banner', type: 'text' },
+        { key: 'max_batch_capacity', label: 'Max Batch Capacity', type: 'number' },
+      ].map(f => `
                 <div class="mb-3">
                   <label class="spx-label text-dark">${f.label}</label>
-                  <input class="form-control spx-input" type="${f.type}" id="setting_${f.key}" value="${settings[f.key]||''}">
+                  <input class="form-control spx-input" type="${f.type}" id="setting_${f.key}" value="${settings[f.key] || ''}">
                 </div>`).join('')}
               <button type="submit" class="btn btn-spx w-100">Save Platform Settings</button>
             </form>
@@ -3183,20 +3185,20 @@ async function renderSettingsGeneral() {
             <h6 class="mb-3 text-primary fw-bold"><i class="fas fa-desktop me-2"></i>Homepage CMS Text</h6>
             <form onsubmit="saveHomepageSettings(event)">
               ${[
-                {key:'home_hero_badge', label:'Hero Badge text'},
-                {key:'home_hero_title', label:'Hero Main Title'},
-                {key:'home_hero_desc', label:'Hero Description', type:'textarea'},
-                {key:'home_hero_cta_primary', label:'Primary CTA Button Text'},
-                {key:'home_hero_cta_secondary', label:'Secondary CTA Button Text'},
-                {key:'home_footer_phone', label:'Footer Support Phone'},
-                {key:'home_footer_email', label:'Footer Support Email'},
-              ].map(f => `
+        { key: 'home_hero_badge', label: 'Hero Badge text' },
+        { key: 'home_hero_title', label: 'Hero Main Title' },
+        { key: 'home_hero_desc', label: 'Hero Description', type: 'textarea' },
+        { key: 'home_hero_cta_primary', label: 'Primary CTA Button Text' },
+        { key: 'home_hero_cta_secondary', label: 'Secondary CTA Button Text' },
+        { key: 'home_footer_phone', label: 'Footer Support Phone' },
+        { key: 'home_footer_email', label: 'Footer Support Email' },
+      ].map(f => `
                 <div class="mb-2">
                   <label class="spx-label small text-dark">${f.label}</label>
                   ${f.type === 'textarea' ? `
-                    <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${settings[f.key]||''}</textarea>
+                    <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${settings[f.key] || ''}</textarea>
                   ` : `
-                    <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${settings[f.key]||''}">
+                    <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${settings[f.key] || ''}">
                   `}
                 </div>`).join('')}
               <button type="submit" class="btn btn-spx btn-sm w-100 mt-2">Save Homepage CMS</button>
@@ -3246,19 +3248,19 @@ async function renderSettingsRegPayouts() {
             <form onsubmit="saveLevelPayouts(event)">
               <div style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
                 ${[
-                  {key:'payout_pct_Junior_Teacher', label:'Junior Teacher Share (%)', default:'50.00'},
-                  {key:'payout_pct_Assistant_Teacher', label:'Assistant Teacher Share (%)', default:'55.00'},
-                  {key:'payout_pct_Senior_Teacher', label:'Senior Teacher Share (%)', default:'60.00'},
-                  {key:'payout_pct_Executive_Teacher', label:'Executive Teacher Share (%)', default:'65.00'},
-                  {key:'payout_pct_Lecturer', label:'Lecturer Share (%)', default:'70.00'},
-                  {key:'payout_pct_Professor', label:'Professor Share (%)', default:'75.00'},
-                  {key:'payout_pct_Senior_Professor', label:'Senior Professor Share (%)', default:'80.00'},
-                  {key:'payout_pct_HOD', label:'HOD Share (%)', default:'85.00'},
-                  {key:'payout_pct_Dean', label:'Dean Share (%)', default:'90.00'},
-                ].map(f => `
+        { key: 'payout_pct_Junior_Teacher', label: 'Junior Teacher Share (%)', default: '50.00' },
+        { key: 'payout_pct_Assistant_Teacher', label: 'Assistant Teacher Share (%)', default: '55.00' },
+        { key: 'payout_pct_Senior_Teacher', label: 'Senior Teacher Share (%)', default: '60.00' },
+        { key: 'payout_pct_Executive_Teacher', label: 'Executive Teacher Share (%)', default: '65.00' },
+        { key: 'payout_pct_Lecturer', label: 'Lecturer Share (%)', default: '70.00' },
+        { key: 'payout_pct_Professor', label: 'Professor Share (%)', default: '75.00' },
+        { key: 'payout_pct_Senior_Professor', label: 'Senior Professor Share (%)', default: '80.00' },
+        { key: 'payout_pct_HOD', label: 'HOD Share (%)', default: '85.00' },
+        { key: 'payout_pct_Dean', label: 'Dean Share (%)', default: '90.00' },
+      ].map(f => `
                   <div class="mb-3">
                     <label class="spx-label text-dark">${f.label}</label>
-                    <input class="form-control spx-input" type="number" step="0.01" min="0" max="100" id="setting_${f.key}" value="${settings[f.key]||f.default}">
+                    <input class="form-control spx-input" type="number" step="0.01" min="0" max="100" id="setting_${f.key}" value="${settings[f.key] || f.default}">
                   </div>`).join('')}
               </div>
               <button type="submit" class="btn btn-spx w-100 mt-3">Save Level Payouts</button>
@@ -3314,15 +3316,15 @@ async function renderSettingsGateways() {
                 <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>MSG91 Credentials</h6>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">MSG91 Auth Key</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_auth_key" value="${settings.msg91_auth_key||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_auth_key" value="${settings.msg91_auth_key || ''}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">MSG91 Template ID</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_template_id" value="${settings.msg91_template_id||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_template_id" value="${settings.msg91_template_id || ''}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">MSG91 Sender ID (6 chars)</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_sender_id" value="${settings.msg91_sender_id||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_msg91_sender_id" value="${settings.msg91_sender_id || ''}">
                 </div>
               </div>
               <!-- Twilio Dynamic Fields -->
@@ -3330,15 +3332,15 @@ async function renderSettingsGateways() {
                 <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Twilio Credentials</h6>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Twilio Account SID</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_account_sid" value="${settings.twilio_account_sid||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_account_sid" value="${settings.twilio_account_sid || ''}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Twilio Auth Token</label>
-                  <input class="form-control spx-input form-control-sm" type="password" id="setting_twilio_auth_token" value="${settings.twilio_auth_token||''}">
+                  <input class="form-control spx-input form-control-sm" type="password" id="setting_twilio_auth_token" value="${settings.twilio_auth_token || ''}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Twilio From Phone Number</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_from_phone" value="${settings.twilio_from_phone||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twilio_from_phone" value="${settings.twilio_from_phone || ''}">
                 </div>
               </div>
               <!-- Fast2SMS Dynamic Fields -->
@@ -3346,15 +3348,15 @@ async function renderSettingsGateways() {
                 <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>Fast2SMS Credentials</h6>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Fast2SMS Authorization API Key</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_api_key" value="${settings.fast2sms_api_key||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_api_key" value="${settings.fast2sms_api_key || ''}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Fast2SMS Route (e.g. dlt or v3)</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_route" value="${settings.fast2sms_route||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_route" value="${settings.fast2sms_route || ''}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Sender ID (DLT Registered)</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_sender_id" value="${settings.fast2sms_sender_id||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_fast2sms_sender_id" value="${settings.fast2sms_sender_id || ''}">
                 </div>
               </div>
               <!-- 2Factor Dynamic Fields -->
@@ -3362,11 +3364,11 @@ async function renderSettingsGateways() {
                 <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-key me-1"></i>2Factor Credentials</h6>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">2Factor API Key</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_api_key" value="${settings.twofactor_api_key||''}">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_api_key" value="${settings.twofactor_api_key || ''}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Template Name (Optional)</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_template_name" value="${settings.twofactor_template_name||''}" placeholder="e.g. MyOTPTemplate">
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_twofactor_template_name" value="${settings.twofactor_template_name || ''}" placeholder="e.g. MyOTPTemplate">
                 </div>
               </div>
               <!-- Custom HTTP Gateway -->
@@ -3374,7 +3376,7 @@ async function renderSettingsGateways() {
                 <h6 class="small fw-bold text-primary mb-2"><i class="fas fa-cog me-1"></i>Custom API Endpoint Config</h6>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Gateway Request URL</label>
-                  <input class="form-control spx-input form-control-sm" type="url" id="setting_custom_sms_url" value="${settings.custom_sms_url||''}" placeholder="https://api.mygateway.com/send?to={PHONE}&msg={MSG}">
+                  <input class="form-control spx-input form-control-sm" type="url" id="setting_custom_sms_url" value="${settings.custom_sms_url || ''}" placeholder="https://api.mygateway.com/send?to={PHONE}&msg={MSG}">
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">Request Method</label>
@@ -3385,26 +3387,26 @@ async function renderSettingsGateways() {
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">HTTP Headers JSON (Optional)</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_headers" value="${settings.custom_sms_headers||''}" placeholder='{"Authorization": "Bearer key"}'>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_headers" value="${settings.custom_sms_headers || ''}" placeholder='{"Authorization": "Bearer key"}'>
                 </div>
                 <div class="mb-2">
                   <label class="spx-label small text-dark">HTTP Body Template JSON (Optional)</label>
-                  <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_body" value="${settings.custom_sms_body||''}" placeholder='{"to": "{PHONE}", "text": "{MSG}"}'>
+                  <input class="form-control spx-input form-control-sm" type="text" id="setting_custom_sms_body" value="${settings.custom_sms_body || ''}" placeholder='{"to": "{PHONE}", "text": "{MSG}"}'>
                 </div>
               </div>
               <hr>
               <div class="row">
                 <div class="col-md-6 mb-2">
                   <label class="spx-label text-dark">OTP Expiry (Minutes)</label>
-                  <input class="form-control spx-input" type="number" id="setting_otp_expiry_minutes" value="${settings.otp_expiry_minutes||'8'}" required>
+                  <input class="form-control spx-input" type="number" id="setting_otp_expiry_minutes" value="${settings.otp_expiry_minutes || '8'}" required>
                 </div>
                 <div class="col-md-6 mb-2">
                   <label class="spx-label text-dark">OTP Length (Digits)</label>
-                  <input class="form-control spx-input" type="number" id="setting_otp_length" value="${settings.otp_length||'6'}" required>
+                  <input class="form-control spx-input" type="number" id="setting_otp_length" value="${settings.otp_length || '6'}" required>
                 </div>
                 <div class="col-md-6 mb-2">
                   <label class="spx-label text-dark">Master/Backdoor OTP Code</label>
-                  <input class="form-control spx-input" type="text" id="setting_master_otp" value="${settings.master_otp||''}" placeholder="e.g. 999999 (Overrides check)">
+                  <input class="form-control spx-input" type="text" id="setting_master_otp" value="${settings.master_otp || ''}" placeholder="e.g. 999999 (Overrides check)">
                 </div>
                 <div class="col-md-6 mb-2">
                   <label class="spx-label text-dark">Dev OTP In Response</label>
@@ -3473,21 +3475,21 @@ async function renderSettingsCredentials() {
             <h6 class="mb-3 text-primary fw-bold"><i class="fas fa-key me-2"></i>API Credentials</h6>
             <form onsubmit="saveAPICredentials(event)">
               ${[
-                {key:'razorpay_key_id', label:'Razorpay Key ID'},
-                {key:'razorpay_key_secret', label:'Razorpay Secret'},
-                {key:'agora_app_id', label:'Agora App ID'},
-                {key:'agora_app_certificate', label:'Agora App Certificate'},
-                {key:'agora_customer_id', label:'Agora Customer ID'},
-                {key:'agora_customer_secret', label:'Agora Customer Secret', hidden:true},
-                {key:'smtp_host', label:'SMTP Host'},
-                {key:'smtp_port', label:'SMTP Port'},
-                {key:'smtp_user', label:'SMTP Username'},
-                {key:'smtp_pass', label:'SMTP Password', hidden:true},
-                {key:'smtp_from_email', label:'SMTP From Email (e.g. info@speaxa.com)'},
-              ].map(f => `
+        { key: 'razorpay_key_id', label: 'Razorpay Key ID' },
+        { key: 'razorpay_key_secret', label: 'Razorpay Secret' },
+        { key: 'agora_app_id', label: 'Agora App ID' },
+        { key: 'agora_app_certificate', label: 'Agora App Certificate' },
+        { key: 'agora_customer_id', label: 'Agora Customer ID' },
+        { key: 'agora_customer_secret', label: 'Agora Customer Secret', hidden: true },
+        { key: 'smtp_host', label: 'SMTP Host' },
+        { key: 'smtp_port', label: 'SMTP Port' },
+        { key: 'smtp_user', label: 'SMTP Username' },
+        { key: 'smtp_pass', label: 'SMTP Password', hidden: true },
+        { key: 'smtp_from_email', label: 'SMTP From Email (e.g. info@speaxa.com)' },
+      ].map(f => `
                 <div class="mb-2">
                   <label class="spx-label small text-dark">${f.label}</label>
-                  <input class="form-control spx-input form-control-sm" type="${f.hidden?'password':'text'}" id="cred_${f.key}" value="${settings[f.key]||''}" placeholder="${f.hidden?'••••••••':''}">
+                  <input class="form-control spx-input form-control-sm" type="${f.hidden ? 'password' : 'text'}" id="cred_${f.key}" value="${settings[f.key] || ''}" placeholder="${f.hidden ? '••••••••' : ''}">
                 </div>`).join('')}
               <button type="submit" class="btn btn-spx w-100 mt-3">Save Credentials</button>
             </form>
@@ -3636,14 +3638,14 @@ async function loadOtpAuditLogs() {
       return;
     }
     container.innerHTML = logs.map(l => {
-      const statusBadge = l.delivery_status === 'sent' 
-        ? '<span class="badge bg-success">Sent</span>' 
-        : l.delivery_status === 'failed' 
-        ? '<span class="badge bg-danger">Failed</span>' 
-        : '<span class="badge bg-secondary">Pending</span>';
+      const statusBadge = l.delivery_status === 'sent'
+        ? '<span class="badge bg-success">Sent</span>'
+        : l.delivery_status === 'failed'
+          ? '<span class="badge bg-danger">Failed</span>'
+          : '<span class="badge bg-secondary">Pending</span>';
 
-      const usedBadge = l.used 
-        ? '<span class="badge bg-secondary">Used</span>' 
+      const usedBadge = l.used
+        ? '<span class="badge bg-secondary">Used</span>'
         : (new Date(l.expires_at) < new Date() ? '<span class="badge bg-warning text-dark">Expired</span>' : '<span class="badge bg-info">Active</span>');
 
       return `
@@ -3665,11 +3667,11 @@ async function loadOtpAuditLogs() {
 
 async function saveSettings(e) {
   e.preventDefault();
-  const keys = ['platform_name','logo_text','support_email','support_phone','support_hours','announcement','otp_expiry_minutes','max_batch_capacity'];
+  const keys = ['platform_name', 'logo_text', 'support_email', 'support_phone', 'support_hours', 'announcement', 'otp_expiry_minutes', 'max_batch_capacity'];
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
-  try { const d = await apiPost('/admin/settings',body); showToast(d.message||'Settings saved'); }
-  catch (err) { showToast(err.message,'error'); }
+  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'Settings saved'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 
 async function saveOtpRequirementSetting(e) {
@@ -3693,17 +3695,17 @@ async function saveLevelPayouts(e) {
   ];
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
-  try { const d = await apiPost('/admin/settings',body); showToast(d.message||'Level payouts saved'); }
-  catch (err) { showToast(err.message,'error'); }
+  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'Level payouts saved'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 
 async function saveAPICredentials(e) {
   e.preventDefault();
-  const keys = ['razorpay_key_id','razorpay_key_secret','agora_app_id','agora_app_certificate','agora_customer_id','agora_customer_secret','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email'];
+  const keys = ['razorpay_key_id', 'razorpay_key_secret', 'agora_app_id', 'agora_app_certificate', 'agora_customer_id', 'agora_customer_secret', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_email'];
   const body = {};
   keys.forEach(k => { const v = document.getElementById(`cred_${k}`)?.value; if (v) body[k] = v; });
-  try { const d = await apiPost('/admin/settings',body); showToast(d.message||'API credentials saved'); }
-  catch (err) { showToast(err.message,'error'); }
+  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'API credentials saved'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 
 async function saveHomepageSettings(e) {
@@ -3719,8 +3721,8 @@ async function saveHomepageSettings(e) {
   ];
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
-  try { const d = await apiPost('/admin/settings',body); showToast(d.message||'Homepage content saved'); }
-  catch (err) { showToast(err.message,'error'); }
+  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'Homepage content saved'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 
 // ── Audit Logs ────────────────────────────────────────────────
@@ -3730,20 +3732,20 @@ async function renderAuditLogs() {
     const data = await apiGet('/admin/audit-logs?limit=50');
     document.getElementById('pageContent').innerHTML = `
       <div class="spx-card">
-        <h6 class="mb-4">Audit Logs (${data.total||0} total)</h6>
+        <h6 class="mb-4">Audit Logs (${data.total || 0} total)</h6>
         ${table(
-          ['Time','Actor','Role','Action','Target','Details'],
-          (data.logs||[]).map(l => `
+      ['Time', 'Actor', 'Role', 'Action', 'Target', 'Details'],
+      (data.logs || []).map(l => `
             <tr>
               <td>${fmtDate(l.created_at)}</td>
-              <td class="fw-semibold text-white">${l.actor_name||'System'}</td>
-              <td><span class="badge-pending">${l.actor_role||'—'}</span></td>
+              <td class="fw-semibold text-white">${l.actor_name || 'System'}</td>
+              <td><span class="badge-pending">${l.actor_role || '—'}</span></td>
               <td><code style="color:var(--primary);font-size:.75rem">${l.action}</code></td>
-              <td>${l.target_type||'—'}: ${l.target_id||'—'}</td>
-              <td><small class="text-muted">${l.ip_address||''}</small></td>
+              <td>${l.target_type || '—'}: ${l.target_id || '—'}</td>
+              <td><small class="text-muted">${l.ip_address || ''}</small></td>
             </tr>`).join(''),
-          false
-        )}
+      false
+    )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -3753,7 +3755,7 @@ async function renderAuditLogs() {
 // ── Toggle User ───────────────────────────────────────────────
 async function toggleUser(id) {
   try { const d = await apiPost(`/admin/users/${id}/toggle-status`); showToast(d.message); renderStudents(); }
-  catch (err) { showToast(err.message,'error'); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 
 // ── Filter Table ──────────────────────────────────────────────
@@ -3778,14 +3780,14 @@ async function renderSupport() {
       <div class="spx-card">
         <h6 class="mb-4">Connect Queries & Support Tickets (${tickets.length})</h6>
         ${table(
-          ['Date', 'Sender / Contact details', 'Subject', 'Message Details', 'Status', 'Action'],
-          tickets.map(t => {
-            const senderName = t.u_name || t.guest_name || 'Guest';
-            const senderRole = t.u_role || t.guest_role || 'Visitor';
-            const senderEmail = t.u_email || t.guest_email || '—';
-            const senderPhone = t.u_phone || t.guest_phone || '—';
-            
-            return `
+      ['Date', 'Sender / Contact details', 'Subject', 'Message Details', 'Status', 'Action'],
+      tickets.map(t => {
+        const senderName = t.u_name || t.guest_name || 'Guest';
+        const senderRole = t.u_role || t.guest_role || 'Visitor';
+        const senderEmail = t.u_email || t.guest_email || '—';
+        const senderPhone = t.u_phone || t.guest_phone || '—';
+
+        return `
               <tr>
                 <td>${fmtDate(t.created_at)}</td>
                 <td>
@@ -3812,9 +3814,9 @@ async function renderSupport() {
                 </td>
               </tr>
             `;
-          }).join('') || '<tr><td colspan="6" class="text-center text-muted">No support tickets found.</td></tr>',
-          true
-        )}
+      }).join('') || '<tr><td colspan="6" class="text-center text-muted">No support tickets found.</td></tr>',
+      true
+    )}
       </div>
     `;
   } catch (err) {
@@ -3868,7 +3870,7 @@ async function renderRewards() {
     const settings = await apiGet('/admin/settings');
     const slabs = await apiGet('/admin/config/slabs');
     const allowances = await apiGet('/admin/config/allowances');
-    
+
     // Set default month in YYYY-MM
     const today = new Date();
     const curMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
@@ -3955,8 +3957,8 @@ async function renderRewards() {
           <div class="spx-card">
             <h6 class="mb-4 text-white"><i class="fas fa-clock text-warning me-2"></i>Pending Slab Achievements Review (${pending.length})</h6>
             ${pending.length > 0 ? table(
-              ['Teacher', 'Slab', 'Reward Value', 'Item Gift', 'Achieved', 'Actions'],
-              pending.map(p => `
+      ['Teacher', 'Slab', 'Reward Value', 'Item Gift', 'Achieved', 'Actions'],
+      pending.map(p => `
                 <tr>
                   <td class="fw-semibold text-white">
                     ${p.teacher_name || '—'}<br>
@@ -3972,7 +3974,7 @@ async function renderRewards() {
                   </td>
                 </tr>
               `).join('')
-            ) : '<p class="text-muted text-center py-4">No pending performance rewards claims under review.</p>'}
+    ) : '<p class="text-muted text-center py-4">No pending performance rewards claims under review.</p>'}
           </div>
         </div>
 
@@ -3992,8 +3994,8 @@ async function renderRewards() {
             </div>
 
             ${slabs.length > 0 ? table(
-              ['Slab Name', 'Target Revenue', 'Reward Cash', 'Gift Item', 'Grooming Group', 'Actions'],
-              slabs.map(s => `
+      ['Slab Name', 'Target Revenue', 'Reward Cash', 'Gift Item', 'Grooming Group', 'Actions'],
+      slabs.map(s => `
                 <tr>
                   <td class="fw-semibold text-white">${s.slab_name}</td>
                   <td class="fw-bold text-info">${fmtCurrency(s.target_revenue)}</td>
@@ -4006,7 +4008,7 @@ async function renderRewards() {
                   </td>
                 </tr>
               `).join('')
-            ) : '<p class="text-muted text-center py-4">No performance slab milestones configured.</p>'}
+    ) : '<p class="text-muted text-center py-4">No performance slab milestones configured.</p>'}
           </div>
         </div>
 
@@ -4026,8 +4028,8 @@ async function renderRewards() {
             </div>
 
             ${allowances.length > 0 ? table(
-              ['Group Name', 'Monthly Allowance Amount', 'Description', 'Actions'],
-              allowances.map(a => `
+      ['Group Name', 'Monthly Allowance Amount', 'Description', 'Actions'],
+      allowances.map(a => `
                 <tr>
                   <td class="fw-semibold text-white">${a.group_name}</td>
                   <td class="fw-bold text-success">${fmtCurrency(a.allowance_amount)}</td>
@@ -4038,7 +4040,7 @@ async function renderRewards() {
                   </td>
                 </tr>
               `).join('')
-            ) : '<p class="text-muted text-center py-4">No grooming allowance groups configured.</p>'}
+    ) : '<p class="text-muted text-center py-4">No grooming allowance groups configured.</p>'}
           </div>
         </div>
       </div>
@@ -4521,7 +4523,7 @@ async function renderMailManager() {
         [{ 'header': [1, 2, 3, false] }],
         ['bold', 'italic', 'underline', 'strike'],
         [{ 'color': [] }, { 'background': [] }],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
         ['link', 'image'],
         ['clean']
       ]
@@ -4534,7 +4536,7 @@ async function renderMailManager() {
 
   // Bind events & Load data
   toggleCustomEmailField();
-  
+
   // Tab change triggers data load
   document.getElementById('campaign-history-tab').addEventListener('shown.bs.tab', loadCampaignHistory);
   document.getElementById('email-logs-tab').addEventListener('shown.bs.tab', () => loadEmailLogs(0));
@@ -4557,7 +4559,7 @@ function updateMailPreviewFromQuill() {
   if (!campaignQuill) return;
   const subject = document.getElementById('campaignSubject').value || '(No Subject)';
   const body = campaignQuill.root.innerHTML;
-  
+
   if (campaignQuill.getText().trim().length === 0 && body.indexOf('<img') === -1) {
     document.getElementById('mailLivePreview').innerHTML = `
       <div class="text-center text-muted p-5">
@@ -4604,7 +4606,7 @@ async function sendCampaignMail(e) {
   try {
     const res = await apiPost('/admin/emails/send', { targetRole, targetEmail, subject, body });
     showToast(res.message || 'Campaign broadcast initiated successfully!', 'success');
-    
+
     // Clear form
     document.getElementById('campaignSubject').value = '';
     campaignQuill.setContents([]);
@@ -4620,7 +4622,7 @@ async function sendCampaignMail(e) {
 async function loadCampaignHistory() {
   const tbody = document.getElementById('campaignHistoryTableBody');
   tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading campaigns...</td></tr>';
-  
+
   try {
     const campaigns = await apiGet('/admin/emails/campaigns');
     if (campaigns.length === 0) {
@@ -4707,7 +4709,7 @@ function viewMailLogBody(logId) {
 
   const modalBody = document.getElementById('formModalBody');
   document.getElementById('formModalTitle').textContent = `Email Content: ${log.subject}`;
-  
+
   modalBody.innerHTML = `
     <div class="mb-3 pb-3 border-bottom small">
       <div><strong>To:</strong> ${escapeHtml(log.recipient_email)}</div>
@@ -4720,7 +4722,7 @@ function viewMailLogBody(logId) {
       ${log.body}
     </div>
   `;
-  
+
   formModal.show();
 }
 
@@ -4848,7 +4850,7 @@ async function saveFooterSettings(e) {
   const btn = document.getElementById('saveFooterBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-  
+
   const keys = [
     'home_footer_desc', 'home_footer_toll_free', 'home_footer_phone', 'home_footer_email',
     'home_footer_instagram', 'home_footer_facebook', 'home_footer_youtube', 'home_footer_twitter',
@@ -4859,7 +4861,7 @@ async function saveFooterSettings(e) {
   keys.forEach(k => {
     body[k] = document.getElementById(`setting_${k}`)?.value || '';
   });
-  
+
   try {
     const d = await apiPost('/admin/settings', body);
     showToast(d.message || 'Footer settings updated successfully!');
@@ -4879,7 +4881,7 @@ async function renderBlogsPage() {
   try {
     const blogs = await apiGet('/admin/blogs');
     const container = document.getElementById('pageContent');
-    
+
     container.innerHTML = `
       <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
         <div class="card-header border-0 bg-white pt-4 pb-2 d-flex justify-content-between align-items-center">
@@ -4912,7 +4914,7 @@ async function renderBlogsPage() {
                       <div class="text-muted extra-small font-monospace">/blog/${escapeHtml(b.slug)}</div>
                     </td>
                     <td>${escapeHtml(b.author || 'Admin')}</td>
-                    <td class="small text-muted">${new Date(b.created_at).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</td>
+                    <td class="small text-muted">${new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                     <td class="text-end">
                       <button onclick="openBlogForm(${b.id})" class="btn btn-sm btn-icon me-1" title="Edit"><i class="fas fa-edit"></i></button>
                       <button onclick="deleteBlog(${b.id})" class="btn btn-sm btn-icon text-danger" title="Delete"><i class="fas fa-trash"></i></button>
@@ -4925,7 +4927,7 @@ async function renderBlogsPage() {
         </div>
       </div>
     `;
-    
+
     window._cachedBlogs = blogs;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -4936,7 +4938,7 @@ function openBlogForm(id = null) {
   const blog = id ? window._cachedBlogs?.find(b => b.id === id) : null;
   const modalBody = document.getElementById('formModalBody');
   document.getElementById('formModalTitle').textContent = blog ? 'Edit Blog Post' : 'Add New Blog Post';
-  
+
   modalBody.innerHTML = `
     <form id="blogForm" onsubmit="saveBlog(event)">
       <input type="hidden" id="blog_id" value="${blog ? blog.id : ''}">
@@ -4966,9 +4968,9 @@ function openBlogForm(id = null) {
       </div>
     </form>
   `;
-  
+
   formModal.show();
-  
+
   blogEditorInstance = new Quill('#blogEditor', {
     theme: 'snow',
     placeholder: 'Write your blog content here...',
@@ -4977,13 +4979,13 @@ function openBlogForm(id = null) {
         [{ 'header': [1, 2, 3, false] }],
         ['bold', 'italic', 'underline', 'strike'],
         [{ 'color': [] }, { 'background': [] }],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
         ['link', 'image'],
         ['clean']
       ]
     }
   });
-  
+
   if (blog && blog.content) {
     blogEditorInstance.root.innerHTML = blog.content;
   }
@@ -4994,21 +4996,21 @@ async function saveBlog(e) {
   const btn = document.getElementById('saveBlogBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-  
+
   const id = document.getElementById('blog_id').value;
   const title = document.getElementById('blog_title').value;
   const author = document.getElementById('blog_author').value;
   const banner_url = document.getElementById('blog_banner_url').value;
   const summary = document.getElementById('blog_summary').value;
   const content = blogEditorInstance?.root.innerHTML || '';
-  
+
   if (!content.trim() || content === '<p><br></p>') {
     showToast('Blog content is required', 'error');
     btn.disabled = false;
     btn.innerHTML = 'Save Blog Post';
     return;
   }
-  
+
   try {
     const res = await apiPost('/admin/blogs', {
       id: id ? parseInt(id) : undefined,
@@ -5042,7 +5044,7 @@ async function renderFaqsPage() {
   try {
     const faqs = await apiGet('/admin/faqs');
     const container = document.getElementById('pageContent');
-    
+
     container.innerHTML = `
       <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
         <div class="card-header border-0 bg-white pt-4 pb-2 d-flex justify-content-between align-items-center">
@@ -5083,7 +5085,7 @@ async function renderFaqsPage() {
         </div>
       </div>
     `;
-    
+
     window._cachedFaqs = faqs;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -5094,7 +5096,7 @@ function openFaqForm(id = null) {
   const faq = id ? window._cachedFaqs?.find(f => f.id === id) : null;
   const modalBody = document.getElementById('formModalBody');
   document.getElementById('formModalTitle').textContent = faq ? 'Edit FAQ' : 'Add FAQ';
-  
+
   modalBody.innerHTML = `
     <form id="faqForm" onsubmit="saveFaq(event)">
       <input type="hidden" id="faq_id" value="${faq ? faq.id : ''}">
@@ -5120,7 +5122,7 @@ function openFaqForm(id = null) {
       </div>
     </form>
   `;
-  
+
   formModal.show();
 }
 
@@ -5129,13 +5131,13 @@ async function saveFaq(e) {
   const btn = document.getElementById('saveFaqBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-  
+
   const id = document.getElementById('faq_id').value;
   const question = document.getElementById('faq_question').value;
   const answer = document.getElementById('faq_answer').value;
   const category = document.getElementById('faq_category').value;
   const sort_order = document.getElementById('faq_sort_order').value;
-  
+
   try {
     const res = await apiPost('/admin/faqs', {
       id: id ? parseInt(id) : undefined,
@@ -5171,7 +5173,7 @@ async function renderPrivacyPolicyPage() {
   try {
     const settings = await apiGet('/admin/settings');
     const container = document.getElementById('pageContent');
-    
+
     container.innerHTML = `
       <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
         <div class="card-header border-0 bg-white pt-4 pb-2">
@@ -5209,7 +5211,7 @@ async function renderPrivacyPolicyPage() {
         </div>
       </div>
     `;
-    
+
     // Initialize Quill Editor
     privacyEditorInstance = new Quill('#privacyPolicyEditor', {
       theme: 'snow',
@@ -5219,13 +5221,13 @@ async function renderPrivacyPolicyPage() {
           [{ 'header': [1, 2, 3, 4, false] }],
           ['bold', 'italic', 'underline', 'strike'],
           [{ 'color': [] }, { 'background': [] }],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
           ['link', 'image'],
           ['clean']
         ]
       }
     });
-    
+
     if (settings.privacy_policy_content) {
       privacyEditorInstance.root.innerHTML = settings.privacy_policy_content;
     }
@@ -5240,14 +5242,14 @@ async function savePrivacyPolicy(e) {
   const originalHtml = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-  
+
   const content = privacyEditorInstance?.root.innerHTML || '';
   const badge = document.getElementById('privacyPolicyBadgeInp').value;
   const title = document.getElementById('privacyPolicyTitleInp').value;
   const desc = document.getElementById('privacyPolicyDescInp').value;
-  
+
   try {
-    const res = await apiPost('/admin/settings', { 
+    const res = await apiPost('/admin/settings', {
       privacy_policy_content: content,
       privacy_policy_badge: badge,
       privacy_policy_title: title,
@@ -5270,7 +5272,7 @@ async function renderTermsOfServicePage() {
   try {
     const settings = await apiGet('/admin/settings');
     const container = document.getElementById('pageContent');
-    
+
     container.innerHTML = `
       <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
         <div class="card-header border-0 bg-white pt-4 pb-2">
@@ -5308,7 +5310,7 @@ async function renderTermsOfServicePage() {
         </div>
       </div>
     `;
-    
+
     // Initialize Quill Editor
     termsEditorInstance = new Quill('#termsEditor', {
       theme: 'snow',
@@ -5318,13 +5320,13 @@ async function renderTermsOfServicePage() {
           [{ 'header': [1, 2, 3, 4, false] }],
           ['bold', 'italic', 'underline', 'strike'],
           [{ 'color': [] }, { 'background': [] }],
-          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
           ['link', 'image'],
           ['clean']
         ]
       }
     });
-    
+
     if (settings.terms_of_service_content) {
       termsEditorInstance.root.innerHTML = settings.terms_of_service_content;
     }
@@ -5339,14 +5341,14 @@ async function saveTermsOfService(e) {
   const originalHtml = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-  
+
   const content = termsEditorInstance?.root.innerHTML || '';
   const badge = document.getElementById('termsBadgeInp').value;
   const title = document.getElementById('termsTitleInp').value;
   const desc = document.getElementById('termsDescInp').value;
-  
+
   try {
-    const res = await apiPost('/admin/settings', { 
+    const res = await apiPost('/admin/settings', {
       terms_of_service_content: content,
       terms_of_service_badge: badge,
       terms_of_service_title: title,
@@ -5367,7 +5369,7 @@ async function renderGalleryPage() {
   try {
     const media = await apiGet('/admin/gallery');
     const container = document.getElementById('pageContent');
-    
+
     container.innerHTML = `
       <div class="card shadow-sm border-0 mb-4 bg-white text-dark">
         <div class="card-header border-0 bg-white pt-4 pb-2">
@@ -5440,23 +5442,23 @@ async function renderGalleryPage() {
 async function uploadGalleryFile() {
   const fileInput = document.getElementById('galleryFileInput');
   if (!fileInput || !fileInput.files.length) return;
-  
+
   const file = fileInput.files[0];
   const btn = document.getElementById('uploadFileBtn');
   const progContainer = document.getElementById('uploadProgressContainer');
   const progBar = document.getElementById('uploadProgressBar');
   const progText = document.getElementById('uploadProgressText');
-  
+
   btn.disabled = true;
   progContainer.classList.remove('d-none');
-  
+
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const xhr = new XMLHttpRequest();
   xhr.open('POST', `${API}/admin/gallery/upload`, true);
   xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-  
+
   xhr.upload.onprogress = (e) => {
     if (e.lengthComputable) {
       const pct = Math.round((e.loaded / e.total) * 100);
@@ -5464,11 +5466,11 @@ async function uploadGalleryFile() {
       progText.textContent = `Uploading ${pct}%`;
     }
   };
-  
+
   xhr.onload = () => {
     btn.disabled = false;
     progContainer.classList.add('d-none');
-    
+
     if (xhr.status === 200) {
       try {
         const res = JSON.parse(xhr.responseText);
@@ -5486,13 +5488,13 @@ async function uploadGalleryFile() {
       }
     }
   };
-  
+
   xhr.onerror = () => {
     btn.disabled = false;
     progContainer.classList.add('d-none');
     showToast('Network error during upload', 'error');
   };
-  
+
   xhr.send(formData);
 }
 
@@ -5502,7 +5504,7 @@ function copyGalleryUrl(url, button) {
     button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
     button.classList.remove('btn-spx');
     button.classList.add('btn-success');
-    
+
     setTimeout(() => {
       button.innerHTML = originalText;
       button.classList.remove('btn-success');
@@ -5519,6 +5521,182 @@ async function deleteGalleryItem(id) {
       const res = await apiDelete(`/admin/gallery/${id}`);
       showToast(res.message || 'Image deleted successfully');
       renderGalleryPage();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+// ── Newsletter Subscribers & Advertisement Mail System ─────────
+async function renderSubscribersPage() {
+  loading('Loading Subscribers & Campaign system...');
+  try {
+    const list = await apiGet('/admin/subscribers');
+    const container = document.getElementById('pageContent');
+
+    const rowsHtml = list.length > 0 ? list.map((s, idx) => `
+      <tr>
+        <td class="small fw-semibold text-secondary">${idx + 1}</td>
+        <td><strong class="text-dark" style="font-size:0.88rem;"><i class="fas fa-envelope text-primary me-2"></i>${escapeHtml(s.email)}</strong></td>
+        <td><span class="badge bg-light text-dark border px-2 py-1" style="font-size:0.72rem;">${escapeHtml(s.source || 'landing_page')}</span></td>
+        <td><span class="badge bg-success-subtle text-success px-2 py-1" style="font-size:0.72rem;"><i class="fas fa-check-circle me-1"></i>Active</span></td>
+        <td class="small text-muted">${fmtDate(s.created_at)}</td>
+        <td class="text-end">
+          <button class="btn btn-xs btn-outline-danger py-1 px-2" onclick="deleteSubscriber('${s.id}')" title="Remove Subscriber" style="font-size:0.75rem;"><i class="fas fa-trash-alt me-1"></i>Remove</button>
+        </td>
+      </tr>
+    `).join('') : `<tr><td colspan="6" class="text-center py-4 text-muted small">No email subscribers found yet.</td></tr>`;
+
+    container.innerHTML = `
+      <div class="row g-4">
+        <!-- Compose Broadcast Ad Campaign Card -->
+        <div class="col-lg-5">
+          <div class="spx-card border-start border-4 border-primary">
+            <h5 class="fw-bold text-dark mb-2"><i class="fas fa-bullhorn text-primary me-2"></i>Compose Advertisement Email</h5>
+            <p class="text-muted small mb-4">Send promotional updates, course launch emails, or feature announcements to all active subscribers.</p>
+
+            <form onsubmit="sendSubscriberAdCampaign(event)">
+              <div class="mb-3">
+                <label class="spx-label mb-1">Email Subject *</label>
+                <input class="form-control spx-input" id="adCampaignSubject" placeholder="e.g. 🎓 Exclusive Discount on Live Physics & Math Batches!" required>
+              </div>
+
+              <div class="mb-3">
+                <label class="spx-label mb-1">Advertisement Banner Image (Optional)</label>
+                <div class="input-group">
+                  <input class="form-control spx-input" id="adCampaignImageUrl" placeholder="e.g. https://speaxa.in/logo.png or select file below">
+                  <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('adCampaignFileInput').click()"><i class="fas fa-upload me-1"></i> Upload Image</button>
+                </div>
+                <input type="file" id="adCampaignFileInput" accept="image/*" style="display:none;" onchange="uploadCampaignImageFile(this)">
+                <div class="text-muted small mt-1" style="font-size:0.72rem;">Upload an image from your device or paste a web URL.</div>
+              </div>
+
+              <div class="mb-3">
+                <label class="spx-label mb-1">Advertisement Message (Plain Text) *</label>
+                <textarea class="form-control spx-input" id="adCampaignBody" rows="6" placeholder="Type your offer or announcement details here. Newlines are automatically formatted into readable email paragraphs!" required></textarea>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="spx-label mb-1">Action Button Text</label>
+                  <input class="form-control spx-input" id="adCampaignCtaText" placeholder="e.g. Explore Courses & Enroll">
+                </div>
+                <div class="col-6">
+                  <label class="spx-label mb-1">Action Target Link</label>
+                  <input class="form-control spx-input" id="adCampaignCtaLink" placeholder="e.g. /courses.html">
+                </div>
+              </div>
+
+              <div class="p-3 mb-3 bg-light rounded border text-start">
+                <div class="d-flex align-items-center justify-content-between">
+                  <span class="small fw-semibold text-secondary"><i class="fas fa-users me-1 text-teal"></i> Total Reach</span>
+                  <span class="badge bg-teal text-white fw-bold px-2 py-1" style="font-size:0.8rem;">${list.length} Subscribers</span>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-spx w-100 py-2.5 fw-bold" id="btnSendAdCampaign"><i class="fas fa-paper-plane me-2"></i> Send Campaign Email to All</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Subscribers Registry List -->
+        <div class="col-lg-7">
+          <div class="spx-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div>
+                <h5 class="fw-bold text-dark mb-1"><i class="fas fa-address-book text-primary me-2"></i>Email Subscribers List</h5>
+                <p class="text-muted small mb-0">Captured email leads from landing page subscription forms and user registrations.</p>
+              </div>
+              <span class="badge bg-primary-subtle text-primary px-3 py-1 fw-bold" style="font-size:0.8rem;">${list.length} Total</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr style="font-size:0.78rem;" class="text-uppercase tracking-wider">
+                    <th>#</th>
+                    <th>Email Address</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th>Subscribed On</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function uploadCampaignImageFile(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    showToast('Uploading banner image...', 'info');
+    const token = localStorage.getItem('admin_token');
+    const res = await fetch('/api/admin/gallery/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    }).then(r => r.json());
+    if (res.error) throw new Error(res.error);
+    const url = res.file?.url || '';
+    if (url) {
+      document.getElementById('adCampaignImageUrl').value = window.location.origin + url;
+      showToast('Banner image uploaded successfully!');
+    }
+  } catch (err) {
+    showToast(err.message || 'Image upload failed', 'error');
+  }
+}
+
+async function sendSubscriberAdCampaign(e) {
+  e.preventDefault();
+  const subject = document.getElementById('adCampaignSubject').value.trim();
+  const body_text = document.getElementById('adCampaignBody').value.trim();
+  const image_url = document.getElementById('adCampaignImageUrl') ? document.getElementById('adCampaignImageUrl').value.trim() : '';
+  const cta_text = document.getElementById('adCampaignCtaText') ? document.getElementById('adCampaignCtaText').value.trim() : '';
+  const cta_link = document.getElementById('adCampaignCtaLink') ? document.getElementById('adCampaignCtaLink').value.trim() : '';
+  const btn = document.getElementById('btnSendAdCampaign');
+
+  if (!subject || (!body_text && !image_url)) return;
+
+  confirm('Confirm Broadcast', `Are you sure you want to send this advertisement email campaign to all active subscribers?`, async () => {
+    try {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Dispatching emails...';
+      const res = await apiPost('/admin/subscribers/send-campaign', { subject, body_text, image_url, cta_text, cta_link });
+      showToast(res.message || 'Campaign sent successfully!');
+      document.getElementById('adCampaignSubject').value = '';
+      document.getElementById('adCampaignBody').value = '';
+      if (document.getElementById('adCampaignImageUrl')) document.getElementById('adCampaignImageUrl').value = '';
+      if (document.getElementById('adCampaignCtaText')) document.getElementById('adCampaignCtaText').value = '';
+      if (document.getElementById('adCampaignCtaLink')) document.getElementById('adCampaignCtaLink').value = '';
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Campaign Email to All';
+    }
+  });
+}
+
+async function deleteSubscriber(id) {
+  confirm('Remove Subscriber', 'Remove this subscriber from the mailing list?', async () => {
+    try {
+      const res = await apiDelete(`/admin/subscribers/${id}`);
+      showToast(res.message || 'Subscriber removed');
+      renderSubscribersPage();
     } catch (err) {
       showToast(err.message, 'error');
     }

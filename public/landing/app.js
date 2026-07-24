@@ -908,12 +908,65 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ── Init ──────────────────────────────────────────────────────
-createParticles();
-loadCourses();
-loadTeachers();
-loadStats();
-loadSettings();
+// ── Google 1-Tap Initialization & Consent Handler ──────────────
+window.SPEAXA_GOOGLE_CLIENT_ID = "403552305708-inmmnd16a9pkviutb5suk843eancc1ff.apps.googleusercontent.com";
+
+function initGoogleOneTap() {
+  const clientId = window.SPEAXA_GOOGLE_CLIENT_ID || (window.systemSettings && window.systemSettings.google_client_id);
+  if (!clientId || clientId.includes('YOUR_')) {
+    return;
+  }
+
+  if (window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleOneTapConsent,
+      auto_select: false
+    });
+    google.accounts.id.prompt();
+  }
+}
+
+function parseJwt(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(jsonPayload);
+  } catch(e) { return null; }
+}
+
+async function handleGoogleOneTapConsent(response) {
+  if (!response || !response.credential) return;
+  const payload = parseJwt(response.credential);
+  if (!payload || !payload.email) return;
+
+  try {
+    const res = await fetch('/api/public/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: payload.email, name: payload.name, source: 'google_one_tap' })
+    }).then(r => r.json());
+
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed top-0 end-0 p-3';
+    toast.style.zIndex = '10000';
+    toast.innerHTML = `
+      <div class="toast show align-items-center text-white bg-success border-0 shadow-lg" role="alert">
+        <div class="d-flex">
+          <div class="toast-body fw-bold" style="font-size:0.85rem;">
+            <i class="fab fa-google me-2"></i> Subscribed with Google account (${payload.email})!
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.parentElement.parentElement.parentElement.remove()"></button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 6000);
+  } catch(err) {
+    console.error('Google One Tap Consent Error:', err);
+  }
+}
 
 function toggleTeacherProfile(event, id) {
   if (event) event.preventDefault();
