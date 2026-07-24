@@ -83,6 +83,8 @@ CREATE TABLE users (
   mobile_number     VARCHAR(50),
   social_links      JSONB DEFAULT '{}',
   referred_by       VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+  phone_verified    BOOLEAN DEFAULT FALSE,
+  email_verified    BOOLEAN DEFAULT FALSE,
   -- Timestamps
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW()

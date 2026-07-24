@@ -16,9 +16,20 @@ const app = express();
 // ── Database Self-Healing Migrations ──────────────────────────
 const db = require('./db');
 db.query(`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS password_plain VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS qualification VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INT DEFAULT 0;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS subject_expertise VARCHAR(255);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS languages VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS board VARCHAR(100);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS grade VARCHAR(100);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS student_code VARCHAR(100);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(100);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50) DEFAULT 'approved';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_level VARCHAR(50) DEFAULT NULL;
   ALTER TABLE users ALTER COLUMN teacher_level DROP DEFAULT;
   UPDATE users SET teacher_level = NULL WHERE role = 'teacher' AND (teacher_level = 'Bronze' OR teacher_level = 'Junior Teacher') AND id NOT IN (SELECT DISTINCT teacher_id FROM batches);
@@ -26,6 +37,8 @@ db.query(`
   ALTER TABLE users ADD COLUMN IF NOT EXISTS alt_email VARCHAR(200);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(50);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS learning_streak INT DEFAULT 0;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS impersonated_by VARCHAR(100);
 
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_name VARCHAR(150);
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_email VARCHAR(200);
