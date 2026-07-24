@@ -757,11 +757,91 @@ router.post('/users/:id/reset-credentials', async (req, res) => {
     }
     if (!updates.length) return res.status(400).json({ error: 'No credentials to reset' });
     values.push(id);
-    await db.query(`UPDATE users SET ${updates.join(',')} WHERE id = $${idx}`, values);
+    await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${idx}`, values);
     await logAudit(req.user.id, 'CREDENTIALS_RESET', 'user', id, { email: !!email, password: !!password });
     res.json({ message: 'Credentials updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Clean up tokens & session logs
+    await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM fcm_tokens WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM email_verification_tokens WHERE user_id = $1', [id]);
+
+    // 2. Clean up notifications & support
+    await client.query('DELETE FROM notifications WHERE target_user = $1 OR sent_by = $1', [id]);
+    await client.query('DELETE FROM support_replies WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM support_tickets WHERE user_id = $1', [id]);
+
+    // 3. Clean up live classes, attendance, participants, polls
+    await client.query('DELETE FROM class_poll_responses WHERE student_id = $1', [id]);
+    await client.query('DELETE FROM class_polls WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM class_participants WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM attendance WHERE student_id = $1 OR teacher_id = $1', [id]);
+
+    // 4. Clean up parent/student links, ratings, chats, observations, reports
+    await client.query('DELETE FROM parent_student_links WHERE parent_id = $1 OR student_id = $1', [id]);
+    await client.query('DELETE FROM parent_teacher_chats WHERE parent_id = $1 OR teacher_id = $1 OR student_id = $1 OR sender_id = $1', [id]);
+    await client.query('DELETE FROM teacher_ratings WHERE teacher_id = $1 OR parent_id = $1 OR student_id = $1', [id]);
+    await client.query('DELETE FROM student_observations WHERE student_id = $1 OR teacher_id = $1', [id]);
+    await client.query('DELETE FROM monthly_reports WHERE student_id = $1 OR teacher_id = $1', [id]);
+
+    // 5. Clean up assignments & submissions
+    await client.query('DELETE FROM assignment_submissions WHERE student_id = $1 OR graded_by = $1', [id]);
+    await client.query('DELETE FROM assignments WHERE teacher_id = $1', [id]);
+
+    // 6. Clean up batches, batch_students, study materials
+    await client.query('DELETE FROM batch_students WHERE student_id = $1', [id]);
+    await client.query('DELETE FROM study_materials WHERE teacher_id = $1', [id]);
+
+    // 7. Clean up financial records, payouts, wallets
+    await client.query('DELETE FROM teacher_wallet_ledger WHERE teacher_id = $1 OR referred_user_id = $1', [id]);
+    await client.query('DELETE FROM teacher_wallet WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM teacher_payouts WHERE teacher_id = $1 OR processed_by = $1', [id]);
+    await client.query('DELETE FROM teacher_rewards WHERE teacher_id = $1 OR processed_by = $1', [id]);
+    await client.query('DELETE FROM teacher_allowances WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM teacher_certificates WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM refunds WHERE student_id = $1 OR processed_by = $1', [id]);
+    await client.query('DELETE FROM payments WHERE student_id = $1 OR teacher_id = $1 OR referral_teacher_id = $1', [id]);
+
+    // 8. Clean up teacher SOP, docs, levels
+    await client.query('DELETE FROM teacher_documents WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM teacher_sop WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM teacher_levels WHERE teacher_id = $1', [id]);
+
+    // 9. Nullify self-referrals / recycle bin / audit logs references
+    await client.query('UPDATE users SET referred_by = NULL WHERE referred_by = $1', [id]);
+    await client.query('DELETE FROM recycle_bin WHERE requested_by = $1 OR processed_by = $1', [id]);
+    await client.query('DELETE FROM email_campaigns WHERE sent_by = $1', [id]);
+    await client.query('DELETE FROM audit_logs WHERE actor_id = $1', [id]);
+
+    // 10. Nullify teacher_id on batches / live_classes / courses if any remain
+    await client.query('UPDATE batches SET teacher_id = NULL WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM live_classes WHERE teacher_id = $1', [id]);
+
+    // 11. Finally delete user row
+    const deleteRes = await client.query('DELETE FROM users WHERE id = $1', [id]);
+    await client.query('COMMIT');
+
+    if (deleteRes.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found in database.' });
+    }
+
+    await logAudit(req.user.id, 'USER_DELETED', 'user', id, {});
+    res.json({ message: 'User and all associated database records permanently deleted' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

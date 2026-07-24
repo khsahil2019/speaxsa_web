@@ -1825,7 +1825,15 @@
         return;
       }
 
-      const confirmMsg = `Are you sure you want to delete this row from "${currentTable}"?\n\nKeys: ${JSON.stringify(primaryKeysPayload)}`;
+      let userDetail = '';
+      if (currentTable === 'users') {
+        userDetail = `Name: ${row.name || 'N/A'}\nEmail: ${row.email || 'N/A'}\nRole: ${row.role || 'N/A'}\nID: ${row.id}`;
+      }
+
+      const confirmMsg = currentTable === 'users'
+        ? `⚠️ PERMANENT DELETE USER WARNING ⚠️\n\nAre you sure you want to permanently delete this user and ALL their linked profiles, attendance, tokens, and database records?\n\n${userDetail}`
+        : `Are you sure you want to delete this record from "${currentTable}"?\n\nKeys: ${JSON.stringify(primaryKeysPayload)}`;
+
       if (!confirm(confirmMsg)) return;
 
       try {
