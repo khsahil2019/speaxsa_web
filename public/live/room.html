@@ -794,7 +794,9 @@
       }
     } else {
       document.getElementById('btnHand').style.display = 'flex';
-      // Hide whiteboard button for students
+      // Screen sharing is strictly for Teachers only
+      document.getElementById('btnScreen').style.display = 'none';
+      // Hide whiteboard toggle button for students (auto-shared by teacher)
       document.getElementById('btnWhiteboard').style.display = 'none';
     }
 
@@ -920,16 +922,21 @@
       relayClearBoard();
     });
 
-    function toggleWhiteboard(show) {
+    function toggleWhiteboard(show, emitSocket = true) {
       const container = document.getElementById('whiteboardContainer');
       const btn = document.getElementById('btnWhiteboard');
       if (show) {
         container.style.display = 'flex';
-        btn.classList.add('active');
+        if (btn) btn.classList.add('active');
         resizeCanvas();
       } else {
         container.style.display = 'none';
-        btn.classList.remove('active');
+        if (btn) btn.classList.remove('active');
+      }
+
+      // Broadcast toggle state from teacher to auto-open/close on student screens
+      if (isTeacher && emitSocket && socket && socket.connected) {
+        socket.emit('board-toggle', { classId, isVisible: show });
       }
     }
 
@@ -1375,20 +1382,33 @@
 
           triggerToast(`Connected to Agora stream: ${credentials.channel}`);
 
-          if (isTeacher) {
-            try {
-              localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-              localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
+          // Publish Microphone and Camera for BOTH Teacher and Student
+          try {
+            localTracks.audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+            localTracks.videoTrack = await AgoraRTC.createCameraVideoTrack();
 
-              await agoraClient.publish([localTracks.audioTrack, localTracks.videoTrack]);
+            await agoraClient.publish([localTracks.audioTrack, localTracks.videoTrack]);
+
+            if (isTeacher) {
               localTracks.videoTrack.play('local-player');
               document.getElementById('teacherLabel').textContent = `${user.name} (Educator)`;
-            } catch (trackError) {
-              console.error('Local tracks error:', trackError);
-              throw trackError; // Bubble to start local stream fallback
+            } else {
+              // Student: Play local video track in student grid slot
+              let studentContainer = document.getElementById(`player-container-${joinedUid}`);
+              if (!studentContainer) {
+                studentContainer = document.createElement("div");
+                studentContainer.id = `player-container-${joinedUid}`;
+                studentContainer.className = "video-container";
+                studentContainer.innerHTML = `
+                  <div class="user-label" id="label-${joinedUid}">${user.name} (You)</div>
+                  <div id="player-${joinedUid}" class="video-stream"></div>
+                `;
+                document.getElementById("studentVideosRow").appendChild(studentContainer);
+              }
+              localTracks.videoTrack.play(`player-${joinedUid}`);
             }
-          } else {
-            // Student: request local camera as participant preview
+          } catch (trackError) {
+            console.error('Local tracks error:', trackError);
             startLocalCameraFallback(false);
           }
         } catch (agoraErr) {
@@ -1786,6 +1806,13 @@
               });
 
               // ── Whiteboard ───────────────────────────────
+              socket.on('board-toggle', ({ isVisible, name }) => {
+                if (!isTeacher) {
+                  toggleWhiteboard(isVisible, false);
+                  if (isVisible) triggerToast(`📋 Educator ${name || ''} opened the whiteboard`);
+                }
+              });
+
               socket.on('board-draw', ({ x, y, start, color, size }) => {
                 ctx.strokeStyle = color || '#0F172A';
                 ctx.lineWidth = size || 3;
@@ -1798,7 +1825,13 @@
                   ctx.beginPath();
                   ctx.moveTo(x, y);
                 }
-                if (!isTeacher) toggleWhiteboard(true);
+                // Auto-open whiteboard on student screen when teacher draws
+                if (!isTeacher) {
+                  const container = document.getElementById('whiteboardContainer');
+                  if (window.getComputedStyle(container).display === 'none') {
+                    toggleWhiteboard(true, false);
+                  }
+                }
               });
 
               socket.on('board-clear', () => {

@@ -82,15 +82,21 @@ io.on('connection', (socket) => {
   });
 
   // ── Whiteboard draw point ──────────────────────
-  socket.on('board-draw', ({ classId, x, y, start }) => {
+  socket.on('board-draw', ({ classId, x, y, start, color, size }) => {
     if (!classId) return;
-    socket.to(classId).emit('board-draw', { x, y, start, name: user.name });
+    socket.to(classId).emit('board-draw', { x, y, start, color, size, name: user.name });
   });
 
   // ── Whiteboard clear ───────────────────────────
   socket.on('board-clear', ({ classId }) => {
     if (!classId) return;
     socket.to(classId).emit('board-clear');
+  });
+
+  // ── Whiteboard toggle (teacher auto-shares board to students) ─
+  socket.on('board-toggle', ({ classId, isVisible }) => {
+    if (!classId) return;
+    socket.to(classId).emit('board-toggle', { isVisible, name: user.name });
   });
 
   // ── Raise hand ────────────────────────────────
