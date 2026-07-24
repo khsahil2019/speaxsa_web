@@ -87,6 +87,11 @@ window.toFriendlyError = function(rawMessage) {
     return 'This record already exists. Please verify your details and try again.';
   }
 
+  // OTP Verification errors
+  if (msg.includes('invalid or expired') || msg.includes('invalid otp') || msg.includes('expired otp') || msg.includes('invalid verification code')) {
+    return rawMessage;
+  }
+
   // Database syntax or internal query errors
   if (msg.includes('syntax error') || msg.includes('relation "') || msg.includes('database error') || msg.includes('foreign key constraint')) {
     return 'We encountered a technical issue while processing your request. Please try again in a few moments.';

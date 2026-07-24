@@ -944,11 +944,18 @@ router.post('/send-mobile-otp', async (req, res) => {
   }
 });
 
-// Helper to check master OTP setting
+// Helper to check master OTP setting (Admin Panel + ENV)
 async function checkMasterOtp(otp) {
-  const configRes = await db.query("SELECT value FROM platform_settings WHERE key = 'master_otp'");
-  const masterOtp = configRes.rows[0]?.value;
-  return masterOtp && masterOtp.trim() !== '' && otp === masterOtp.trim();
+  if (!otp) return false;
+  try {
+    const configRes = await db.query("SELECT value FROM platform_settings WHERE key = 'master_otp'");
+    const dbMaster = configRes.rows[0]?.value;
+    const masterOtp = (dbMaster || process.env.MASTER_OTP || process.env.MASTER_OTP_CODE || '').trim();
+    if (masterOtp && masterOtp !== '' && otp.toString().trim() === masterOtp) {
+      return true;
+    }
+  } catch(e) {}
+  return false;
 }
 
 // ── POST /api/auth/verify-mobile-otp ────────────────────────
