@@ -674,21 +674,33 @@ async function checkEmailVerificationReminder() {
 }
 
 async function resendEmailVerificationLink(evtBtn) {
-  const now = Date.now();
-  localStorage.setItem('spx_last_email_sent_time', String(now));
-  sessionStorage.setItem('last_auto_email_link_time', String(now));
-  startEmailVerificationCooldown(300);
+  if (window.startGlobalResendCooldown) {
+    window.startGlobalResendCooldown(60);
+  }
 
   try {
     const emailToUse = user ? user.email : '';
+    const phoneToUse = user ? user.phone : '';
+
+    // 1. Send Email verification link
     const res = await fetch('/api/auth/send-email-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ identifier: emailToUse })
     });
+
+    // 2. Send SMS OTP if mobile is present
+    if (phoneToUse) {
+      fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneToUse, purpose: 'verify_mobile' })
+      }).catch(e => console.warn('SMS OTP resend notice:', e));
+    }
+
     const data = await res.json();
     if (res.ok) {
-      showToast(data.message || `Verification link sent to ${emailToUse || 'your email'}. Please check your primary inbox.`, 'success');
+      showToast(data.message || `Verification link & SMS code sent to ${emailToUse || 'your email'}. Please check your primary inbox and phone.`, 'success');
     } else {
       showToast(data.error || 'Failed to send verification link', 'error');
     }
@@ -698,26 +710,7 @@ async function resendEmailVerificationLink(evtBtn) {
 }
 
 async function resendProfileEmailLink(emailToUse, evtBtn) {
-  const btn = evtBtn || event?.target;
-  if (window.startResendCooldown && btn) {
-    window.startResendCooldown(btn, 300);
-  }
-  try {
-    const targetEmail = emailToUse || (user ? user.email : '');
-    const res = await fetch('/api/auth/send-email-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier: targetEmail })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      showToast(data.message || `Verification link sent to ${targetEmail} (valid for 30 mins)`, 'success');
-    } else {
-      showToast(data.error || 'Failed to send verification link', 'error');
-    }
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
+  return resendEmailVerificationLink(evtBtn);
 }
 
 async function loadFCMToken() {

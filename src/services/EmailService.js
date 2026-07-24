@@ -10,7 +10,7 @@ async function sendEmail(options) {
   try {
     // 1. Fetch platform & SMTP settings
     const settingsRes = await db.query(
-      "SELECT key, value FROM platform_settings WHERE key IN ('smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email','platform_name','support_email','email_provider')"
+      "SELECT key, value FROM platform_settings WHERE key IN ('brevo_api_key','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email','platform_name','support_email','email_provider')"
     );
     const settings = {};
     settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
@@ -20,6 +20,12 @@ async function sendEmail(options) {
     const smtpPass = settings.smtp_pass || process.env.SMTP_PASS;
     const smtpPort = settings.smtp_port || process.env.SMTP_PORT || '587';
     const emailProvider = settings.email_provider || process.env.EMAIL_PROVIDER || 'smtp';
+
+    const brevoApiKey = (settings.brevo_api_key && settings.brevo_api_key.trim().startsWith('xkeysib-')) ? settings.brevo_api_key.trim()
+      : (settings.smtp_pass && settings.smtp_pass.trim().startsWith('xkeysib-')) ? settings.smtp_pass.trim()
+      : (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim().startsWith('xkeysib-')) ? process.env.BREVO_API_KEY.trim()
+      : (process.env.SMTP_PASS && process.env.SMTP_PASS.trim().startsWith('xkeysib-')) ? process.env.SMTP_PASS.trim()
+      : null;
     
     let platformName = settings.platform_name || 'Speaxa';
     if (platformName.toLowerCase() === 'speaxa') {
@@ -111,7 +117,6 @@ async function sendEmail(options) {
     // Filter placeholder keys
     const cleanHost = smtpHost && !smtpHost.includes('YOUR_') && !smtpHost.includes('CHANGE_') ? smtpHost : null;
     const cleanUser = smtpUser && !smtpUser.includes('YOUR_') && !smtpUser.includes('CHANGE_') ? smtpUser : null;
-    const brevoApiKey = (smtpPass && smtpPass.startsWith('xkeysib-')) ? smtpPass : (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.startsWith('xkeysib-') ? process.env.BREVO_API_KEY : null);
 
     let sent = false;
     let errorMessage = null;
@@ -119,7 +124,7 @@ async function sendEmail(options) {
     if (brevoApiKey) {
       // Brevo REST API Mode with Primary Inbox anti-spam headers
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
-      const senderEmail = (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.com')) ? fromEmail : 'speaxsaindia@gmail.com';
+      const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -128,7 +133,7 @@ async function sendEmail(options) {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          sender: { name: `${platformName} Security`, email: senderEmail },
+          sender: { name: `${platformName}`, email: senderEmail },
           to: [{ email: to }],
           subject: subject,
           htmlContent: finalHtml,
@@ -142,6 +147,7 @@ async function sendEmail(options) {
 
       if (!response.ok) {
         const errBody = await response.text();
+        console.error(`[EmailService] Brevo API error (status ${response.status}):`, errBody);
         throw new Error(`Brevo REST API failed (status ${response.status}): ${errBody}`);
       }
       sent = true;

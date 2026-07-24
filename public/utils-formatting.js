@@ -486,6 +486,73 @@ window.startResendCooldown = function(btnOrId, durationSeconds = 300) {
   }, 1000);
 };
 
+window.startGlobalResendCooldown = function(durationSeconds = 60) {
+  const now = Date.now();
+  const endTime = now + (durationSeconds * 1000);
+  localStorage.setItem('spx_resend_cooldown_end_time', String(endTime));
+  window.syncAllResendButtons();
+};
+
+window.syncAllResendButtons = function() {
+  if (window._resendSyncInterval) clearInterval(window._resendSyncInterval);
+
+  const endTimeStr = localStorage.getItem('spx_resend_cooldown_end_time');
+  if (!endTimeStr) return;
+
+  const endTime = parseInt(endTimeStr, 10);
+  
+  function updateAll() {
+    const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+    
+    // Select all resend buttons across banners, modals, and profile cards
+    const buttons = document.querySelectorAll(
+      '#btnBannerResendEmail, #btnModalResendEmail, #btnProfileResendEmail, #btnParentResendOtp, .btn-profile-resend-email, button[onclick*="resendEmailVerificationLink"], button[onclick*="resendProfileEmailLink"], button[onclick*="resendParentEmailVerificationLink"]'
+    );
+
+    if (remaining <= 0) {
+      clearInterval(window._resendSyncInterval);
+      localStorage.removeItem('spx_resend_cooldown_end_time');
+
+      buttons.forEach(btn => {
+        if (btn.dataset.origResendHtml) {
+          btn.innerHTML = btn.dataset.origResendHtml;
+          delete btn.dataset.origResendHtml;
+        } else {
+          btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Resend Link';
+        }
+        btn.disabled = false;
+        btn.style.pointerEvents = 'auto';
+        btn.style.opacity = '1';
+      });
+      return;
+    }
+
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    const timeStr = mins > 0 ? `${mins}:${secs < 10 ? '0' : ''}${secs}` : `${secs}s`;
+
+    buttons.forEach(btn => {
+      btn.disabled = true;
+      btn.style.pointerEvents = 'none';
+      btn.style.opacity = '0.6';
+      if (!btn.dataset.origResendHtml) {
+        btn.dataset.origResendHtml = btn.innerHTML;
+      }
+      btn.innerHTML = `<i class="fas fa-clock me-1"></i>Resend in ${timeStr}`;
+    });
+  }
+
+  updateAll();
+  window._resendSyncInterval = setInterval(updateAll, 1000);
+};
+
+// Automatically sync interlinked buttons on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => window.syncAllResendButtons());
+} else {
+  setTimeout(() => window.syncAllResendButtons(), 100);
+}
+
 /**
  * Strict Email Address Validator
  * @param {string} email
