@@ -374,12 +374,20 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ error: verification.error || 'Invalid or expired OTP code' });
     }
 
-    let query = isEmail 
-      ? 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)' 
-      : 'SELECT * FROM users WHERE phone = $1';
+    let query, params;
+    if (isEmail) {
+      query = 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)';
+      params = [input.trim()];
+    } else {
+      const digits = input.replace(/\D/g, '');
+      const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
+      const formatted = '+91' + clean10;
+      query = 'SELECT * FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2 OR phone = $3 OR mobile_number = $3';
+      params = [input.trim(), clean10, formatted];
+    }
       
-    const result = await db.query(query, [input.trim()]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const result = await db.query(query, params);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User account not found for verification.' });
     const user = result.rows[0];
 
     if (purpose === 'verify_mobile' || purpose === 'register_email' || purpose === 'register') {
@@ -828,10 +836,24 @@ router.get('/verification-status', async (req, res) => {
   if (!identifier) return res.status(400).json({ error: 'identifier is required' });
 
   try {
-    const userRes = await db.query(
-      'SELECT id, email, phone, phone_verified, email_verified, name, role FROM users WHERE LOWER(email) = LOWER($1) OR phone = $1',
-      [identifier.trim()]
-    );
+    const cleanIdent = identifier.trim();
+    const isEmail = cleanIdent.includes('@');
+    let userRes;
+    if (isEmail) {
+      userRes = await db.query(
+        'SELECT id, email, phone, phone_verified, email_verified, name, role FROM users WHERE LOWER(email) = LOWER($1)',
+        [cleanIdent]
+      );
+    } else {
+      const digits = cleanIdent.replace(/\D/g, '');
+      const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
+      const formatted = '+91' + clean10;
+      userRes = await db.query(
+        'SELECT id, email, phone, phone_verified, email_verified, name, role FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2 OR phone = $3 OR mobile_number = $3',
+        [cleanIdent, clean10, formatted]
+      );
+    }
+
     if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     const user = userRes.rows[0];
 
@@ -913,20 +935,38 @@ router.post('/verify-mobile-otp', async (req, res) => {
   }
 
   try {
-    const userRes = await db.query(
-      'SELECT id, phone, email, phone_verified FROM users WHERE LOWER(email) = LOWER($1) OR phone = $1',
-      [identifier.trim()]
-    );
+    const cleanIdent = identifier.trim();
+    const isEmail = cleanIdent.includes('@');
+    let userRes;
+    if (isEmail) {
+      userRes = await db.query(
+        'SELECT id, phone, email, phone_verified FROM users WHERE LOWER(email) = LOWER($1)',
+        [cleanIdent]
+      );
+    } else {
+      const digits = cleanIdent.replace(/\D/g, '');
+      const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
+      const formatted = '+91' + clean10;
+      userRes = await db.query(
+        'SELECT id, phone, email, phone_verified FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2 OR phone = $3 OR mobile_number = $3',
+        [cleanIdent, clean10, formatted]
+      );
+    }
+
     if (userRes.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
     const user = userRes.rows[0];
 
+    const digits = (user.phone || cleanIdent).replace(/\D/g, '');
+    const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
+    const phoneTargets = Array.from(new Set([cleanIdent, user.phone, clean10, '+91' + clean10, '91' + clean10]));
+
     const otpRes = await db.query(
       `SELECT * FROM otp_tokens 
-       WHERE identifier = $1 AND purpose = 'verify_mobile' AND used = false AND expires_at > NOW()
+       WHERE identifier = ANY($1) AND purpose = 'verify_mobile' AND used = false AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
-      [user.phone]
+      [phoneTargets]
     );
 
     if (otpRes.rows.length === 0) {

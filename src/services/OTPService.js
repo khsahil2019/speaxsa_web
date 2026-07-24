@@ -41,15 +41,24 @@ async function createOTP(identifier, purpose = 'login') {
   const expiryMins = parseInt(config.otp_expiry_minutes || '5', 10);
   const expiresAt = new Date(Date.now() + (isNaN(expiryMins) ? 5 : expiryMins) * 60 * 1000);
 
+  const cleanIdent = (identifier || '').trim();
+  const isEmail = cleanIdent.includes('@');
+  let targets = [cleanIdent];
+  if (!isEmail && cleanIdent) {
+    const digits = cleanIdent.replace(/\D/g, '');
+    const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
+    targets = Array.from(new Set([cleanIdent, clean10, '+91' + clean10, '91' + clean10]));
+  }
+
   // Invalidate any existing active OTPs for this identifier + purpose
   await db.query(
-    'UPDATE otp_tokens SET used = true WHERE identifier = $1 AND purpose = $2 AND used = false',
-    [identifier, purpose]
+    'UPDATE otp_tokens SET used = true WHERE identifier = ANY($1) AND purpose = $2 AND used = false',
+    [targets, purpose]
   );
 
   const res = await db.query(
     'INSERT INTO otp_tokens (identifier, otp, purpose, expires_at, delivery_status) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-    [identifier, otp, purpose, expiresAt, 'pending']
+    [cleanIdent, otp, purpose, expiresAt, 'pending']
   );
 
   return { otp, expiresAt, tokenId: res.rows[0]?.id };
@@ -59,18 +68,28 @@ async function verifyOTP(identifier, otp, purpose = 'login') {
   const config = await getOTPConfig();
 
   // 1. Master OTP bypass check (for admin test/qa env if configured)
-  if (config.master_otp && config.master_otp.trim() !== '' && otp === config.master_otp.trim()) {
+  if (config.master_otp && config.master_otp.trim() !== '' && (otp || '').trim() === config.master_otp.trim()) {
     console.log(`[OTPService] Master OTP bypass used for ${identifier}`);
     return { valid: true, masterBypass: true };
   }
 
-  // 2. Database OTP lookup
+  const cleanIdent = (identifier || '').trim();
+  const cleanOtp = (otp || '').trim();
+  const isEmail = cleanIdent.includes('@');
+  let targets = [cleanIdent];
+  if (!isEmail && cleanIdent) {
+    const digits = cleanIdent.replace(/\D/g, '');
+    const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
+    targets = Array.from(new Set([cleanIdent, clean10, '+91' + clean10, '91' + clean10]));
+  }
+
+  // 2. Database OTP lookup with identifier flexibility
   const result = await db.query(
     `SELECT * FROM otp_tokens 
-     WHERE identifier = $1 AND otp = $2 AND purpose = $3 
+     WHERE identifier = ANY($1) AND otp = $2 AND purpose = $3 
        AND used = false AND expires_at > NOW()
      ORDER BY created_at DESC LIMIT 1`,
-    [identifier, otp, purpose]
+    [targets, cleanOtp, purpose]
   );
 
   if (result.rows.length === 0) {

@@ -12,6 +12,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 
   try {
+    await ensureSupportTicketsTable();
     const result = await db.query(`
       SELECT t.*, 
              u.name as u_name, u.role as u_role, u.email as u_email, u.phone as u_phone
