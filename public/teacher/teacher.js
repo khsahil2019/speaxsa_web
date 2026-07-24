@@ -651,9 +651,18 @@ function showApp() {
 function startEmailVerificationCooldown(durationSeconds = 300) {
   const btnBanner = document.getElementById('btnBannerResendEmail');
   const btnModal = document.getElementById('btnModalResendEmail');
+
+  const lastSent = parseInt(localStorage.getItem('spx_last_email_sent_time') || sessionStorage.getItem('last_auto_teacher_email_link_time') || '0', 10);
+  let effectiveSeconds = 0;
+  if (lastSent > 0) {
+    const elapsedSeconds = Math.floor((Date.now() - lastSent) / 1000);
+    effectiveSeconds = durationSeconds - elapsedSeconds;
+    if (effectiveSeconds < 0) effectiveSeconds = 0;
+  }
+
   if (window.startResendCooldown) {
-    if (btnBanner) window.startResendCooldown(btnBanner, durationSeconds);
-    if (btnModal) window.startResendCooldown(btnModal, durationSeconds);
+    if (btnBanner) window.startResendCooldown(btnBanner, effectiveSeconds);
+    if (btnModal) window.startResendCooldown(btnModal, effectiveSeconds);
   }
 }
 
@@ -679,39 +688,40 @@ async function checkEmailVerificationReminder() {
   // 2. Set Email address in Modal display
   if (modalEmailDisp) modalEmailDisp.textContent = userEmail;
 
-  // 3. Start 5-minute disabled cooldown timer on Resend buttons
+  // 3. Start dynamic real-time cooldown on Resend buttons
   startEmailVerificationCooldown(300);
 
-  // 4. Automatically dispatch verification link if not sent recently
+  // 4. Automatically dispatch verification link if not sent recently (5+ minutes ago)
   const now = Date.now();
-  const lastSent = parseInt(sessionStorage.getItem('last_auto_teacher_email_link_time') || '0', 10);
+  const lastSent = parseInt(localStorage.getItem('spx_last_email_sent_time') || sessionStorage.getItem('last_auto_teacher_email_link_time') || '0', 10);
 
-  if (now - lastSent > 300000) {
+  if (lastSent === 0 || now - lastSent > 300000) {
+    localStorage.setItem('spx_last_email_sent_time', String(now));
     sessionStorage.setItem('last_auto_teacher_email_link_time', String(now));
+    startEmailVerificationCooldown(300);
+
     try {
       await fetch('/api/auth/send-email-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: userEmail })
       });
-      showToast(`Verification link automatically sent to ${userEmail}. Please check your inbox.`, 'info');
+      showToast(`Verification link sent to ${userEmail}. Please check your primary inbox.`, 'info');
     } catch (e) {
       console.warn('Auto email link error:', e);
     }
   }
 
-  // 5. Open Email Verification Dialog Modal after brief delay
-  setTimeout(() => {
-    const modalEl = document.getElementById('emailVerificationModal');
-    if (modalEl && typeof bootstrap !== 'undefined') {
-      const modalObj = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-      modalObj.show();
-    }
-  }, 400);
+  // Clean up any stray backdrops that might block the UI
+  removeStrayModalBackdrops();
 }
 
 async function resendEmailVerificationLink(evtBtn) {
+  const now = Date.now();
+  localStorage.setItem('spx_last_email_sent_time', String(now));
+  sessionStorage.setItem('last_auto_teacher_email_link_time', String(now));
   startEmailVerificationCooldown(300);
+
   try {
     const emailToUse = user ? user.email : '';
     const res = await fetch('/api/auth/send-email-link', {
@@ -721,7 +731,7 @@ async function resendEmailVerificationLink(evtBtn) {
     });
     const data = await res.json();
     if (res.ok) {
-      showToast(data.message || `Verification link sent to ${emailToUse || 'your email'} (valid for 30 minutes). Please check your inbox.`, 'success');
+      showToast(data.message || `Verification link sent to ${emailToUse || 'your email'}. Please check your primary inbox.`, 'success');
     } else {
       showToast(data.error || 'Failed to send verification link', 'error');
     }

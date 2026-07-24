@@ -111,51 +111,56 @@ async function sendEmail(options) {
     // Filter placeholder keys
     const cleanHost = smtpHost && !smtpHost.includes('YOUR_') && !smtpHost.includes('CHANGE_') ? smtpHost : null;
     const cleanUser = smtpUser && !smtpUser.includes('YOUR_') && !smtpUser.includes('CHANGE_') ? smtpUser : null;
+    const brevoApiKey = (smtpPass && smtpPass.startsWith('xkeysib-')) ? smtpPass : (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.startsWith('xkeysib-') ? process.env.BREVO_API_KEY : null);
 
     let sent = false;
     let errorMessage = null;
 
-    if (emailProvider.toLowerCase() === 'smtp' && cleanHost && cleanUser) {
-      if (smtpPass && smtpPass.startsWith('xkeysib-')) {
-        // Brevo REST API Mode
-        console.log('[EmailService] Detected Brevo API Key. Sending via REST API...');
-        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-          method: 'POST',
+    if (brevoApiKey) {
+      // Brevo REST API Mode with Primary Inbox anti-spam headers
+      console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
+      const senderEmail = (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.com')) ? fromEmail : 'speaxsaindia@gmail.com';
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: `${platformName} Security`, email: senderEmail },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: finalHtml,
           headers: {
-            'accept': 'application/json',
-            'api-key': smtpPass,
-            'content-type': 'application/json'
-          },
-          body: JSON.stringify({
-            sender: { name: platformName, email: fromEmail },
-            to: [{ email: to }],
-            subject: subject,
-            htmlContent: finalHtml
-          })
-        });
+            'X-Mailin-Tag': 'SpeaxaVerification',
+            'X-Auto-Response-Suppress': 'OOF, AutoReply',
+            'List-Unsubscribe': `<mailto:${senderEmail}?subject=Unsubscribe>`
+          }
+        })
+      });
 
-        if (!response.ok) {
-          const errBody = await response.text();
-          throw new Error(`Brevo REST API failed (status ${response.status}): ${errBody}`);
-        }
-        sent = true;
-      } else {
-        // Nodemailer SMTP Mode
-        const transporter = nodemailer.createTransport({
-          host: cleanHost,
-          port: parseInt(smtpPort, 10),
-          secure: parseInt(smtpPort, 10) === 465,
-          auth: { user: cleanUser, pass: smtpPass },
-        });
-
-        await transporter.sendMail({
-          from: `"${platformName}" <${fromEmail}>`,
-          to,
-          subject,
-          html: finalHtml,
-        });
-        sent = true;
+      if (!response.ok) {
+        const errBody = await response.text();
+        throw new Error(`Brevo REST API failed (status ${response.status}): ${errBody}`);
       }
+      sent = true;
+    } else if (cleanHost && cleanUser) {
+      // Nodemailer SMTP Mode
+      const transporter = nodemailer.createTransport({
+        host: cleanHost,
+        port: parseInt(smtpPort, 10),
+        secure: parseInt(smtpPort, 10) === 465,
+        auth: { user: cleanUser, pass: smtpPass },
+      });
+
+      await transporter.sendMail({
+        from: `"${platformName}" <${fromEmail}>`,
+        to,
+        subject,
+        html: finalHtml,
+      });
+      sent = true;
     } else {
       // Dev Console Fallback
       console.log(`========================================`);

@@ -181,6 +181,9 @@ router.post('/register', async (req, res) => {
       `);
     } catch (sErr) {}
 
+    const reqEmailSetting = await SystemConfigService.getSetting('require_email_verification', 'false');
+    const emailVerifiedOnInit = String(reqEmailSetting) !== 'true';
+
     await db.query(`
       INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url,
         approval_status, teacher_level, qualification, experience_years, subject_expertise,
@@ -192,7 +195,7 @@ router.post('/register', async (req, res) => {
       subject_expertise || null, languages || null, address || null, board || null,
       grade || null, studentCode, referralCode, alt_email || null, mobile_number || null,
       typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}'),
-      referredById, isVerifiedOnInit, false
+      referredById, isVerifiedOnInit, emailVerifiedOnInit
     ]);
 
     // Create teacher SOP entry if teacher

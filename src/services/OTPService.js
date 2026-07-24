@@ -106,7 +106,21 @@ async function verifyOTP(identifier, otp, purpose = 'login') {
  */
 async function sendOTPSms(phone, otp, purpose = 'login', tokenId = null) {
   const config = await getOTPConfig();
-  const provider = (config.sms_provider || 'dev').toLowerCase();
+  
+  const twofactorKey = config.twofactor_api_key || config.two_factor_api_key || process.env.TWOFACTOR_API_KEY || process.env.TWO_FACTOR_API_KEY;
+  const msg91Key = config.msg91_auth_key || process.env.MSG91_AUTH_KEY;
+  const brevoKey = config.brevo_api_key || config.smtp_pass || process.env.BREVO_API_KEY;
+  const fast2smsKey = config.fast2sms_api_key || process.env.FAST2SMS_API_KEY;
+
+  let provider = (config.sms_provider || process.env.SMS_PROVIDER || '').toLowerCase().trim();
+  if (!provider) {
+    if (twofactorKey) provider = '2factor';
+    else if (msg91Key) provider = 'msg91';
+    else if (fast2smsKey) provider = 'fast2sms';
+    else if (brevoKey && brevoKey.startsWith('xkeysib-')) provider = 'brevo';
+    else provider = 'dev';
+  }
+
   let formattedPhone = phone.replace(/\D/g, '');
   if (formattedPhone.length === 10) formattedPhone = '91' + formattedPhone;
 

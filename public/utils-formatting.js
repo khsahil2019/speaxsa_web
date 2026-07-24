@@ -1,3 +1,17 @@
+window.removeStrayModalBackdrops = function() {
+  try {
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+  } catch(e) {}
+};
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', window.removeStrayModalBackdrops);
+  window.addEventListener('pageshow', window.removeStrayModalBackdrops);
+}
+
 /**
  * Formats plain text to preserve bullet points, newlines, bold text, and emojis.
  * @param {string} text - Raw text input
@@ -337,6 +351,15 @@ window.startResendCooldown = function(btnOrId, durationSeconds = 300) {
   if (!btn) return;
   
   if (btn._cooldownInterval) clearInterval(btn._cooldownInterval);
+
+  if (durationSeconds <= 0) {
+    if (btn.dataset.origResendHtml) {
+      btn.innerHTML = btn.dataset.origResendHtml;
+      delete btn.dataset.origResendHtml;
+    }
+    btn.disabled = false;
+    return;
+  }
 
   let remaining = durationSeconds;
   btn.disabled = true;
