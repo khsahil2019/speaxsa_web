@@ -2198,8 +2198,35 @@ router.delete('/gallery/:id', async (req, res) => {
 });
 
 // ── Subscriber & Email Campaign Routes ───────────────────────
+async function ensureSubscribersTable() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS subscribers (
+        id VARCHAR(100) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        source VARCHAR(100) DEFAULT 'landing_page',
+        status VARCHAR(50) DEFAULT 'active',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+  } catch (err) {
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS subscribers (
+          id VARCHAR(100) PRIMARY KEY DEFAULT md5(random()::text || clock_timestamp()::text),
+          email VARCHAR(255) UNIQUE NOT NULL,
+          source VARCHAR(100) DEFAULT 'landing_page',
+          status VARCHAR(50) DEFAULT 'active',
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+    } catch (e) {}
+  }
+}
+
 router.get('/subscribers', async (req, res) => {
   try {
+    await ensureSubscribersTable();
     const result = await db.query("SELECT * FROM subscribers ORDER BY created_at DESC");
     res.json(result.rows);
   } catch (err) {
@@ -2209,6 +2236,7 @@ router.get('/subscribers', async (req, res) => {
 
 router.delete('/subscribers/:id', async (req, res) => {
   try {
+    await ensureSubscribersTable();
     await db.query("DELETE FROM subscribers WHERE id = $1", [req.params.id]);
     res.json({ message: 'Subscriber removed successfully' });
   } catch (err) {
@@ -2218,6 +2246,7 @@ router.delete('/subscribers/:id', async (req, res) => {
 
 router.post('/subscribers/send-campaign', async (req, res) => {
   try {
+    await ensureSubscribersTable();
     const { subject, body_text, body_html, image_url, cta_text, cta_link } = req.body;
     const rawContent = (body_text || body_html || '').trim();
 

@@ -855,3 +855,14 @@ CREATE TABLE IF NOT EXISTS media_gallery (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ============================================================
+-- 39. NEWSLETTER SUBSCRIBERS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS subscribers (
+  id VARCHAR(100) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  source VARCHAR(100) DEFAULT 'landing_page',
+  status VARCHAR(50) DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+

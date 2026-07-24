@@ -120,6 +120,29 @@ router.post('/public/subscribe', async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid email address.' });
     }
     const db = require('../db');
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS subscribers (
+          id VARCHAR(100) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          source VARCHAR(100) DEFAULT 'landing_page',
+          status VARCHAR(50) DEFAULT 'active',
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+    } catch(e) {
+      try {
+        await db.query(`
+          CREATE TABLE IF NOT EXISTS subscribers (
+            id VARCHAR(100) PRIMARY KEY DEFAULT md5(random()::text || clock_timestamp()::text),
+            email VARCHAR(255) UNIQUE NOT NULL,
+            source VARCHAR(100) DEFAULT 'landing_page',
+            status VARCHAR(50) DEFAULT 'active',
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );
+        `);
+      } catch(err2) {}
+    }
     await db.query(`
       INSERT INTO subscribers (email, source, status)
       VALUES ($1, $2, 'active')
