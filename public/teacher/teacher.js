@@ -649,22 +649,98 @@ function showApp() {
   }, 5000);
 }
 
-function startEmailVerificationCooldown(durationSeconds = 300) {
-  const btnBanner = document.getElementById('btnBannerResendEmail');
-  const btnModal = document.getElementById('btnModalResendEmail');
+const EMAIL_COOLDOWN_KEY = 'spx_email_cooldown_end_time';
+const EMAIL_COOLDOWN_DURATION = 300; // 5 minutes
+let realtimeVerificationPollInterval = null;
 
-  const lastSent = parseInt(localStorage.getItem('spx_last_email_sent_time') || sessionStorage.getItem('last_auto_teacher_email_link_time') || '0', 10);
-  let effectiveSeconds = 0;
-  if (lastSent > 0) {
-    const elapsedSeconds = Math.floor((Date.now() - lastSent) / 1000);
-    effectiveSeconds = durationSeconds - elapsedSeconds;
-    if (effectiveSeconds < 0) effectiveSeconds = 0;
-  }
+function getRemainingEmailCooldownSeconds() {
+  const endTime = parseInt(localStorage.getItem(EMAIL_COOLDOWN_KEY) || '0', 10);
+  if (!endTime) return 0;
+  const remaining = Math.ceil((endTime - Date.now()) / 1000);
+  return remaining > 0 ? remaining : 0;
+}
 
-  if (window.startResendCooldown) {
-    if (btnBanner) window.startResendCooldown(btnBanner, effectiveSeconds);
-    if (btnModal) window.startResendCooldown(btnModal, effectiveSeconds);
+function startGlobalEmailCooldown(durationSeconds = EMAIL_COOLDOWN_DURATION) {
+  const newEndTime = Date.now() + (durationSeconds * 1000);
+  localStorage.setItem(EMAIL_COOLDOWN_KEY, String(newEndTime));
+  localStorage.setItem('spx_last_email_sent_time', String(Date.now()));
+  updateAllEmailResendButtonsUI();
+}
+
+function updateAllEmailResendButtonsUI() {
+  const remaining = getRemainingEmailCooldownSeconds();
+  const buttons = document.querySelectorAll('#btnBannerResendEmail, #btnProfileResendEmail, #btnModalResendEmail, .resend-email-link-btn');
+
+  if (remaining > 0) {
+    const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const secs = String(remaining % 60).padStart(2, '0');
+    const timeStr = `${mins}:${secs}`;
+
+    buttons.forEach(btn => {
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.65';
+        btn.innerHTML = `<i class="fas fa-hourglass-half me-1"></i>Resend in ${timeStr}`;
+      }
+    });
+  } else {
+    buttons.forEach(btn => {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+        btn.style.pointerEvents = 'auto';
+        btn.style.opacity = '1';
+        btn.innerHTML = `<i class="fas fa-paper-plane me-1"></i>Resend Verification Link`;
+      }
+    });
   }
+}
+
+// Global 1-second interval keeps home panel & profile page buttons 100% synced!
+setInterval(updateAllEmailResendButtonsUI, 1000);
+
+function startRealtimeVerificationPolling() {
+  if (realtimeVerificationPollInterval || !user || user.email_verified) return;
+
+  realtimeVerificationPollInterval = setInterval(async () => {
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        const latestUser = userData.user || userData;
+        if (latestUser && latestUser.email_verified) {
+          // Instant real-time verification detected!
+          clearInterval(realtimeVerificationPollInterval);
+          realtimeVerificationPollInterval = null;
+
+          user.email_verified = true;
+          sessionStorage.setItem('spx_user', JSON.stringify(user));
+          localStorage.setItem('spx_user', JSON.stringify(user));
+
+          // 1. Hide Top Banner immediately
+          const banner = document.getElementById('emailVerificationBanner');
+          if (banner) banner.classList.add('d-none');
+
+          // 2. Update Profile Page status badge live without page refresh
+          const badge = document.getElementById('profileEmailBadge');
+          if (badge) {
+            badge.className = 'badge bg-success ms-1';
+            badge.innerHTML = '<i class="fas fa-check-circle me-1"></i>Verified';
+          }
+          const profileBtn = document.getElementById('btnProfileResendEmail');
+          if (profileBtn) profileBtn.remove();
+
+          showToast('🎉 Email address verified successfully!', 'success');
+        }
+      }
+    } catch (e) {
+      console.warn('Real-time email verification poll error:', e);
+    }
+  }, 4000);
 }
 
 async function checkEmailVerificationReminder() {
@@ -689,18 +765,16 @@ async function checkEmailVerificationReminder() {
   // 2. Set Email address in Modal display
   if (modalEmailDisp) modalEmailDisp.textContent = userEmail;
 
-  // 3. Start dynamic real-time cooldown on Resend buttons
-  startEmailVerificationCooldown(300);
+  // 3. Update all synced timer buttons across all screens
+  updateAllEmailResendButtonsUI();
 
-  // 4. Automatically dispatch verification link if not sent recently (5+ minutes ago)
-  const now = Date.now();
-  const lastSent = parseInt(localStorage.getItem('spx_last_email_sent_time') || sessionStorage.getItem('last_auto_teacher_email_link_time') || '0', 10);
+  // 4. Start real-time background polling so verification updates instantly without refresh!
+  startRealtimeVerificationPolling();
 
-  if (lastSent === 0 || now - lastSent > 300000) {
-    localStorage.setItem('spx_last_email_sent_time', String(now));
-    sessionStorage.setItem('last_auto_teacher_email_link_time', String(now));
-    startEmailVerificationCooldown(300);
-
+  // 5. Automatically dispatch verification link if not sent recently (5+ minutes ago)
+  const remaining = getRemainingEmailCooldownSeconds();
+  if (remaining === 0) {
+    startGlobalEmailCooldown(300);
     try {
       await fetch('/api/auth/send-email-link', {
         method: 'POST',
@@ -713,18 +787,21 @@ async function checkEmailVerificationReminder() {
     }
   }
 
-  // Clean up any stray backdrops that might block the UI
   removeStrayModalBackdrops();
 }
 
 async function resendEmailVerificationLink(evtBtn) {
-  if (window.startGlobalResendCooldown) {
-    window.startGlobalResendCooldown(60);
+  const remaining = getRemainingEmailCooldownSeconds();
+  if (remaining > 0) {
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+    return showToast(`Please wait ${mins}m ${secs}s before requesting another verification link.`, 'warning');
   }
+
+  startGlobalEmailCooldown(300);
 
   try {
     const emailToUse = user ? user.email : '';
-
     const res = await fetch('/api/auth/send-email-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

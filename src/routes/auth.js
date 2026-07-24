@@ -359,14 +359,13 @@ router.post('/send-otp', async (req, res) => {
 
     if (purpose === 'verify_mobile') {
       const { otp, tokenId } = await createOTP(targetPhone, 'verify_mobile');
-      await createOTP(targetEmail, 'verify_mobile');
       
       const sentInfo = await sendOTPSms(targetPhone, otp, 'verify_mobile', tokenId);
       const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'false');
       const showDevOtp = String(devOtpSetting) === 'true';
 
       return res.json({
-        message: `Verification OTP sent to mobile number ${targetPhone} via MSG91`,
+        message: `Verification OTP sent to mobile number ${targetPhone}`,
         method: sentInfo.method,
         phone: targetPhone,
         ...(showDevOtp && { otp }),
