@@ -1,5 +1,6 @@
 const db = require('../db');
 const nodemailer = require('nodemailer');
+const configService = require('./SystemConfigService');
 
 /**
  * Unified Email Service
@@ -8,18 +9,14 @@ const nodemailer = require('nodemailer');
 async function sendEmail(options) {
   const { to, subject, html, type = 'custom', headerTitle, badgeLabel } = options || {};
   try {
-    // 1. Fetch platform & SMTP settings
-    const settingsRes = await db.query(
-      "SELECT key, value FROM platform_settings WHERE key IN ('brevo_api_key','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from_email','platform_name','support_email','email_provider')"
-    );
-    const settings = {};
-    settingsRes.rows.forEach(r => { settings[r.key] = r.value; });
+    // 1. Fetch platform & SMTP settings via SystemConfigService
+    const settings = await configService.getConfig();
 
     const smtpHost = settings.smtp_host || process.env.SMTP_HOST;
     const smtpUser = settings.smtp_user || process.env.SMTP_USER;
     const smtpPass = settings.smtp_pass || process.env.SMTP_PASS;
     const smtpPort = settings.smtp_port || process.env.SMTP_PORT || '587';
-    const emailProvider = settings.email_provider || process.env.EMAIL_PROVIDER || 'smtp';
+    const emailProvider = (settings.email_provider || process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
 
     const brevoApiKey = (settings.brevo_api_key && settings.brevo_api_key.trim().startsWith('xkeysib-')) ? settings.brevo_api_key.trim()
       : (settings.smtp_pass && settings.smtp_pass.trim().startsWith('xkeysib-')) ? settings.smtp_pass.trim()
@@ -51,6 +48,11 @@ async function sendEmail(options) {
         headerIcon = '🔐';
         titleLabel = headerTitle || 'Verification Code';
         badgeHtml = `<span style="background: rgba(13, 122, 109, 0.1); color: #0d7a6d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Secure Portal'}</span>`;
+      } else if (type === 'verification') {
+        headerGradient = 'linear-gradient(135deg, #0d7a6d, #08544b)';
+        headerIcon = '✉️';
+        titleLabel = headerTitle || 'Email Verification Link';
+        badgeHtml = `<span style="background: rgba(13, 122, 109, 0.1); color: #0d7a6d; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: sans-serif;">${badgeLabel || 'Email Verification'}</span>`;
       } else if (type === 'advertisement' || type === 'campaign') {
         headerGradient = 'linear-gradient(135deg, #0d7a6d 0%, #0f766e 50%, #042f2e 100%)'; // SPEAXA Emerald
         headerIcon = '📢';
@@ -115,13 +117,40 @@ async function sendEmail(options) {
     }
 
     // Filter placeholder keys
-    const cleanHost = smtpHost && !smtpHost.includes('YOUR_') && !smtpHost.includes('CHANGE_') ? smtpHost : null;
-    const cleanUser = smtpUser && !smtpUser.includes('YOUR_') && !smtpUser.includes('CHANGE_') ? smtpUser : null;
+    const cleanHost = smtpHost && !smtpHost.includes('YOUR_') && !smtpHost.includes('CHANGE_') ? smtpHost.trim() : null;
+    const cleanUser = smtpUser && !smtpUser.includes('YOUR_') && !smtpUser.includes('CHANGE_') ? smtpUser.trim() : null;
 
     let sent = false;
     let errorMessage = null;
 
-    if (brevoApiKey) {
+    if (emailProvider === 'dev') {
+      // Dev Console Fallback
+      console.log(`========================================`);
+      console.log(`[Email Console Fallback] To: ${to} | Subject: ${subject}`);
+      console.log(`Body (truncated): ${html.substring(0, 300)}...`);
+      console.log(`========================================`);
+      sent = true;
+    } else if (cleanHost) {
+      // Nodemailer SMTP Mode (Primary mode when SMTP is configured via Admin panel or settings)
+      console.log(`[EmailService] Sending email to ${to} via SMTP server (${cleanHost}:${smtpPort})...`);
+      const transporter = nodemailer.createTransport({
+        host: cleanHost,
+        port: parseInt(smtpPort, 10),
+        secure: parseInt(smtpPort, 10) === 465,
+        auth: cleanUser ? { user: cleanUser, pass: smtpPass } : undefined,
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+
+      await transporter.sendMail({
+        from: `"${platformName}" <${fromEmail}>`,
+        to,
+        subject,
+        html: finalHtml,
+      });
+      sent = true;
+    } else if (brevoApiKey) {
       // Brevo REST API Mode with Primary Inbox anti-spam headers
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
       const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxsaindia@gmail.com');
@@ -150,22 +179,6 @@ async function sendEmail(options) {
         console.error(`[EmailService] Brevo API error (status ${response.status}):`, errBody);
         throw new Error(`Brevo REST API failed (status ${response.status}): ${errBody}`);
       }
-      sent = true;
-    } else if (cleanHost && cleanUser) {
-      // Nodemailer SMTP Mode
-      const transporter = nodemailer.createTransport({
-        host: cleanHost,
-        port: parseInt(smtpPort, 10),
-        secure: parseInt(smtpPort, 10) === 465,
-        auth: { user: cleanUser, pass: smtpPass },
-      });
-
-      await transporter.sendMail({
-        from: `"${platformName}" <${fromEmail}>`,
-        to,
-        subject,
-        html: finalHtml,
-      });
       sent = true;
     } else {
       // Dev Console Fallback

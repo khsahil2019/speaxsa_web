@@ -724,7 +724,6 @@ async function resendEmailVerificationLink(evtBtn) {
 
   try {
     const emailToUse = user ? user.email : '';
-    const phoneToUse = user ? user.phone : '';
 
     const res = await fetch('/api/auth/send-email-link', {
       method: 'POST',
@@ -732,17 +731,9 @@ async function resendEmailVerificationLink(evtBtn) {
       body: JSON.stringify({ identifier: emailToUse })
     });
 
-    if (phoneToUse) {
-      fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneToUse, purpose: 'verify_mobile' })
-      }).catch(e => console.warn('SMS OTP resend notice:', e));
-    }
-
     const data = await res.json();
     if (res.ok) {
-      showToast(data.message || `Verification link & SMS code sent to ${emailToUse || 'your email'}. Please check your primary inbox and phone.`, 'success');
+      showToast(data.message || `Verification link sent to ${emailToUse || 'your email'}. Please check your inbox.`, 'success');
     } else {
       showToast(data.error || 'Failed to send verification link', 'error');
     }

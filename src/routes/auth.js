@@ -907,7 +907,9 @@ async function sendEmailVerificationLink(userId, req) {
 </body>
 </html>
     `,
-    type: 'otp'
+    type: 'verification',
+    headerTitle: 'Email Verification Link',
+    badgeLabel: 'Email Verification'
   });
 
   if (mailRes && mailRes.sent === false) {
