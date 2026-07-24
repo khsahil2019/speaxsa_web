@@ -157,6 +157,30 @@ router.post('/register', async (req, res) => {
 
     const isVerifiedOnInit = requireOtpBool ? true : false;
 
+    // Self-healing schema check for production table
+    try {
+      await db.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_plain VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS alt_email VARCHAR(200);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(50);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS qualification VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INT DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS subject_expertise VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS languages VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS board VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS grade VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS student_code VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50) DEFAULT 'approved';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_level VARCHAR(50);
+      `);
+    } catch (sErr) {}
+
     await db.query(`
       INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url,
         approval_status, teacher_level, qualification, experience_years, subject_expertise,

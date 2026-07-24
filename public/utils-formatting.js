@@ -212,7 +212,10 @@ if (typeof Response !== 'undefined' && Response.prototype && Response.prototype.
     const isJson = contentType && contentType.indexOf("application/json") !== -1;
 
     if (!this.ok) {
-      if (this.status === 401) {
+      const requestUrl = (this.url || '').toLowerCase();
+      const isAuthPath = requestUrl.includes('/auth/') || requestUrl.includes('/login') || requestUrl.includes('/register') || requestUrl.includes('/verify');
+
+      if (this.status === 401 && !isAuthPath) {
         if (typeof logout === 'function') logout();
         if (typeof handleLogout === 'function') handleLogout();
       }
@@ -221,7 +224,7 @@ if (typeof Response !== 'undefined' && Response.prototype && Response.prototype.
       }
       if (isJson) {
         const err = await originalJson.call(this);
-        throw new Error(err.error || 'Request failed');
+        throw new Error(err.error || err.message || 'Request failed');
       } else {
         const text = await this.text();
         throw new Error(`Server error (${this.status}): ${text.slice(0, 100) || 'Internal Server Error'}...`);
