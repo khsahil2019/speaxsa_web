@@ -122,7 +122,7 @@ async function sendOTPSms(phone, otp, purpose = 'login', tokenId = null) {
     } else if (provider === 'fast2sms') {
       result = await dispatchFast2SMS(config, formattedPhone, otp, purpose);
     } else if (provider === '2factor' || provider === 'twofactor') {
-      result = await dispatch2Factor(config, formattedPhone, phone, otp, purpose);
+      result = await dispatch2Factor(config, formattedPhone, phone, otp, purpose, tokenId);
     } else if (provider === 'custom') {
       result = await dispatchCustomGateway(config, formattedPhone, phone, otp, purpose);
     } else {
@@ -471,9 +471,11 @@ async function dispatchCustomGateway(config, formattedPhone, rawPhone, otp, purp
 }
 
 // 2Factor Provider
-async function dispatch2Factor(config, formattedPhone, rawPhone, otp, purpose) {
-  const apiKey = config.twofactor_api_key || process.env.TWOFACTOR_API_KEY;
-  const templateName = config.twofactor_template_name || process.env.TWOFACTOR_TEMPLATE_NAME;
+async function dispatch2Factor(config, formattedPhone, rawPhone, otp, purpose, tokenId = null) {
+  const apiKey = config.twofactor_api_key || config.two_factor_api_key || process.env.TWOFACTOR_API_KEY || process.env.TWO_FACTOR_API_KEY;
+  const templateName = config.twofactor_template_name || config.two_factor_template_name || process.env.TWOFACTOR_TEMPLATE_NAME || process.env.TWO_FACTOR_TEMPLATE_NAME;
+
+  console.log('[2Factor SMS] Dispatching OTP with API Key exists:', !!apiKey);
 
   if (!apiKey) {
     throw new Error('2Factor API Key missing in settings');
@@ -494,16 +496,20 @@ async function dispatch2Factor(config, formattedPhone, rawPhone, otp, purpose) {
     https.get(url, (res) => {
       let data = '';
       res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
+      res.on('end', async () => {
         try {
           const resp = JSON.parse(data);
+          console.log('[2Factor Raw API Response]:', resp);
           if (resp.Status === 'Success') {
             console.log(`[2Factor SMS] Dispatched OTP ${otp} to ${cleanPhone} | SessionID: ${resp.Details}`);
-            resolve({ sent: true, method: '2factor', response: resp.Details });
+            if (tokenId && resp.Details) {
+              await db.query('UPDATE otp_tokens SET delivery_error = $1, delivery_status = $2 WHERE id = $3', [resp.Details, 'delivered', tokenId]).catch(e => {});
+            }
+            resolve({ sent: true, method: '2factor', response: resp.Details, sessionId: resp.Details });
           } else {
             resolve({ sent: false, method: '2factor', error: resp.Details || JSON.stringify(resp) });
           }
-        } catch {
+        } catch(e) {
           resolve({ sent: false, method: '2factor', error: 'Invalid JSON response from 2Factor' });
         }
       });
