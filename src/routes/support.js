@@ -26,25 +26,56 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // ── PUBLIC SUBMIT (Connect with Us Form) ──────────────────────
-router.post('/public-connect', async (req, res) => {
+async function ensureSupportTicketsTable() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id          VARCHAR(100) PRIMARY KEY,
+        user_id     VARCHAR(100) REFERENCES users(id),
+        subject     VARCHAR(255),
+        description TEXT,
+        status      VARCHAR(30) DEFAULT 'open',
+        priority    VARCHAR(20) DEFAULT 'normal',
+        guest_name  VARCHAR(150),
+        guest_email VARCHAR(200),
+        guest_phone VARCHAR(20),
+        guest_role  VARCHAR(50),
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    await db.query(`ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_name VARCHAR(150);`);
+    await db.query(`ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_email VARCHAR(200);`);
+    await db.query(`ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_phone VARCHAR(20);`);
+    await db.query(`ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_role VARCHAR(50);`);
+  } catch (e) {}
+}
+
+const handlePublicConnect = async (req, res) => {
   const { name, email, phone, role, message } = req.body;
-  if (!name || !email || !message) {
+  if (!name || !email || (!message && !req.body.subject)) {
     return res.status(400).json({ error: 'Name, email, and message are required.' });
   }
 
+  await ensureSupportTicketsTable();
   const id = 'tkt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  const msgContent = message || req.body.subject || 'Inquiry';
+
   try {
     const result = await db.query(`
       INSERT INTO support_tickets (id, user_id, subject, description, status, priority, guest_name, guest_email, guest_phone, guest_role)
       VALUES ($1, NULL, $2, $3, 'open', 'normal', $4, $5, $6, $7)
       RETURNING *
-    `, [id, `Contact Inquiry from ${name}`, message, name, email, phone, role]);
+    `, [id, `Contact Inquiry from ${name}`, msgContent, name, email, phone || '', role || 'guest']);
 
     res.status(201).json({ message: 'Thank you for contacting us. Your inquiry has been logged successfully.', ticket: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+router.post('/public-connect', handlePublicConnect);
+router.post('/contact', handlePublicConnect);
+router.post('/connect', handlePublicConnect);
 
 // ── CREATE TICKET (Authenticated Portals - Student/Teacher) ──
 router.post('/create', authenticateToken, async (req, res) => {

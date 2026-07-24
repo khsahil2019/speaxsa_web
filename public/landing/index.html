@@ -635,11 +635,11 @@
             mentors, and performance reports.
           </p>
           <div class="footer-contact-details d-flex flex-column gap-2 small text-white-50">
-            <div><strong class="text-white">TOLL FREE:</strong> <a href="tel:1800120456456"
-                class="text-decoration-none text-white fw-bold">1800-120-456-456</a></div>
-            <div><i class="fas fa-phone-alt me-2 text-primary"></i><a href="tel:+919999999999"
-                class="text-decoration-none text-white-50">+91 9999 999 999</a> (9 AM - 9:30 PM)</div>
-            <div><i class="fas fa-envelope me-2 text-primary"></i><a href="mailto:support@speaxa.com"
+            <div><strong class="text-white">TOLL FREE:</strong> <a href="tel:18005004999" id="footerTollFree"
+                class="text-decoration-none text-white fw-bold">1800-500-4999</a></div>
+            <div><i class="fas fa-phone-alt me-2 text-primary"></i><a href="tel:+918739093014" id="footerPhone"
+                class="text-decoration-none text-white-50">+91 8739093014</a> <span id="footerHours">(9 AM - 9:30 PM)</span></div>
+            <div><i class="fas fa-envelope me-2 text-primary"></i><a href="mailto:support@speaxa.com" id="footerEmail"
                 class="text-decoration-none text-white-50">support@speaxa.com</a></div>
           </div>
         </div>
@@ -675,21 +675,22 @@
         <div class="col-lg-4 col-md-6 mb-4">
           <h6 class="footer-heading mb-3 text-white" style="font-family: 'Outfit', sans-serif;">App & Support</h6>
 
-          <!-- SMS Link Form -->
-          <div class="footer-sms-box mb-4">
-            <label class="small text-white-50 mb-2">Get download link via SMS or Email</label>
-            <form id="smsLinkForm" class="d-flex gap-2">
-              <div class="input-group">
-                <span class="input-group-text bg-dark-subtle border-0 text-white-50"
-                  style="border-radius: 12px 0 0 12px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1); border-right: none;"><i class="fas fa-mobile-screen-button"></i></span>
-                <input type="text" id="smsPhone" class="form-control bg-dark border-0 text-white spx-input-sms"
-                  placeholder="Mobile / Email (e.g. 8739093014)" required
-                  style="border-radius: 0 12px 12px 0; border: 1px solid rgba(255,255,255,0.1); border-left: none; font-size: 0.82rem;">
+          <!-- App Store & Play Store Download Buttons -->
+          <div class="footer-app-downloads d-flex gap-2 mb-3">
+            <a href="https://play.google.com/store/apps/details?id=com.speaxa" id="footerPlayStoreBtn" target="_blank" class="app-download-btn play-store-btn d-flex align-items-center gap-2 px-3 py-2 text-white text-decoration-none" style="border-radius: 12px; transition: all 0.3s ease; flex: 1; background: linear-gradient(135deg, #059669 0%, #10B981 100%); border: 1px solid rgba(16, 185, 129, 0.4);">
+              <i class="fab fa-google-play" style="font-size: 1.3rem;"></i>
+              <div class="text-start">
+                <div style="font-size: 0.6rem; text-transform: uppercase; color: rgba(255,255,255,0.85); font-weight: 500; letter-spacing: 0.5px; line-height: 1.2;">Get it on</div>
+                <div style="font-size: 0.8rem; font-weight: 700; font-family: 'Outfit', sans-serif; line-height: 1.2; color: #ffffff;">Google Play</div>
               </div>
-              <button type="submit" class="btn btn-spx-primary px-3"
-                style="border-radius: 12px; font-size: 0.85rem; white-space: nowrap;">Send Link</button>
-            </form>
-            <div id="smsFeedback" class="small text-success mt-2" style="display:none; font-size: 0.75rem;"></div>
+            </a>
+            <a href="https://apps.apple.com/app/speaxa" id="footerAppStoreBtn" target="_blank" class="app-download-btn app-store-btn d-flex align-items-center gap-2 px-3 py-2 text-white text-decoration-none" style="border-radius: 12px; transition: all 0.3s ease; flex: 1; background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); border: 1px solid rgba(37, 99, 235, 0.4);">
+              <i class="fab fa-apple" style="font-size: 1.3rem;"></i>
+              <div class="text-start">
+                <div style="font-size: 0.6rem; text-transform: uppercase; color: rgba(255,255,255,0.85); font-weight: 500; letter-spacing: 0.5px; line-height: 1.2;">Download on</div>
+                <div style="font-size: 0.8rem; font-weight: 700; font-family: 'Outfit', sans-serif; line-height: 1.2; color: #ffffff;">App Store</div>
+              </div>
+            </a>
           </div>
 
           <!-- Counselling Link -->

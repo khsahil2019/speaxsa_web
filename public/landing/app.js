@@ -23,8 +23,12 @@ window.addEventListener('scroll', () => {
 
 // ── Animated Counter ──────────────────────────────────────────
 function animateCounter(el, target, duration = 2000) {
+  if (!target || target <= 0) {
+    el.textContent = '0+';
+    return;
+  }
   let start = 0;
-  const step = target / (duration / 16);
+  const step = Math.max(1, target / (duration / 16));
   const timer = setInterval(() => {
     start += step;
     if (start >= target) { start = target; clearInterval(timer); }
@@ -209,23 +213,21 @@ async function loadStats() {
     const stats = await res.json();
 
     const statEls = [
-      { id: 'stat-students', target: stats.students || 10000 },
-      { id: 'stat-teachers', target: stats.teachers || 500 },
-      { id: 'stat-courses', target: stats.courses || 200 },
-      { id: 'stat-classes', target: stats.classesCompleted || 50000 },
+      { id: 'stat-students', target: (stats.students !== undefined && stats.students !== null) ? stats.students : 0 },
+      { id: 'stat-teachers', target: (stats.teachers !== undefined && stats.teachers !== null) ? stats.teachers : 0 },
+      { id: 'stat-courses', target: (stats.courses !== undefined && stats.courses !== null) ? stats.courses : 0 },
+      { id: 'stat-classes', target: (stats.classesCompleted !== undefined && stats.classesCompleted !== null) ? stats.classesCompleted : 0 },
     ];
 
     statEls.forEach(({ id, target }) => {
       const el = document.getElementById(id);
-      if (el) animateCounter(el, target);
+      if (el) {
+        el.setAttribute('data-target', target);
+        animateCounter(el, target);
+      }
     });
-  } catch {
-    // Use defaults
-    [10000, 500, 200, 50000].forEach((n, i) => {
-      const ids = ['stat-students','stat-teachers','stat-courses','stat-classes'];
-      const el = document.getElementById(ids[i]);
-      if (el) animateCounter(el, n);
-    });
+  } catch (err) {
+    console.error('loadStats error:', err);
   }
 }
 
@@ -294,35 +296,37 @@ async function loadSettings() {
     const settings = await res.json();
 
     // Update Email
+    const activeEmail = settings.home_footer_email || settings.support_email || 'support@speaxa.com';
     const emailEls = document.querySelectorAll('#infoEmail');
     emailEls.forEach(el => {
       if (el.tagName === 'A') {
-        el.href = `mailto:${settings.support_email}`;
-        el.textContent = settings.support_email;
+        el.href = `mailto:${activeEmail}`;
+        el.textContent = activeEmail;
       } else {
         const link = el.querySelector('a');
         if (link) {
-          link.href = `mailto:${settings.support_email}`;
-          link.textContent = settings.support_email;
+          link.href = `mailto:${activeEmail}`;
+          link.textContent = activeEmail;
         } else {
-          el.textContent = settings.support_email;
+          el.textContent = activeEmail;
         }
       }
     });
 
     // Update Phone
+    const activePhone = settings.home_footer_phone || settings.support_phone || '+91 8739093014';
     const phoneEls = document.querySelectorAll('#infoPhone');
     phoneEls.forEach(el => {
       if (el.tagName === 'A') {
-        el.href = `tel:${settings.support_phone.replace(/\s+/g, '')}`;
-        el.textContent = settings.support_phone;
+        el.href = `tel:${activePhone.replace(/[-\s()]+/g, '')}`;
+        el.textContent = activePhone;
       } else {
         const link = el.querySelector('a');
         if (link) {
-          link.href = `tel:${settings.support_phone.replace(/\s+/g, '')}`;
-          link.textContent = settings.support_phone;
+          link.href = `tel:${activePhone.replace(/[-\s()]+/g, '')}`;
+          link.textContent = activePhone;
         } else {
-          el.textContent = settings.support_phone;
+          el.textContent = activePhone;
         }
       }
     });
@@ -409,38 +413,47 @@ async function loadSettings() {
     }
 
     // 2. Toll free link
-    const footerTollFreeEl = document.querySelector('.spx-footer a[href*="tel:1800"]') || 
-                           Array.from(document.querySelectorAll('.spx-footer strong')).find(el => el.textContent.includes('TOLL FREE'))?.nextElementSibling;
-    if (footerTollFreeEl && settings.home_footer_toll_free) {
-      footerTollFreeEl.href = `tel:${settings.home_footer_toll_free.replace(/[-\s()]+/g, '')}`;
-      footerTollFreeEl.textContent = settings.home_footer_toll_free;
+    if (settings.home_footer_toll_free) {
+      document.querySelectorAll('#footerTollFree, .spx-footer a[href*="tel:1800"]').forEach(el => {
+        el.href = `tel:${settings.home_footer_toll_free.replace(/[-\s()]+/g, '')}`;
+        el.textContent = settings.home_footer_toll_free;
+      });
     }
 
     // 3. Support phone
-    const footerPhoneEl = document.querySelector('.spx-footer a[href^="tel:+91"]');
-    if (footerPhoneEl && settings.home_footer_phone) {
+    if (settings.home_footer_phone) {
       const parts = settings.home_footer_phone.split('(');
       const numberOnly = parts[0].trim();
       const hours = parts[1] ? '(' + parts[1] : '';
-      
-      footerPhoneEl.href = `tel:${numberOnly.replace(/[-\s()]+/g, '')}`;
-      footerPhoneEl.textContent = numberOnly;
-      
-      if (footerPhoneEl.nextSibling && hours) {
-        footerPhoneEl.nextSibling.textContent = ' ' + hours;
+
+      document.querySelectorAll('#footerPhone, .spx-footer a[href^="tel:+91"]').forEach(el => {
+        el.href = `tel:${numberOnly.replace(/[-\s()]+/g, '')}`;
+        el.textContent = numberOnly;
+      });
+      if (hours) {
+        document.querySelectorAll('#footerHours').forEach(el => el.textContent = ' ' + hours);
       }
     }
 
     // 4. Support email
-    const footerEmailEl = document.querySelector('.spx-footer a[href^="mailto:"]');
-    if (footerEmailEl && settings.home_footer_email) {
-      footerEmailEl.href = `mailto:${settings.home_footer_email}`;
-      footerEmailEl.textContent = settings.home_footer_email;
+    if (settings.home_footer_email) {
+      document.querySelectorAll('#footerEmail, #infoEmail, .spx-footer a[href^="mailto:"]').forEach(el => {
+        el.href = `mailto:${settings.home_footer_email}`;
+        el.textContent = settings.home_footer_email;
+      });
     }
 
-    // 5. Social Links updates
-    if (settings.home_footer_instagram) {
-      document.querySelectorAll('a[href*="instagram.com"]').forEach(el => el.href = settings.home_footer_instagram);
+    // 5. App Store & Play Store Links
+    if (settings.home_footer_play_store_url) {
+      document.querySelectorAll('#footerPlayStoreBtn, .play-store-btn, a[href*="play.google.com"]').forEach(el => {
+        el.href = settings.home_footer_play_store_url;
+      });
+    }
+
+    if (settings.home_footer_app_store_url) {
+      document.querySelectorAll('#footerAppStoreBtn, .app-store-btn, a[href*="apps.apple.com"]').forEach(el => {
+        el.href = settings.home_footer_app_store_url;
+      });
     }
     if (settings.home_footer_youtube) {
       document.querySelectorAll('a[href*="youtube.com"]').forEach(el => el.href = settings.home_footer_youtube);
@@ -861,6 +874,13 @@ window.dismissAnnouncement = dismissAnnouncement;
 window.showAppComingSoon = showAppComingSoon;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize Landing Page Data & Settings from Backend Database
+  try { createParticles(); } catch(e) {}
+  try { loadSettings(); } catch(e) {}
+  try { loadCourses(); } catch(e) {}
+  try { loadTeachers(); } catch(e) {}
+  try { loadStats(); } catch(e) {}
+
   // Inject announcement
   createAnnouncementBar();
 

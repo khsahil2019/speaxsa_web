@@ -12,7 +12,7 @@ router.use('/courses', require('./courses'));
 router.use('/support', require('./support'));
 router.use('/db-admin', require('./dbAdmin'));
 
-// Public course listing (for landing page)
+// Public course listing (for landing page — ACTIVE courses only)
 router.get('/public/courses', async (req, res) => {
   try {
     const db = require('../db');
@@ -37,7 +37,7 @@ router.get('/public/teachers', async (req, res) => {
     const result = await db.query(`
       SELECT id, name, photo_url, teacher_level, rating, total_ratings, subject_expertise, experience_years, qualification
       FROM users
-      WHERE role = 'teacher' AND approval_status = 'approved' AND is_disabled = false
+      WHERE role = 'teacher' AND (is_disabled = false OR is_disabled IS NULL)
       ORDER BY rating DESC, total_ratings DESC
       LIMIT 6
     `);
@@ -47,21 +47,41 @@ router.get('/public/teachers', async (req, res) => {
   }
 });
 
-// Public stats
+// Public stats — Exact Dynamic Database Counts
 router.get('/public/stats', async (req, res) => {
   try {
     const db = require('../db');
+    const configService = require('../services/SystemConfigService');
+    const settings = await configService.getConfig();
+
     const [students, teachers, courses, classes] = await Promise.all([
       db.query("SELECT COUNT(*) as count FROM users WHERE role = 'student'"),
-      db.query("SELECT COUNT(*) as count FROM users WHERE role = 'teacher' AND approval_status = 'approved'"),
+      db.query("SELECT COUNT(*) as count FROM users WHERE role = 'teacher' AND (is_disabled = false OR is_disabled IS NULL)"),
       db.query("SELECT COUNT(*) as count FROM courses WHERE status = 'active'"),
-      db.query("SELECT COUNT(*) as count FROM live_classes WHERE status = 'ended'"),
+      db.query("SELECT COUNT(*) as count FROM live_classes"),
     ]);
+
+    const dbStudents = parseInt(students.rows[0]?.count || 0);
+    const dbTeachers = parseInt(teachers.rows[0]?.count || 0);
+    const dbCourses = parseInt(courses.rows[0]?.count || 0);
+    const dbClasses = parseInt(classes.rows[0]?.count || 0);
+
+    const studentOffset = parseInt(settings.stat_students_offset || 0);
+    const teacherOffset = parseInt(settings.stat_teachers_offset || 0);
+    const courseOffset = parseInt(settings.stat_courses_offset || 0);
+    const classOffset = parseInt(settings.stat_classes_offset || 0);
+
     res.json({
-      students: parseInt(students.rows[0].count),
-      teachers: parseInt(teachers.rows[0].count),
-      courses: parseInt(courses.rows[0].count),
-      classesCompleted: parseInt(classes.rows[0].count),
+      students: dbStudents + studentOffset,
+      teachers: dbTeachers + teacherOffset,
+      courses: dbCourses + courseOffset,
+      classesCompleted: dbClasses + classOffset,
+      raw: {
+        students: dbStudents,
+        teachers: dbTeachers,
+        courses: dbCourses,
+        classesCompleted: dbClasses
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -83,6 +103,25 @@ router.post('/public/send-app-link', async (req, res) => {
     const appMsg = `🚀 SPEAXA Mobile App: Learn anywhere on live interactive classrooms! Download link: ${downloadUrl}`;
 
     if (isEmail) {
+      const db = require('../db');
+      try {
+        await db.query(`
+          CREATE TABLE IF NOT EXISTS subscribers (
+            id VARCHAR(100) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            source VARCHAR(100) DEFAULT 'landing_page',
+            status VARCHAR(50) DEFAULT 'active',
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );
+        `);
+      } catch(e) {}
+
+      await db.query(`
+        INSERT INTO subscribers (email, source, status)
+        VALUES ($1, 'app_download_form', 'active')
+        ON CONFLICT (email) DO UPDATE SET status = 'active', created_at = NOW()
+      `, [destination.toLowerCase()]).catch(err => console.log('Auto-subscribe log:', err.message));
+
       const { sendEmail } = require('../services/EmailService');
       await sendEmail({
         to: destination,
