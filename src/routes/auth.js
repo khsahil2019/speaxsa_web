@@ -76,6 +76,7 @@ router.post('/register', async (req, res) => {
     if (requireOtpBool) {
       if (!verificationOtp) {
         const { otp: smsOtpVal, tokenId: smsTokenId } = await createOTP(phone, 'verify_mobile');
+        const { otp: emailOtpVal, tokenId: emailTokenId } = await createOTP(email, 'register_email');
         
         try {
           await sendOTPSms(phone, smsOtpVal, 'verify_mobile', smsTokenId);
@@ -83,13 +84,21 @@ router.post('/register', async (req, res) => {
           console.error('[Auth] Failed to send registration SMS OTP:', smsErr.message);
         }
 
+        try {
+          await sendOTPEmail(email, smsOtpVal, 'register_email', emailTokenId);
+          console.log(`[Auth] Sent registration OTP email to ${email}`);
+        } catch (emailErr) {
+          console.error('[Auth] Failed to send registration Email OTP:', emailErr.message);
+        }
+
         const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'false');
         const showDevOtp = String(devOtpSetting) === 'true';
 
         return res.status(200).json({
           status: 'otp_sent',
-          message: `Verification SMS code sent to mobile number ${phone}. Please enter it below.`,
+          message: `Verification code sent to email (${email}) and mobile (${phone}). Please enter it below.`,
           phone: phone,
+          email: email,
           ...(showDevOtp && { otp: smsOtpVal })
         });
       } else {
@@ -192,7 +201,7 @@ router.post('/register', async (req, res) => {
       subject_expertise || null, languages || null, address || null, board || null,
       grade || null, studentCode, referralCode, alt_email || null, mobile_number || null,
       typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}'),
-      referredById, isVerifiedOnInit, false
+      referredById, isVerifiedOnInit, isVerifiedOnInit
     ]);
 
     // Create teacher SOP entry if teacher
@@ -212,6 +221,14 @@ router.post('/register', async (req, res) => {
 
     const userRow = (await db.query('SELECT * FROM users WHERE id = $1', [id])).rows[0];
     await logAudit(id, 'REGISTER', 'user', id, { role, email });
+
+    // Send instant Welcome & Email Verification link to user's email ID
+    try {
+      await sendEmailVerificationLink(userRow.id, req);
+      console.log(`[Auth Register] Dispatched instant verification & welcome email to ${userRow.email}`);
+    } catch (verr) {
+      console.error('[Auth Register] Error dispatching verification email:', verr.message);
+    }
 
     let firebaseCustomToken = null;
     try {
