@@ -22,10 +22,10 @@ async function getConfig() {
     smtp_from_email: process.env.EMAIL_FROM || 'noreply@speaxa.com',
     support_email: process.env.EMAIL_FROM || 'support@speaxa.com',
 
-    // Agora Video Calling
-    agora_app_id: process.env.AGORA_APP_ID || '',
-    agora_app_certificate: process.env.AGORA_APP_CERTIFICATE || '',
-    agora_customer_key: process.env.AGORA_CUSTOMER_KEY || '',
+    // Agora Video Calling (4 Keys)
+    agora_app_id: process.env.AGORA_APP_ID || '147cbdec021f414bb7d0a94f18994c64',
+    agora_app_certificate: process.env.AGORA_APP_CERTIFICATE || '3dddf9beac1d42aabff762b511f24fbd',
+    agora_customer_id: process.env.AGORA_CUSTOMER_ID || '',
     agora_customer_secret: process.env.AGORA_CUSTOMER_SECRET || '',
 
     // Razorpay Payments
@@ -37,6 +37,13 @@ async function getConfig() {
     msg91_auth_key: process.env.MSG91_AUTH_KEY || '',
     msg91_sender_id: process.env.MSG91_SENDER_ID || 'SPXSA',
     msg91_template_id: process.env.MSG91_TEMPLATE_ID || '',
+
+    // 2Factor SMS Gateway
+    sms_provider: process.env.SMS_PROVIDER || '2factor',
+    twofactor_api_key: process.env.TWOFACTOR_API_KEY || process.env['2FACTOR_API_KEY'] || 'dbbe0896-85e9-11f1-908b-0200cd936042',
+    '2factor_api_key': process.env.TWOFACTOR_API_KEY || process.env['2FACTOR_API_KEY'] || 'dbbe0896-85e9-11f1-908b-0200cd936042',
+    twofactor_template_name: process.env.TWOFACTOR_TEMPLATE_NAME || '',
+    '2factor_template_name': process.env.TWOFACTOR_TEMPLATE_NAME || '',
 
     // Google OAuth 2.0
     google_client_id: process.env.GOOGLE_CLIENT_ID || '',
