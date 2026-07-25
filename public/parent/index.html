@@ -87,6 +87,7 @@
               <div class="input-group">
                 <span class="spx-input-prefix"><i class="fa-solid fa-lock"></i></span>
                 <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+                <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('loginPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
               </div>
             </div>
             <div class="d-flex justify-content-end mb-3">
@@ -131,6 +132,7 @@
                 <div class="input-group">
                   <span class="spx-input-prefix"><i class="fa-solid fa-lock"></i></span>
                   <input type="password" id="regPass" class="form-control" placeholder="••••••••" required>
+                  <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('regPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
                 </div>
               </div>
             </div>
@@ -1421,24 +1423,31 @@
 
       <form id="parentPasswordForm" onsubmit="changeParentPassword(event)">
         <div class="row g-3">
-          <div class="col-md-6 profile-form-group">
-            <label class="profile-label">Current Password</label>
-            <div class="profile-input-group">
-              <input type="password" class="profile-input" id="parentCurrPass" placeholder="••••••••" required>
-              <i class="fa-solid fa-lock profile-input-icon"></i>
+          <div class="col-md-4 profile-form-group">
+            <label class="profile-label">Current Password *</label>
+            <div class="input-group">
+              <input type="password" class="form-control profile-input" id="parentCurrPass" placeholder="••••••••" required>
+              <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('parentCurrPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
             </div>
           </div>
-          <div class="col-md-6 profile-form-group">
-            <label class="profile-label">New Password</label>
-            <div class="profile-input-group">
-              <input type="password" class="profile-input" id="parentNewPass" placeholder="••••••••" required>
-              <i class="fa-solid fa-key profile-input-icon"></i>
+          <div class="col-md-4 profile-form-group">
+            <label class="profile-label">New Password *</label>
+            <div class="input-group">
+              <input type="password" class="form-control profile-input" id="parentNewPass" placeholder="••••••••" required minlength="6">
+              <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('parentNewPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="col-md-4 profile-form-group">
+            <label class="profile-label">Confirm New Password *</label>
+            <div class="input-group">
+              <input type="password" class="form-control profile-input" id="parentConfirmPass" placeholder="••••••••" required minlength="6">
+              <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('parentConfirmPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
             </div>
           </div>
           <div class="col-12 mt-2 text-end">
             <button type="submit" class="btn btn-outline-primary px-4 py-2"
               style="border:1px solid var(--primary);background:transparent;color:var(--primary-dark);border-radius:10px;font-weight:600;cursor:pointer;transition:var(--transition);"><i
-                class="fa-solid fa-arrows-rotate me-1"></i> Update Password</button>
+                class="fa-solid fa-key me-1"></i> Update Password</button>
           </div>
         </div>
       </form>
@@ -1711,23 +1720,64 @@
       }
     }
 
+    window.togglePasswordVisibility = function(inputId, triggerEl) {
+      const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
+      if (!input) return;
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+
+      let icon = null;
+      if (triggerEl) {
+        icon = triggerEl.tagName === 'I' || triggerEl.tagName === 'i' ? triggerEl : (triggerEl.querySelector ? triggerEl.querySelector('i') || triggerEl : triggerEl);
+      }
+
+      if (icon && icon.classList) {
+        if (isPassword) {
+          icon.classList.remove('fa-eye');
+          icon.classList.add('fa-eye-slash');
+        } else {
+          icon.classList.remove('fa-eye-slash');
+          icon.classList.add('fa-eye');
+        }
+      }
+    };
+
     async function changeParentPassword(e) {
       e.preventDefault();
-      const currentPassword = document.getElementById('parentCurrPass').value;
-      const newPassword = document.getElementById('parentNewPass').value;
+      const currentPassword = document.getElementById('parentCurrPass').value.trim();
+      const newPassword = document.getElementById('parentNewPass').value.trim();
+      const confirmPassword = document.getElementById('parentConfirmPass') ? document.getElementById('parentConfirmPass').value.trim() : '';
+
+      if (!currentPassword || !newPassword) {
+        return showToast('Current password and new password are required.', 'danger');
+      }
+
+      if (confirmPassword && newPassword !== confirmPassword) {
+        return showToast('New password and Confirm password do not match.', 'danger');
+      }
+
+      if (currentPassword === newPassword) {
+        return showToast('New password cannot be the same as your current password. No changes were made.', 'warning');
+      }
+
+      if (newPassword.length < 6) {
+        return showToast('New password must be at least 6 characters long.', 'danger');
+      }
+
       try {
         const res = await fetch('/api/auth/change-password', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currentPassword, newPassword })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
         });
+        const data = await res.json();
         if (res.ok) {
-          showToast('Password updated successfully!', 'success');
+          showToast(data.message || 'Password updated successfully!', 'success');
           document.getElementById('parentCurrPass').value = '';
           document.getElementById('parentNewPass').value = '';
+          if (document.getElementById('parentConfirmPass')) document.getElementById('parentConfirmPass').value = '';
         } else {
-          const err = await res.json();
-          showToast(err.error || 'Failed to change password.', 'danger');
+          showToast(data.error || 'Failed to change password.', 'danger');
         }
       } catch {
         showToast('Server connection error.', 'danger');

@@ -125,6 +125,46 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
         `Auto-calculated. Score: ${overallScore}`
       ]);
 
+      // Issue certificate for tier upgrade
+      const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      const certTitle = `${newLevel} Teacher Tier Certificate`;
+      const certDesc = `Awarded for achieving ${newLevel} Level status on SPEAXA with an overall performance score of ${overallScore}/100.`;
+
+      await db.query(`
+        INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT DO NOTHING
+      `, [certId, teacherId, 'tier_upgrade', certTitle, certDesc]);
+
+      // Dispatch Email Notification
+      try {
+        const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
+        if (uRes.rows.length > 0 && uRes.rows[0].email) {
+          const { sendEmail } = require('./EmailService');
+          await sendEmail({
+            to: uRes.rows[0].email,
+            subject: `🎓 Congratulations! New Certificate & Tier Upgrade: ${newLevel}`,
+            type: 'notification',
+            headerTitle: 'Performance Certificate Issued',
+            badgeLabel: `${newLevel} Level Achieved`,
+            html: `
+              <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+                <h2 style="color: #0d7a6d; margin-top: 0;">Congratulations ${uRes.rows[0].name || 'Teacher'}!</h2>
+                <p>We are thrilled to announce that your teacher level has been upgraded to <strong style="color: #0d7a6d; font-size: 16px;">${newLevel}</strong>!</p>
+                <div style="background: #f8fafc; border-left: 4px solid #0d7a6d; padding: 18px; margin: 20px 0; border-radius: 8px;">
+                  <h3 style="margin: 0 0 6px 0; color: #0f172a;">🎓 ${certTitle}</h3>
+                  <p style="margin: 0; color: #475569; font-size: 14px;">${certDesc}</p>
+                  <div style="margin-top: 10px; font-size: 12px; color: #64748b;">Certificate ID: <code>${certId}</code></div>
+                </div>
+                <p>You can view and download your official certificate anytime from your Teacher Portal under <strong>Certificates</strong>.</p>
+              </div>
+            `
+          });
+        }
+      } catch (mailErr) {
+        console.error('[TeacherLevel] Certificate Email Error:', mailErr.message);
+      }
+
       console.log(`[TeacherLevel] Teacher ${teacherId}: ${currentLevel} → ${newLevel} (score: ${overallScore})`);
     }
 

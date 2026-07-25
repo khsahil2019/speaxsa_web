@@ -4,6 +4,28 @@ const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy5
 let token = localStorage.getItem('teacher_token') || sessionStorage.getItem('teacher_token');
 let user = JSON.parse(localStorage.getItem('teacher_user') || sessionStorage.getItem('teacher_user') || 'null');
 
+window.togglePasswordVisibility = function(inputId, triggerEl) {
+  const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
+  if (!input) return;
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+
+  let icon = null;
+  if (triggerEl) {
+    icon = triggerEl.tagName === 'I' || triggerEl.tagName === 'i' ? triggerEl : (triggerEl.querySelector ? triggerEl.querySelector('i') || triggerEl : triggerEl);
+  }
+
+  if (icon && icon.classList) {
+    if (isPassword) {
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  }
+};
+
 let toastEl = document.getElementById('toastEl');
 let Toast = toastEl ? new bootstrap.Toast(toastEl, { delay: 3000 }) : null;
 
@@ -4487,13 +4509,26 @@ async function renderProfile() {
             <h5 class="fw-bold mb-4" style="font-family:'Outfit',sans-serif;color:var(--text-primary);"><i class="fas fa-shield-alt text-primary me-2"></i>Change Security Password</h5>
             <form onsubmit="changePassword(event)">
               <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="spx-label mb-1">Current Password</label>
-                  <input class="form-control spx-input" id="currPass" type="password" placeholder="••••••••" required>
+                <div class="col-md-4">
+                  <label class="spx-label mb-1">Current Password *</label>
+                  <div class="input-group">
+                    <input class="form-control spx-input" id="currPass" type="password" placeholder="••••••••" required>
+                    <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('currPass', this)" style="border-color: rgba(60,189,176,0.3); color: var(--text-muted);"><i class="far fa-eye"></i></button>
+                  </div>
                 </div>
-                <div class="col-md-6">
-                  <label class="spx-label mb-1">New Password</label>
-                  <input class="form-control spx-input" id="newPass" type="password" placeholder="••••••••" required>
+                <div class="col-md-4">
+                  <label class="spx-label mb-1">New Password *</label>
+                  <div class="input-group">
+                    <input class="form-control spx-input" id="newPass" type="password" placeholder="••••••••" required minlength="6">
+                    <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('newPass', this)" style="border-color: rgba(60,189,176,0.3); color: var(--text-muted);"><i class="far fa-eye"></i></button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="spx-label mb-1">Confirm New Password *</label>
+                  <div class="input-group">
+                    <input class="form-control spx-input" id="confirmPass" type="password" placeholder="••••••••" required minlength="6">
+                    <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('confirmPass', this)" style="border-color: rgba(60,189,176,0.3); color: var(--text-muted);"><i class="far fa-eye"></i></button>
+                  </div>
                 </div>
                 <div class="col-12 mt-4">
                   <button type="submit" class="btn btn-outline-primary px-4 py-2 fw-semibold"><i class="fas fa-key me-1"></i> Update Password</button>
@@ -4548,18 +4583,36 @@ async function updateProfile(e) {
 
 async function changePassword(e) {
   e.preventDefault();
+  const currentPassword = document.getElementById('currPass').value.trim();
+  const newPassword = document.getElementById('newPass').value.trim();
+  const confirmPassword = document.getElementById('confirmPass') ? document.getElementById('confirmPass').value.trim() : '';
+
+  if (!currentPassword || !newPassword) {
+    return showToast('Current password and new password are required.', 'error');
+  }
+
+  if (confirmPassword && newPassword !== confirmPassword) {
+    return showToast('New password and Confirm password do not match.', 'error');
+  }
+
+  if (currentPassword === newPassword) {
+    return showToast('New password cannot be the same as your current password. No changes were made.', 'warning');
+  }
+
+  if (newPassword.length < 6) {
+    return showToast('New password must be at least 6 characters long.', 'error');
+  }
+
   try {
     const data = await api('/auth/change-password', {
-      method:'POST',
-      body: JSON.stringify({
-        currentPassword: document.getElementById('currPass').value,
-        newPassword: document.getElementById('newPass').value,
-      })
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
     });
     if (data.error) throw new Error(data.error);
-    showToast('Password updated successfully!');
+    showToast(data.message || 'Password updated successfully!', 'success');
     document.getElementById('currPass').value = '';
     document.getElementById('newPass').value = '';
+    if (document.getElementById('confirmPass')) document.getElementById('confirmPass').value = '';
   } catch(e) { showToast(e.message, 'error'); }
 }
 

@@ -14,10 +14,31 @@ document.addEventListener('DOMContentLoaded', () => {
   confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
   formModal = new bootstrap.Modal(document.getElementById('formModal'));
 
+window.togglePasswordVisibility = function(inputId, triggerEl) {
+  const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
+  if (!input) return;
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+
+  let icon = null;
+  if (triggerEl) {
+    icon = triggerEl.tagName === 'I' || triggerEl.tagName === 'i' ? triggerEl : (triggerEl.querySelector ? triggerEl.querySelector('i') || triggerEl : triggerEl);
+  }
+
+  if (icon && icon.classList) {
+    if (isPassword) {
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  }
+};
+
   // Toggle password visibility
-  document.getElementById('togglePass')?.addEventListener('click', () => {
-    const inp = document.getElementById('loginPassword');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
+  document.getElementById('togglePass')?.addEventListener('click', (e) => {
+    togglePasswordVisibility('loginPassword', e.currentTarget);
   });
 
   // Login form

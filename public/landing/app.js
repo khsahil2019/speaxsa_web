@@ -2,6 +2,28 @@
 const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
 const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 
+window.togglePasswordVisibility = function(inputId, triggerEl) {
+  const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
+  if (!input) return;
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+
+  let icon = null;
+  if (triggerEl) {
+    icon = triggerEl.tagName === 'I' || triggerEl.tagName === 'i' ? triggerEl : (triggerEl.querySelector ? triggerEl.querySelector('i') || triggerEl : triggerEl);
+  }
+
+  if (icon && icon.classList) {
+    if (isPassword) {
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    } else {
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  }
+};
+
 // Inject premium animations for badges
 const badgeStyle = document.createElement('style');
 badgeStyle.textContent = `

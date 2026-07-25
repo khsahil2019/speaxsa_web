@@ -522,6 +522,32 @@ router.post('/reset-password', async (req, res) => {
 
     await db.query(query, [hash, newPassword, input]);
 
+    try {
+      const uRes = await db.query(isEmail ? 'SELECT email, name FROM users WHERE LOWER(email) = LOWER($1)' : 'SELECT email, name FROM users WHERE phone = $1', [input]);
+      if (uRes.rows.length > 0 && uRes.rows[0].email) {
+        const { sendEmail } = require('../services/EmailService');
+        await sendEmail({
+          to: uRes.rows[0].email,
+          subject: '🔒 Security Alert: Your SPEAXA Password Has Been Reset',
+          type: 'notification',
+          headerTitle: 'Password Reset Successful',
+          badgeLabel: 'Security Notice',
+          html: `
+            <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+              <h3 style="color: #0d7a6d; margin-top: 0;">Hello ${uRes.rows[0].name || 'User'},</h3>
+              <p>Your password for your <strong>SPEAXA</strong> account (<code>${uRes.rows[0].email}</code>) was reset successfully using OTP verification.</p>
+              <div style="background: #f1f5f9; border-left: 4px solid #0d7a6d; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <strong>Security Notice:</strong> You can now log into your account dashboard with your new password.
+              </div>
+              <p style="color: #ef4444; font-size: 14px; font-weight: 600;">⚠️ If you did NOT request this reset, please contact support immediately at <a href="mailto:speaxaindia@gmail.com" style="color: #0d7a6d;">speaxaindia@gmail.com</a>.</p>
+            </div>
+          `
+        });
+      }
+    } catch (eErr) {
+      console.error('[Auth ResetPassword Email Alert Error]:', eErr.message);
+    }
+
     res.json({ message: 'Password reset successful. You can now login.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -530,26 +556,72 @@ router.post('/reset-password', async (req, res) => {
 
 // ── POST /api/auth/change-password (authenticated) ───────────
 router.post('/change-password', authenticateToken, async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, confirmPassword } = req.body;
   try {
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+      return res.status(400).json({ error: 'Current password and new password are required.' });
+    }
+
+    if (confirmPassword && newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'New password and Confirm password do not match.' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: 'New password cannot be the same as your current password. No changes were made.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
     }
 
     const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User account not found.' });
     const user = result.rows[0];
 
     if (!verifyPassword(currentPassword, user.password_hash)) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
+      return res.status(401).json({ error: 'Current password is incorrect. Please enter your correct current password.' });
     }
 
     const hash = hashPassword(newPassword);
     await db.query(
-      'UPDATE users SET password_hash = $1, password_plain = $2 WHERE id = $3',
+      'UPDATE users SET password_hash = $1, password_plain = $2, updated_at = NOW() WHERE id = $3',
       [hash, newPassword, req.user.id]
     );
 
-    res.json({ message: 'Password changed successfully' });
+    await logAudit(req.user.id, 'CHANGE_PASSWORD', 'user', req.user.id, {});
+
+    // Dispatch security alert email to user's registered email
+    try {
+      const { sendEmail } = require('../services/EmailService');
+      await sendEmail({
+        to: user.email,
+        subject: '🔒 Security Alert: Your SPEAXA Password Has Been Changed',
+        type: 'notification',
+        headerTitle: 'Password Changed Successfully',
+        badgeLabel: 'Security Notice',
+        html: `
+          <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+            <h3 style="color: #0d7a6d; margin-top: 0;">Hello ${user.name || 'User'},</h3>
+            <p>Your password for your <strong>SPEAXA</strong> account (<code>${user.email}</code>) was changed successfully on <strong>${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</strong>.</p>
+            
+            <div style="background: #f1f5f9; border-left: 4px solid #0d7a6d; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <strong>Security Information:</strong><br>
+              Account Email: <code>${user.email}</code><br>
+              Account Role: <strong>${(user.role || 'user').toUpperCase()}</strong><br>
+              Timestamp: ${new Date().toUTCString()}
+            </div>
+
+            <p style="color: #64748b; font-size: 14px;">If you performed this action, no further steps are required.</p>
+            <p style="color: #ef4444; font-size: 14px; font-weight: 600;">⚠️ If you did NOT change your password, please contact SPEAXA Support immediately at <a href="mailto:speaxaindia@gmail.com" style="color: #0d7a6d;">speaxaindia@gmail.com</a> to secure your account.</p>
+          </div>
+        `
+      });
+      console.log(`[Auth ChangePassword] Sent password change alert email to ${user.email}`);
+    } catch (eErr) {
+      console.error('[Auth ChangePassword] Email dispatch failed:', eErr.message);
+    }
+
+    res.json({ message: 'Password updated successfully! An email alert has been sent to your email.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

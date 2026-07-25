@@ -542,7 +542,35 @@ router.post('/sop/:teacherId/reject', async (req, res) => {
     `, [teacherId, admin_notes, req.user.id]);
     await db.query("UPDATE users SET approval_status = 'rejected' WHERE id = $1", [teacherId]);
     await logAudit(req.user.id, 'SOP_REJECTED', 'teacher', teacherId, { admin_notes });
-    res.json({ message: 'SOP rejected. Teacher notified.' });
+
+    try {
+      const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
+      if (uRes.rows.length > 0 && uRes.rows[0].email) {
+        const { sendEmail } = require('../services/EmailService');
+        await sendEmail({
+          to: uRes.rows[0].email,
+          subject: 'SPEAXA — SOP & Profile Review Status Update',
+          type: 'notification',
+          headerTitle: 'SOP Verification Update',
+          badgeLabel: 'Action Required',
+          html: `
+            <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+              <h3 style="color: #0d7a6d;">Hello ${uRes.rows[0].name || 'Teacher'},</h3>
+              <p>Your <strong>SOP & Profile Verification</strong> submission requires corrections before it can be approved.</p>
+              <div style="background: #fff1f2; border-left: 4px solid #f43f5e; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <strong style="color: #9f1239;">Admin Review Feedback:</strong><br>
+                <span style="color: #881337;">${admin_notes || 'Please review your uploaded equipment details and re-submit for approval.'}</span>
+              </div>
+              <p>Please log in to your Teacher Portal, update the required details under <strong>SOP Setup</strong>, and submit for review.</p>
+            </div>
+          `
+        });
+      }
+    } catch (mErr) {
+      console.error('[Admin SOP Reject Email Error]:', mErr.message);
+    }
+
+    res.json({ message: 'SOP rejected. Teacher notified via email.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -759,7 +787,37 @@ router.post('/users/:id/reset-credentials', async (req, res) => {
     values.push(id);
     await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${idx}`, values);
     await logAudit(req.user.id, 'CREDENTIALS_RESET', 'user', id, { email: !!email, password: !!password });
-    res.json({ message: 'Credentials updated successfully' });
+
+    if (password) {
+      try {
+        const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [id]);
+        if (uRes.rows.length > 0 && uRes.rows[0].email) {
+          const { sendEmail } = require('../services/EmailService');
+          await sendEmail({
+            to: uRes.rows[0].email,
+            subject: '🔒 Security Alert: Your SPEAXA Password Has Been Updated',
+            type: 'notification',
+            headerTitle: 'Password Updated by Admin',
+            badgeLabel: 'Security Notice',
+            html: `
+              <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+                <h3 style="color: #0d7a6d; margin-top: 0;">Hello ${uRes.rows[0].name || 'User'},</h3>
+                <p>Your password for your <strong>SPEAXA</strong> account (<code>${uRes.rows[0].email}</code>) was updated by the Platform Administrator.</p>
+                <div style="background: #f1f5f9; border-left: 4px solid #0d7a6d; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <strong>Updated Password:</strong> <code>${password}</code><br>
+                  <small style="color: #64748b;">Please log into your dashboard and change your password under Profile Settings for security.</small>
+                </div>
+                <p style="color: #ef4444; font-size: 14px; font-weight: 600;">⚠️ If you did NOT request this change, please contact SPEAXA Support immediately at <a href="mailto:speaxaindia@gmail.com" style="color: #0d7a6d;">speaxaindia@gmail.com</a>.</p>
+              </div>
+            `
+          });
+        }
+      } catch (eErr) {
+        console.error('[Admin Credentials Reset Email Error]:', eErr.message);
+      }
+    }
+
+    res.json({ message: 'Credentials updated successfully. Email notification sent.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

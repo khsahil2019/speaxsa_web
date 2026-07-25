@@ -100,6 +100,7 @@
               <div class="input-group">
                 <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
                 <input class="form-control spx-input" id="loginPassword" type="password" placeholder="••••••••">
+                <button class="btn btn-outline-secondary px-3" type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
               </div>
             </div>
             <div class="mb-3 d-flex align-items-center justify-content-between">
@@ -165,7 +166,12 @@
             <div class="col-12"><input class="form-control spx-input" id="regName" placeholder="Full Name *" required></div>
             <div class="col-12"><input class="form-control spx-input" id="regEmail" type="email" placeholder="Email Address *" required></div>
             <div class="col-6"><input class="form-control spx-input" id="regPhone" placeholder="Contact Phone *" required></div>
-            <div class="col-6"><input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *" required></div>
+            <div class="col-6">
+              <div class="input-group">
+                <input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *" required>
+                <button class="btn btn-outline-secondary px-2.5" type="button" onclick="togglePasswordVisibility('regPassword', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+              </div>
+            </div>
             <div class="col-6"><input class="form-control spx-input" id="regAltEmail" type="email" placeholder="Alternative Email *" required></div>
             <div class="col-6"><input class="form-control spx-input" id="regMobileNumber" placeholder="WhatsApp / Mobile Number *" required></div>
             <div class="col-6"><input class="form-control spx-input" id="regLinkedIn" placeholder="LinkedIn Profile Link (e.g. https://linkedin.com/in/...)"></div>
@@ -255,7 +261,11 @@
             </div>
             <div class="mb-3">
               <label class="spx-label fw-bold text-dark small">New Password</label>
-              <input class="form-control spx-input" id="resetPass" type="password" placeholder="••••••••">
+              <div class="input-group">
+                <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
+                <input class="form-control spx-input" id="resetPass" type="password" placeholder="••••••••">
+                <button class="btn btn-outline-secondary px-3" type="button" onclick="togglePasswordVisibility('resetPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+              </div>
             </div>
             <button class="btn btn-spx w-100 fw-bold" id="btnDoReset" onclick="doReset()">
               <i class="fas fa-key me-1"></i> Reset Password
