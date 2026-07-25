@@ -125,7 +125,7 @@ async function sendEmail(options) {
     let sent = false;
     let errorMessage = null;
 
-    let brevoAttachments;
+    let brevoAttachments = undefined;
     if (options.attachments && Array.isArray(options.attachments) && options.attachments.length > 0) {
       brevoAttachments = options.attachments.map(att => ({
         name: att.filename || att.name || 'attachment.pdf',
@@ -144,6 +144,21 @@ async function sendEmail(options) {
       // Brevo REST API Mode for xkeysib- API Keys (Priority 1 for instant 100% delivery)
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
       const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
+      const brevoBody = {
+        sender: { name: `${platformName}`, email: senderEmail },
+        to: [{ email: to }],
+        subject: subject,
+        htmlContent: finalHtml,
+        headers: {
+          'X-Mailin-Tag': 'SpeaxaVerification',
+          'X-Auto-Response-Suppress': 'OOF, AutoReply',
+          'List-Unsubscribe': `<mailto:${senderEmail}?subject=Unsubscribe>`
+        }
+      };
+      if (brevoAttachments && brevoAttachments.length > 0) {
+        brevoBody.attachment = brevoAttachments;
+      }
+
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -151,18 +166,7 @@ async function sendEmail(options) {
           'api-key': brevoApiKey,
           'content-type': 'application/json'
         },
-        body: JSON.stringify({
-          sender: { name: `${platformName}`, email: senderEmail },
-          to: [{ email: to }],
-          subject: subject,
-          htmlContent: finalHtml,
-          attachment: brevoAttachments,
-          headers: {
-            'X-Mailin-Tag': 'SpeaxaVerification',
-            'X-Auto-Response-Suppress': 'OOF, AutoReply',
-            'List-Unsubscribe': `<mailto:${senderEmail}?subject=Unsubscribe>`
-          }
-        })
+        body: JSON.stringify(brevoBody)
       });
 
       if (!response.ok) {
@@ -198,6 +202,16 @@ async function sendEmail(options) {
         if (brevoApiKey) {
           console.log(`[EmailService] Falling back to Brevo REST API...`);
           const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
+          const brevoFallbackBody = {
+            sender: { name: `${platformName}`, email: senderEmail },
+            to: [{ email: to }],
+            subject: subject,
+            htmlContent: finalHtml
+          };
+          if (brevoAttachments && brevoAttachments.length > 0) {
+            brevoFallbackBody.attachment = brevoAttachments;
+          }
+
           const response = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: {
@@ -205,13 +219,7 @@ async function sendEmail(options) {
               'api-key': brevoApiKey,
               'content-type': 'application/json'
             },
-            body: JSON.stringify({
-              sender: { name: `${platformName}`, email: senderEmail },
-              to: [{ email: to }],
-              subject: subject,
-              htmlContent: finalHtml,
-              attachment: brevoAttachments
-            })
+            body: JSON.stringify(brevoFallbackBody)
           });
 
           if (!response.ok) {
@@ -227,6 +235,16 @@ async function sendEmail(options) {
       // Brevo REST API Fallback
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API fallback...`);
       const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
+      const brevoDirectBody = {
+        sender: { name: `${platformName}`, email: senderEmail },
+        to: [{ email: to }],
+        subject: subject,
+        htmlContent: finalHtml
+      };
+      if (brevoAttachments && brevoAttachments.length > 0) {
+        brevoDirectBody.attachment = brevoAttachments;
+      }
+
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -234,13 +252,7 @@ async function sendEmail(options) {
           'api-key': brevoApiKey,
           'content-type': 'application/json'
         },
-        body: JSON.stringify({
-          sender: { name: `${platformName}`, email: senderEmail },
-          to: [{ email: to }],
-          subject: subject,
-          htmlContent: finalHtml,
-          attachment: brevoAttachments
-        })
+        body: JSON.stringify(brevoDirectBody)
       });
 
       if (!response.ok) {
