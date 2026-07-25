@@ -645,3 +645,133 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+/**
+ * Universal Attachment Preview & Remove Handler for PDF, PNG, MP4, Documents, etc.
+ * @param {HTMLInputElement} inputEl
+ * @param {string} [customPreviewId]
+ */
+window.handleAttachmentSelect = function(inputEl, customPreviewId) {
+  if (!inputEl) return;
+  const file = inputEl.files && inputEl.files[0];
+  const previewId = customPreviewId || (`preview_${inputEl.id || Math.random().toString(36).substr(2, 9)}`);
+  
+  let previewContainer = document.getElementById(previewId);
+  if (!previewContainer) {
+    previewContainer = document.createElement('div');
+    previewContainer.id = previewId;
+    previewContainer.className = 'attachment-preview-bar mt-2 p-2.5 rounded-3 d-flex align-items-center justify-content-between shadow-sm';
+    previewContainer.style.cssText = 'background: rgba(60, 189, 176, 0.08); border: 1px solid rgba(60, 189, 176, 0.25); transition: all 0.2s ease;';
+    inputEl.parentNode.insertBefore(previewContainer, inputEl.nextSibling);
+  }
+
+  if (!file) {
+    previewContainer.classList.add('d-none');
+    previewContainer.innerHTML = '';
+    return;
+  }
+
+  const name = file.name || 'Selected Attachment';
+  const size = file.size ? (file.size > 1048576 ? (file.size / 1048576).toFixed(2) + ' MB' : (file.size / 1024).toFixed(1) + ' KB') : '';
+  const ext = (name.split('.').pop() || '').toLowerCase();
+
+  let iconClass = 'fa-file-alt text-primary';
+  if (['pdf'].includes(ext)) iconClass = 'fa-file-pdf text-danger';
+  else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) iconClass = 'fa-file-image text-info';
+  else if (['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', '3gp'].includes(ext)) iconClass = 'fa-file-video text-warning';
+  else if (['doc', 'docx'].includes(ext)) iconClass = 'fa-file-word text-primary';
+  else if (['zip', 'rar', '7z'].includes(ext)) iconClass = 'fa-file-archive text-secondary';
+
+  previewContainer.innerHTML = `
+    <div class="d-flex align-items-center gap-2.5 overflow-hidden me-2">
+      <div style="width:36px; height:36px; border-radius:8px; background:#ffffff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 4px rgba(0,0,0,0.06);">
+        <i class="fas ${iconClass} fs-5"></i>
+      </div>
+      <div class="text-truncate">
+        <div class="fw-bold text-dark small text-truncate mb-0" title="${name}">${name}</div>
+        <div class="text-muted" style="font-size:0.72rem;">${size ? size + ' • ' : ''}<span class="text-uppercase fw-semibold" style="color:var(--teal, #0d7a6d);">${ext} file</span></div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1 px-2.5 rounded-pill d-flex align-items-center gap-1 flex-shrink-0" onclick="window.removeAttachment('${inputEl.id || ''}', '${previewId}', this)" title="Remove Attachment">
+      <i class="fas fa-times-circle" style="font-size:0.95rem;"></i>
+      <span class="small fw-bold">Remove</span>
+    </button>
+  `;
+  previewContainer.classList.remove('d-none');
+};
+
+/**
+ * Universal Remove Attachment Function
+ * @param {string} inputId
+ * @param {string} previewId
+ * @param {HTMLElement} [btnEl]
+ */
+window.removeAttachment = function(inputId, previewId, btnEl) {
+  if (inputId) {
+    const input = document.getElementById(inputId);
+    if (input) input.value = '';
+  }
+  const preview = (previewId ? document.getElementById(previewId) : null) || (btnEl ? btnEl.closest('.attachment-preview-bar') : null);
+  if (preview) {
+    preview.classList.add('d-none');
+    preview.innerHTML = '';
+  }
+  if (typeof showToast === 'function') {
+    showToast('Attachment removed', 'info');
+  }
+};
+
+// Global delegation listener for file inputs on change
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'file') {
+    if (!e.target.dataset.noPreview && e.target.id !== 'teacherAvatarInput' && e.target.id !== 'studentAvatarInput' && e.target.id !== 'parentAvatarInput' && e.target.id !== 'adminAvatarSidebar') {
+      window.handleAttachmentSelect(e.target);
+    }
+  }
+});
+
+/**
+ * Universal Date & Time Picker Opener
+ * Automatically opens native calendar/time picker when clicking anywhere on a date/time input field,
+ * its prefix icon, or its input-group wrapper container.
+ */
+document.addEventListener('click', function(e) {
+  let targetInput = null;
+  const el = e.target;
+
+  if (el && el.tagName === 'INPUT' && ['date', 'time', 'datetime-local'].includes(el.type)) {
+    targetInput = el;
+  } else if (el) {
+    const parentGroup = el.closest('.input-group, .mb-3, .form-group');
+    if (parentGroup) {
+      targetInput = parentGroup.querySelector('input[type="date"], input[type="time"], input[type="datetime-local"]');
+    }
+  }
+
+  if (targetInput) {
+    try {
+      if (typeof targetInput.showPicker === 'function') {
+        targetInput.showPicker();
+      } else {
+        targetInput.focus();
+      }
+    } catch (err) {
+      targetInput.focus();
+    }
+  }
+});
+
+// Inject cursor style for date/time input fields and icons
+(function() {
+  if (typeof document !== 'undefined') {
+    const style = document.createElement('style');
+    style.textContent = `
+      input[type="date"], input[type="time"], input[type="datetime-local"],
+      .input-group-text, .input-group {
+        cursor: pointer !important;
+      }
+    `;
+    if (document.head) document.head.appendChild(style);
+    else document.addEventListener('DOMContentLoaded', () => document.head.appendChild(style));
+  }
+})();

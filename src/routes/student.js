@@ -95,6 +95,58 @@ router.get('/my-batches', async (req, res) => {
   }
 });
 
+// Fetch comprehensive batch details, syllabus, materials, assignments & live classes
+router.get('/batches/:batchId/details', async (req, res) => {
+  const { batchId } = req.params;
+  try {
+    const batchRes = await db.query(`
+      SELECT b.*, c.title as course_title, c.description as course_description, c.fees as course_fees,
+             u.name as teacher_name, u.email as teacher_email, u.photo_url as teacher_photo,
+             u.teacher_level, u.rating as teacher_rating
+      FROM batches b
+      LEFT JOIN courses c ON c.id = b.course_id
+      LEFT JOIN users u ON u.id = b.teacher_id
+      WHERE b.id = $1
+    `, [batchId]);
+
+    if (!batchRes.rows.length) {
+      return res.status(404).json({ error: 'Batch not found' });
+    }
+
+    const batch = batchRes.rows[0];
+
+    // Fetch study materials / notes
+    const materialsRes = await db.query(
+      `SELECT * FROM study_materials WHERE batch_id = $1 ORDER BY uploaded_at DESC`,
+      [batchId]
+    );
+
+    // Fetch assignments
+    const assignmentsRes = await db.query(
+      `SELECT * FROM assignments WHERE batch_id = $1 ORDER BY created_at DESC`,
+      [batchId]
+    );
+
+    // Fetch live classes schedule
+    const liveClassesRes = await db.query(`
+      SELECT lc.*, u.name as teacher_name
+      FROM live_classes lc
+      LEFT JOIN users u ON u.id = lc.teacher_id
+      WHERE lc.batch_id = $1
+      ORDER BY lc.class_date DESC, lc.class_time DESC
+    `, [batchId]);
+
+    res.json({
+      batch,
+      materials: materialsRes.rows,
+      assignments: assignmentsRes.rows,
+      liveClasses: liveClassesRes.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Fetch study materials/notes for batch
 router.get('/batches/:batchId/notes', async (req, res) => {
   const { batchId } = req.params;
@@ -205,6 +257,24 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
   });
 }
 
+// ── GET /api/student/payments ─────────────────────────────────
+router.get('/payments', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT p.*, c.title as course_title, b.batch_name, u.name as teacher_name
+      FROM payments p
+      LEFT JOIN courses c ON c.id = p.course_id
+      LEFT JOIN batches b ON b.id = p.batch_id
+      LEFT JOIN users u ON u.id = p.teacher_id
+      WHERE p.student_id = $1
+      ORDER BY p.created_at DESC
+    `, [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Enroll in Batch (after payment) ──────────────────────────
 router.post('/batches/:batchId/enroll', async (req, res) => {
   const { batchId } = req.params;
@@ -219,22 +289,25 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
       return res.status(400).json({ error: 'You are already enrolled in this batch' });
     }
 
-    // Check capacity & fetch batch/course info
+    // Check capacity & fetch batch/course info (supports active & upcoming batches)
     const batchRes = await db.query(`
       SELECT b.*, c.title as course_title, c.fees as course_fees
       FROM batches b
       LEFT JOIN courses c ON c.id = b.course_id
-      WHERE b.id = $1 AND b.status = $2
-    `, [batchId, 'active']);
+      WHERE b.id = $1 AND COALESCE(b.status, 'active') NOT IN ('cancelled', 'inactive')
+    `, [batchId]);
 
     if (!batchRes.rows.length) return res.status(404).json({ error: 'Batch not found or inactive' });
     const batchObj = batchRes.rows[0];
 
-    if (batchObj.seats_filled >= batchObj.capacity) {
+    const capacity = parseInt(batchObj.capacity || 30);
+    const seatsFilled = parseInt(batchObj.seats_filled || 0);
+
+    if (seatsFilled >= capacity) {
       return res.status(400).json({ error: 'This batch is full' });
     }
 
-    const originalFees = parseFloat(batchObj.course_fees || 0);
+    const originalFees = parseFloat(batchObj.course_fees || batchObj.fees || 0);
     let discountAmount = 0;
     let amountPaid = originalFees;
 
@@ -255,21 +328,48 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
 
     const pId = paymentId || `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
-    // Enroll in batch_students table
+    // 1. Enroll in batch_students table
     await db.query(
-      'INSERT INTO batch_students (batch_id, student_id, payment_id, status) VALUES ($1,$2,$3,$4)',
+      'INSERT INTO batch_students (batch_id, student_id, payment_id, status) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
       [batchId, req.user.id, pId, 'active']
     );
     await db.query('UPDATE batches SET seats_filled = seats_filled + 1 WHERE id = $1', [batchId]);
 
-    // Insert payment row into payments ledger
+    // 2. Insert payment row into payments ledger WITH teacher_id!
     await db.query(`
-      INSERT INTO payments (id, student_id, batch_id, course_id, amount, status, payment_method, gateway_payment_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO payments (id, student_id, teacher_id, batch_id, course_id, amount, status, payment_method, gateway_payment_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (id) DO NOTHING
-    `, [pId, req.user.id, batchId, batchObj.course_id || null, amountPaid, 'captured', 'upi', pId]);
+    `, [pId, req.user.id, batchObj.teacher_id || null, batchId, batchObj.course_id || null, amountPaid, 'completed', 'upi', pId]);
 
-    await logAudit(req.user.id, 'BATCH_ENROLLED', 'batch', batchId, { paymentId: pId, couponCode });
+    // 3. REFLECT IN TEACHER WALLET & LEDGER IMMEDIATELY!
+    if (batchObj.teacher_id) {
+      const teacherId = batchObj.teacher_id;
+      await db.query(`
+        INSERT INTO teacher_wallet (teacher_id, balance, total_earnings)
+        VALUES ($1, $2, $2)
+        ON CONFLICT (teacher_id) DO UPDATE 
+        SET balance = teacher_wallet.balance + $2,
+            total_earnings = teacher_wallet.total_earnings + $2,
+            updated_at = NOW()
+      `, [teacherId, amountPaid]);
+
+      const ledgerId = `tx_course_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      await db.query(`
+        INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, transaction_type, description, reference_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [
+        ledgerId,
+        teacherId,
+        amountPaid,
+        'credit',
+        `Course sale: ${batchObj.course_title || 'Course'} (${batchObj.batch_name || 'Batch'}) - Student: ${req.user.name}`,
+        pId
+      ]);
+      console.log(`[Student Enroll] Credited ₹${amountPaid} to teacher ${teacherId} wallet for course ${batchObj.course_title}`);
+    }
+
+    await logAudit(req.user.id, 'BATCH_ENROLLED', 'batch', batchId, { paymentId: pId, couponCode, amountPaid });
 
     // Send Payment Receipt Email Asynchronously to Student's Email ID
     sendPaymentReceiptEmail({
@@ -285,7 +385,7 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
       date: new Date()
     }).catch(e => console.error('[Enrollment Receipt Email Error]:', e.message));
 
-    res.json({ message: 'Enrolled successfully in batch! Payment receipt sent to your email.' });
+    res.json({ message: 'Enrolled successfully in batch! Payment receipt sent to your email and credited to teacher wallet.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

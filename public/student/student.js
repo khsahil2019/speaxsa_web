@@ -70,11 +70,19 @@ async function api(path, opts = {}) {
 // ── Auth ──────────────────────────────────────────────────────
 function switchTab(tab) {
   ['login','register','forgot'].forEach(t => {
-    document.getElementById(`${t}Section`).classList.add('d-none');
-    document.getElementById(`tab${t.charAt(0).toUpperCase()+t.slice(1)}`)?.classList.remove('active');
+    const sec = document.getElementById(`${t}Section`);
+    if (sec) sec.classList.add('d-none');
+    const tabEl = document.getElementById(`tab${t.charAt(0).toUpperCase()+t.slice(1)}`);
+    if (tabEl) tabEl.classList.remove('active');
   });
-  document.getElementById(`${tab}Section`).classList.remove('d-none');
-  document.getElementById(`tab${tab.charAt(0).toUpperCase()+tab.slice(1)}`)?.classList.add('active');
+  const regOtpSec = document.getElementById('registerOtpSection');
+  if (regOtpSec) regOtpSec.classList.add('d-none');
+
+  const targetSec = document.getElementById(`${tab}Section`);
+  if (targetSec) targetSec.classList.remove('d-none');
+
+  const targetTab = document.getElementById(`tab${tab.charAt(0).toUpperCase()+tab.slice(1)}`);
+  if (targetTab) targetTab.classList.add('active');
 }
 
 function switchLoginMode(mode) {
@@ -86,19 +94,15 @@ function switchLoginMode(mode) {
   const formOtp = document.getElementById('loginOtpForm');
 
   if (mode === 'password') {
-    btnPass.style.background = '#0d7a6d';
-    btnPass.style.color = '#ffffff';
-    btnOtp.style.background = 'transparent';
-    btnOtp.style.color = '#64748b';
-    formPass.classList.remove('d-none');
-    formOtp.classList.add('d-none');
+    if (btnPass) { btnPass.style.background = '#0d7a6d'; btnPass.style.color = '#ffffff'; }
+    if (btnOtp) { btnOtp.style.background = 'transparent'; btnOtp.style.color = '#64748b'; }
+    if (formPass) formPass.classList.remove('d-none');
+    if (formOtp) formOtp.classList.add('d-none');
   } else {
-    btnOtp.style.background = '#0d7a6d';
-    btnOtp.style.color = '#ffffff';
-    btnPass.style.background = 'transparent';
-    btnPass.style.color = '#64748b';
-    formOtp.classList.remove('d-none');
-    formPass.classList.add('d-none');
+    if (btnOtp) { btnOtp.style.background = '#0d7a6d'; btnOtp.style.color = '#ffffff'; }
+    if (btnPass) { btnPass.style.background = 'transparent'; btnPass.style.color = '#64748b'; }
+    if (formOtp) formOtp.classList.remove('d-none');
+    if (formPass) formPass.classList.add('d-none');
     setupOtpBoxListeners('sLoginOtpBoxes', 'loginOtpVal');
   }
 }
@@ -206,9 +210,18 @@ async function doLogin() {
   const emailVal = emailEl ? emailEl.value.trim() : '';
   const passVal = passEl ? passEl.value.trim() : '';
 
-  if (!emailVal || (window.isValidEmail && !window.isValidEmail(emailVal))) {
+  if (!emailVal) {
     if (errEl) {
-      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter a valid registered email address (e.g. name@example.com).';
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter your registered email, mobile number, or student code.';
+      errEl.classList.remove('d-none');
+    }
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  if (emailVal.includes('@') && window.isValidEmail && !window.isValidEmail(emailVal)) {
+    if (errEl) {
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter a valid email address.';
       errEl.classList.remove('d-none');
     }
     if (emailEl) emailEl.focus();
@@ -234,9 +247,6 @@ async function doLogin() {
     });
     const data = await res.json();
     if (!res.ok) {
-      if (data.status === 'email_not_verified') {
-        throw new Error(`Please verify your email address (${data.email || emailVal}) before logging in. A verification link has been sent to your email inbox.`);
-      }
       throw new Error(data.error || 'Login failed. Please check your credentials.');
     }
     saveAuth(data.token, data.user);
@@ -388,11 +398,8 @@ async function doRegister() {
     window._regPhoneOtpPending = null;
     window._regEmailOtpPending = null;
     clearAutoSave('autosave_student_register');
-    if (data.status === 'verification_pending') {
-      window.location.href = `/verify.html?email=${encodeURIComponent(data.email)}&step=${data.step}&firebaseCustomToken=${encodeURIComponent(data.firebaseCustomToken || '')}`;
-      return;
-    }
-    if (data.token) {
+
+    if (data.token && data.user) {
       saveAuth(data.token, data.user);
     } else {
       showToast('Registration successful! Please login.', 'success');
@@ -535,29 +542,19 @@ function saveAuth(tok, usr) {
     return;
   }
 
-  const remember = document.getElementById('rememberMe')?.checked;
-  if (remember) {
-    localStorage.setItem('student_token', tok);
-    localStorage.setItem('student_user', JSON.stringify(usr));
-    sessionStorage.removeItem('student_token');
-    sessionStorage.removeItem('student_user');
-  } else {
-    sessionStorage.setItem('student_token', tok);
-    sessionStorage.setItem('student_user', JSON.stringify(usr));
-    localStorage.removeItem('student_token');
-    localStorage.removeItem('student_user');
-  }
+  localStorage.setItem('student_token', tok);
+  localStorage.setItem('student_user', JSON.stringify(usr));
+  sessionStorage.setItem('student_token', tok);
+  sessionStorage.setItem('student_user', JSON.stringify(usr));
+
   showApp();
   navigateTo('home');
 }
 
 function updateCachedUser(usr) {
   user = usr;
-  if (localStorage.getItem('student_token')) {
-    localStorage.setItem('student_user', JSON.stringify(usr));
-  } else {
-    sessionStorage.setItem('student_user', JSON.stringify(usr));
-  }
+  localStorage.setItem('student_user', JSON.stringify(usr));
+  sessionStorage.setItem('student_user', JSON.stringify(usr));
 }
 
 function logout() {
@@ -567,8 +564,10 @@ function logout() {
   sessionStorage.removeItem('student_user');
   token = null;
   user = null;
-  document.getElementById('authScreen').classList.remove('d-none');
-  document.getElementById('studentApp').classList.add('d-none');
+  const authScreen = document.getElementById('authScreen');
+  const studentApp = document.getElementById('studentApp');
+  if (authScreen) authScreen.classList.remove('d-none');
+  if (studentApp) studentApp.classList.add('d-none');
 }
 
 function handleCrossRoleRedirect(tok, usr) {
@@ -613,14 +612,21 @@ function handleCrossRoleRedirect(tok, usr) {
 }
 
 function showApp() {
-  document.getElementById('authScreen').classList.add('d-none');
-  document.getElementById('studentApp').classList.remove('d-none');
+  const authScreen = document.getElementById('authScreen');
+  const studentApp = document.getElementById('studentApp');
+  if (authScreen) authScreen.classList.add('d-none');
+  if (studentApp) studentApp.classList.remove('d-none');
+
   if (user) {
     const av = user.photo_url || defaultAvatar;
-    document.getElementById('avatarSidebar').src = av;
-    document.getElementById('avatarHeader').src = av;
-    document.getElementById('nameSidebar').textContent = user.name;
-    document.getElementById('codeSidebar').textContent = user.student_code || user.role;
+    const avSb = document.getElementById('avatarSidebar');
+    if (avSb) avSb.src = av;
+    const avHd = document.getElementById('avatarHeader');
+    if (avHd) avHd.src = av;
+    const nameSb = document.getElementById('nameSidebar');
+    if (nameSb) nameSb.textContent = user.name || 'Student';
+    const codeSb = document.getElementById('codeSidebar');
+    if (codeSb) codeSb.textContent = user.student_code || user.role || '';
   }
   checkEmailVerificationReminder();
   loadFCMToken();
@@ -804,6 +810,21 @@ async function loadFCMToken() {
   // Firebase messaging setup - placeholder
 }
 
+async function loadStudentNotificationCounts() {
+  try {
+    const notifs = await api('/student/notifications');
+    const badge = document.getElementById('studentNotifBadge');
+    if (badge) {
+      if (notifs && notifs.length > 0) {
+        badge.textContent = notifs.length > 99 ? '99+' : notifs.length;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  } catch (e) { }
+}
+
 // ── Navigation ─────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-page]').forEach(item => {
   item.addEventListener('click', () => navigateTo(item.dataset.page));
@@ -814,13 +835,47 @@ function navigateTo(page) {
   document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
   const titles = { home:'Dashboard', courses:'Browse Courses', mybatches:'My Batches', 'upcoming-classes':'Upcoming Classes',
     attendance:'Attendance', assignments:'Assignments', recordings:'Recordings',
-    reports:'Monthly Reports', notifications:'Notifications', profile:'My Profile', parents:'Parent Access Requests' };
+    reports:'Monthly Reports', notifications:'Notifications', profile:'My Profile', parents:'Parent Access Requests', payments:'Payments & Receipts' };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   const renders = { home:renderHome, courses:renderCourses, mybatches:renderMyBatches, 'upcoming-classes':renderUpcomingClasses,
     attendance:renderAttendance, assignments:renderAssignments, recordings:renderRecordings,
-    reports:renderReports, notifications:renderNotifications, profile:renderProfile, parents:renderParents };
+    reports:renderReports, notifications:renderNotifications, profile:renderProfile, parents:renderParents, payments:renderStudentPayments };
   renders[page]?.();
+  if (typeof loadStudentNotificationCounts === 'function') loadStudentNotificationCounts();
 }
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const mainContent = document.querySelector('.main-content');
+  if (!sidebar) return;
+
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    sidebar.classList.toggle('show');
+    sidebar.classList.remove('collapsed');
+
+    let backdrop = document.getElementById('sidebarBackdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'sidebarBackdrop';
+      backdrop.className = 'sidebar-backdrop';
+      document.body.appendChild(backdrop);
+      backdrop.addEventListener('click', () => {
+        sidebar.classList.remove('show');
+        backdrop.classList.remove('show');
+      });
+    }
+    if (sidebar.classList.contains('show')) {
+      backdrop.classList.add('show');
+    } else {
+      backdrop.classList.remove('show');
+    }
+  } else {
+    sidebar.classList.toggle('collapsed');
+    if (mainContent) mainContent.classList.toggle('expanded');
+  }
+}
+window.toggleSidebar = toggleSidebar;
 
 function togglePlatformGuide() {
   const content = document.getElementById('platformGuideContent');
@@ -1481,6 +1536,204 @@ async function renderMyBatches() {
   } catch(e) { document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
 }
 
+// ── View Batch Details & Syllabus Modal Handler ────────────────
+async function viewBatchDetails(batchId) {
+  try {
+    const modalEl = document.getElementById('batchDetailsModal');
+    if (!modalEl) return;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    
+    document.getElementById('batchDetailsTitle').innerHTML = `<i class="fas fa-layer-group me-2 text-primary"></i>Batch Details & Syllabus`;
+    document.getElementById('batchDetailsBody').innerHTML = `
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div class="mt-2 text-muted small">Loading batch syllabus & materials...</div>
+      </div>
+    `;
+    modal.show();
+
+    const data = await api(`/student/batches/${batchId}/details`);
+    const b = data.batch;
+    const materials = data.materials || [];
+    const assignments = data.assignments || [];
+    const liveClasses = data.liveClasses || [];
+
+    const daysStr = Array.isArray(b.days_of_week) ? b.days_of_week.join(', ') : (b.days_of_week || 'Mon - Fri');
+    const sDate = b.start_date ? new Date(b.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const eDate = b.end_date ? new Date(b.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+    let syllabusDownloadBtn = '';
+    if (b.planner_url) {
+      syllabusDownloadBtn = `
+        <a href="${b.planner_url}" target="_blank" download class="btn btn-primary btn-sm px-3 py-2 fw-bold me-2 mb-2">
+          <i class="fas fa-file-pdf me-2"></i>Download Uploaded Syllabus (${b.planner_name || 'Planner.pdf'})
+        </a>
+      `;
+    }
+
+    let demoVideoBtn = '';
+    if (b.demo_video_url) {
+      demoVideoBtn = `
+        <button class="btn btn-outline-warning btn-sm px-3 py-2 fw-bold mb-2" onclick="playBatchDemoVideo('${b.demo_video_url}', '${(b.batch_name || '').replace(/'/g, "\\'")}', event)">
+          <i class="fas fa-play-circle me-2"></i>Watch Demo Video
+        </button>
+      `;
+    }
+
+    document.getElementById('batchDetailsTitle').innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <i class="fas fa-graduation-cap text-primary"></i>
+        <span>${b.course_title || b.batch_name}</span>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2" style="font-size: 0.75rem;">${b.batch_name}</span>
+      </div>
+    `;
+
+    document.getElementById('batchDetailsBody').innerHTML = `
+      <div class="batch-details-content">
+        <!-- Educator & Schedule Header Card -->
+        <div class="p-3 mb-4 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+          <div class="row g-3 align-items-center">
+            <div class="col-md-6">
+              <div class="d-flex align-items-center gap-3">
+                <img src="${b.teacher_photo || '/images/default-avatar.png'}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(b.teacher_name||'Teacher')}'" style="width:48px;height:48px;border-radius:10px;object-fit:cover;border:2px solid #0d7a6d;">
+                <div>
+                  <h6 class="fw-bold mb-0 text-dark">${b.teacher_name || 'Educator'}</h6>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.68rem;">
+                    ${(b.teacher_level || 'Bronze').toUpperCase()} MENTOR • Rating ${b.teacher_rating || '5.0'} ⭐
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+              <div class="text-dark small fw-semibold mb-1"><i class="fas fa-clock me-1 text-primary"></i>${formatTime(b.start_time)} - ${formatTime(b.end_time)} (${daysStr})</div>
+              <div class="text-muted small"><i class="fas fa-calendar me-1 text-primary"></i>${sDate} to ${eDate}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Row (Syllabus Download & Demo Video) -->
+        ${(syllabusDownloadBtn || demoVideoBtn) ? `
+          <div class="mb-4 d-flex flex-wrap align-items-center p-3 rounded-3" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+            <div class="me-auto">
+              <h6 class="fw-bold text-success mb-1"><i class="fas fa-book-open me-2"></i>Official Course Syllabus & Planner</h6>
+              <p class="text-muted small mb-0">Uploaded by educator for this batch enrollment.</p>
+            </div>
+            <div class="mt-2 mt-sm-0">
+              ${syllabusDownloadBtn}
+              ${demoVideoBtn}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs nav-tabs-spx mb-3" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabSyllabus"><i class="fas fa-list-ol me-2"></i>Syllabus & Planner</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabMethodology"><i class="fas fa-chalkboard-teacher me-2"></i>Teaching Method & Rules</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabMaterials"><i class="fas fa-file-download me-2"></i>Study Notes (${materials.length})</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSchedule"><i class="fas fa-video me-2"></i>Classes Schedule (${liveClasses.length})</button>
+          </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content pt-2">
+          <!-- Tab 1: Syllabus -->
+          <div class="tab-pane fade show active" id="tabSyllabus">
+            <div class="card card-body border-0 bg-light p-3 rounded-3 mb-3">
+              <h6 class="fw-bold text-dark mb-2"><i class="fas fa-graduation-cap me-2 text-primary"></i>Chapter-wise Learning Plan & Syllabus</h6>
+              <div class="text-secondary small" style="white-space:pre-line; line-height:1.6;">
+                ${b.planner_desc ? b.planner_desc : 'Syllabus planner uploaded by educator. Click download syllabus button above to access full PDF file.'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Teaching Methodology & Instructions -->
+          <div class="tab-pane fade" id="tabMethodology">
+            <div class="card card-body border-0 bg-light p-3 rounded-3 mb-3">
+              <h6 class="fw-bold text-dark mb-2"><i class="fas fa-lightbulb me-2 text-warning"></i>Way of Teaching & Methodology</h6>
+              <div class="text-secondary small mb-4" style="white-space:pre-line; line-height:1.6;">
+                ${b.teaching_method ? b.teaching_method : 'Interactive live sessions with practical drills and real-time guidance.'}
+              </div>
+
+              <h6 class="fw-bold text-dark mb-2"><i class="fas fa-exclamation-circle me-2 text-danger"></i>Important Batch Instructions & Prerequisites</h6>
+              <div class="text-secondary small" style="white-space:pre-line; line-height:1.6;">
+                ${b.batch_instructions ? b.batch_instructions : 'Please join live sessions 5 minutes prior to scheduled start time.'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Study Notes & Downloads -->
+          <div class="tab-pane fade" id="tabMaterials">
+            ${materials.length ? `
+              <div class="list-group list-group-flush">
+                ${materials.map(m => `
+                  <div class="list-group-item bg-light border rounded-3 mb-2 p-3 d-flex justify-content-between align-items-center">
+                    <div>
+                      <h6 class="fw-bold text-dark mb-1" style="font-size:0.9rem;"><i class="fas fa-file-alt me-2 text-primary"></i>${m.title}</h6>
+                      <div class="text-muted small">${m.description || 'Study note'} • ${new Date(m.uploaded_at).toLocaleDateString()}</div>
+                    </div>
+                    ${m.file_url ? `
+                      <a href="${m.file_url}" target="_blank" download class="btn btn-sm btn-outline-primary fw-bold px-3">
+                        <i class="fas fa-download me-1"></i>Download
+                      </a>
+                    ` : '<span class="badge bg-secondary">No File</span>'}
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-muted small text-center py-4">No study materials uploaded for this batch yet.</p>'}
+          </div>
+
+          <!-- Tab 4: Live Classes Schedule -->
+          <div class="tab-pane fade" id="tabSchedule">
+            ${liveClasses.length ? `
+              <div class="list-group list-group-flush">
+                ${liveClasses.map(lc => {
+                  let badge = lc.status === 'live' ? '<span class="badge bg-danger pulse-dot">LIVE NOW</span>' :
+                              lc.status === 'ended' ? '<span class="badge bg-secondary">Concluded</span>' :
+                              '<span class="badge bg-primary">Scheduled</span>';
+                  let joinBtn = (lc.status === 'live' || lc.status === 'scheduled') ? `
+                    <a href="/live/room.html?classId=${lc.id}&role=student" class="btn btn-sm ${lc.status === 'live' ? 'btn-danger pulse-animation' : 'btn-outline-primary'} fw-bold px-3">
+                      <i class="fas fa-video me-1"></i>${lc.status === 'live' ? 'Join Live Room' : 'Enter Room'}
+                    </a>
+                  ` : '';
+
+                  return `
+                    <div class="list-group-item bg-light border rounded-3 mb-2 p-3 d-flex justify-content-between align-items-center">
+                      <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                          <h6 class="fw-bold text-dark mb-0" style="font-size:0.9rem;">${lc.title}</h6>
+                          ${badge}
+                        </div>
+                        <div class="text-muted small">
+                          <i class="fas fa-calendar-alt me-1"></i>${lc.class_date ? new Date(lc.class_date).toLocaleDateString() : '—'} at ${formatTime(lc.class_time)}
+                        </div>
+                      </div>
+                      <div>${joinBtn}</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : '<p class="text-muted small text-center py-4">No live class sessions scheduled yet.</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+  } catch(e) {
+    document.getElementById('batchDetailsBody').innerHTML = `
+      <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>Failed to load batch details: ${e.message}
+      </div>
+    `;
+  }
+}
+
 async function renderUpcomingClasses() {
   loading();
   try {
@@ -1637,7 +1890,8 @@ async function renderAssignments() {
               </div>
               ${!submitted ? `
                 <div class="mt-3">
-                  <input type="file" class="form-control spx-input" id="file_${a.id}" style="font-size:.8rem">
+                  <input type="file" class="form-control spx-input" id="file_${a.id}" style="font-size:.8rem" onchange="window.handleAttachmentSelect(this, 'preview_${a.id}')">
+                  <div id="preview_${a.id}"></div>
                   <button class="btn btn-sm btn-spx w-100 mt-2" onclick="submitAssignment('${a.id}')">
                     <i class="fas fa-upload me-1"></i>Submit Assignment
                   </button>
@@ -2352,19 +2606,24 @@ async function openMyBatchDetailsModal(batchId) {
 // ── Init ──────────────────────────────────────────────────────
 async function initApp() {
   if (token) {
+    if (user && user.role === 'student') {
+      showApp();
+      const page = window.location.hash ? window.location.hash.substring(1) : 'home';
+      navigateTo(page);
+    }
     try {
       const profile = await api('/auth/profile');
       if (profile.role === 'student') {
         updateCachedUser(profile);
         showApp();
-        const page = window.location.hash ? window.location.hash.substring(1) : 'home';
-        navigateTo(page);
       } else {
         handleCrossRoleRedirect(token, profile);
       }
     } catch (e) {
       console.error('Failed to sync profile', e);
-      logout();
+      if (e.message && (e.message.includes('401') || e.message.includes('Session expired'))) {
+        logout();
+      }
     }
   } else {
     document.getElementById('authScreen').classList.remove('d-none');
@@ -2538,3 +2797,117 @@ function setupOtpBoxListeners(containerId, hiddenInputId) {
     });
   });
 }
+
+// ── Student Payments & Receipts ──────────────────────────────
+async function renderStudentPayments() {
+  loading();
+  try {
+    const payments = await api('/student/payments');
+    if (!payments || payments.length === 0) {
+      document.getElementById('pageContent').innerHTML = `
+        <div class="card p-5 text-center shadow-sm rounded-4 border-0">
+          <div class="display-4 text-muted mb-3"><i class="fas fa-receipt"></i></div>
+          <h5 class="fw-bold mb-2">No Payments Recorded</h5>
+          <p class="text-muted mb-4">You haven't purchased any course batches yet.</p>
+          <div>
+            <button class="btn btn-spx px-4" onclick="navigateTo('courses')"><i class="fas fa-search me-2"></i>Browse Courses</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    let rowsHtml = payments.map(p => `
+      <tr>
+        <td class="align-middle fw-bold text-primary"><code>${p.id}</code></td>
+        <td class="align-middle">
+          <div class="fw-bold text-dark">${escapeHtml(p.course_title || 'Course')}</div>
+          <div class="small text-muted">${escapeHtml(p.batch_name || 'Batch')}</div>
+        </td>
+        <td class="align-middle small">${escapeHtml(p.teacher_name || 'Assigned Instructor')}</td>
+        <td class="align-middle fw-bold text-success">₹${parseFloat(p.amount || 0).toLocaleString('en-IN')}</td>
+        <td class="align-middle small text-muted">${new Date(p.created_at || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+        <td class="align-middle"><span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Completed</span></td>
+        <td class="align-middle text-end">
+          <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="showReceiptModal('${p.id}', '${escapeHtml(p.course_title || '')}', '${escapeHtml(p.batch_name || '')}', ${p.amount}, '${p.created_at}')"><i class="fas fa-file-invoice me-1"></i>Receipt</button>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('pageContent').innerHTML = `
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between border-0">
+          <div>
+            <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history text-primary me-2"></i>Purchase & Payment History</h6>
+            <small class="text-muted">All course enrollments and transaction receipts</small>
+          </div>
+          <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-bold">${payments.length} Transaction${payments.length > 1 ? 's' : ''}</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+              <tr>
+                <th>Transaction ID</th>
+                <th>Course & Batch</th>
+                <th>Instructor</th>
+                <th>Amount Paid</th>
+                <th>Date & Time</th>
+                <th>Status</th>
+                <th class="text-end">Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    showToast(err.message || 'Failed to load payments', 'danger');
+  }
+}
+
+window.showReceiptModal = function(id, course, batch, amount, date) {
+  const modalHtml = `
+    <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div class="modal-header bg-dark text-white p-4">
+            <div>
+              <h5 class="modal-title fw-bold mb-0">SPEAXA Official Payment Receipt</h5>
+              <small class="opacity-75">Transaction ID: ${id}</small>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="text-center py-3 border-bottom mb-4">
+              <div class="display-6 fw-bold text-success mb-1">₹${parseFloat(amount || 0).toLocaleString('en-IN')}</div>
+              <span class="badge bg-success px-3 py-1 rounded-pill"><i class="fas fa-check me-1"></i>Payment Verified</span>
+            </div>
+            <div class="row g-3 small">
+              <div class="col-6 text-muted">Course Name:</div>
+              <div class="col-6 text-end fw-bold text-dark">${course}</div>
+              <div class="col-6 text-muted">Batch:</div>
+              <div class="col-6 text-end fw-bold text-dark">${batch}</div>
+              <div class="col-6 text-muted">Date & Time:</div>
+              <div class="col-6 text-end fw-bold text-dark">${new Date(date).toLocaleString('en-IN')}</div>
+              <div class="col-6 text-muted">Payment Mode:</div>
+              <div class="col-6 text-end fw-bold text-dark">UPI / Online Gateway</div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light p-3">
+            <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-spx rounded-pill px-4" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  let existingModal = document.getElementById('receiptModal');
+  if (existingModal) existingModal.remove();
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  const m = new bootstrap.Modal(document.getElementById('receiptModal'));
+  m.show();
+};

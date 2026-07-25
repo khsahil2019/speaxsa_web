@@ -178,7 +178,7 @@ router.post('/sop/submit', async (req, res) => {
     if (!sop.rows[0]) return res.status(404).json({ error: 'SOP record not found' });
 
     const { camera_sop_url, lighting_sop_url, audio_sop_url, internet_proof_url, demo_teaching_url, availability } = sop.rows[0];
-    
+
     // 1. Validate Technical SOP uploads/links
     if (!camera_sop_url || !lighting_sop_url || !audio_sop_url || !internet_proof_url || !demo_teaching_url) {
       return res.status(400).json({ error: 'All 5 technical SOP proofs (Camera, Lighting, Audio, Internet speed, Demo lecture) must be submitted before final submission.' });
@@ -192,7 +192,7 @@ router.post('/sop/submit', async (req, res) => {
     // 3. Validate KYC Document & Profile Evidence Uploads
     const docs = await db.query('SELECT doc_type FROM teacher_documents WHERE teacher_id = $1', [req.user.id]);
     const uploadedTypes = docs.rows.map(d => d.doc_type);
-    
+
     // KYC
     const requiredKyc = ['aadhaar', 'pan', 'resume', 'qualification'];
     const missingKyc = requiredKyc.filter(type => !uploadedTypes.includes(type));
@@ -270,10 +270,10 @@ router.post('/sop/sign-agreement', async (req, res) => {
       VALUES ($1, $2, 'sop_completed', $3, $4, $5)
       ON CONFLICT DO NOTHING
     `, [
-      certId, 
-      req.user.id, 
-      'SOP Verification & Teaching Compliance Certificate', 
-      'This certificate is awarded to acknowledge that the teacher has successfully completed the Speaxa Standard Operating Procedures (SOP) verification, technical compliance checks, and teaching standards certification.', 
+      certId,
+      req.user.id,
+      'SOP Verification & Teaching Compliance Certificate',
+      'This certificate is awarded to acknowledge that the teacher has successfully completed the Speaxa Standard Operating Procedures (SOP) verification, technical compliance checks, and teaching standards certification.',
       JSON.stringify({ signature: digital_signature })
     ]);
 
@@ -310,7 +310,7 @@ router.post('/documents/link', async (req, res) => {
     const id = generateUID('doc');
     // Delete any existing document of the same type for this teacher to prevent duplicates
     await db.query('DELETE FROM teacher_documents WHERE teacher_id = $1 AND doc_type = $2', [req.user.id, doc_type]);
-    
+
     await db.query(
       'INSERT INTO teacher_documents (id, teacher_id, doc_type, file_url, original_name) VALUES ($1,$2,$3,$4,$5)',
       [id, req.user.id, doc_type, link.trim(), 'External Link']
@@ -339,7 +339,7 @@ router.get('/batches', async (req, res) => {
       FROM batches b
       LEFT JOIN courses c ON c.id = b.course_id
       LEFT JOIN batch_students bs ON bs.batch_id = b.id AND bs.status = 'active'
-      WHERE b.teacher_id = $1
+      WHERE b.teacher_id = $1 AND COALESCE(b.deletion_requested, false) = false AND COALESCE(b.status, '') != 'pending_deletion'
       GROUP BY b.id, c.title, c.fees
       ORDER BY b.created_at DESC
     `, [req.user.id]);
@@ -369,7 +369,7 @@ router.post('/batches', batchUpload.fields([{ name: 'planner', maxCount: 1 }, { 
     if (!end_date) return res.status(400).json({ error: 'End Date is required' });
     if (!start_time) return res.status(400).json({ error: 'Start Time is required' });
     if (!end_time) return res.status(400).json({ error: 'End Time is required' });
-    if (!capacity) return res.status(400).json({ error: 'Max Capacity is required' });
+    if (!capacity) return res.status(400).json({ error: 'Max Students is required' });
     if (!planner_desc || !planner_desc.trim()) return res.status(400).json({ error: 'Learning Schedule / Syllabus Text is required' });
     if (!teaching_method || !teaching_method.trim()) return res.status(400).json({ error: 'Way of Teaching / Way of teaching / Teaching Methodology is required' });
     if (!batch_instructions || !batch_instructions.trim()) return res.status(400).json({ error: 'Important Batch Instructions / Prerequisites are required' });
@@ -429,7 +429,7 @@ router.post('/batches', batchUpload.fields([{ name: 'planner', maxCount: 1 }, { 
         start_time, end_time, days_of_week, capacity, status, agora_channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, demo_video_url)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'active',$12,$13,$14,$15,$16,$17,$18)
     `, [id, course_id, req.user.id, batch_name, subject, start_date, end_date,
-        start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, final_demo_video_url]);
+      start_time, end_time, days, cap, channel, planner_url, planner_name, planner_desc, teaching_method, batch_instructions, final_demo_video_url]);
 
     await logAudit(req.user.id, 'BATCH_CREATED', 'batch', id, { batch_name, course_id, has_planner: true, has_demo_video: true });
     res.status(201).json({ message: 'Batch created successfully', batchId: id, planner_url, demo_video_url: final_demo_video_url });
@@ -473,8 +473,8 @@ router.post('/batches/:id/planner', plannerUpload.single('planner'), async (req,
     await db.query(query, params);
 
     await logAudit(req.user.id, 'BATCH_PLANNER_UPDATED', 'batch', id, { has_file: !!req.file, has_desc: !!planner_desc });
-    res.json({ 
-      message: 'Planner updated successfully', 
+    res.json({
+      message: 'Planner updated successfully',
       planner_url: req.file ? `/uploads/planners/${req.file.filename}` : undefined,
       planner_name: req.file ? req.file.originalname : undefined,
       planner_desc
@@ -487,26 +487,33 @@ router.post('/batches/:id/planner', plannerUpload.single('planner'), async (req,
 // Teacher Request Batch Deletion -> Sent to Admin Recycle Bin / Restore System
 router.delete('/batches/:id', async (req, res) => {
   const { id } = req.params;
+  const client = await db.getClient();
   try {
-    const batchRes = await db.query('SELECT id, batch_name FROM batches WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
-    if (!batchRes.rows.length) return res.status(404).json({ error: 'Batch not found' });
+    const batchRes = await client.query('SELECT id, batch_name FROM batches WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!batchRes.rows.length) {
+      client.release();
+      return res.status(404).json({ error: 'Batch not found or you do not have permission to delete it.' });
+    }
     const b = batchRes.rows[0];
 
-    await db.query('BEGIN');
-    await db.query("UPDATE batches SET status = 'pending_deletion', deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1", [id]);
-    
+    await client.query('BEGIN');
+    await client.query("UPDATE batches SET status = 'pending_deletion', deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1", [id]);
+
     const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    await db.query(`
+    await client.query(`
       INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
       VALUES ($1, 'batch', $2, $3, $4, 'teacher', 'pending')
+      ON CONFLICT (id) DO NOTHING
     `, [rId, id, b.batch_name, req.user.id]);
-    await db.query('COMMIT');
+    await client.query('COMMIT');
 
     await logAudit(req.user.id, 'DELETE_BATCH_REQUEST', 'batch', id, { batch_name: b.batch_name });
     res.json({ message: 'Batch deletion requested successfully. It has been submitted to Admin Restore System for review/purge.' });
   } catch (err) {
-    await db.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -605,26 +612,33 @@ router.post('/live-classes', async (req, res) => {
 // Teacher Request Live Class Deletion / Cancel -> Sent to Admin Recycle Bin / Restore System
 router.delete('/live-classes/:id', async (req, res) => {
   const { id } = req.params;
+  const client = await db.getClient();
   try {
-    const lcRes = await db.query('SELECT id, title FROM live_classes WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
-    if (!lcRes.rows.length) return res.status(404).json({ error: 'Live class not found' });
+    const lcRes = await client.query('SELECT id, title FROM live_classes WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!lcRes.rows.length) {
+      client.release();
+      return res.status(404).json({ error: 'Live class not found' });
+    }
     const lc = lcRes.rows[0];
 
-    await db.query('BEGIN');
-    await db.query("UPDATE live_classes SET status = 'cancelled', deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1", [id]);
-    
+    await client.query('BEGIN');
+    await client.query("UPDATE live_classes SET status = 'cancelled', deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1", [id]);
+
     const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    await db.query(`
+    await client.query(`
       INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
       VALUES ($1, 'live_class', $2, $3, $4, 'teacher', 'pending')
+      ON CONFLICT (id) DO NOTHING
     `, [rId, id, lc.title, req.user.id]);
-    await db.query('COMMIT');
+    await client.query('COMMIT');
 
     await logAudit(req.user.id, 'DELETE_LIVE_CLASS_REQUEST', 'live_class', id, { title: lc.title });
     res.json({ message: 'Live class deletion requested. Sent to Admin Restore System for review/purge.' });
   } catch (err) {
-    await db.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -679,8 +693,8 @@ router.post('/observations', async (req, res) => {
          communication, observation_score, participation, discipline, notes)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
     `, [id, studentId, req.user.id, batchId, classId || null,
-        curiosity || 0, understanding || 0, consistency || 0,
-        communication || 0, observation_score || 0, participation || 0, discipline || 0, notes || null]);
+      curiosity || 0, understanding || 0, consistency || 0,
+      communication || 0, observation_score || 0, participation || 0, discipline || 0, notes || null]);
 
     // Trigger email & in-app notifications for student and parent
     const { notifyObservationCreated } = require('../services/notification.service');
@@ -762,26 +776,33 @@ router.post('/assignments', assignUpload.single('file'), async (req, res) => {
 // Teacher Request Assignment Deletion -> Sent to Admin Recycle Bin / Restore System
 router.delete('/assignments/:id', async (req, res) => {
   const { id } = req.params;
+  const client = await db.getClient();
   try {
-    const aRes = await db.query('SELECT id, title FROM assignments WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
-    if (!aRes.rows.length) return res.status(404).json({ error: 'Assignment not found' });
+    const aRes = await client.query('SELECT id, title FROM assignments WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!aRes.rows.length) {
+      client.release();
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
     const a = aRes.rows[0];
 
-    await db.query('BEGIN');
-    await db.query('UPDATE assignments SET deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1', [id]);
-    
+    await client.query('BEGIN');
+    await client.query('UPDATE assignments SET deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1', [id]);
+
     const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    await db.query(`
+    await client.query(`
       INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
       VALUES ($1, 'assignment', $2, $3, $4, 'teacher', 'pending')
+      ON CONFLICT (id) DO NOTHING
     `, [rId, id, a.title, req.user.id]);
-    await db.query('COMMIT');
+    await client.query('COMMIT');
 
     await logAudit(req.user.id, 'DELETE_ASSIGNMENT_REQUEST', 'assignment', id, { title: a.title });
     res.json({ message: 'Assignment deletion requested. Sent to Admin Restore System for review/purge.' });
   } catch (err) {
-    await db.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -959,26 +980,33 @@ router.post('/notes', notesUpload.single('file'), async (req, res) => {
 // Teacher Request Study Material Deletion -> Sent to Admin Recycle Bin / Restore System
 router.delete('/notes/:id', async (req, res) => {
   const { id } = req.params;
+  const client = await db.getClient();
   try {
-    const matRes = await db.query('SELECT id, title FROM study_materials WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
-    if (!matRes.rows.length) return res.status(404).json({ error: 'Study material not found' });
+    const matRes = await client.query('SELECT id, title FROM study_materials WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
+    if (!matRes.rows.length) {
+      client.release();
+      return res.status(404).json({ error: 'Study material not found' });
+    }
     const mat = matRes.rows[0];
 
-    await db.query('BEGIN');
-    await db.query('UPDATE study_materials SET deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1', [id]);
-    
+    await client.query('BEGIN');
+    await client.query('UPDATE study_materials SET deletion_requested = true, deletion_requested_at = NOW() WHERE id = $1', [id]);
+
     const rId = 'rb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    await db.query(`
+    await client.query(`
       INSERT INTO recycle_bin (id, item_type, item_id, item_name, requested_by, requested_by_role, status)
       VALUES ($1, 'study_material', $2, $3, $4, 'teacher', 'pending')
+      ON CONFLICT (id) DO NOTHING
     `, [rId, id, mat.title, req.user.id]);
-    await db.query('COMMIT');
+    await client.query('COMMIT');
 
     await logAudit(req.user.id, 'DELETE_STUDY_MATERIAL_REQUEST', 'study_material', id, { title: mat.title });
     res.json({ message: 'Study material deletion requested. Sent to Admin Restore System for final review/purge.' });
   } catch (err) {
-    await db.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -1039,7 +1067,7 @@ router.get('/pending-counts', async (req, res) => {
       FROM parent_teacher_chats 
       WHERE teacher_id = $1 AND sender_id != $1 AND is_read = false
     `, [req.user.id]);
-    
+
     // 2. Pending assignment submissions to grade
     const assignments = await db.query(`
       SELECT COUNT(*) as count 
@@ -1055,10 +1083,10 @@ router.get('/pending-counts', async (req, res) => {
       WHERE target_user = $1 AND is_active = true AND is_read = false
     `, [req.user.id]);
 
-    const total = parseInt(chats.rows[0].count) + 
-                  parseInt(assignments.rows[0].count) + 
-                  parseInt(notifications.rows[0].count);
-    
+    const total = parseInt(chats.rows[0].count) +
+      parseInt(assignments.rows[0].count) +
+      parseInt(notifications.rows[0].count);
+
     res.json({
       total,
       chats: parseInt(chats.rows[0].count),
@@ -1153,7 +1181,7 @@ router.get('/courses', async (req, res) => {
 
 router.post('/courses', async (req, res) => {
   const { title, subject, description, duration_weeks, grade, board, thumbnail_url, custom_tag,
-          learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
+    learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
     if (!title || !title.trim()) return res.status(400).json({ error: 'Course Title is required' });
     if (!subject || !subject.trim()) return res.status(400).json({ error: 'Subject is required' });
@@ -1176,8 +1204,8 @@ router.post('/courses', async (req, res) => {
         learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, 'draft', $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *
     `, [id, title, subject, description, parseInt(duration_weeks) || 12, grade, board, thumbnail_url, req.user.id, custom_tag,
-        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days]);
-    
+      learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days]);
+
     await logAudit(req.user.id, 'TEACHER_COURSE_CREATED', 'course', id, { title });
     res.status(201).json({ message: 'Course draft created successfully', course: result.rows[0] });
   } catch (err) {
@@ -1188,7 +1216,7 @@ router.post('/courses', async (req, res) => {
 router.put('/courses/:id', async (req, res) => {
   const { id } = req.params;
   const { title, subject, description, duration_weeks, grade, board, thumbnail_url, custom_tag,
-          learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
+    learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days } = req.body;
   try {
     const courseCheck = await db.query('SELECT status, created_by FROM courses WHERE id = $1', [id]);
     if (!courseCheck.rows.length) return res.status(404).json({ error: 'Course not found' });
@@ -1232,8 +1260,8 @@ router.put('/courses/:id', async (req, res) => {
         updated_at = NOW()
       WHERE id = $15 RETURNING *
     `, [title, subject, description, duration_weeks ? parseInt(duration_weeks) : null, grade, board, thumbnail_url, custom_tag,
-        learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days, id]);
-    
+      learning_duration, objective, learning_outcome, language_instruction, daily_class_duration, assessment_days, id]);
+
     await logAudit(req.user.id, 'TEACHER_COURSE_UPDATED', 'course', id, {});
     res.json({ message: 'Course updated and reset to draft', course: result.rows[0] });
   } catch (err) {

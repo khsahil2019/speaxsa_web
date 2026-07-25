@@ -50,9 +50,40 @@ window.togglePasswordVisibility = function(inputId, triggerEl) {
   });
 
   // Sidebar toggle
-  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-  });
+  document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
+
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    if (!sidebar) return;
+
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      sidebar.classList.toggle('show');
+      sidebar.classList.remove('collapsed');
+
+      let backdrop = document.getElementById('sidebarBackdrop');
+      if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'sidebarBackdrop';
+        backdrop.className = 'sidebar-backdrop';
+        document.body.appendChild(backdrop);
+        backdrop.addEventListener('click', () => {
+          sidebar.classList.remove('show');
+          backdrop.classList.remove('show');
+        });
+      }
+      if (sidebar.classList.contains('show')) {
+        backdrop.classList.add('show');
+      } else {
+        backdrop.classList.remove('show');
+      }
+    } else {
+      sidebar.classList.toggle('collapsed');
+      if (mainContent) mainContent.classList.toggle('expanded');
+    }
+  }
+  window.toggleSidebar = toggleSidebar;
 
   // Logout
   document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);

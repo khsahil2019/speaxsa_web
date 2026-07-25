@@ -466,7 +466,8 @@
 
       <!-- Top Header -->
       <header class="top-header">
-        <div class="header-left">
+        <div class="header-left d-flex align-items-center gap-2">
+          <button class="btn btn-icon sidebar-toggle-btn me-2" id="sidebarToggleBtn" onclick="toggleSidebar()" style="background:transparent; border:none; color:var(--text-muted); font-size:1.1rem; padding:4px 8px; cursor:pointer;" title="Toggle Sidebar"><i class="fas fa-bars"></i></button>
           <span class="header-page-title" id="headerTitle">Overview</span>
         </div>
         <div class="header-right">
@@ -480,7 +481,7 @@
           <button class="btn-link-child" onclick="openModal('linkModal')">
             <i class="fa-solid fa-plus"></i> Link Child
           </button>
-          <img class="header-avatar" id="headerAvatar" src="" style="object-fit: cover;" title="Logged in as Parent"
+          <img class="header-avatar" id="headerAvatar" src="" style="object-fit: cover; cursor: pointer;" title="Go to Profile" onclick="switchPage('profile')"
             alt="Parent Avatar">
         </div>
       </header>
@@ -1506,6 +1507,39 @@
   <script src="/utils-autosave.js"></script>
   <script>
     const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const mainContent = document.querySelector('.main-content');
+      if (!sidebar) return;
+
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        sidebar.classList.toggle('show');
+        sidebar.classList.remove('collapsed');
+
+        let backdrop = document.getElementById('sidebarBackdrop');
+        if (!backdrop) {
+          backdrop = document.createElement('div');
+          backdrop.id = 'sidebarBackdrop';
+          backdrop.className = 'sidebar-backdrop';
+          document.body.appendChild(backdrop);
+          backdrop.addEventListener('click', () => {
+            sidebar.classList.remove('show');
+            backdrop.classList.remove('show');
+          });
+        }
+        if (sidebar.classList.contains('show')) {
+          backdrop.classList.add('show');
+        } else {
+          backdrop.classList.remove('show');
+        }
+      } else {
+        sidebar.classList.toggle('collapsed');
+        if (mainContent) mainContent.classList.toggle('expanded');
+      }
+    }
+    window.toggleSidebar = toggleSidebar;
 
     // Helper to scale database 0-100 scores down to 0-10
     function scaleMetric(num) {

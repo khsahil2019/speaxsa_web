@@ -1211,6 +1211,37 @@ router.delete('/live-classes/:id', async (req, res) => {
   }
 });
 
+// ── GET /api/admin/financial-overview ────────────────────────
+router.get('/financial-overview', async (req, res) => {
+  try {
+    const [revenueRes, walletRes, payoutsRes, ledgerRes] = await Promise.all([
+      db.query("SELECT COALESCE(SUM(amount), 0) as total_turnover, COUNT(*) as total_payments FROM payments WHERE status IN ('completed', 'captured', 'Success')"),
+      db.query("SELECT COALESCE(SUM(balance), 0) as total_teacher_balances, COALESCE(SUM(total_earnings), 0) as total_teacher_earnings FROM teacher_wallet"),
+      db.query("SELECT COALESCE(SUM(amount), 0) as total_payouts_processed FROM teacher_payouts WHERE status = 'completed'"),
+      db.query("SELECT l.*, u.name as teacher_name FROM teacher_wallet_ledger l LEFT JOIN users u ON u.id = l.teacher_id ORDER BY l.created_at DESC LIMIT 50")
+    ]);
+
+    const totalTurnover = parseFloat(revenueRes.rows[0].total_turnover || 0);
+    const totalPaymentsCount = parseInt(revenueRes.rows[0].total_payments || 0);
+    const teacherBalances = parseFloat(walletRes.rows[0].total_teacher_balances || 0);
+    const teacherEarnings = parseFloat(walletRes.rows[0].total_teacher_earnings || 0);
+    const totalPayouts = parseFloat(payoutsRes.rows[0].total_payouts_processed || 0);
+    const platformNetMargin = Math.max(0, totalTurnover - totalPayouts);
+
+    res.json({
+      totalTurnover,
+      totalPaymentsCount,
+      teacherBalances,
+      teacherEarnings,
+      totalPayouts,
+      platformNetMargin,
+      recentLedger: ledgerRes.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Payment Management ────────────────────────────────────────
 router.get('/payments', async (req, res) => {
   try {
@@ -2491,33 +2522,37 @@ router.get('/recycle-bin', async (req, res) => {
   }
 });
 
-router.post('/recycle-bin/:id/approve', async (req, res) => {
+router.post('/recycle-bin/:id/purge', async (req, res) => {
   const { id } = req.params;
+  const client = await db.getClient();
   try {
-    const rbRes = await db.query('SELECT * FROM recycle_bin WHERE id = $1', [id]);
-    if (!rbRes.rows.length) return res.status(404).json({ error: 'Recycle bin item not found' });
+    const rbRes = await client.query('SELECT * FROM recycle_bin WHERE id = $1', [id]);
+    if (!rbRes.rows.length) {
+      client.release();
+      return res.status(404).json({ error: 'Recycle bin item not found' });
+    }
     const item = rbRes.rows[0];
 
-    await db.query('BEGIN');
+    await client.query('BEGIN');
 
     if (item.item_type === 'batch') {
-      await db.query('DELETE FROM batch_students WHERE batch_id = $1', [item.item_id]);
-      await db.query('DELETE FROM live_classes WHERE batch_id = $1', [item.item_id]);
-      await db.query('DELETE FROM assignments WHERE batch_id = $1', [item.item_id]);
-      await db.query('DELETE FROM batches WHERE id = $1', [item.item_id]);
+      await client.query('DELETE FROM batch_students WHERE batch_id = $1', [item.item_id]);
+      await client.query('DELETE FROM live_classes WHERE batch_id = $1', [item.item_id]);
+      await client.query('DELETE FROM assignments WHERE batch_id = $1', [item.item_id]);
+      await client.query('DELETE FROM batches WHERE id = $1', [item.item_id]);
     } else if (item.item_type === 'assignment') {
-      await db.query('DELETE FROM assignment_submissions WHERE assignment_id = $1', [item.item_id]);
-      await db.query('DELETE FROM assignments WHERE id = $1', [item.item_id]);
+      await client.query('DELETE FROM assignment_submissions WHERE assignment_id = $1', [item.item_id]);
+      await client.query('DELETE FROM assignments WHERE id = $1', [item.item_id]);
     } else if (item.item_type === 'live_class') {
-      await db.query('DELETE FROM live_classes WHERE id = $1', [item.item_id]);
+      await client.query('DELETE FROM live_classes WHERE id = $1', [item.item_id]);
     } else if (item.item_type === 'study_material' || item.item_type === 'notes') {
-      await db.query('DELETE FROM study_materials WHERE id = $1', [item.item_id]);
+      await client.query('DELETE FROM study_materials WHERE id = $1', [item.item_id]);
     } else if (item.item_type === 'course') {
-      await db.query('DELETE FROM courses WHERE id = $1', [item.item_id]);
+      await client.query('DELETE FROM courses WHERE id = $1', [item.item_id]);
     }
 
-    await db.query("UPDATE recycle_bin SET status = 'approved_deleted', processed_at = NOW(), processed_by = $1 WHERE id = $2", [req.user.id, id]);
-    await db.query('COMMIT');
+    await client.query("UPDATE recycle_bin SET status = 'approved_deleted', processed_at = NOW(), processed_by = $1 WHERE id = $2", [req.user.id, id]);
+    await client.query('COMMIT');
 
     await logAudit(req.user.id, 'PURGE_ITEM_APPROVED', item.item_type, item.item_id, { item_name: item.item_name });
     res.json({ message: `Item (${item.item_name}) has been permanently purged from the database.` });

@@ -1,428 +1,543 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SPEAXA — Student Portal</title>
   <link rel="icon" type="image/png" href="/logo.png">
   <meta name="robots" content="noindex">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="student.css?v=2.0.5">
 </head>
+
 <body>
-<div id="authScreen" class="auth-screen">
-  <div class="row g-0 w-100 min-vh-100">
-    <!-- Left Visual Panel -->
-    <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between auth-visual-panel">
-      <div class="visual-brand">
-        <img src="/logo.png" alt="Speaxa Logo" class="visual-logo">
-        <span class="visual-brand-text">Speaxa</span>
-      </div>
-      <div class="visual-content">
-        <span class="badge visual-badge">Student Portal</span>
-        <h1 class="visual-title">Learn from the Best, <span class="text-gold">Achieve Your Dreams</span></h1>
-        <p class="visual-subtitle">Access your live classrooms, view daily assignments, track your attendance, and monitor your academic performance all in one place.</p>
-        
-        <div class="visual-features mt-5">
-          <div class="d-flex align-items-center gap-3 mb-4">
-            <div class="feature-icon"><i class="fas fa-video"></i></div>
-            <div>
-              <h5 class="feature-title mb-0">Live Interactive Batches</h5>
-              <p class="feature-desc mb-0">Connect with teachers in live interactive classrooms.</p>
-            </div>
-          </div>
-          <div class="d-flex align-items-center gap-3 mb-4">
-            <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
-            <div>
-              <h5 class="feature-title mb-0">Performance Reports</h5>
-              <p class="feature-desc mb-0">Understand your strengths and weaknesses with detailed metrics.</p>
-            </div>
-          </div>
-          <div class="d-flex align-items-center gap-3">
-            <div class="feature-icon"><i class="fas fa-book-open"></i></div>
-            <div>
-              <h5 class="feature-title mb-0">Recordings & Study Material</h5>
-              <p class="feature-desc mb-0">Access past recorded sessions and rich resources on the go.</p>
-            </div>
-          </div>
+  <div id="authScreen" class="auth-screen">
+    <div class="row g-0 w-100 min-vh-100">
+      <!-- Left Visual Panel -->
+      <div class="col-lg-6 d-none d-lg-flex flex-column justify-content-between auth-visual-panel">
+        <div class="visual-brand">
+          <img src="/logo.png" alt="Speaxa Logo" class="visual-logo">
+          <span class="visual-brand-text">Speaxa</span>
         </div>
-      </div>
-      <div class="visual-footer">
-        <p class="mb-0">© 2026 SPEAXA EdTech. All rights reserved.</p>
-      </div>
-    </div>
-    
-    <!-- Right Form Panel -->
-    <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
-      <div class="auth-card">
-        <div class="auth-brand">
-          <img src="/logo.png" alt="Speaxa Logo" class="auth-logo-premium mb-2">
-          <h2>Speaxa</h2>
-          <p class="text-uppercase font-semibold text-primary" style="font-size:0.75rem; letter-spacing:1px; margin-bottom:0;">Student Portal</p>
-        </div>
+        <div class="visual-content">
+          <span class="badge visual-badge">Student Portal</span>
+          <h1 class="visual-title">Learn from the Best, <span class="text-gold">Achieve Your Dreams</span></h1>
+          <p class="visual-subtitle">Access your live classrooms, view daily assignments, track your attendance, and
+            monitor your academic performance all in one place.</p>
 
-        <div class="portal-toggle-container mb-4">
-          <a href="/student" class="portal-toggle-btn active" id="toggleStudent">
-            <i class="fas fa-graduation-cap"></i> Student
-          </a>
-          <a href="/teacher" class="portal-toggle-btn" id="toggleTeacher">
-            <i class="fas fa-chalkboard-teacher"></i> Teacher
-          </a>
+          <div class="visual-features mt-5">
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="feature-icon"><i class="fas fa-video"></i></div>
+              <div>
+                <h5 class="feature-title mb-0">Live Interactive Batches</h5>
+                <p class="feature-desc mb-0">Connect with teachers in live interactive classrooms.</p>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+              <div>
+                <h5 class="feature-title mb-0">Performance Reports</h5>
+                <p class="feature-desc mb-0">Understand your strengths and weaknesses with detailed metrics.</p>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <div class="feature-icon"><i class="fas fa-book-open"></i></div>
+              <div>
+                <h5 class="feature-title mb-0">Recordings & Study Material</h5>
+                <p class="feature-desc mb-0">Access past recorded sessions and rich resources on the go.</p>
+              </div>
+            </div>
+          </div>
         </div>
+        <div class="visual-footer">
+          <p class="mb-0">© 2026 SPEAXA EdTech. All rights reserved.</p>
+        </div>
+      </div>
 
-        <div class="auth-tabs">
-          <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
-          <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
-        </div>
-        <!-- Login -->
-        <div id="loginSection">
-          <div class="btn-group w-100 mb-3 p-1 rounded-3" style="background: rgba(13,122,109,0.06); border: 1px solid rgba(13,122,109,0.15);">
-            <button type="button" class="btn btn-sm fw-bold active-login-mode" id="btnModePassword" onclick="switchLoginMode('password')" style="border-radius: 6px; font-size: 0.85rem; padding: 6px 12px; background: #0d7a6d; color: white;">
-              <i class="fas fa-key me-1"></i> Email & Password
+      <!-- Right Form Panel -->
+      <div class="col-lg-6 d-flex align-items-center justify-content-center auth-form-panel">
+        <div class="auth-card">
+          <div class="auth-brand">
+            <img src="/logo.png" alt="Speaxa Logo" class="auth-logo-premium mb-2">
+            <h2>Speaxa</h2>
+            <p class="text-uppercase font-semibold text-primary"
+              style="font-size:0.75rem; letter-spacing:1px; margin-bottom:0;">Student Portal</p>
+          </div>
+
+          <div class="portal-toggle-container mb-4">
+            <a href="/student" class="portal-toggle-btn active" id="toggleStudent">
+              <i class="fas fa-graduation-cap"></i> Student
+            </a>
+            <a href="/teacher" class="portal-toggle-btn" id="toggleTeacher">
+              <i class="fas fa-chalkboard-teacher"></i> Teacher
+            </a>
+          </div>
+
+          <div class="auth-tabs">
+            <button type="button" class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Login</button>
+            <button type="button" class="auth-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
+          </div>
+          <!-- Login -->
+          <div id="loginSection">
+            <div class="btn-group w-100 mb-3 p-1 rounded-3"
+              style="background: rgba(13,122,109,0.06); border: 1px solid rgba(13,122,109,0.15);">
+              <button type="button" class="btn btn-sm fw-bold active-login-mode" id="btnModePassword"
+                onclick="switchLoginMode('password')"
+                style="border-radius: 6px; font-size: 0.85rem; padding: 6px 12px; background: #0d7a6d; color: white;">
+                <i class="fas fa-key me-1"></i> Email & Password
+              </button>
+              <button type="button" class="btn btn-sm fw-bold text-muted" id="btnModeOtp"
+                onclick="switchLoginMode('otp')"
+                style="border-radius: 6px; font-size: 0.85rem; padding: 6px 12px; background: transparent; color: #64748b;">
+                <i class="fas fa-mobile-alt me-1"></i> Mobile SMS OTP
+              </button>
+            </div>
+
+            <!-- Email & Password Form -->
+            <div id="loginPassForm">
+              <div class="mb-3">
+                <label class="spx-label">Email Address</label>
+                <div class="input-group">
+                  <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
+                  <input class="form-control spx-input" id="loginEmail" type="email" placeholder="your@email.com">
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="spx-label">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
+                  <input class="form-control spx-input" id="loginPassword" type="password" placeholder="••••••••">
+                  <button class="btn btn-outline-secondary px-3" type="button"
+                    onclick="togglePasswordVisibility('loginPassword', this)"
+                    style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+                </div>
+              </div>
+              <div class="mb-3 d-flex align-items-center justify-content-between">
+                <div class="form-check">
+                  <input class="form-check-input spx-checkbox" type="checkbox" id="rememberMe">
+                  <label class="form-check-label text-muted small" for="rememberMe"
+                    style="cursor:pointer; user-select:none;">Remember Me</label>
+                </div>
+                <a href="#" onclick="switchTab('forgot')" class="text-primary small text-decoration-none"
+                  style="font-weight: 500;">Forgot Password?</a>
+              </div>
+              <button type="button" class="btn btn-spx w-100 mt-2 fw-bold" id="btnLogin" onclick="doLogin()">
+                <i class="fas fa-sign-in-alt me-1"></i> Login with Password
+              </button>
+            </div>
+
+            <!-- Mobile SMS OTP Form -->
+            <div id="loginOtpForm" class="d-none">
+              <div id="loginOtpStep1">
+                <div class="mb-3">
+                  <label class="spx-label">Registered Mobile Number</label>
+                  <div class="input-group">
+                    <span class="input-group-text spx-input-prefix"><i class="fas fa-phone"></i></span>
+                    <input class="form-control spx-input" id="otpPhone" type="tel" placeholder="+91 99999 99999">
+                  </div>
+                  <small class="text-muted d-block mt-1" style="font-size: 0.78rem;">We will send a 6-digit SMS OTP to
+                    your mobile phone inbox.</small>
+                </div>
+                <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnSendLoginSms" onclick="sendMobileLoginOTP()">
+                  <i class="fas fa-paper-plane me-1"></i> Send SMS OTP
+                </button>
+              </div>
+
+              <div id="loginOtpStep2" class="d-none">
+                <div class="alert alert-info border-0 rounded-3 p-3 my-2 text-start shadow-sm"
+                  style="background: rgba(13, 122, 109, 0.08); border-left: 4px solid #0d7a6d !important;">
+                  <div class="small text-muted mb-1">OTP sent to mobile number:</div>
+                  <div class="fw-bold text-dark font-monospace fs-5" id="loginPhoneDisplay">+91 Mobile</div>
+                </div>
+                <div class="mb-3 text-center">
+                  <label class="spx-label fw-bold text-dark mb-2" style="font-size:0.88rem;">Enter 6-Digit SMS OTP
+                    *</label>
+                  <div class="d-flex justify-content-center gap-2 my-2" id="sLoginOtpBoxes">
+                    <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1"
+                      pattern="\d" inputmode="numeric"
+                      style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                    <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1"
+                      pattern="\d" inputmode="numeric"
+                      style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                    <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1"
+                      pattern="\d" inputmode="numeric"
+                      style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                    <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1"
+                      pattern="\d" inputmode="numeric"
+                      style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                    <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1"
+                      pattern="\d" inputmode="numeric"
+                      style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                    <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1"
+                      pattern="\d" inputmode="numeric"
+                      style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                  </div>
+                  <input type="hidden" id="loginOtpVal">
+                </div>
+                <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnVerifyLoginSms" onclick="verifyMobileLoginOTP()">
+                  <i class="fas fa-check-circle me-1"></i> Verify OTP & Login
+                </button>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                  <button type="button" class="btn btn-link text-muted p-0 small text-decoration-none"
+                    onclick="cancelMobileLoginOtp()">← Change Number</button>
+                  <button type="button" class="btn btn-link text-primary p-0 small text-decoration-none fw-bold"
+                    onclick="sendMobileLoginOTP()">Resend SMS OTP</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="loginError" class="alert alert-danger d-none small mt-3"></div>
+          </div>
+          <!-- Register -->
+          <div id="registerSection" class="d-none">
+            <div class="row g-2">
+              <div class="col-12"><input class="form-control spx-input" id="regName" placeholder="Full Name *"></div>
+              <div class="col-12"><input class="form-control spx-input" id="regEmail" type="email"
+                  placeholder="Email *"></div>
+              <div class="col-6"><input class="form-control spx-input" id="regPhone" placeholder="Phone *"></div>
+              <div class="col-6">
+                <div class="input-group">
+                  <input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *">
+                  <button class="btn btn-outline-secondary px-2.5" type="button"
+                    onclick="togglePasswordVisibility('regPassword', this)"
+                    style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+                </div>
+              </div>
+              <div class="col-6">
+                <select class="form-select spx-input" id="regGrade">
+                  <option value="">Select Grade</option>
+                  <option>Class 6</option>
+                  <option>Class 7</option>
+                  <option>Class 8</option>
+                  <option>Class 9</option>
+                  <option>Class 10</option>
+                  <option>Class 11</option>
+                  <option>Class 12</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <select class="form-select spx-input" id="regBoard">
+                  <option value="">Board</option>
+                  <option>CBSE</option>
+                  <option>ICSE</option>
+                  <option>State</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <input class="form-control spx-input" id="regReferralCode" placeholder="Referral Code (Optional)">
+              </div>
+              <div class="col-12 mt-1">
+                <div class="form-check text-start">
+                  <input class="form-check-input spx-checkbox" type="checkbox" id="regTermsAgree" required>
+                  <label class="form-check-label text-muted small" for="regTermsAgree"
+                    style="cursor:pointer; user-select:none; font-size:0.75rem;">
+                    I agree to SPEAXA's <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank"
+                      class="text-primary text-decoration-none">Terms of Service</a>, <a
+                      href="/policies/privacy-policy.html" target="_blank"
+                      class="text-primary text-decoration-none">Privacy Policy</a>, <a
+                      href="/policies/community-guidelines-code-of-conduct-digital-classroom-behaviour-policy.html"
+                      target="_blank" class="text-primary text-decoration-none">Digital Classroom Code of Conduct</a> &
+                    <a href="/policies/artificial-intelligence-ai-academic-integrity-responsible-technology-policy.html"
+                      target="_blank" class="text-primary text-decoration-none">AI & Academic Integrity Policy</a>.
+                  </label>
+                </div>
+              </div>
+              <div class="col-12">
+                <div id="registerError" class="alert alert-danger d-none small"></div>
+                <button class="btn btn-spx w-100 fw-bold" id="btnRegister" onclick="doRegister()"><i
+                    class="fas fa-user-plus me-1"></i> Create Account</button>
+              </div>
+            </div>
+          </div>
+          <!-- Registration OTP Screen (Web Dedicated Screen) -->
+          <div id="registerOtpSection" class="d-none">
+            <div class="text-center mb-2">
+              <div class="badge bg-light text-primary border px-3 py-1 rounded-pill d-inline-block mb-2 font-semibold"
+                style="font-size:0.8rem;">
+                <i class="fas fa-shield-alt me-1"></i> Verification Required
+              </div>
+              <h4 class="fw-bold mb-1">Verify Registration</h4>
+            </div>
+
+            <div class="alert alert-info border-0 rounded-3 p-3 my-3 text-start shadow-sm"
+              style="background: rgba(13, 122, 109, 0.08); border-left: 4px solid #0d7a6d !important;">
+              <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem; color: #08544b !important;">
+                <i class="fas fa-sms me-2" style="color: #0d7a6d;"></i> Step 1: Mobile OTP Verification
+              </div>
+              <div class="small text-muted mb-1">
+                We sent a 6-digit code to your mobile phone:
+              </div>
+              <div class="fw-bold text-dark font-monospace my-1 fs-5" id="regPhoneDisplay"
+                style="color: #0d7a6d !important;">
+                +91 Mobile Number
+              </div>
+              <small class="text-muted d-block mt-1" style="font-size: 0.78rem;">Please check your mobile phone SMS
+                inbox and enter the 6 digits below.</small>
+            </div>
+
+            <div class="mb-3 text-center">
+              <label class="spx-label fw-bold text-dark mb-2" style="font-size:0.9rem;">Enter 6-Digit SMS OTP *</label>
+              <div class="d-flex justify-content-center gap-2 my-2" id="sRegOtpBoxes">
+                <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1"
+                  pattern="\d" inputmode="numeric" data-idx="0"
+                  style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1"
+                  pattern="\d" inputmode="numeric" data-idx="1"
+                  style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1"
+                  pattern="\d" inputmode="numeric" data-idx="2"
+                  style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1"
+                  pattern="\d" inputmode="numeric" data-idx="3"
+                  style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1"
+                  pattern="\d" inputmode="numeric" data-idx="4"
+                  style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+                <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1"
+                  pattern="\d" inputmode="numeric" data-idx="5"
+                  style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
+              </div>
+              <input type="hidden" id="regEmailOtpInput">
+            </div>
+            <div id="registerOtpError" class="alert alert-danger d-none small"></div>
+            <button class="btn btn-spx w-100 mb-2 py-2 fs-6 fw-bold" id="btnVerifyRegOtp" onclick="submitRegisterOtp()">
+              <i class="fas fa-check-circle me-1"></i> Verify OTP & Complete Registration
             </button>
-            <button type="button" class="btn btn-sm fw-bold text-muted" id="btnModeOtp" onclick="switchLoginMode('otp')" style="border-radius: 6px; font-size: 0.85rem; padding: 6px 12px; background: transparent;">
-              <i class="fas fa-mobile-alt me-1"></i> Mobile SMS OTP
-            </button>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <button class="btn btn-link text-muted p-0 small text-decoration-none" onclick="cancelRegisterOtp()">←
+                Edit Details</button>
+              <button class="btn btn-link text-primary p-0 small text-decoration-none fw-bold"
+                onclick="resendRegisterOtp()">Resend SMS OTP</button>
+            </div>
           </div>
-
-          <!-- Email & Password Form -->
-          <div id="loginPassForm">
-            <div class="mb-3">
-              <label class="spx-label">Email Address</label>
+          <!-- Forgot -->
+          <div id="forgotSection" class="d-none">
+            <div class="text-center mb-3">
+              <h5 class="fw-bold text-dark mb-1">Reset Password</h5>
+              <p class="text-muted small mb-0">Enter your registered email address to receive a 6-digit reset code.</p>
+            </div>
+            <div class="mb-3 text-start">
+              <label class="spx-label">Registered Email Address</label>
               <div class="input-group">
                 <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
-                <input class="form-control spx-input" id="loginEmail" type="email" placeholder="your@email.com">
+                <input class="form-control spx-input" id="forgotEmail" type="email" placeholder="your@email.com">
               </div>
             </div>
-            <div class="mb-3">
-              <label class="spx-label">Password</label>
-              <div class="input-group">
-                <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
-                <input class="form-control spx-input" id="loginPassword" type="password" placeholder="••••••••">
-                <button class="btn btn-outline-secondary px-3" type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
-              </div>
-            </div>
-            <div class="mb-3 d-flex align-items-center justify-content-between">
-              <div class="form-check">
-                <input class="form-check-input spx-checkbox" type="checkbox" id="rememberMe">
-                <label class="form-check-label text-muted small" for="rememberMe" style="cursor:pointer; user-select:none;">Remember Me</label>
-              </div>
-              <a href="#" onclick="switchTab('forgot')" class="text-primary small text-decoration-none" style="font-weight: 500;">Forgot Password?</a>
-            </div>
-            <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnLogin" onclick="doLogin()">
-              <i class="fas fa-sign-in-alt me-1"></i> Login with Password
+            <button class="btn btn-spx w-100 fw-bold" id="btnSendForgot" onclick="sendForgotOTP()">
+              <i class="fas fa-paper-plane me-1"></i> Send Reset OTP
             </button>
-          </div>
 
-          <!-- Mobile SMS OTP Form -->
-          <div id="loginOtpForm" class="d-none">
-            <div id="loginOtpStep1">
+            <div class="mt-3 d-none p-3 rounded-3 border bg-light text-start shadow-sm" id="resetSection">
+              <div class="mb-2">
+                <label class="spx-label fw-bold text-dark small">Enter 6-Digit OTP Code</label>
+                <input class="form-control spx-input font-monospace text-center fw-bold" id="resetOTP"
+                  placeholder="123456" maxlength="6">
+              </div>
               <div class="mb-3">
-                <label class="spx-label">Registered Mobile Number</label>
+                <label class="spx-label fw-bold text-dark small">New Password</label>
                 <div class="input-group">
-                  <span class="input-group-text spx-input-prefix"><i class="fas fa-phone"></i></span>
-                  <input class="form-control spx-input" id="otpPhone" type="tel" placeholder="+91 99999 99999">
+                  <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
+                  <input class="form-control spx-input" id="resetPass" type="password" placeholder="••••••••">
+                  <button class="btn btn-outline-secondary px-3" type="button"
+                    onclick="togglePasswordVisibility('resetPass', this)"
+                    style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
                 </div>
-                <small class="text-muted d-block mt-1" style="font-size: 0.78rem;">We will send a 6-digit SMS OTP to your mobile phone inbox.</small>
               </div>
-              <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnSendLoginSms" onclick="sendMobileLoginOTP()">
-                <i class="fas fa-paper-plane me-1"></i> Send SMS OTP
+              <button class="btn btn-spx w-100 fw-bold" id="btnDoReset" onclick="doReset()">
+                <i class="fas fa-key me-1"></i> Reset Password
               </button>
             </div>
-
-            <div id="loginOtpStep2" class="d-none">
-              <div class="alert alert-info border-0 rounded-3 p-3 my-2 text-start shadow-sm" style="background: rgba(13, 122, 109, 0.08); border-left: 4px solid #0d7a6d !important;">
-                <div class="small text-muted mb-1">OTP sent to mobile number:</div>
-                <div class="fw-bold text-dark font-monospace fs-5" id="loginPhoneDisplay">+91 Mobile</div>
-              </div>
-              <div class="mb-3 text-center">
-                <label class="spx-label fw-bold text-dark mb-2" style="font-size:0.88rem;">Enter 6-Digit SMS OTP *</label>
-                <div class="d-flex justify-content-center gap-2 my-2" id="sLoginOtpBoxes">
-                  <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
-                  <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
-                  <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
-                  <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
-                  <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
-                  <input type="text" class="form-control text-center font-monospace fw-bold s-l-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 50px; font-size: 1.25rem; border-radius: 8px; border: 2px solid #cbd5e1; background: #f8fafc;">
-                </div>
-                <input type="hidden" id="loginOtpVal">
-              </div>
-              <button class="btn btn-spx w-100 mt-2 fw-bold" id="btnVerifyLoginSms" onclick="verifyMobileLoginOTP()">
-                <i class="fas fa-check-circle me-1"></i> Verify OTP & Login
-              </button>
-              <div class="d-flex justify-content-between align-items-center mt-3">
-                <button type="button" class="btn btn-link text-muted p-0 small text-decoration-none" onclick="cancelMobileLoginOtp()">← Change Number</button>
-                <button type="button" class="btn btn-link text-primary p-0 small text-decoration-none fw-bold" onclick="sendMobileLoginOTP()">Resend SMS OTP</button>
-              </div>
-            </div>
+            <a href="#" onclick="switchTab('login')"
+              class="d-block text-center mt-3 text-primary small text-decoration-none fw-semibold">← Back to Login</a>
           </div>
-
-          <div id="loginError" class="alert alert-danger d-none small mt-3"></div>
-        </div>
-        <!-- Register -->
-        <div id="registerSection" class="d-none">
-          <div class="row g-2">
-            <div class="col-12"><input class="form-control spx-input" id="regName" placeholder="Full Name *"></div>
-            <div class="col-12"><input class="form-control spx-input" id="regEmail" type="email" placeholder="Email *"></div>
-            <div class="col-6"><input class="form-control spx-input" id="regPhone" placeholder="Phone *"></div>
-            <div class="col-6">
-              <div class="input-group">
-                <input class="form-control spx-input" id="regPassword" type="password" placeholder="Password *">
-                <button class="btn btn-outline-secondary px-2.5" type="button" onclick="togglePasswordVisibility('regPassword', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
-              </div>
-            </div>
-            <div class="col-6">
-              <select class="form-select spx-input" id="regGrade">
-                <option value="">Select Grade</option>
-                <option>Class 6</option>
-                <option>Class 7</option>
-                <option>Class 8</option>
-                <option>Class 9</option>
-                <option>Class 10</option>
-                <option>Class 11</option>
-                <option>Class 12</option>
-              </select>
-            </div>
-            <div class="col-6">
-              <select class="form-select spx-input" id="regBoard">
-                <option value="">Board</option><option>CBSE</option><option>ICSE</option><option>State</option>
-              </select>
-            </div>
-            <div class="col-12">
-              <input class="form-control spx-input" id="regReferralCode" placeholder="Referral Code (Optional)">
-            </div>
-            <div class="col-12 mt-1">
-              <div class="form-check text-start">
-                <input class="form-check-input spx-checkbox" type="checkbox" id="regTermsAgree" required>
-                <label class="form-check-label text-muted small" for="regTermsAgree" style="cursor:pointer; user-select:none; font-size:0.75rem;">
-                  I agree to SPEAXA's <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank" class="text-primary text-decoration-none">Terms of Service</a>, <a href="/policies/privacy-policy.html" target="_blank" class="text-primary text-decoration-none">Privacy Policy</a>, <a href="/policies/community-guidelines-code-of-conduct-digital-classroom-behaviour-policy.html" target="_blank" class="text-primary text-decoration-none">Digital Classroom Code of Conduct</a> & <a href="/policies/artificial-intelligence-ai-academic-integrity-responsible-technology-policy.html" target="_blank" class="text-primary text-decoration-none">AI & Academic Integrity Policy</a>.
-                </label>
-              </div>
-            </div>
-            <div class="col-12">
-              <div id="registerError" class="alert alert-danger d-none small"></div>
-              <button class="btn btn-spx w-100 fw-bold" id="btnRegister" onclick="doRegister()"><i class="fas fa-user-plus me-1"></i> Create Account</button>
-            </div>
-          </div>
-        </div>
-        <!-- Registration OTP Screen (Web Dedicated Screen) -->
-        <div id="registerOtpSection" class="d-none">
-          <div class="text-center mb-2">
-            <div class="badge bg-light text-primary border px-3 py-1 rounded-pill d-inline-block mb-2 font-semibold" style="font-size:0.8rem;">
-              <i class="fas fa-shield-alt me-1"></i> Verification Required
-            </div>
-            <h4 class="fw-bold mb-1">Verify Registration</h4>
-          </div>
-
-          <div class="alert alert-info border-0 rounded-3 p-3 my-3 text-start shadow-sm" style="background: rgba(13, 122, 109, 0.08); border-left: 4px solid #0d7a6d !important;">
-            <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem; color: #08544b !important;">
-              <i class="fas fa-sms me-2" style="color: #0d7a6d;"></i> Step 1: Mobile OTP Verification
-            </div>
-            <div class="small text-muted mb-1">
-              We sent a 6-digit code to your mobile phone:
-            </div>
-            <div class="fw-bold text-dark font-monospace my-1 fs-5" id="regPhoneDisplay" style="color: #0d7a6d !important;">
-              +91 Mobile Number
-            </div>
-            <small class="text-muted d-block mt-1" style="font-size: 0.78rem;">Please check your mobile phone SMS inbox and enter the 6 digits below.</small>
-          </div>
-
-          <div class="mb-3 text-center">
-            <label class="spx-label fw-bold text-dark mb-2" style="font-size:0.9rem;">Enter 6-Digit SMS OTP *</label>
-            <div class="d-flex justify-content-center gap-2 my-2" id="sRegOtpBoxes">
-              <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="0" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
-              <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="1" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
-              <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="2" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
-              <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="3" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
-              <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="4" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
-              <input type="text" class="form-control text-center font-monospace fw-bold s-otp-box" maxlength="1" pattern="\d" inputmode="numeric" data-idx="5" style="width: 44px; height: 52px; font-size: 1.3rem; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc;">
-            </div>
-            <input type="hidden" id="regEmailOtpInput">
-          </div>
-          <div id="registerOtpError" class="alert alert-danger d-none small"></div>
-          <button class="btn btn-spx w-100 mb-2 py-2 fs-6 fw-bold" id="btnVerifyRegOtp" onclick="submitRegisterOtp()">
-            <i class="fas fa-check-circle me-1"></i> Verify OTP & Complete Registration
-          </button>
-          <div class="d-flex justify-content-between align-items-center mt-3">
-            <button class="btn btn-link text-muted p-0 small text-decoration-none" onclick="cancelRegisterOtp()">← Edit Details</button>
-            <button class="btn btn-link text-primary p-0 small text-decoration-none fw-bold" onclick="resendRegisterOtp()">Resend SMS OTP</button>
-          </div>
-        </div>
-        <!-- Forgot -->
-        <div id="forgotSection" class="d-none">
-          <div class="text-center mb-3">
-            <h5 class="fw-bold text-dark mb-1">Reset Password</h5>
-            <p class="text-muted small mb-0">Enter your registered email address to receive a 6-digit reset code.</p>
-          </div>
-          <div class="mb-3 text-start">
-            <label class="spx-label">Registered Email Address</label>
-            <div class="input-group">
-              <span class="input-group-text spx-input-prefix"><i class="fas fa-envelope"></i></span>
-              <input class="form-control spx-input" id="forgotEmail" type="email" placeholder="your@email.com">
-            </div>
-          </div>
-          <button class="btn btn-spx w-100 fw-bold" id="btnSendForgot" onclick="sendForgotOTP()">
-            <i class="fas fa-paper-plane me-1"></i> Send Reset OTP
-          </button>
-          
-          <div class="mt-3 d-none p-3 rounded-3 border bg-light text-start shadow-sm" id="resetSection">
-            <div class="mb-2">
-              <label class="spx-label fw-bold text-dark small">Enter 6-Digit OTP Code</label>
-              <input class="form-control spx-input font-monospace text-center fw-bold" id="resetOTP" placeholder="123456" maxlength="6">
-            </div>
-            <div class="mb-3">
-              <label class="spx-label fw-bold text-dark small">New Password</label>
-              <div class="input-group">
-                <span class="input-group-text spx-input-prefix"><i class="fas fa-lock"></i></span>
-                <input class="form-control spx-input" id="resetPass" type="password" placeholder="••••••••">
-                <button class="btn btn-outline-secondary px-3" type="button" onclick="togglePasswordVisibility('resetPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
-              </div>
-            </div>
-            <button class="btn btn-spx w-100 fw-bold" id="btnDoReset" onclick="doReset()">
-              <i class="fas fa-key me-1"></i> Reset Password
-            </button>
-          </div>
-          <a href="#" onclick="switchTab('login')" class="d-block text-center mt-3 text-primary small text-decoration-none fw-semibold">← Back to Login</a>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<div id="studentApp" class="d-none">
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-brand"><div class="brand-icon"><img src="/logo.png" alt="SPEAXA Logo"></div><span>SPEAXA</span></div>
-    <div class="sidebar-user">
-      <img id="avatarSidebar" src="" class="sidebar-avatar" alt="">
-      <div><div class="sidebar-user-name" id="nameSidebar">Student</div><div class="sidebar-user-role" id="codeSidebar"></div></div>
-    </div>
-    <nav class="sidebar-nav">
-      <a class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Dashboard</span></a>
-      <a class="nav-item" data-page="courses"><i class="fas fa-search"></i><span>Browse Courses</span></a>
-      <a class="nav-item" data-page="mybatches"><i class="fas fa-layer-group"></i><span>My Batches</span></a>
-      <a class="nav-item" data-page="upcoming-classes"><i class="fas fa-calendar-alt"></i><span>Upcoming Classes</span></a>
-      <a class="nav-item" data-page="attendance"><i class="fas fa-calendar-check"></i><span>Attendance</span></a>
-      <a class="nav-item" data-page="assignments"><i class="fas fa-tasks"></i><span>Assignments</span></a>
-      <a class="nav-item" data-page="recordings"><i class="fas fa-play-circle"></i><span>Recordings</span></a>
-      <a class="nav-item" data-page="reports"><i class="fas fa-chart-bar"></i><span>My Reports</span></a>
-      <a class="nav-item" data-page="notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
-      <a class="nav-item" data-page="profile"><i class="fas fa-user"></i><span>Profile</span></a>
-      <a class="nav-item" data-page="parents"><i class="fas fa-users-cog"></i><span>Parent Access</span></a>
-    </nav>
-    <button class="sidebar-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
-  </div>
-  <div class="main-content">
-    <div class="top-header">
-      <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-icon" onclick="document.getElementById('sidebar').classList.toggle('show')"><i class="fas fa-bars"></i></button>
-        <div class="page-title" id="pageTitle">Dashboard</div>
+  <div id="studentApp" class="d-none">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon"><img src="/logo.png" alt="SPEAXA Logo"></div><span>SPEAXA</span>
       </div>
-      <img id="avatarHeader" src="" class="header-avatar" alt="">
-    </div>
-    <!-- Top Email Verification Banner -->
-    <div id="emailVerificationBanner" class="alert alert-warning border-0 rounded-0 m-0 py-2.5 px-4 d-none d-flex align-items-center justify-content-between shadow-sm" style="background: #fff8e6; border-bottom: 1px solid #ffe58f !important; color: #8c6b00;">
-      <div class="d-flex align-items-center gap-2">
-        <i class="fas fa-exclamation-triangle text-warning fs-5"></i>
+      <div class="sidebar-user">
+        <img id="avatarSidebar" src="" class="sidebar-avatar" alt="">
         <div>
-          <strong>Email Verification Pending:</strong> Please verify your email address (<span id="bannerEmailDisplay"></span>) to access full features.
+          <div class="sidebar-user-name" id="nameSidebar">Student</div>
+          <div class="sidebar-user-role" id="codeSidebar"></div>
         </div>
       </div>
-      <button class="btn btn-sm btn-warning font-semibold text-dark rounded-2" id="btnBannerResendEmail" onclick="resendEmailVerificationLink(this)">
-        Resend Verification Link
-      </button>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Dashboard</span></a>
+        <a class="nav-item" data-page="courses"><i class="fas fa-search"></i><span>Browse Courses</span></a>
+        <a class="nav-item" data-page="mybatches"><i class="fas fa-layer-group"></i><span>My Batches</span></a>
+        <a class="nav-item" data-page="upcoming-classes"><i class="fas fa-calendar-alt"></i><span>Upcoming
+            Classes</span></a>
+        <a class="nav-item" data-page="attendance"><i class="fas fa-calendar-check"></i><span>Attendance</span></a>
+        <a class="nav-item" data-page="assignments"><i class="fas fa-tasks"></i><span>Assignments</span></a>
+        <a class="nav-item" data-page="recordings"><i class="fas fa-play-circle"></i><span>Recordings</span></a>
+        <a class="nav-item" data-page="reports"><i class="fas fa-chart-bar"></i><span>My Reports</span></a>
+        <a class="nav-item" data-page="notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
+        <a class="nav-item" data-page="payments"><i class="fas fa-receipt"></i><span>Payments & Receipts</span></a>
+        <a class="nav-item" data-page="profile"><i class="fas fa-user"></i><span>Profile</span></a>
+        <a class="nav-item" data-page="parents"><i class="fas fa-users-cog"></i><span>Parent Access</span></a>
+      </nav>
+      <button class="sidebar-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
     </div>
-    <div class="page-content" id="pageContent"></div>
-  </div>
-</div>
-
-<!-- Course Details & Enrollment Modal -->
-<div class="modal fade" id="courseDetailsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content" style="background:#ffffff; border:1px solid var(--border); color:var(--text-primary); border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
-      <div class="modal-header" style="border-bottom:1px solid var(--border); padding:16px 24px;">
-        <h5 class="modal-title fw-bold" id="courseDetailsTitle">Course Details & Batches</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter:invert(0.5);"></button>
-      </div>
-      <div class="modal-body" style="padding:24px;" id="courseDetailsBody">
-        <!-- Dynamic content will be loaded here -->
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Batch Details & Materials Modal -->
-<div class="modal fade" id="batchDetailsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content" style="background:#ffffff; border:1px solid var(--border); color:var(--text-primary); border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
-      <div class="modal-header" style="border-bottom:1px solid var(--border); padding:16px 24px;">
-        <h5 class="modal-title fw-bold" id="batchDetailsTitle">Batch Details & Study Materials</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter:invert(0.5);"></button>
-      </div>
-      <div class="modal-body" style="padding:24px;" id="batchDetailsBody">
-        <!-- Dynamic content will be loaded here -->
-      </div>
-    </div>
-</div>
-
-<!-- Batch Demo Video Player Modal -->
-<div class="modal fade" id="batchDemoVideoModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false" style="z-index: 1085 !important; background: rgba(0, 0, 0, 0.65);">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#f8fafc; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
-      <div class="modal-header" style="border-bottom:1px solid #334155; padding:16px 24px;">
-        <h5 class="modal-title fw-bold text-white" id="batchDemoVideoTitle">Batch Demo Video</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopBatchDemoVideo()" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-0 bg-black text-center d-flex align-items-center justify-content-center" style="min-height:350px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; overflow: hidden;">
-        <video id="batchDemoVideoPlayer" class="w-100" style="max-height: 500px; outline: none; display: none;" controls controlsList="nodownload">
-          Your browser does not support the video tag.
-        </video>
-        <iframe id="batchDemoVideoIframe" class="w-100" style="height: 450px; border: none; display: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-      </div>
-    </div>
-  </div>
-<!-- Email Verification Dialog Modal -->
-<div class="modal fade" id="emailVerificationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border-radius:16px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
-      <div class="modal-header border-0 pb-0 justify-content-center text-center position-relative pt-4">
-        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
-        <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle" style="width:64px; height:64px;">
-          <i class="fas fa-envelope-open-text fa-2x"></i>
+    <div class="main-content">
+      <div class="top-header">
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn btn-icon" id="sidebarToggleBtn" onclick="toggleSidebar()"><i
+              class="fas fa-bars"></i></button>
+          <div class="page-title" id="pageTitle">Dashboard</div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <div class="notification-bell position-relative" id="studentNotifBell" onclick="navigateTo('notifications')"
+            style="cursor: pointer; font-size: 1.15rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--bg-hover);"
+            title="Notifications">
+            <i class="fas fa-bell"></i>
+            <span class="badge rounded-pill bg-danger position-absolute" id="studentNotifBadge"
+              style="top: -4px; right: -4px; font-size: 0.625rem; padding: 3px 5px; display: none;">0</span>
+          </div>
+          <img id="avatarHeader" src="" class="header-avatar" alt="" onclick="navigateTo('profile')"
+            style="cursor: pointer;" title="Go to Profile">
         </div>
       </div>
-      <div class="modal-body text-center px-4 py-3">
-        <h4 class="fw-bold text-dark mb-2">Please Verify Your Email Address</h4>
-        <p class="text-muted small mb-3">
-          We have sent a verification link to your email address:
-          <br><strong class="text-dark font-monospace" id="modalEmailDisplay">user@email.com</strong>
-        </p>
-        <div class="alert alert-info border-0 rounded-3 p-3 text-start small mb-3" style="background: rgba(13,122,109,0.08); color:#08544b;">
-          <i class="fas fa-info-circle me-1" style="color:#0d7a6d;"></i> Please check your inbox (or spam folder) and click the link to verify your email ID.
+      <!-- Top Email Verification Banner -->
+      <div id="emailVerificationBanner"
+        class="alert alert-warning border-0 rounded-0 m-0 py-2.5 px-4 d-none d-flex align-items-center justify-content-between shadow-sm"
+        style="background: #fff8e6; border-bottom: 1px solid #ffe58f !important; color: #8c6b00;">
+        <div class="d-flex align-items-center gap-2">
+          <i class="fas fa-exclamation-triangle text-warning fs-5"></i>
+          <div>
+            <strong>Email Verification Pending:</strong> Please verify your email address (<span
+              id="bannerEmailDisplay"></span>) to access full features.
+          </div>
         </div>
-      </div>
-      <div class="modal-footer border-0 pt-0 px-4 pb-4 d-flex justify-content-between align-items-center">
-        <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">I'll do it later</button>
-        <button type="button" class="btn btn-spx rounded-pill px-4 fw-bold" id="btnModalResendEmail" onclick="resendEmailVerificationLink(this)">
+        <button class="btn btn-sm btn-warning font-semibold text-dark rounded-2" id="btnBannerResendEmail"
+          onclick="resendEmailVerificationLink(this)">
           Resend Verification Link
         </button>
       </div>
+      <div class="page-content" id="pageContent"></div>
     </div>
   </div>
-</div>
 
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
-  <div id="toastEl" class="toast"><div class="toast-body d-flex align-items-center gap-2"><i class="fas" id="toastIcon"></i><span id="toastMsg"></span></div></div>
-</div>
+  <!-- Course Details & Enrollment Modal -->
+  <div class="modal fade" id="courseDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content"
+        style="background:#ffffff; border:1px solid var(--border); color:var(--text-primary); border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
+        <div class="modal-header" style="border-bottom:1px solid var(--border); padding:16px 24px;">
+          <h5 class="modal-title fw-bold" id="courseDetailsTitle">Course Details & Batches</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+            style="filter:invert(0.5);"></button>
+        </div>
+        <div class="modal-body" style="padding:24px;" id="courseDetailsBody">
+          <!-- Dynamic content will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </div>
 
-<!-- Firebase compatibility SDKs & notifications launcher -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
-<script src="/firebase-notifications.js"></script>
+  <!-- Batch Details & Materials Modal -->
+  <div class="modal fade" id="batchDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content"
+        style="background:#ffffff; border:1px solid var(--border); color:var(--text-primary); border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
+        <div class="modal-header" style="border-bottom:1px solid var(--border); padding:16px 24px;">
+          <h5 class="modal-title fw-bold" id="batchDetailsTitle">Batch Details & Study Materials</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+            style="filter:invert(0.5);"></button>
+        </div>
+        <div class="modal-body" style="padding:24px;" id="batchDetailsBody">
+          <!-- Dynamic content will be loaded here -->
+        </div>
+      </div>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/utils-formatting.js"></script>
-<script src="/utils-autosave.js"></script>
-<script src="student.js?v=2.0.4"></script>
+    <!-- Batch Demo Video Player Modal -->
+    <div class="modal fade" id="batchDemoVideoModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false"
+      style="z-index: 1085 !important; background: rgba(0, 0, 0, 0.65);">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content"
+          style="background:#0f172a; border:1px solid #334155; color:#f8fafc; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+          <div class="modal-header" style="border-bottom:1px solid #334155; padding:16px 24px;">
+            <h5 class="modal-title fw-bold text-white" id="batchDemoVideoTitle">Batch Demo Video</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+              onclick="stopBatchDemoVideo()" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-0 bg-black text-center d-flex align-items-center justify-content-center"
+            style="min-height:350px; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; overflow: hidden;">
+            <video id="batchDemoVideoPlayer" class="w-100" style="max-height: 500px; outline: none; display: none;"
+              controls controlsList="nodownload">
+              Your browser does not support the video tag.
+            </video>
+            <iframe id="batchDemoVideoIframe" class="w-100" style="height: 450px; border: none; display: none;"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen></iframe>
+          </div>
+        </div>
+      </div>
+      <!-- Email Verification Dialog Modal -->
+      <div class="modal fade" id="emailVerificationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+        data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content" style="border-radius:16px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header border-0 pb-0 justify-content-center text-center position-relative pt-4">
+              <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"
+                aria-label="Close"></button>
+              <div
+                class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle"
+                style="width:64px; height:64px;">
+                <i class="fas fa-envelope-open-text fa-2x"></i>
+              </div>
+            </div>
+            <div class="modal-body text-center px-4 py-3">
+              <h4 class="fw-bold text-dark mb-2">Please Verify Your Email Address</h4>
+              <p class="text-muted small mb-3">
+                We have sent a verification link to your email address:
+                <br><strong class="text-dark font-monospace" id="modalEmailDisplay">user@email.com</strong>
+              </p>
+              <div class="alert alert-info border-0 rounded-3 p-3 text-start small mb-3"
+                style="background: rgba(13,122,109,0.08); color:#08544b;">
+                <i class="fas fa-info-circle me-1" style="color:#0d7a6d;"></i> Please check your inbox (or spam folder)
+                and click the link to verify your email ID.
+              </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4 d-flex justify-content-between align-items-center">
+              <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">I'll do
+                it later</button>
+              <button type="button" class="btn btn-spx rounded-pill px-4 fw-bold" id="btnModalResendEmail"
+                onclick="resendEmailVerificationLink(this)">
+                Resend Verification Link
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+        <div id="toastEl" class="toast">
+          <div class="toast-body d-flex align-items-center gap-2"><i class="fas" id="toastIcon"></i><span
+              id="toastMsg"></span></div>
+        </div>
+      </div>
+
+      <!-- Firebase compatibility SDKs & notifications launcher -->
+      <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
+      <script src="/firebase-notifications.js"></script>
+
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+      <script src="/utils-formatting.js"></script>
+      <script src="/utils-autosave.js"></script>
+      <script src="student.js?v=2.0.4"></script>
 </body>
+
 </html>

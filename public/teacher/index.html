@@ -302,7 +302,7 @@
       <a class="nav-item" data-page="earnings"><i class="fas fa-wallet"></i><span>Earnings</span></a>
       <a class="nav-item" data-page="referrals"><i class="fas fa-gift"></i><span>Referrals & Rewards</span></a>
       <a class="nav-item" data-page="level"><i class="fas fa-medal"></i><span>My Level</span></a>
-      <a class="nav-item" data-page="certificates"><i class="fas fa-award"></i><span>Certificates</span></a>
+      <a class="nav-item" data-page="notifications"><i class="fas fa-bell"></i><span>Notifications</span></a>
       <a class="nav-item" data-page="profile"><i class="fas fa-user"></i><span>Profile</span></a>
     </nav>
     <button class="sidebar-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
@@ -310,15 +310,15 @@
   <div class="main-content">
     <div class="top-header">
       <div class="d-flex align-items-center gap-3">
-        <button class="btn btn-icon" onclick="document.getElementById('sidebar').classList.toggle('show')"><i class="fas fa-bars"></i></button>
+        <button class="btn btn-icon" id="sidebarToggleBtn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
         <div class="page-title" id="pageTitle">Dashboard</div>
       </div>
       <div class="d-flex align-items-center gap-3">
-        <div class="notification-bell position-relative" id="notifBell" onclick="navigateTo('chats')" style="cursor: pointer; font-size: 1.15rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--bg-hover); margin-right: 8px;">
+        <div class="notification-bell position-relative" id="notifBell" onclick="navigateTo('notifications')" style="cursor: pointer; font-size: 1.15rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--bg-hover); margin-right: 8px;" title="Notifications">
           <i class="fas fa-bell"></i>
           <span class="badge rounded-pill bg-danger position-absolute" id="teacherNotifBadge" style="top: -4px; right: -4px; font-size: 0.625rem; padding: 3px 5px; display: none;">0</span>
         </div>
-        <img id="avatarHeader" src="" class="header-avatar" alt="">
+        <img id="avatarHeader" src="" class="header-avatar" alt="" onclick="navigateTo('profile')" style="cursor: pointer;" title="Go to Profile">
       </div>
     </div>
     <!-- Top Email Verification Banner -->

@@ -260,13 +260,23 @@ router.post('/login', async (req, res) => {
 
     const identifier = email.trim();
     const isEmailInput = identifier.includes('@');
-    let queryText = isEmailInput
-      ? 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)'
-      : 'SELECT * FROM users WHERE phone = $1 OR mobile_number = $1';
-    const queryParams = [identifier];
+    const digits = identifier.replace(/\D/g, '');
+    const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
+    const formattedPhone = '+91' + clean10;
+
+    let queryText;
+    let queryParams;
+
+    if (isEmailInput) {
+      queryText = 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)';
+      queryParams = [identifier];
+    } else {
+      queryText = 'SELECT * FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2 OR phone = $3 OR mobile_number = $3 OR student_code = $1';
+      queryParams = [identifier, clean10, formattedPhone];
+    }
 
     if (role) {
-      queryText += ' AND role = $2';
+      queryText += isEmailInput ? ' AND role = $2' : ' AND role = $4';
       queryParams.push(role);
     }
 
@@ -291,7 +301,7 @@ router.post('/login', async (req, res) => {
     }
     if (user.is_disabled) return res.status(403).json({ error: 'Account disabled. Contact admin.' });
 
-    // Enforce Email Verification for non-admin accounts except parents entering panel
+    // Auto-send verification email if pending without blocking login into panel
     if (user.role !== 'admin' && user.role !== 'parent') {
       if (!user.email_verified) {
         try {
@@ -299,12 +309,6 @@ router.post('/login', async (req, res) => {
         } catch (e) {
           console.error('[Auth Login] Failed to auto-send email verification link:', e.message);
         }
-
-        return res.status(403).json({
-          error: 'Please verify your email address before logging in. A verification link has been sent to your email inbox.',
-          status: 'email_not_verified',
-          email: user.email
-        });
       }
     }
 
@@ -1155,10 +1159,18 @@ router.post('/verify-mobile-otp', async (req, res) => {
       return res.status(400).json({ error: `Invalid verification code. (Attempts remaining: ${5 - newAttempts})` });
     }
 
-    await db.query('BEGIN');
-    await db.query('UPDATE otp_tokens SET used = true WHERE id = $1', [otpToken.id]);
-    await db.query('UPDATE users SET phone_verified = true, updated_at = NOW() WHERE id = $1', [user.id]);
-    await db.query('COMMIT');
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE otp_tokens SET used = true WHERE id = $1', [otpToken.id]);
+      await client.query('UPDATE users SET phone_verified = true, updated_at = NOW() WHERE id = $1', [user.id]);
+      await client.query('COMMIT');
+    } catch (tErr) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw tErr;
+    } finally {
+      client.release();
+    }
 
     // Automatically send email verification link
     try {
@@ -1255,10 +1267,18 @@ router.get('/verify-email', async (req, res) => {
 
     const { user_id, id: tokenId } = tokenRes.rows[0];
 
-    await db.query('BEGIN');
-    await db.query('UPDATE email_verification_tokens SET used = true WHERE id = $1', [tokenId]);
-    await db.query('UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = $1', [user_id]);
-    await db.query('COMMIT');
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE email_verification_tokens SET used = true WHERE id = $1', [tokenId]);
+      await client.query('UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = $1', [user_id]);
+      await client.query('COMMIT');
+    } catch (tErr) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw tErr;
+    } finally {
+      client.release();
+    }
 
     res.send(`
       <div style="font-family: sans-serif; text-align: center; padding: 50px; max-width: 500px; margin: 50px auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">

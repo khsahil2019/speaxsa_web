@@ -288,7 +288,7 @@ router.post('/:classId/polls', async (req, res) => {
     await db.query(`
       INSERT INTO class_polls (id, class_id, teacher_id, question, options, correct_option)
       VALUES ($1,$2,$3,$4,$5,$6)
-    `, [id, classId, req.user.id, question, JSON.stringify(options), correct_option]);
+    `, [id, classId, req.user.id, question, JSON.stringify(options), correct_option !== undefined ? parseInt(correct_option) : 0]);
     res.status(201).json({ message: 'Poll created', id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -305,10 +305,61 @@ router.get('/:classId/polls', async (req, res) => {
   }
 });
 
+router.get('/polls/:pollId/results', async (req, res) => {
+  const { pollId } = req.params;
+  try {
+    const pollRes = await db.query('SELECT * FROM class_polls WHERE id = $1', [pollId]);
+    if (!pollRes.rows.length) return res.status(404).json({ error: 'Poll not found' });
+    const poll = pollRes.rows[0];
+
+    const responsesRes = await db.query(`
+      SELECT pr.*, u.name as student_name, u.email as student_email
+      FROM class_poll_responses pr
+      JOIN users u ON u.id = pr.student_id
+      WHERE pr.poll_id = $1
+      ORDER BY pr.responded_at ASC
+    `, [pollId]);
+
+    const options = typeof poll.options === 'string' ? JSON.parse(poll.options) : poll.options;
+    const correctOption = parseInt(poll.correct_option || 0);
+
+    const counts = options.map((_, idx) => {
+      return responsesRes.rows.filter(r => parseInt(r.selected_option) === idx).length;
+    });
+
+    res.json({
+      pollId: poll.id,
+      question: poll.question,
+      options,
+      correctOption,
+      counts,
+      totalResponses: responsesRes.rows.length,
+      responses: responsesRes.rows.map(r => ({
+        studentId: r.student_id,
+        studentName: r.student_name,
+        studentEmail: r.student_email,
+        selectedOption: parseInt(r.selected_option),
+        isCorrect: parseInt(r.selected_option) === correctOption
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/polls/:pollId/respond', async (req, res) => {
   const { pollId } = req.params;
   const { selected_option } = req.body;
   try {
+    // Enforce one-time answer submission only
+    const existing = await db.query(
+      'SELECT id FROM class_poll_responses WHERE poll_id = $1 AND student_id = $2',
+      [pollId, req.user.id]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'You have already submitted your response for this poll. Re-submission is not allowed.' });
+    }
+
     await db.query(`
       INSERT INTO class_poll_responses (poll_id, student_id, selected_option)
       VALUES ($1,$2,$3)

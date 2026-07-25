@@ -84,18 +84,35 @@ io.on('connection', (socket) => {
   // ── Whiteboard draw point ──────────────────────
   socket.on('board-draw', ({ classId, x, y, start, color, size }) => {
     if (!classId) return;
+    if (user.role !== 'teacher' && user.role !== 'admin') return;
     socket.to(classId).emit('board-draw', { x, y, start, color, size, name: user.name });
   });
 
   // ── Whiteboard clear ───────────────────────────
   socket.on('board-clear', ({ classId }) => {
     if (!classId) return;
+    if (user.role !== 'teacher' && user.role !== 'admin') return;
     socket.to(classId).emit('board-clear');
+  });
+
+  // ── Whiteboard text input ────────────────────────
+  socket.on('board-text', ({ classId, text, x, y, color, size }) => {
+    if (!classId || !text) return;
+    if (user.role !== 'teacher' && user.role !== 'admin') return;
+    socket.to(classId).emit('board-text', { text, x, y, color, size, name: user.name });
+  });
+
+  // ── Whiteboard shape drawing ─────────────────────
+  socket.on('board-shape', (data) => {
+    if (!data || !data.classId || !data.shape) return;
+    if (user.role !== 'teacher' && user.role !== 'admin') return;
+    socket.to(data.classId).emit('board-shape', { ...data, name: user.name });
   });
 
   // ── Whiteboard toggle (teacher auto-shares board to students) ─
   socket.on('board-toggle', ({ classId, isVisible }) => {
     if (!classId) return;
+    if (user.role !== 'teacher' && user.role !== 'admin') return;
     socket.to(classId).emit('board-toggle', { isVisible, name: user.name });
   });
 

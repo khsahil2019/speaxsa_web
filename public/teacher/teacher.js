@@ -4,7 +4,7 @@ const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy5
 let token = localStorage.getItem('teacher_token') || sessionStorage.getItem('teacher_token');
 let user = JSON.parse(localStorage.getItem('teacher_user') || sessionStorage.getItem('teacher_user') || 'null');
 
-window.togglePasswordVisibility = function(inputId, triggerEl) {
+window.togglePasswordVisibility = function (inputId, triggerEl) {
   const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
   if (!input) return;
   const isPassword = input.type === 'password';
@@ -34,8 +34,8 @@ function showToast(msg, type = 'success') {
     alert((type === 'error' || type === 'danger') ? toFriendlyError(msg) : msg);
     return;
   }
-  const icons = { success:'fa-check-circle', error:'fa-exclamation-circle', warning:'fa-exclamation-triangle', info:'fa-info-circle' };
-  const colors = { success:'#10B981', error:'#EF4444', warning:'#F59E0B', info:'#3CBDB0' };
+  const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+  const colors = { success: '#10B981', error: '#EF4444', warning: '#F59E0B', info: '#3CBDB0' };
   document.getElementById('toastMsg').textContent = (type === 'error' || type === 'danger') ? toFriendlyError(msg) : msg;
   document.getElementById('toastIcon').className = `fas ${icons[type] || 'fa-info-circle'}`;
   document.getElementById('toastIcon').style.color = colors[type] || '#3CBDB0';
@@ -46,7 +46,7 @@ async function parseFetchResponse(res) {
   if (res.status === 401) { logout(); throw new Error('Session expired'); }
   const contentType = res.headers.get("content-type");
   const isJson = contentType && contentType.indexOf("application/json") !== -1;
-  
+
   if (!res.ok) {
     if (res.status === 413) {
       throw new Error("File is too large. Maximum permitted size is 20MB for documents and 200MB for video proofs.");
@@ -59,7 +59,7 @@ async function parseFetchResponse(res) {
       throw new Error(`Server error (${res.status}): ${text.slice(0, 100)}...`);
     }
   }
-  
+
   if (isJson) {
     return res.json();
   } else {
@@ -78,12 +78,12 @@ async function api(path, opts = {}) {
 
 // ── Auth ──────────────────────────────────────────────────────
 function switchTab(tab) {
-  ['login','register','forgot'].forEach(t => {
+  ['login', 'register', 'forgot'].forEach(t => {
     document.getElementById(`${t}Section`).classList.add('d-none');
-    document.getElementById(`tab${t.charAt(0).toUpperCase()+t.slice(1)}`)?.classList.remove('active');
+    document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`)?.classList.remove('active');
   });
   document.getElementById(`${tab}Section`).classList.remove('d-none');
-  document.getElementById(`tab${tab.charAt(0).toUpperCase()+tab.slice(1)}`)?.classList.add('active');
+  document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`)?.classList.add('active');
 }
 
 function switchLoginMode(mode) {
@@ -215,9 +215,18 @@ async function doLogin() {
   const emailVal = emailEl ? emailEl.value.trim() : '';
   const passVal = passEl ? passEl.value.trim() : '';
 
-  if (!emailVal || (window.isValidEmail && !window.isValidEmail(emailVal))) {
+  if (!emailVal) {
     if (errEl) {
-      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter a valid registered email address (e.g. name@example.com).';
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter your registered email or mobile number.';
+      errEl.classList.remove('d-none');
+    }
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  if (emailVal.includes('@') && window.isValidEmail && !window.isValidEmail(emailVal)) {
+    if (errEl) {
+      errEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Please enter a valid email address.';
       errEl.classList.remove('d-none');
     }
     if (emailEl) emailEl.focus();
@@ -250,7 +259,7 @@ async function doLogin() {
       throw new Error(data.error || 'Login failed. Please check your credentials.');
     }
     saveAuth(data.token, data.user);
-  } catch(e) {
+  } catch (e) {
     if (errEl) {
       errEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> ${toFriendlyError(e.message)}`;
       errEl.classList.remove('d-none');
@@ -264,7 +273,7 @@ async function doRegister() {
   const isOtpStep = document.getElementById('registerOtpSection') && !document.getElementById('registerOtpSection').classList.contains('d-none');
   const targetBtn = isOtpStep ? document.getElementById('btnVerifyRegOtp') : document.getElementById('btnRegister');
   if (window.setButtonLoading) window.setButtonLoading(targetBtn, true, isOtpStep ? 'Verifying OTP...' : 'Creating Account...');
-  
+
   const errEl = document.getElementById('registerError');
   if (errEl) {
     errEl.classList.add('d-none');
@@ -436,7 +445,7 @@ async function doRegister() {
       showToast('Registration successful! Please login.', 'success');
       switchTab('login');
     }
-  } catch(e) {
+  } catch (e) {
     if (document.getElementById('registerOtpSection') && !document.getElementById('registerOtpSection').classList.contains('d-none')) {
       const otpErr = document.getElementById('registerOtpError');
       if (otpErr) {
@@ -522,7 +531,7 @@ async function sendForgotOTP() {
     }
     const resetSec = document.getElementById('resetSection');
     if (resetSec) resetSec.classList.remove('d-none');
-  } catch(e) {
+  } catch (e) {
     showToast(toFriendlyError(e.message), 'error');
   } finally {
     if (window.setButtonLoading) window.setButtonLoading(btn, false);
@@ -557,7 +566,7 @@ async function doReset() {
     if (document.getElementById('forgotEmail')) document.getElementById('forgotEmail').value = '';
 
     switchTab('login');
-  } catch(e) {
+  } catch (e) {
     showToast(toFriendlyError(e.message), 'error');
   } finally {
     if (window.setButtonLoading) window.setButtonLoading(btn, false);
@@ -900,22 +909,55 @@ function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
   const titles = {
-    home:'Dashboard', sop:'SOP Setup', courses:'My Courses', batches:'My Batches',
-    liveclasses:'Live Classes', assignments:'Assignments', observations:'Observations',
-    attendance:'Attendance', notes:'Study Materials', chats:'Parent Connect', earnings:'Earnings',
-    referrals:'Referrals & Rewards',
-    level:'My Level', certificates:'My Certificates', profile:'Profile'
+    home: 'Dashboard', sop: 'SOP Setup', courses: 'My Courses', batches: 'My Batches',
+    liveclasses: 'Live Classes', assignments: 'Assignments', observations: 'Observations',
+    attendance: 'Attendance', notes: 'Study Materials', chats: 'Parent Connect', earnings: 'Earnings',
+    referrals: 'Referrals & Rewards',
+    level: 'My Level', certificates: 'My Certificates', profile: 'Profile', notifications: 'Notifications'
   };
   document.getElementById('pageTitle').textContent = titles[page] || page;
   const renders = {
-    home:renderHome, sop:renderSop, courses:renderCourses, batches:renderBatches,
-    liveclasses:renderLiveClasses, assignments:renderAssignments, observations:renderObservations,
-    attendance:renderAttendance, notes:renderNotes, chats:renderChats, earnings:renderEarnings,
-    referrals:renderReferrals,
-    level:renderLevel, certificates:renderCertificates, profile:renderProfile
+    home: renderHome, sop: renderSop, courses: renderCourses, batches: renderBatches,
+    liveclasses: renderLiveClasses, assignments: renderAssignments, observations: renderObservations,
+    attendance: renderAttendance, notes: renderNotes, chats: renderChats, earnings: renderEarnings,
+    referrals: renderReferrals,
+    level: renderLevel, certificates: renderCertificates, profile: renderProfile, notifications: renderTeacherNotificationsPage
   };
   renders[page]?.();
 }
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const mainContent = document.querySelector('.main-content');
+  if (!sidebar) return;
+
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    sidebar.classList.toggle('show');
+    sidebar.classList.remove('collapsed');
+
+    let backdrop = document.getElementById('sidebarBackdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'sidebarBackdrop';
+      backdrop.className = 'sidebar-backdrop';
+      document.body.appendChild(backdrop);
+      backdrop.addEventListener('click', () => {
+        sidebar.classList.remove('show');
+        backdrop.classList.remove('show');
+      });
+    }
+    if (sidebar.classList.contains('show')) {
+      backdrop.classList.add('show');
+    } else {
+      backdrop.classList.remove('show');
+    }
+  } else {
+    sidebar.classList.toggle('collapsed');
+    if (mainContent) mainContent.classList.toggle('expanded');
+  }
+}
+window.toggleSidebar = toggleSidebar;
 
 function togglePlatformGuide() {
   const content = document.getElementById('platformGuideContent');
@@ -934,7 +976,7 @@ function loading() {
   document.getElementById('pageContent').innerHTML = `<div class="d-flex align-items-center justify-content-center py-5"><div class="spinner-border text-primary"></div></div>`;
 }
 
-function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
 
 // ── Dashboard ─────────────────────────────────────────────────
 async function renderHome() {
@@ -1022,7 +1064,7 @@ async function renderHome() {
                 <div style="width:44px;height:44px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📚</div>
                 <div class="flex-grow-1">
                   <div class="fw-semibold text-dark small">${b.batch_name}</div>
-                  <div class="text-muted" style="font-size:.75rem">${b.course_title || ''} • ${(b.days_of_week||[]).join(', ')} at ${b.start_time}</div>
+                  <div class="text-muted" style="font-size:.75rem">${b.course_title || ''} • ${(b.days_of_week || []).join(', ')} at ${b.start_time}</div>
                 </div>
                 <div>
                   <span class="badge bg-primary rounded-pill">${b.enrolled_count || 0} students</span>
@@ -1042,7 +1084,7 @@ async function renderHome() {
         </div>
       </div>
     `;
-  } catch(e) {
+  } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
 }
@@ -1050,9 +1092,76 @@ async function renderHome() {
 async function dismissTeacherNotification(notifId) {
   try {
     await api(`/teacher/notifications/${notifId}/read`, { method: 'POST' });
-    renderHome();
+    showToast('Notification marked as read');
+    if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
+    
+    // Refresh page depending on active tab
+    const activeNav = document.querySelector('.nav-item.active');
+    if (activeNav && activeNav.dataset.page === 'notifications') {
+      renderTeacherNotificationsPage();
+    } else {
+      renderHome();
+    }
   } catch (err) {
     showToast(err.message, 'error');
+  }
+}
+
+async function renderTeacherNotificationsPage() {
+  loading();
+  try {
+    const notifs = await api('/teacher/notifications');
+    const activeNotifs = notifs.filter(n => n.is_active && !n.is_read);
+
+    document.getElementById('pageContent').innerHTML = `
+      <div class="spx-card">
+        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+          <div>
+            <h5 class="fw-bold mb-1" style="color:var(--text-primary);"><i class="fas fa-bell text-primary me-2"></i>Notifications & System Alerts</h5>
+            <p class="text-muted small mb-0">Stay updated on course approvals, SOP updates, class schedule alerts, and platform announcements.</p>
+          </div>
+          ${activeNotifs.length ? `
+            <button class="btn btn-sm btn-outline-primary fw-semibold px-3 py-1.5" onclick="markAllTeacherNotifsRead()">
+              <i class="fas fa-check-double me-1"></i>Mark All Read
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="notifications-list">
+          ${notifs.length ? notifs.map(n => `
+            <div class="p-3 mb-3 rounded-3 d-flex align-items-start justify-content-between gap-3" style="background:${n.is_read ? 'rgba(0,0,0,0.02)' : 'rgba(60,189,176,0.08)'}; border:1px solid ${n.type === 'warning' ? '#fde68a' : 'var(--border)'}; transition:all 0.2s;">
+              <div class="d-flex align-items-start gap-3">
+                <div style="width:40px;height:40px;border-radius:10px;background:${n.type === 'warning' ? 'rgba(245, 158, 11, 0.15)' : n.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(60, 189, 176, 0.15)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i class="fas ${n.type === 'warning' ? 'fa-exclamation-triangle text-warning' : n.type === 'success' ? 'fa-check-circle text-success' : 'fa-bell text-primary'}" style="font-size:1.1rem;"></i>
+                </div>
+                <div>
+                  <div class="fw-bold text-dark mb-1" style="font-size:0.92rem;">${n.title}</div>
+                  <div class="text-secondary small mb-2" style="line-height:1.5;">${n.message}</div>
+                  <div class="text-muted" style="font-size:0.75rem;"><i class="far fa-clock me-1"></i>${fmtDate(n.created_at)}</div>
+                </div>
+              </div>
+              <button onclick="dismissTeacherNotification('${n.id}')" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" title="Dismiss Notification">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          `).join('') : '<p class="text-muted text-center py-5">No notifications found.</p>'}
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+async function markAllTeacherNotifsRead() {
+  try {
+    const notifs = await api('/teacher/notifications');
+    await Promise.all(notifs.map(n => api(`/teacher/notifications/${n.id}/read`, { method: 'POST' })));
+    showToast('All notifications marked as read');
+    if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
+    renderTeacherNotificationsPage();
+  } catch(e) {
+    showToast(e.message, 'error');
   }
 }
 
@@ -1075,12 +1184,12 @@ async function renderSop() {
 
     const allKycUploaded = docAadhaar && docPan && docResume && docDegree;
     const allSopUploaded = sop && sop.camera_sop_url && sop.lighting_sop_url && sop.audio_sop_url && sop.internet_proof_url && sop.demo_teaching_url;
-    
+
     // Validate Profile and Availability fields
-    const allProfileFilled = profile.subject_expertise && profile.languages && 
-                             (profile.experience_years !== null && profile.experience_years !== undefined) &&
-                             profile.alt_email && profile.mobile_number &&
-                             docExpertise && docLanguage && docExperience;
+    const allProfileFilled = profile.subject_expertise && profile.languages &&
+      (profile.experience_years !== null && profile.experience_years !== undefined) &&
+      profile.alt_email && profile.mobile_number &&
+      docExpertise && docLanguage && docExperience;
 
     let parsedAvail = [];
     try {
@@ -1093,7 +1202,7 @@ async function renderSop() {
         parsedAvail = [{ days: ['Legacy Days'], startTime: '00:00', endTime: '00:00', timezone: 'IST', rawText: sop.availability }];
       }
     }
-    
+
     // Initialize temporary slot builder list if not already done
     if (!window._tempAvailabilitySlots && !window._sopTabSetExplicitly) {
       window._tempAvailabilitySlots = Array.isArray(parsedAvail) ? JSON.parse(JSON.stringify(parsedAvail)) : [];
@@ -1111,8 +1220,8 @@ async function renderSop() {
     }
 
     const statusBadge = (status) => {
-      const cls = { approved:'bg-success', pending:'bg-warning', sop_pending:'bg-warning', rejected:'bg-danger', suspended:'bg-danger', draft:'bg-secondary' };
-      return `<span class="badge ${cls[status] || 'bg-info'}">${status ? status.toUpperCase().replace('_',' ') : 'NOT UPLOADED'}</span>`;
+      const cls = { approved: 'bg-success', pending: 'bg-warning', sop_pending: 'bg-warning', rejected: 'bg-danger', suspended: 'bg-danger', draft: 'bg-secondary' };
+      return `<span class="badge ${cls[status] || 'bg-info'}">${status ? status.toUpperCase().replace('_', ' ') : 'NOT UPLOADED'}</span>`;
     };
 
     const approvals = sop?.item_approvals || {};
@@ -1207,8 +1316,8 @@ async function renderSop() {
 
           <div class="row g-4">
             ${kycSlots.map(slot => {
-              const hasDoc = !!slot.doc;
-              return `
+        const hasDoc = !!slot.doc;
+        return `
                 <div class="col-md-6">
                   <div class="sop-upload-slot ${hasDoc ? 'uploaded' : ''} h-100 d-flex flex-column justify-content-between">
                     <div>
@@ -1238,7 +1347,7 @@ async function renderSop() {
                   </div>
                 </div>
               `;
-            }).join('')}
+      }).join('')}
           </div>
         </div>
       `;
@@ -1497,40 +1606,40 @@ async function renderSop() {
       `;
     } else if (window._sopActiveTab === 'video') {
       const sopSlots = [
-        { 
-          id: 'camera_sop', 
-          label: '1. Camera Setup Verification', 
-          desc: 'Landscape eye-level tripod framing. Face, upper body, gestures visible.', 
+        {
+          id: 'camera_sop',
+          label: '1. Camera Setup Verification',
+          desc: 'Landscape eye-level tripod framing. Face, upper body, gestures visible.',
           hint: 'Place your webcam or phone horizontally at eye level. Check that the frame includes your chest and hands so gestures are clear. Absolutely no vertical/handheld recordings.',
-          url: sop?.camera_sop_url 
+          url: sop?.camera_sop_url
         },
-        { 
-          id: 'lighting_sop', 
-          label: '2. Lighting Setup Verification', 
-          desc: 'Front-facing soft light. No backlight shadow or lens glare.', 
+        {
+          id: 'lighting_sop',
+          label: '2. Lighting Setup Verification',
+          desc: 'Front-facing soft light. No backlight shadow or lens glare.',
           hint: 'Ensure soft light (e.g. from a ring light or window) directly illuminates your face. Turn off any light sources directly behind you to prevent shadows.',
-          url: sop?.lighting_sop_url 
+          url: sop?.lighting_sop_url
         },
-        { 
-          id: 'audio_sop', 
-          label: '3. Audio Setup Verification', 
-          desc: 'Clear voice recording with a collar mic. No ambient fan or room echo.', 
+        {
+          id: 'audio_sop',
+          label: '3. Audio Setup Verification',
+          desc: 'Clear voice recording with a collar mic. No ambient fan or room echo.',
           hint: 'Use a dedicated collar/lapel microphone or wired headset mic. Turn off noisy ceiling fans or AC. Prevent echo by choosing a room with soft furnishings.',
-          url: sop?.audio_sop_url 
+          url: sop?.audio_sop_url
         },
-        { 
-          id: 'internet_proof', 
-          label: '4. Internet Speed Proof', 
-          desc: 'Speedtest screenshot / screen recording showing > 20 Mbps upload.', 
+        {
+          id: 'internet_proof',
+          label: '4. Internet Speed Proof',
+          desc: 'Speedtest screenshot / screen recording showing > 20 Mbps upload.',
           hint: 'Go to speedtest.net, run a test, and upload a screenshot showing your upload speed. Ensure it is at least 20 Mbps for high quality video feeds.',
-          url: sop?.internet_proof_url 
+          url: sop?.internet_proof_url
         },
-        { 
-          id: 'demo_teaching', 
-          label: '5. Demo Lecture Snippet', 
-          desc: 'A 2-minute snippet showing your expressive teaching style.', 
+        {
+          id: 'demo_teaching',
+          label: '5. Demo Lecture Snippet',
+          desc: 'A 2-minute snippet showing your expressive teaching style.',
           hint: 'Record yourself explaining a simple concept in 2 minutes. Focus on direct camera eye-contact, standard professional language, and interactive whiteboard pacing.',
-          url: sop?.demo_teaching_url 
+          url: sop?.demo_teaching_url
         }
       ];
 
@@ -1552,8 +1661,8 @@ async function renderSop() {
 
           <div class="sop-slots-container">
             ${sopSlots.map(slot => {
-              const hasSop = !!slot.url;
-              return `
+        const hasSop = !!slot.url;
+        return `
                 <div class="sop-upload-slot mb-3 ${hasSop ? 'uploaded' : ''}">
                   <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
                     <div>
@@ -1582,7 +1691,7 @@ async function renderSop() {
                   ${hasSop ? `<a href="${slot.url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-play"></i> View Evidence</a>` : ''}
                 </div>
               `;
-            }).join('')}
+      }).join('')}
           </div>
 
           <div class="mt-4 pt-3 border-top text-start">
@@ -1822,7 +1931,7 @@ async function renderSop() {
     // Set up auto-saves for SOP Setup tabs
     if (window._sopActiveTab === 'profile' && !isSubmitted) {
       setupAutoSave('autosave_teacher_sop_profile', [
-        'onboardSubjects', 'onboardLanguages', 'onboardExp', 'onboardQual', 
+        'onboardSubjects', 'onboardLanguages', 'onboardExp', 'onboardQual',
         'onboardAltEmail', 'onboardMobileNumber', 'onboardLinkedIn', 'onboardTwitter', 'onboardBio'
       ]);
     } else if (window._sopActiveTab === 'video' && !isSubmitted) {
@@ -1887,7 +1996,7 @@ async function saveDocLink(docType) {
     showToast(`Saving link for ${docType.toUpperCase()}...`, 'info');
     const res = await fetch(`${API}/teacher/documents/link`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
@@ -1921,7 +2030,7 @@ async function autoUploadSopVideo(input, fieldId) {
   formData.append(fieldId, file);
 
   try {
-    showToast(`Uploading ${fieldId.replace('_',' ')}... Please wait.`, 'info');
+    showToast(`Uploading ${fieldId.replace('_', ' ')}... Please wait.`, 'info');
     const res = await fetch(`${API}/teacher/sop/upload/${fieldId}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
@@ -1929,7 +2038,7 @@ async function autoUploadSopVideo(input, fieldId) {
     });
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
-    showToast(`${fieldId.replace('_',' ')} uploaded successfully!`);
+    showToast(`${fieldId.replace('_', ' ')} uploaded successfully!`);
     renderSop();
   } catch (e) {
     showToast(e.message, 'error');
@@ -1944,10 +2053,10 @@ async function saveSopLink(fieldId) {
   if (!link) return showToast('Please enter a valid link URL', 'error');
 
   try {
-    showToast(`Saving link for ${fieldId.replace('_',' ')}...`, 'info');
+    showToast(`Saving link for ${fieldId.replace('_', ' ')}...`, 'info');
     const res = await fetch(`${API}/teacher/sop/link/${fieldId}`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
@@ -1955,16 +2064,16 @@ async function saveSopLink(fieldId) {
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    showToast(`${fieldId.replace('_',' ')} link saved successfully!`);
-    
+    showToast(`${fieldId.replace('_', ' ')} link saved successfully!`);
+
     // Clear item from links autosave cache
     try {
       const key = 'autosave_teacher_sop_video_links';
       const saved = JSON.parse(localStorage.getItem(key) || '{}');
       delete saved[`link_${fieldId}`];
       localStorage.setItem(key, JSON.stringify(saved));
-    } catch {}
-    
+    } catch { }
+
     renderSop();
   } catch (e) {
     showToast(e.message, 'error');
@@ -1975,12 +2084,12 @@ function toggleSopSubmitBtn() {
   const checkboxes = document.querySelectorAll('.sop-checklist-item-checkbox');
   const submitBtn = document.getElementById('sopSubmitButton');
   if (!submitBtn) return;
-  
+
   let allChecked = true;
   checkboxes.forEach(cb => {
     if (!cb.checked) allChecked = false;
   });
-  
+
   if (allChecked) {
     submitBtn.removeAttribute('disabled');
     submitBtn.classList.remove('btn-secondary');
@@ -2016,7 +2125,7 @@ async function submitDigitalAgreement() {
   const signatureInput = document.getElementById('agreementSigInput');
   const signature = signatureInput ? signatureInput.value.trim() : '';
   const consentCb = document.getElementById('agreementConsentCheckbox');
-  
+
   if (!consentCb || !consentCb.checked) {
     return showToast('You must consent to the agreement terms', 'error');
   }
@@ -2030,12 +2139,12 @@ async function submitDigitalAgreement() {
       body: JSON.stringify({ digital_signature: signature })
     });
     showToast(data.message || 'Agreement signed successfully!');
-    
+
     // Update local user object's approval status
     user.approval_status = 'approved';
     localStorage.setItem('teacher_user', JSON.stringify(user));
     sessionStorage.setItem('teacher_user', JSON.stringify(user));
-    
+
     showApp();
     navigateTo('home');
   } catch (e) {
@@ -2230,8 +2339,8 @@ async function renderBatches() {
             <div class="spx-card">
               <h6 class="mb-4 fw-bold">My Batches</h6>
               ${batches.length ? batches.map(b => {
-                const isDeactivated = ['inactive', 'disabled', 'archived', 'suspended'].includes(b.status) || ['inactive', 'disabled', 'archived', 'suspended'].includes(b.course_status);
-                return `
+        const isDeactivated = ['inactive', 'disabled', 'archived', 'suspended'].includes(b.status) || ['inactive', 'disabled', 'archived', 'suspended'].includes(b.course_status);
+        return `
                 <div class="p-3 mb-3 rounded-3 ${isDeactivated ? 'border-danger bg-danger-subtle bg-opacity-10' : ''}" style="background:rgba(255,255,255,.01);border:1px solid ${isDeactivated ? '#ef4444' : 'var(--border)'}">
                   <div class="d-flex align-items-start gap-3">
                     <div style="width:48px;height:48px;border-radius:12px;background:var(--gradient);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📚</div>
@@ -2278,7 +2387,7 @@ async function renderBatches() {
                   </div>
                 </div>
               `;
-              }).join('') : '<p class="text-muted text-center py-4">No batches created yet.</p>'}
+      }).join('') : '<p class="text-muted text-center py-4">No batches created yet.</p>'}
             </div>
           </div>
         </div>
@@ -2372,7 +2481,7 @@ async function renderBatches() {
                   <input type="hidden" id="batchDays" required>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label">Max Capacity (Max ${maxBatchCapacity})</label>
+                  <label class="spx-label">Max Students (Max ${maxBatchCapacity})</label>
                   <input type="number" class="form-control spx-input" id="batchCapacity" value="${maxBatchCapacity}" max="${maxBatchCapacity}" oninput="updateBatchPreview()" required>
                 </div>
                 <div class="mb-3">
@@ -2382,8 +2491,9 @@ async function renderBatches() {
                 </div>
                 <div class="mb-3">
                   <label class="spx-label">Upload Course Planner / Syllabus (Any format) *</label>
-                  <input type="file" class="form-control spx-input" id="batchPlanner" required>
-                  <div class="form-text text-muted small mt-1">Select any file (PDF, Doc, Zip, etc.) detailing your batch syllabus schedule.</div>
+                  <input type="file" class="form-control spx-input" id="batchPlanner" onchange="window.handleAttachmentSelect(this, 'preview_batchPlanner')" required>
+                  <div id="preview_batchPlanner"></div>
+                  <div class="form-text text-muted small mt-1">Select any file (PDF, Doc, Zip, etc.) detailing your batch syllabus schedule. Click "Remove Attachment" if you wish to clear it.</div>
                 </div>
                 <div class="mb-3">
                   <label class="spx-label mb-0">Way of Teaching / Teaching Methodology *</label>
@@ -2396,17 +2506,11 @@ async function renderBatches() {
                   <textarea class="form-control spx-input" id="batchInstructions" rows="3" placeholder="e.g. Recommended for students with a basic understanding of quadratic equations. Must bring a notebook and laptop to classes." required></textarea>
                 </div>
                 <div class="mb-3">
-                  <label class="spx-label mb-0">Batch Demo Video *</label>
-                  <small class="text-muted d-block mb-1" style="font-size: 0.72rem; line-height: 1.2;">Provide an introductory video explaining the course layout. You can EITHER upload a video file OR paste a direct shareable link (like YouTube, Google Drive, or Loom).</small>
-                  <div class="row g-2 mt-1">
-                    <div class="col-sm-6">
-                      <label class="small text-muted mb-1" style="font-size:0.68rem; text-transform:uppercase;">Option A: Upload Video File</label>
-                      <input type="file" class="form-control spx-input" id="batchDemoVideo" accept="video/*,.mp4,.webm,.mov,.avi,.mkv,.m4v,.flv,.3gp,.wmv,.ts,.quicktime">
-                    </div>
-                    <div class="col-sm-6">
-                      <label class="small text-muted mb-1" style="font-size:0.68rem; text-transform:uppercase;">Option B: Paste Video Link URL</label>
-                      <input type="text" class="form-control spx-input" id="batchDemoVideoUrl" placeholder="e.g. https://www.youtube.com/watch?v=...">
-                    </div>
+                  <label class="spx-label mb-1">Batch Demo Video URL *</label>
+                  <small class="text-muted d-block mb-1.5" style="font-size: 0.72rem; line-height: 1.2;">Paste a direct shareable video link (e.g. YouTube, Google Drive, Loom, or MP4 URL) explaining the course layout.</small>
+                  <div class="input-group">
+                    <span class="input-group-text spx-input-prefix"><i class="fas fa-video text-primary"></i></span>
+                    <input type="text" class="form-control spx-input" id="batchDemoVideoUrl" placeholder="e.g. https://www.youtube.com/watch?v=..." required>
                   </div>
                 </div>
                 <button type="submit" class="btn btn-spx w-100">Create Batch</button>
@@ -2801,7 +2905,7 @@ function toggleDaySelector(btn) {
 
   const selectedButtons = document.querySelectorAll('#batchDaysContainer .day-selector-btn.active');
   const selectedDays = Array.from(selectedButtons).map(b => b.getAttribute('data-day'));
-  
+
   const hiddenInput = document.getElementById('batchDays');
   if (hiddenInput) {
     hiddenInput.value = selectedDays.join(', ');
@@ -2904,7 +3008,7 @@ function updateBatchPreview() {
             <i class="fas fa-calendar-alt me-2 text-success" style="width: 16px;"></i>Duration: <strong class="text-dark">${dateStr}</strong>
           </div>
           <div>
-            <i class="fas fa-users me-2 text-success" style="width: 16px;"></i>Max Capacity: <strong class="text-dark">${batchCapacityVal || 30} students</strong>
+            <i class="fas fa-users me-2 text-success" style="width: 16px;"></i>Max Students: <strong class="text-dark">${batchCapacityVal || 30} students</strong>
           </div>
         </div>
       </div>
@@ -2972,11 +3076,10 @@ async function createBatch(e) {
     return;
   }
 
-  const demoVideoFile = document.getElementById('batchDemoVideo').files[0];
   const demoVideoUrl = document.getElementById('batchDemoVideoUrl') ? document.getElementById('batchDemoVideoUrl').value.trim() : '';
 
-  if (!demoVideoFile && !demoVideoUrl) {
-    showToast('Please upload a Batch Demo Video file OR enter a Video Link URL.', 'error');
+  if (!demoVideoUrl) {
+    showToast('Please enter a Batch Demo Video URL.', 'error');
     return;
   }
 
@@ -2994,12 +3097,7 @@ async function createBatch(e) {
   formData.append('teaching_method', document.getElementById('batchTeachingMethod').value);
   formData.append('batch_instructions', document.getElementById('batchInstructions').value);
   formData.append('planner', plannerFile);
-  if (demoVideoFile) {
-    formData.append('demo_video', demoVideoFile);
-  }
-  if (demoVideoUrl) {
-    formData.append('demo_video_url', demoVideoUrl);
-  }
+  formData.append('demo_video_url', demoVideoUrl);
 
   try {
     showToast('Creating batch & uploading planner...', 'info');
@@ -3235,7 +3333,7 @@ function showCreateCourseModal() {
   initCourseFormModal();
   _teacherActiveCourseId = null;
   _teacherCurrentThumbnailUrl = '';
-  
+
   document.getElementById('courseModalTitle').textContent = 'Create New Course';
   document.getElementById('tCourseTitle').value = '';
   document.getElementById('tCourseSubject').value = '';
@@ -3249,13 +3347,13 @@ function showCreateCourseModal() {
   document.getElementById('tCourseLearningOutcome').value = '';
   document.getElementById('tCourseCustomTag').value = '';
   document.getElementById('tCourseDesc').value = '';
-  
+
   document.getElementById('tCourseUploadPreviewContainer').classList.add('d-none');
   document.getElementById('tCourseUploadPlaceholder').classList.remove('d-none');
   document.getElementById('tCourseUploadPreview').src = '';
-  
+
   document.getElementById('teacherCourseForm').onsubmit = handleSaveTeacherCourse;
-  
+
   const myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('courseFormModal'));
   myModal.show();
   setupAutoSave('autosave_teacher_course_create', [
@@ -3324,13 +3422,13 @@ function editTeacherCourse(id) {
 
 async function handleSaveTeacherCourse(e) {
   e.preventDefault();
-  
+
   const customTag = document.getElementById('tCourseCustomTag').value.trim();
   if (!customTag) {
     showToast('Custom Tag Line is required', 'error');
     return;
   }
-  
+
   if (!_teacherCurrentThumbnailUrl) {
     showToast('Course Thumbnail / Banner image is required', 'error');
     return;
@@ -3407,7 +3505,7 @@ async function handleTeacherCourseFileSelect(input) {
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData
     });
-    
+
     if (res.status === 401) { logout(); throw new Error('Session expired'); }
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -3777,7 +3875,7 @@ async function viewSubmissions(assignId) {
   }
 }
 
-window.openGradePopup = function(subId, name) {
+window.openGradePopup = function (subId, name) {
   document.getElementById('gradeSubmissionId').value = subId;
   document.getElementById('gradeStudentNameDisplay').textContent = name || 'Student';
   document.getElementById('gradeMarksInput').value = '';
@@ -3787,7 +3885,7 @@ window.openGradePopup = function(subId, name) {
   modal.show();
 };
 
-window.submitGradeAssignment = async function(e) {
+window.submitGradeAssignment = async function (e) {
   e.preventDefault();
   const subId = document.getElementById('gradeSubmissionId').value;
   const marks = document.getElementById('gradeMarksInput').value;
@@ -4263,10 +4361,9 @@ async function renderEarnings() {
                       <td class="text-dark fw-bold">₹${parseFloat(h.amount).toLocaleString('en-IN')}</td>
                       <td>${h.upi_id ? `UPI: ${h.upi_id}` : h.bank_account ? `<span style="font-size:0.75rem;">${h.bank_account}</span>` : 'Manual'}</td>
                       <td>
-                        <span class="badge ${
-                          h.status === 'paid' ? 'bg-success' : 
-                          h.status === 'requested' || h.status === 'under_review' || h.status === 'approved' ? 'bg-warning' : 'bg-danger'
-                        }">${h.status.toUpperCase()}</span>
+                        <span class="badge ${h.status === 'paid' ? 'bg-success' :
+        h.status === 'requested' || h.status === 'under_review' || h.status === 'approved' ? 'bg-warning' : 'bg-danger'
+      }">${h.status.toUpperCase()}</span>
                       </td>
                       <td class="small text-danger">${h.admin_notes || '<span class="text-muted">—</span>'}</td>
                     </tr>
@@ -4285,7 +4382,7 @@ async function renderEarnings() {
 
 async function requestPayout(e) {
   e.preventDefault();
-  
+
   const bankHolder = document.getElementById('payoutBankHolder').value.trim();
   const bankName = document.getElementById('payoutBankName').value.trim();
   const bankAcc = document.getElementById('payoutBankAcc').value.trim();
@@ -4390,7 +4487,7 @@ async function renderProfile() {
   loading();
   try {
     const profile = await api('/auth/profile');
-    
+
     // Determine level badge details
     let levelBadgeHtml = '';
     if (profile.teacher_level === 'Platinum') {
@@ -4414,7 +4511,7 @@ async function renderProfile() {
             
             <div class="position-relative d-inline-block mt-3">
               <div class="profile-avatar-wrapper" onclick="document.getElementById('teacherAvatarInput').click()">
-                <img src="${profile.photo_url||defaultAvatar}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.2);box-shadow: 0 8px 20px rgba(0,0,0,0.12); object-fit: cover;" alt="Teacher Photo" onerror="this.src=defaultAvatar">
+                <img src="${profile.photo_url || defaultAvatar}" style="width:100px;height:100px;border-radius:50%;border:4px solid rgba(60,189,176,0.2);box-shadow: 0 8px 20px rgba(0,0,0,0.12); object-fit: cover;" alt="Teacher Photo" onerror="this.src=defaultAvatar">
                 <div class="profile-avatar-overlay">
                   <i class="fas fa-camera"></i>
                 </div>
@@ -4456,47 +4553,47 @@ async function renderProfile() {
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Full Name</label>
-                  <input class="form-control spx-input" id="profName" value="${profile.name||''}" required>
+                  <input class="form-control spx-input" id="profName" value="${profile.name || ''}" required>
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Contact Phone</label>
-                  <input class="form-control spx-input" id="profPhone" value="${profile.phone||''}" required>
+                  <input class="form-control spx-input" id="profPhone" value="${profile.phone || ''}" required>
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Alternative Email *</label>
-                  <input class="form-control spx-input" id="profAltEmail" value="${profile.alt_email||''}" required>
+                  <input class="form-control spx-input" id="profAltEmail" value="${profile.alt_email || ''}" required>
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">WhatsApp / Mobile Number *</label>
-                  <input class="form-control spx-input" id="profMobileNumber" value="${profile.mobile_number||''}" required>
+                  <input class="form-control spx-input" id="profMobileNumber" value="${profile.mobile_number || ''}" required>
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">LinkedIn Profile Link</label>
-                  <input class="form-control spx-input" id="profLinkedIn" value="${profile.social_links?.linkedin||''}">
+                  <input class="form-control spx-input" id="profLinkedIn" value="${profile.social_links?.linkedin || ''}">
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Twitter / Other Link</label>
-                  <input class="form-control spx-input" id="profTwitter" value="${profile.social_links?.twitter||''}">
+                  <input class="form-control spx-input" id="profTwitter" value="${profile.social_links?.twitter || ''}">
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Highest Academic Qualification</label>
-                  <input class="form-control spx-input" id="profQual" value="${profile.qualification||''}" placeholder="e.g. Ph.D in Chemistry, M.Sc. Mathematics">
+                  <input class="form-control spx-input" id="profQual" value="${profile.qualification || ''}" placeholder="e.g. Ph.D in Chemistry, M.Sc. Mathematics">
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Subject Expertise (e.g. Physics, Chemistry)</label>
-                  <input class="form-control spx-input" id="profExp" value="${profile.subject_expertise||''}" placeholder="e.g. Physics, Mathematics">
+                  <input class="form-control spx-input" id="profExp" value="${profile.subject_expertise || ''}" placeholder="e.g. Physics, Mathematics">
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Teaching Languages</label>
-                  <input class="form-control spx-input" id="profLang" value="${profile.languages||''}" placeholder="e.g. English, Hindi, Spanish">
+                  <input class="form-control spx-input" id="profLang" value="${profile.languages || ''}" placeholder="e.g. English, Hindi, Spanish">
                 </div>
                 <div class="col-md-6">
                   <label class="spx-label mb-1">Years of Teaching Experience</label>
-                  <input type="number" class="form-control spx-input" id="profYrs" value="${profile.experience_years||0}">
+                  <input type="number" class="form-control spx-input" id="profYrs" value="${profile.experience_years || 0}">
                 </div>
                 <div class="col-12">
                   <label class="spx-label mb-1">Professional Bio / Introduction</label>
-                  <textarea class="form-control spx-input" id="profBio" rows="3" placeholder="Share your teaching philosophy, milestones, and introduction for students...">${profile.bio||''}</textarea>
+                  <textarea class="form-control spx-input" id="profBio" rows="3" placeholder="Share your teaching philosophy, milestones, and introduction for students...">${profile.bio || ''}</textarea>
                 </div>
                 <div class="col-12 mt-4">
                   <button type="submit" class="btn btn-spx px-4 py-2 fw-semibold"><i class="fas fa-save me-1"></i> Save Profile Details</button>
@@ -4568,7 +4665,7 @@ async function updateProfile(e) {
     };
 
     const data = await api('/auth/profile', {
-      method:'PUT',
+      method: 'PUT',
       body: JSON.stringify(payload)
     });
 
@@ -4578,7 +4675,7 @@ async function updateProfile(e) {
     updateCachedUser(data.user);
     showApp();
     renderProfile();
-  } catch(e) { showToast(e.message, 'error'); }
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 async function changePassword(e) {
@@ -4613,7 +4710,7 @@ async function changePassword(e) {
     document.getElementById('currPass').value = '';
     document.getElementById('newPass').value = '';
     if (document.getElementById('confirmPass')) document.getElementById('confirmPass').value = '';
-  } catch(e) { showToast(e.message, 'error'); }
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 let maxBatchCapacity = 30;
@@ -4681,7 +4778,7 @@ async function uploadTeacherAvatar(input) {
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast('Profile photo updated successfully!');
-    
+
     // Update local cached user info
     updateCachedUser(data.user);
     // Refresh sidebar & header and profile cards
@@ -4696,17 +4793,17 @@ async function renderCertificates() {
   loading();
   try {
     const certs = await api('/teacher/certificates');
-    
+
     let certListHtml = '';
     if (certs && certs.length > 0) {
       certListHtml = `
         <div class="certificates-grid">
           ${certs.map(c => {
-            let iconClass = 'fa-award';
-            if (c.certificate_type === 'sop_completed') iconClass = 'fa-clipboard-check';
-            if (c.certificate_type === 'course_verified') iconClass = 'fa-certificate';
-            
-            return `
+        let iconClass = 'fa-award';
+        if (c.certificate_type === 'sop_completed') iconClass = 'fa-clipboard-check';
+        if (c.certificate_type === 'course_verified') iconClass = 'fa-certificate';
+
+        return `
               <div class="certificate-card">
                 <div class="certificate-badge-ribbon">
                   <i class="fas ${iconClass}"></i>
@@ -4735,7 +4832,7 @@ async function renderCertificates() {
                 </div>
               </div>
             `;
-          }).join('')}
+      }).join('')}
         </div>
       `;
     } else {
@@ -4782,7 +4879,7 @@ async function renderCertificates() {
         </div>
       </div>
     `;
-    
+
     // Store certificates in window object so we can retrieve them by ID for preview
     window._teacherCertificates = certs || [];
 
@@ -4847,7 +4944,7 @@ function printCertificate(cert) {
     printEl.id = 'printArea';
     document.body.appendChild(printEl);
   }
-  
+
   printEl.innerHTML = `
     <div class="certificate-preview-frame" style="page-break-inside: avoid; border: 12px double #D4AF37; padding: 40px; text-align: center; color: #2c2c2c; font-family: 'Outfit', sans-serif;">
       <div class="certificate-preview-header">
@@ -4880,7 +4977,7 @@ function printCertificate(cert) {
       </div>
     </div>
   `;
-  
+
   window.print();
 }
 
@@ -5027,10 +5124,10 @@ function toggleCustomBatchCourseDropdown(event) {
   const menu = document.getElementById('customBatchCourseMenu');
   if (!menu) return;
   const isShown = menu.classList.contains('show');
-  
+
   // Close the menu if open, or open it if closed
   menu.classList.toggle('show', !isShown);
-  
+
   if (!isShown) {
     const searchInput = document.getElementById('customCourseSearch');
     if (searchInput) {
@@ -5047,7 +5144,7 @@ function filterCustomBatchCourses(val) {
   if (!optionsList) return;
   const options = optionsList.querySelectorAll('.custom-searchable-select-option:not(.no-results)');
   let matches = 0;
-  
+
   options.forEach(opt => {
     const text = opt.textContent.toLowerCase();
     if (text.includes(search)) {
@@ -5057,7 +5154,7 @@ function filterCustomBatchCourses(val) {
       opt.style.display = 'none';
     }
   });
-  
+
   let noResults = optionsList.querySelector('.no-results');
   if (matches === 0) {
     if (!noResults) {
@@ -5075,20 +5172,20 @@ function filterCustomBatchCourses(val) {
 
 function selectCustomBatchCourse(id, labelText, event) {
   if (event) event.stopPropagation();
-  
+
   const label = document.getElementById('customBatchCourseLabel');
   if (label) {
     label.textContent = labelText;
     label.style.setProperty('color', '#ffffff', 'important');
     label.style.setProperty('font-weight', '600', 'important');
   }
-  
+
   const nativeSelect = document.getElementById('batchCourse');
   if (nativeSelect) {
     nativeSelect.value = id;
     nativeSelect.dispatchEvent(new Event('change'));
   }
-  
+
   const optionsList = document.getElementById('customCourseOptionsList');
   if (optionsList) {
     const options = optionsList.querySelectorAll('.custom-searchable-select-option');
@@ -5100,7 +5197,7 @@ function selectCustomBatchCourse(id, labelText, event) {
       }
     });
   }
-  
+
   const menu = document.getElementById('customBatchCourseMenu');
   if (menu) {
     menu.classList.remove('show');
@@ -5108,7 +5205,7 @@ function selectCustomBatchCourse(id, labelText, event) {
 }
 
 // Click outside logic to dismiss custom dropdown list
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
   const container = document.getElementById('customCourseContainer');
   if (container && !container.contains(e.target)) {
     const menu = document.getElementById('customBatchCourseMenu');
@@ -5270,32 +5367,32 @@ async function renderReferrals() {
             </thead>
             <tbody>
               ${slabs.map(s => {
-                let badgeClass = 'bg-secondary';
-                let statusText = 'LOCKED';
-                let iconHtml = '<i class="fas fa-lock text-muted"></i>';
+      let badgeClass = 'bg-secondary';
+      let statusText = 'LOCKED';
+      let iconHtml = '<i class="fas fa-lock text-muted"></i>';
 
-                if (s.status === 'approved') {
-                  badgeClass = 'bg-success';
-                  statusText = 'APPROVED';
-                  iconHtml = '<i class="fas fa-check-circle text-success fs-5"></i>';
-                } else if (s.status === 'pending_review') {
-                  badgeClass = 'bg-warning text-dark';
-                  statusText = 'PENDING REVIEW';
-                  iconHtml = '<i class="fas fa-spinner fa-spin text-warning fs-5"></i>';
-                } else if (s.status === 'rejected') {
-                  badgeClass = 'bg-danger';
-                  statusText = 'REJECTED';
-                  iconHtml = '<i class="fas fa-times-circle text-danger fs-5"></i>';
-                } else if (cumulativeRevenue >= s.target) {
-                  badgeClass = 'bg-info text-dark';
-                  statusText = 'UNLOCKED';
-                  iconHtml = '<i class="fas fa-unlock text-info fs-5"></i>';
-                }
+      if (s.status === 'approved') {
+        badgeClass = 'bg-success';
+        statusText = 'APPROVED';
+        iconHtml = '<i class="fas fa-check-circle text-success fs-5"></i>';
+      } else if (s.status === 'pending_review') {
+        badgeClass = 'bg-warning text-dark';
+        statusText = 'PENDING REVIEW';
+        iconHtml = '<i class="fas fa-spinner fa-spin text-warning fs-5"></i>';
+      } else if (s.status === 'rejected') {
+        badgeClass = 'bg-danger';
+        statusText = 'REJECTED';
+        iconHtml = '<i class="fas fa-times-circle text-danger fs-5"></i>';
+      } else if (cumulativeRevenue >= s.target) {
+        badgeClass = 'bg-info text-dark';
+        statusText = 'UNLOCKED';
+        iconHtml = '<i class="fas fa-unlock text-info fs-5"></i>';
+      }
 
-                const allowanceVal = allowanceMap[s.group] !== undefined ? allowanceMap[s.group] : 0.00;
-                const allowanceText = allowanceVal > 0 ? `₹${allowanceVal.toLocaleString('en-IN')}/mo` : '₹0';
+      const allowanceVal = allowanceMap[s.group] !== undefined ? allowanceMap[s.group] : 0.00;
+      const allowanceText = allowanceVal > 0 ? `₹${allowanceVal.toLocaleString('en-IN')}/mo` : '₹0';
 
-                return `
+      return `
                   <tr style="${cumulativeRevenue >= s.target ? 'background:rgba(60,189,176,0.02);' : ''}">
                     <td><strong>${s.name}</strong></td>
                     <td>₹${s.target.toLocaleString('en-IN')}</td>
@@ -5310,7 +5407,7 @@ async function renderReferrals() {
                     </td>
                   </tr>
                 `;
-              }).join('')}
+    }).join('')}
             </tbody>
           </table>
         </div>
@@ -5373,9 +5470,9 @@ async function renderReferrals() {
                       <td>${fmtDate(t.created_at)}</td>
                       <td class="text-success fw-bold">₹${parseFloat(t.commission_earned).toLocaleString('en-IN')}</td>
                       <td>
-                        ${idx < 10 
-                          ? '<span class="badge bg-success-subtle text-success">Active</span>' 
-                          : '<span class="badge bg-danger-subtle text-danger" title="Cap limit of 10 teachers exceeded. No commission generated from this teacher.">Cap Exceeded</span>'}
+                        ${idx < 10
+        ? '<span class="badge bg-success-subtle text-success">Active</span>'
+        : '<span class="badge bg-danger-subtle text-danger" title="Cap limit of 10 teachers exceeded. No commission generated from this teacher.">Cap Exceeded</span>'}
                       </td>
                     </tr>
                   `).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No teachers referred yet.</td></tr>'}
@@ -5436,19 +5533,19 @@ async function renderReferrals() {
                 </thead>
                 <tbody>
                   ${statement.map(l => {
-                    const isCredit = parseFloat(l.amount) >= 0;
-                    const amountText = (isCredit ? '+' : '-') + '₹' + Math.abs(parseFloat(l.amount)).toLocaleString('en-IN');
-                    const colorClass = isCredit ? 'text-success' : 'text-danger';
-                    
-                    let typeBadge = 'bg-secondary';
-                    if (l.type === 'course_share') typeBadge = 'bg-primary';
-                    else if (l.type === 'student_referral') typeBadge = 'bg-success';
-                    else if (l.type === 'teacher_referral') typeBadge = 'bg-info text-dark';
-                    else if (l.type === 'grooming_allowance') typeBadge = 'bg-warning text-dark';
-                    else if (l.type === 'slab_reward') typeBadge = 'bg-danger';
-                    else if (l.type === 'withdrawal') typeBadge = 'bg-dark border';
+          const isCredit = parseFloat(l.amount) >= 0;
+          const amountText = (isCredit ? '+' : '-') + '₹' + Math.abs(parseFloat(l.amount)).toLocaleString('en-IN');
+          const colorClass = isCredit ? 'text-success' : 'text-danger';
 
-                    return `
+          let typeBadge = 'bg-secondary';
+          if (l.type === 'course_share') typeBadge = 'bg-primary';
+          else if (l.type === 'student_referral') typeBadge = 'bg-success';
+          else if (l.type === 'teacher_referral') typeBadge = 'bg-info text-dark';
+          else if (l.type === 'grooming_allowance') typeBadge = 'bg-warning text-dark';
+          else if (l.type === 'slab_reward') typeBadge = 'bg-danger';
+          else if (l.type === 'withdrawal') typeBadge = 'bg-dark border';
+
+          return `
                       <tr>
                         <td>${fmtDate(l.created_at)}</td>
                         <td><span class="badge ${typeBadge}" style="font-size:0.6rem;">${l.type.toUpperCase().replace('_', ' ')}</span></td>
@@ -5456,7 +5553,7 @@ async function renderReferrals() {
                         <td class="${colorClass} fw-bold">${amountText}</td>
                       </tr>
                     `;
-                  }).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No transactions logged yet.</td></tr>'}
+        }).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No transactions logged yet.</td></tr>'}
                 </tbody>
               </table>
             </div>
@@ -5470,7 +5567,7 @@ async function renderReferrals() {
 }
 
 // Global copy function helper
-window.copyText = function(inputId, message) {
+window.copyText = function (inputId, message) {
   const copyText = document.getElementById(inputId);
   if (!copyText) return;
   copyText.select();
@@ -5592,7 +5689,7 @@ async function renderChats() {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const conversations = await res.json();
-    
+
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4" style="height: calc(100vh - 180px); max-height: 800px;">
         <!-- Conversations List -->
@@ -5609,12 +5706,12 @@ async function renderChats() {
                   No active parent connection queries yet.
                 </div>
               ` : conversations.map(c => {
-                const initials = c.parent_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                const isActive = (window.teacherActiveParentId === c.parent_id && window.teacherActiveStudentId === c.student_id);
-                const activeClass = isActive ? 'active' : '';
-                const timeStr = c.last_message_at ? new Date(c.last_message_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
-                
-                return `
+      const initials = c.parent_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+      const isActive = (window.teacherActiveParentId === c.parent_id && window.teacherActiveStudentId === c.student_id);
+      const activeClass = isActive ? 'active' : '';
+      const timeStr = c.last_message_at ? new Date(c.last_message_at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+
+      return `
                   <a href="#" onclick="selectTeacherConversation(event, '${c.parent_id}', '${c.parent_name.replace(/'/g, "\\'")}', '${c.student_id}', '${c.student_name.replace(/'/g, "\\'")}')" class="list-group-item list-group-item-action ${activeClass} p-3 d-flex align-items-start gap-3" style="border-bottom: 1px solid var(--border); text-decoration: none;">
                     <div class="user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: var(--gradient); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">${initials}</div>
                     <div class="flex-grow-1 min-w-0" style="text-align: left;">
@@ -5634,7 +5731,7 @@ async function renderChats() {
                     </div>
                   </a>
                 `;
-              }).join('')}
+    }).join('')}
             </div>
           </div>
         </div>
@@ -5658,7 +5755,7 @@ window.teacherActiveParentId = null;
 window.teacherActiveStudentId = null;
 let teacherChatInterval = null;
 
-window.selectTeacherConversation = function(event, parentId, parentName, studentId, studentName) {
+window.selectTeacherConversation = function (event, parentId, parentName, studentId, studentName) {
   if (event) {
     event.preventDefault();
   }
@@ -5772,7 +5869,7 @@ async function loadTeacherChatMessages(silent = false) {
         const isMe = m.sender_role === 'teacher';
         const bubbleClass = isMe ? 'sent' : 'received';
         const alignSelf = isMe ? 'align-self: flex-end;' : 'align-self: flex-start;';
-        
+
         const bgColor = isMe ? 'background: var(--primary); color: white;' : 'background: #f1f5f9; color: var(--text-primary); border: 1px solid var(--border);';
         const radiusStyle = isMe ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;';
 
@@ -5815,7 +5912,7 @@ async function loadTeacherChatMessages(silent = false) {
   }
 }
 
-window.insertEmoji = function(inputId, emoji) {
+window.insertEmoji = function (inputId, emoji) {
   const el = document.getElementById(inputId);
   if (!el) return;
   const start = el.selectionStart || el.value.length;
@@ -5825,7 +5922,7 @@ window.insertEmoji = function(inputId, emoji) {
   el.selectionStart = el.selectionEnd = start + emoji.length;
 };
 
-window.handleChatImageSelection = function(input, previewBarId, previewImgId, nameId, sizeId) {
+window.handleChatImageSelection = function (input, previewBarId, previewImgId, nameId, sizeId) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) {
@@ -5848,7 +5945,7 @@ window.handleChatImageSelection = function(input, previewBarId, previewImgId, na
   }
 };
 
-window.clearSelectedChatImage = function(previewBarId, inputId) {
+window.clearSelectedChatImage = function (previewBarId, inputId) {
   const input = document.getElementById(inputId);
   const previewBar = document.getElementById(previewBarId);
   if (input) input.value = '';
@@ -5870,7 +5967,7 @@ function checkTeacherProhibitedContact(text) {
   return false;
 }
 
-window.sendTeacherChatMessage = async function(e) {
+window.sendTeacherChatMessage = async function (e) {
   if (e) e.preventDefault();
   const input = document.getElementById('teacherChatMessageInput');
   const fileInput = document.getElementById('teacherChatImageInput');

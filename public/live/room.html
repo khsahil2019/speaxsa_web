@@ -366,34 +366,49 @@
 
     /* Poll Styling */
     .poll-card {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border);
+      background-color: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
 
     .poll-question {
       font-weight: 700;
-      font-size: 0.9rem;
-      color: white;
+      font-size: 0.92rem;
+      color: #0f172a !important; /* Crisp dark text on light card */
       margin-bottom: 12px;
     }
 
     .poll-option {
-      background-color: var(--bg-input);
-      border: 1px solid var(--border);
+      background-color: #f8fafc !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #334155 !important;
       border-radius: 8px;
-      padding: 10px;
+      padding: 10px 14px;
       margin-bottom: 8px;
       cursor: pointer;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
+      font-weight: 600;
       transition: all 0.2s;
     }
 
     .poll-option:hover {
-      background-color: rgba(60, 189, 176, 0.15);
-      border-color: var(--primary);
+      background-color: rgba(13, 122, 109, 0.1) !important;
+      border-color: #0d7a6d !important;
+      color: #0d7a6d !important;
+    }
+
+    .poll-option.selected {
+      background-color: #0d7a6d !important;
+      color: #ffffff !important;
+      border-color: #0d7a6d !important;
+    }
+
+    .poll-option.disabled {
+      pointer-events: none !important;
+      opacity: 0.8;
     }
 
     /* Raise hand overlay indicator */
@@ -567,6 +582,15 @@
           <div class="d-flex align-items-center gap-3 flex-wrap">
             <strong class="text-dark"><i class="fas fa-palette me-2"></i>Interactive Whiteboard</strong>
             
+            <!-- Tools Selector Group -->
+            <div id="whiteboardToolGroup" class="d-flex align-items-center gap-1 bg-light p-1 rounded-2 border border-light" style="font-size:0.8rem;">
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 tool-btn active" data-tool="pen" title="Freehand Pen"><i class="fas fa-pen"></i></button>
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 tool-btn" data-tool="text" title="Keyboard Text Input"><i class="fas fa-font"></i></button>
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 tool-btn" data-tool="rectangle" title="Draw Rectangle"><i class="far fa-square"></i></button>
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 tool-btn" data-tool="circle" title="Draw Circle"><i class="far fa-circle"></i></button>
+              <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 tool-btn" data-tool="line" title="Draw Line"><i class="fas fa-minus"></i></button>
+            </div>
+
             <!-- Color Selector Group -->
             <div id="whiteboardControls" class="d-flex align-items-center gap-2 bg-light p-1 rounded-2 border border-light" style="font-size:0.8rem;">
               <span class="text-muted small me-1">Color:</span>
@@ -798,6 +822,12 @@
       document.getElementById('btnScreen').style.display = 'none';
       // Hide whiteboard toggle button for students (auto-shared by teacher)
       document.getElementById('btnWhiteboard').style.display = 'none';
+
+      // Hide whiteboard modification controls (Tools, Eraser, Color dots, Clear Board) for students
+      if (document.getElementById('whiteboardToolGroup')) document.getElementById('whiteboardToolGroup').style.setProperty('display', 'none', 'important');
+      if (document.getElementById('whiteboardControls')) document.getElementById('whiteboardControls').style.setProperty('display', 'none', 'important');
+      if (document.getElementById('whiteboardBrushControls')) document.getElementById('whiteboardBrushControls').style.setProperty('display', 'none', 'important');
+      if (document.getElementById('btnClearBoard')) document.getElementById('btnClearBoard').style.setProperty('display', 'none', 'important');
     }
 
     // Timer & Class Info
@@ -829,8 +859,11 @@
     const canvas = document.getElementById('whiteboardCanvas');
     const ctx = canvas.getContext('2d');
     let drawing = false;
+    let shapeStartX = 0;
+    let shapeStartY = 0;
 
-    // Brush styling selections
+    // Selections
+    let currentActiveTool = 'pen'; // 'pen' | 'text' | 'rectangle' | 'circle' | 'line'
     let currentStrokeColor = '#0F172A';
     let currentLineWidth = 3;
     let isEraserMode = false;
@@ -847,7 +880,25 @@
     function updateContextStyles() {
       ctx.lineWidth = currentLineWidth;
       ctx.strokeStyle = isEraserMode ? '#FFFFFF' : currentStrokeColor;
+      ctx.fillStyle = isEraserMode ? '#FFFFFF' : currentStrokeColor;
     }
+
+    // Tool Selector Group Listener
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach(b => {
+          b.classList.remove('active');
+          b.style.background = 'transparent';
+          b.style.color = '';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'var(--primary)';
+        btn.style.color = '#FFFFFF';
+        currentActiveTool = btn.getAttribute('data-tool') || 'pen';
+        isEraserMode = false;
+        updateContextStyles();
+      });
+    });
 
     // Color dot button selectors
     document.querySelectorAll('.color-dot').forEach(btn => {
@@ -887,36 +938,114 @@
       });
     });
 
+    // Handle Text Input via Keyboard
+    function handleCanvasTextInput(x, y) {
+      const text = prompt('Type text to insert on Whiteboard:');
+      if (text && text.trim()) {
+        const cleanText = text.trim();
+        drawCanvasText(cleanText, x, y, currentStrokeColor, currentLineWidth);
+        relayDrawText(cleanText, x, y);
+      }
+    }
+
+    function drawCanvasText(text, x, y, color, size) {
+      ctx.save();
+      const fontSize = Math.max(14, (parseInt(size) || 3) * 5);
+      ctx.font = `600 ${fontSize}px sans-serif`;
+      ctx.fillStyle = color || currentStrokeColor;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawCanvasShape(data) {
+      const { shape, x1, y1, x2, y2, w, h, r, color, size } = data;
+      ctx.save();
+      ctx.lineWidth = parseInt(size) || 3;
+      ctx.strokeStyle = color || currentStrokeColor;
+      ctx.beginPath();
+
+      if (shape === 'rectangle') {
+        ctx.strokeRect(x1, y1, w, h);
+      } else if (shape === 'circle') {
+        ctx.arc(x1, y1, Math.abs(r || 10), 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (shape === 'line') {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     canvas.addEventListener('mousedown', (e) => {
-      if (!isTeacher) return;
-      drawing = true;
+      if (!isTeacher && !isAdmin) return;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+
+      if (currentActiveTool === 'text') {
+        handleCanvasTextInput(x, y);
+        return;
+      }
+
+      drawing = true;
+      shapeStartX = x;
+      shapeStartY = y;
       updateContextStyles();
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      relayDrawPoint(x, y, true);
+
+      if (currentActiveTool === 'pen') {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        relayDrawPoint(x, y, true);
+      }
     });
 
     canvas.addEventListener('mousemove', (e) => {
-      if (!drawing || !isTeacher) return;
+      if (!drawing || (!isTeacher && !isAdmin)) return;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      updateContextStyles();
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x, y);
 
-      relayDrawPoint(x, y, false);
+      if (currentActiveTool === 'pen') {
+        updateContextStyles();
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        relayDrawPoint(x, y, false);
+      }
     });
 
-    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseup', (e) => {
+      if (!drawing || (!isTeacher && !isAdmin)) {
+        drawing = false;
+        return;
+      }
+      drawing = false;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (currentActiveTool === 'rectangle') {
+        const w = x - shapeStartX;
+        const h = y - shapeStartY;
+        drawCanvasShape({ shape: 'rectangle', x1: shapeStartX, y1: shapeStartY, w, h, color: currentStrokeColor, size: currentLineWidth });
+        relayDrawShape({ shape: 'rectangle', x1: shapeStartX, y1: shapeStartY, w, h, color: currentStrokeColor, size: currentLineWidth });
+      } else if (currentActiveTool === 'circle') {
+        const r = Math.hypot(x - shapeStartX, y - shapeStartY);
+        drawCanvasShape({ shape: 'circle', x1: shapeStartX, y1: shapeStartY, r, color: currentStrokeColor, size: currentLineWidth });
+        relayDrawShape({ shape: 'circle', x1: shapeStartX, y1: shapeStartY, r, color: currentStrokeColor, size: currentLineWidth });
+      } else if (currentActiveTool === 'line') {
+        drawCanvasShape({ shape: 'line', x1: shapeStartX, y1: shapeStartY, x2: x, y2: y, color: currentStrokeColor, size: currentLineWidth });
+        relayDrawShape({ shape: 'line', x1: shapeStartX, y1: shapeStartY, x2: x, y2: y, color: currentStrokeColor, size: currentLineWidth });
+      }
+    });
+
     canvas.addEventListener('mouseout', () => drawing = false);
 
     document.getElementById('btnClearBoard').addEventListener('click', () => {
+      if (!isTeacher && !isAdmin) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.beginPath();
       relayClearBoard();
@@ -1834,6 +1963,26 @@
                 }
               });
 
+              socket.on('board-text', ({ text, x, y, color, size }) => {
+                drawCanvasText(text, x, y, color, size);
+                if (!isTeacher) {
+                  const container = document.getElementById('whiteboardContainer');
+                  if (window.getComputedStyle(container).display === 'none') {
+                    toggleWhiteboard(true, false);
+                  }
+                }
+              });
+
+              socket.on('board-shape', (data) => {
+                drawCanvasShape(data);
+                if (!isTeacher) {
+                  const container = document.getElementById('whiteboardContainer');
+                  if (window.getComputedStyle(container).display === 'none') {
+                    toggleWhiteboard(true, false);
+                  }
+                }
+              });
+
               socket.on('board-clear', () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.beginPath();
@@ -1932,25 +2081,40 @@
 
           // Whiteboard relay via Socket.io
           function relayDrawPoint(x, y, start = false) {
+            if (!isTeacher && !isAdmin) return;
             if (socket && socket.connected) {
               const activeColor = isEraserMode ? '#FFFFFF' : currentStrokeColor;
               socket.emit('board-draw', { classId, x, y, start, color: activeColor, size: currentLineWidth });
             }
           }
           function relayClearBoard() {
+            if (!isTeacher && !isAdmin) return;
             if (socket && socket.connected) {
               socket.emit('board-clear', { classId });
+            }
+          }
+          function relayDrawText(text, x, y) {
+            if (!isTeacher && !isAdmin) return;
+            if (socket && socket.connected) {
+              socket.emit('board-text', { classId, text, x, y, color: currentStrokeColor, size: currentLineWidth });
+            }
+          }
+          function relayDrawShape(shapeData) {
+            if (!isTeacher && !isAdmin) return;
+            if (socket && socket.connected) {
+              socket.emit('board-shape', { classId, ...shapeData });
             }
           }
 
           // ── Participants List (local fallback if socket not ready) ──
           function updateParticipantList() {
             // Handled by socket participants-update event
-            // Initial render with just self
             renderParticipantList([{ name: user.name, role: user.role, userId: user.id }]);
           }
 
           // ── Live Polls ────────────────────────────────────────────────
+          window.submittedPolls = window.submittedPolls || {};
+
           async function createLivePoll() {
             const q = document.getElementById('pollQuestion').value.trim();
             const o1 = document.getElementById('pollOpt1').value.trim();
@@ -1973,7 +2137,7 @@
               document.getElementById('pollOpt1').value = '';
               document.getElementById('pollOpt2').value = '';
 
-              const poll = { classId, pollId: res.id, question: q, options: [o1, o2] };
+              const poll = { classId, pollId: res.id || res.pollId, question: q, options: [o1, o2] };
 
               // Broadcast via socket.io to all students
               if (socket && socket.connected) {
@@ -1994,31 +2158,57 @@
               const polls = await res.json();
               const container = document.getElementById('pollsList');
 
-              container.innerHTML = polls.map(p => `
-          <div class="poll-card">
-            <div class="poll-question">${p.question}</div>
-            ${p.options.map((opt, idx) => `
-              <div class="poll-option" onclick="respondToPoll('${p.id}', ${idx})">${opt}</div>
-            `).join('')}
-          </div>
-        `).join('') || '<p class="text-muted small text-center py-4">No active polls.</p>';
+              container.innerHTML = polls.map(p => {
+                const submittedOpt = window.submittedPolls[p.id];
+                const isDone = submittedOpt !== undefined;
+                return `
+                  <div class="poll-card" id="pollCard_${p.id}">
+                    <div class="poll-question">${p.question}</div>
+                    ${p.options.map((opt, idx) => `
+                      <div class="poll-option ${isDone && submittedOpt === idx ? 'selected' : ''} ${isDone ? 'disabled' : ''}" 
+                           onclick="respondToPoll('${p.id}', ${idx}, this)">
+                        ${opt} ${isDone && submittedOpt === idx ? '✓' : ''}
+                      </div>
+                    `).join('')}
+                    ${isDone ? `<div class="text-muted small text-end mt-1" style="font-size:0.75rem;"><i class="fas fa-check-circle me-1 text-success"></i>Response Recorded</div>` : ''}
+                  </div>
+                `;
+              }).join('') || '<p class="text-muted small text-center py-4">No active polls.</p>';
             } catch (e) { }
           }
 
           function renderActivePoll(poll) {
+            const pId = poll.pollId || poll.id;
             const container = document.getElementById('pollsList');
-            container.innerHTML = `
-        <div class="poll-card">
-          <div class="poll-question">${poll.question}</div>
-          ${poll.options.map((opt, idx) => `
-            <div class="poll-option" onclick="respondToPoll('${poll.pollId}', ${idx})">${opt}</div>
-          `).join('')}
-        </div>
-      `;
+            const submittedOpt = window.submittedPolls[pId];
+            const isDone = submittedOpt !== undefined;
+
+            const pollCardHtml = `
+              <div class="poll-card" id="pollCard_${pId}">
+                <div class="poll-question">${poll.question}</div>
+                ${poll.options.map((opt, idx) => `
+                  <div class="poll-option ${isDone && submittedOpt === idx ? 'selected' : ''} ${isDone ? 'disabled' : ''}" 
+                       onclick="respondToPoll('${pId}', ${idx}, this)">
+                    ${opt} ${isDone && submittedOpt === idx ? '✓' : ''}
+                  </div>
+                `).join('')}
+                ${isDone ? `<div class="text-muted small text-end mt-1" style="font-size:0.75rem;"><i class="fas fa-check-circle me-1 text-success"></i>Response Recorded</div>` : ''}
+              </div>
+            `;
+
+            if (container.querySelector('#pollCard_' + pId)) {
+              container.querySelector('#pollCard_' + pId).outerHTML = pollCardHtml;
+            } else {
+              container.insertAdjacentHTML('afterbegin', pollCardHtml);
+            }
             switchSidebarTab('polls', document.querySelector('.sidebar-tab:nth-child(3)'));
           }
 
-          async function respondToPoll(pollId, optIdx) {
+          async function respondToPoll(pollId, optIdx, el) {
+            if (window.submittedPolls[pollId] !== undefined) {
+              return triggerToast('You have already submitted your response for this poll.');
+            }
+
             try {
               const data = await fetch(`${API}/api/live-classes/polls/${pollId}/respond`, {
                 method: 'POST',
@@ -2026,7 +2216,25 @@
                 body: JSON.stringify({ selected_option: optIdx })
               });
               const res = await data.json();
-              triggerToast(res.message || 'Response submitted!');
+              if (data.ok) {
+                window.submittedPolls[pollId] = optIdx;
+                triggerToast(res.message || 'Response submitted!');
+
+                // Lock option buttons immediately
+                const card = document.getElementById('pollCard_' + pollId);
+                if (card) {
+                  const opts = card.querySelectorAll('.poll-option');
+                  opts.forEach((oBtn, i) => {
+                    oBtn.classList.add('disabled');
+                    if (i === optIdx) {
+                      oBtn.classList.add('selected');
+                      oBtn.innerHTML += ' ✓';
+                    }
+                  });
+                }
+              } else {
+                triggerToast(res.error || 'Failed to submit response.');
+              }
             } catch (e) {
               triggerToast(e.message);
             }
