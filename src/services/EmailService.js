@@ -132,8 +132,8 @@ async function sendEmail(options) {
       console.log(`Body (truncated): ${html.substring(0, 300)}...`);
       console.log(`========================================`);
       sent = true;
-    } else if (emailProvider === 'brevo' || (brevoApiKey && (!hasValidSmtp || cleanHost.includes('brevo')))) {
-      // Brevo REST API Mode for xkeysib- API Keys
+    } else if (brevoApiKey) {
+      // Brevo REST API Mode for xkeysib- API Keys (Priority 1 for instant 100% delivery)
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
       const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
