@@ -411,6 +411,18 @@ h1, h2, h3, h4, h5, h6 {
   padding: 0 16px;
 }
 
+.auth-card .input-group > .spx-input:not(:last-child) {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.auth-card .input-group > .btn {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+}
+
 .auth-card .btn-spx {
   background: var(--gradient) !important;
   color: white !important;
