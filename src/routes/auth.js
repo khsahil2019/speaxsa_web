@@ -76,7 +76,7 @@ router.post('/register', async (req, res) => {
     if (requireOtpBool) {
       if (!verificationOtp) {
         const { otp: smsOtpVal, tokenId: smsTokenId } = await createOTP(phone, 'verify_mobile');
-        
+
         try {
           await sendOTPSms(phone, smsOtpVal, 'verify_mobile', smsTokenId);
         } catch (smsErr) {
@@ -188,7 +188,7 @@ router.post('/register', async (req, res) => {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50) DEFAULT 'approved';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS teacher_level VARCHAR(50);
       `);
-    } catch (sErr) {}
+    } catch (sErr) { }
 
     await db.query(`
       INSERT INTO users (id, email, phone, name, role, password_hash, password_plain, photo_url,
@@ -292,7 +292,7 @@ router.post('/login', async (req, res) => {
 
     const result = await db.query(queryText, queryParams);
     if (result.rows.length === 0) {
-      const errMsg = role === 'student' 
+      const errMsg = role === 'student'
         ? 'This email/phone is not registered with us as a student'
         : (role ? `User not found with this email/phone registered as a ${role}` : 'User not found with this email/phone');
       return res.status(404).json({ error: errMsg });
@@ -345,10 +345,10 @@ router.post('/send-otp', async (req, res) => {
 
     const isEmail = input.includes('@');
 
-    let query = isEmail 
-      ? 'SELECT id, name, email, phone FROM users WHERE LOWER(email) = LOWER($1)' 
+    let query = isEmail
+      ? 'SELECT id, name, email, phone FROM users WHERE LOWER(email) = LOWER($1)'
       : 'SELECT id, name, email, phone FROM users WHERE phone = $1';
-    
+
     const result = await db.query(query, [input.trim()]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: isEmail ? 'User not found with this email' : 'User not found with this phone number' });
@@ -360,7 +360,7 @@ router.post('/send-otp', async (req, res) => {
 
     if (purpose === 'verify_mobile') {
       const { otp, tokenId } = await createOTP(targetPhone, 'verify_mobile');
-      
+
       const sentInfo = await sendOTPSms(targetPhone, otp, 'verify_mobile', tokenId);
       const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'false');
       const showDevOtp = String(devOtpSetting) === 'true';
@@ -426,7 +426,7 @@ router.post('/verify-otp', async (req, res) => {
       query = 'SELECT * FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2 OR phone = $3 OR mobile_number = $3';
       params = [input.trim(), clean10, formatted];
     }
-      
+
     const result = await db.query(query, params);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User account not found for verification.' });
     const user = result.rows[0];
@@ -483,8 +483,8 @@ router.post('/forgot-password', async (req, res) => {
     if (!input) return res.status(400).json({ error: 'Identifier is required' });
 
     const isEmail = input.includes('@');
-    let query = isEmail 
-      ? 'SELECT id, name, email, phone FROM users WHERE LOWER(email) = LOWER($1)' 
+    let query = isEmail
+      ? 'SELECT id, name, email, phone FROM users WHERE LOWER(email) = LOWER($1)'
       : 'SELECT id, name, email, phone FROM users WHERE phone = $1';
 
     const result = await db.query(query, [input]);
@@ -528,10 +528,10 @@ router.post('/reset-password', async (req, res) => {
     if (!valid) return res.status(400).json({ error });
 
     const hash = hashPassword(newPassword);
-    
+
     const isEmail = input.includes('@');
-    let query = isEmail 
-      ? 'UPDATE users SET password_hash = $1, password_plain = $2 WHERE LOWER(email) = LOWER($3)' 
+    let query = isEmail
+      ? 'UPDATE users SET password_hash = $1, password_plain = $2 WHERE LOWER(email) = LOWER($3)'
       : 'UPDATE users SET password_hash = $1, password_plain = $2 WHERE phone = $3';
 
     await db.query(query, [hash, newPassword, input]);
@@ -652,17 +652,6 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/me', authenticateToken, async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    const user = sanitizeUser(result.rows[0]);
-    res.json({ user, ...user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ── PUT /api/auth/profile ─────────────────────────────────────
 router.put('/profile', authenticateToken, async (req, res) => {
   const { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years, alt_email, mobile_number, social_links } = req.body;
@@ -705,7 +694,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     }
 
     const fields = { name, phone, qualification, board, grade, address, subject_expertise, languages, bio, photo_url, experience_years, alt_email, mobile_number };
-    
+
     if (social_links !== undefined) {
       fields.social_links = typeof social_links === 'object' ? JSON.stringify(social_links) : social_links;
     }
@@ -746,8 +735,8 @@ router.put('/profile', authenticateToken, async (req, res) => {
       }
     }
 
-    res.json({ 
-      message: 'Profile updated successfully', 
+    res.json({
+      message: 'Profile updated successfully',
       user: sanitizeUser(updatedUser),
       phoneChanged,
       emailChanged
@@ -818,7 +807,7 @@ router.post('/profile/send-phone-otp', authenticateToken, async (req, res) => {
   try {
     const { otp, tokenId } = await createOTP(phone, 'verify_phone');
     const sentInfo = await sendOTPSms(phone, otp, 'verify_phone', tokenId);
-    
+
     const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'true');
     const showDevOtp = String(devOtpSetting) === 'true';
 
@@ -861,7 +850,7 @@ async function getAppBaseUrl(req) {
         return urlVal.replace(/\/+$/, '');
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   const envUrl = process.env.APP_URL || process.env.PUBLIC_URL || process.env.BASE_URL || process.env.SITE_URL;
   if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
@@ -896,7 +885,7 @@ async function sendEmailVerificationLink(userId, req) {
   const user = userRes.rows[0];
 
   const token = crypto.randomBytes(32).toString('hex');
-  
+
   const configRes = await db.query("SELECT value FROM platform_settings WHERE key = 'email_link_expiry_minutes'");
   const expiryMins = parseInt(configRes.rows[0]?.value || '30', 10);
   const expiresAt = new Date(Date.now() + expiryMins * 60 * 1000);
@@ -1082,8 +1071,8 @@ router.post('/send-mobile-otp', async (req, res) => {
     if (lastTokenRes.rows.length > 0) {
       const elapsedSeconds = Math.floor((Date.now() - new Date(lastTokenRes.rows[0].created_at).getTime()) / 1000);
       if (elapsedSeconds < 60) {
-        return res.status(429).json({ 
-          error: `Please wait ${60 - elapsedSeconds} seconds before requesting a new OTP.` 
+        return res.status(429).json({
+          error: `Please wait ${60 - elapsedSeconds} seconds before requesting a new OTP.`
         });
       }
     }
@@ -1115,7 +1104,7 @@ async function checkMasterOtp(otp) {
     if (masterOtp && masterOtp !== '' && otp.toString().trim() === masterOtp) {
       return true;
     }
-  } catch(e) {}
+  } catch (e) { }
   return false;
 }
 
@@ -1187,7 +1176,7 @@ router.post('/verify-mobile-otp', async (req, res) => {
       await client.query('UPDATE users SET phone_verified = true, updated_at = NOW() WHERE id = $1', [user.id]);
       await client.query('COMMIT');
     } catch (tErr) {
-      await client.query('ROLLBACK').catch(() => {});
+      await client.query('ROLLBACK').catch(() => { });
       throw tErr;
     } finally {
       client.release();
@@ -1239,8 +1228,8 @@ router.post('/send-email-link', async (req, res) => {
     if (lastTokenRes.rows.length > 0) {
       const elapsedSeconds = Math.floor((Date.now() - new Date(lastTokenRes.rows[0].created_at).getTime()) / 1000);
       if (elapsedSeconds < 60) {
-        return res.status(429).json({ 
-          error: `Please wait ${60 - elapsedSeconds} seconds before requesting a new verification email.` 
+        return res.status(429).json({
+          error: `Please wait ${60 - elapsedSeconds} seconds before requesting a new verification email.`
         });
       }
     }
@@ -1295,7 +1284,7 @@ router.get('/verify-email', async (req, res) => {
       await client.query('UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = $1', [user_id]);
       await client.query('COMMIT');
     } catch (tErr) {
-      await client.query('ROLLBACK').catch(() => {});
+      await client.query('ROLLBACK').catch(() => { });
       throw tErr;
     } finally {
       client.release();
@@ -1331,7 +1320,7 @@ router.get('/firebase-config', async (req, res) => {
       'firebase_measurement_id'
     ];
     const settingsRes = await db.query('SELECT key, value FROM platform_settings WHERE key = ANY($1)', [keys]);
-    
+
     const config = {};
     settingsRes.rows.forEach(r => {
       config[r.key] = r.value || '';
@@ -1368,7 +1357,7 @@ router.post('/firebase-verify-phone', async (req, res) => {
 
     const fbAdmin = require('../services/FirebaseService').getFirebaseAdmin();
     const decodedToken = await fbAdmin.auth().verifyIdToken(idToken);
-    
+
     const fbPhoneNumber = decodedToken.phone_number;
     if (!fbPhoneNumber) {
       return res.status(400).json({ error: 'Provided ID token does not contain a verified phone number' });
