@@ -1709,6 +1709,17 @@ router.post('/teachers/:id/certificates', async (req, res) => {
       const userRes = await db.query('SELECT name, email FROM users WHERE id = $1', [id]);
       if (userRes.rows.length > 0 && userRes.rows[0].email) {
         const { sendEmail } = require('../services/EmailService');
+        const { generateCertificatePDFBuffer } = require('../services/CertificatePDFService');
+
+        const pdfBuffer = await generateCertificatePDFBuffer({
+          recipientName: userRes.rows[0].name || 'Teacher',
+          title: title,
+          description: description || '',
+          certificateId: certId,
+          issuedAt: new Date(),
+          certificateType: certificate_type || 'custom'
+        });
+
         await sendEmail({
           to: userRes.rows[0].email,
           subject: `SPEAXA — Certificate Issued: ${title}`,
@@ -1721,10 +1732,17 @@ router.post('/teachers/:id/certificates', async (req, res) => {
                 <p style="margin: 0; color: #475569; font-size: 14px;">${description}</p>
                 <div style="margin-top: 12px; font-size: 12px; color: #64748b;">Certificate ID: <code>${certId}</code></div>
               </div>
-              <p>You can view and download your official certificate anytime from your Speaxa portal under <strong>Certificates</strong>.</p>
+              <p>Your official PDF certificate document is attached to this email. You can also view it anytime from your Speaxa portal under <strong>Certificates</strong>.</p>
             </div>
           `,
-          type: 'notification'
+          type: 'notification',
+          attachments: [
+            {
+              filename: `SPEAXA_Official_Certificate_${certId}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }
+          ]
         });
       }
     } catch (mailErr) {
@@ -2799,12 +2817,23 @@ router.post('/certificates/issue', async (req, res) => {
 
     await logAudit(req.user.id, 'CERTIFICATE_ISSUED', 'certificate', certId, { title, recipient_user_id });
 
-    // Send email notification
+    // Send email notification with attached PDF certificate
     const userRes = await db.query('SELECT name, email FROM users WHERE id = $1', [recipient_user_id]);
     if (userRes.rows.length > 0 && userRes.rows[0].email) {
       const u = userRes.rows[0];
       try {
         const { sendEmail } = require('../services/EmailService');
+        const { generateCertificatePDFBuffer } = require('../services/CertificatePDFService');
+
+        const pdfBuffer = await generateCertificatePDFBuffer({
+          recipientName: u.name || 'User',
+          title: title,
+          description: description || '',
+          certificateId: certId,
+          issuedAt: new Date(),
+          certificateType: certificate_type || 'excellence_certificate'
+        });
+
         const verifyUrl = `${process.env.APP_URL || 'https://speaxa.in'}/verify-certificate.html?id=${certId}`;
         await sendEmail({
           to: u.email,
@@ -2822,15 +2851,24 @@ router.post('/certificates/issue', async (req, res) => {
                   <div>Certificate ID: <strong style="font-family: monospace; color: #0d7a6d;">${certId}</strong></div>
                   <div>Digital Signature: <strong style="font-family: monospace; color: #047857;">${digitalSignature}</strong></div>
                 </div>
+                <p>Your official PDF certificate has been generated and attached to this email.</p>
                 <div style="text-align: center; margin-top: 24px;">
                   <a href="${verifyUrl}" target="_blank" style="background: #0d7a6d; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 50px; font-weight: 700; display: inline-block;">🔍 View & Share Public Verified Certificate</a>
                 </div>
               </div>
             </div>
           `,
-          type: 'notification'
+          attachments: [
+            {
+              filename: `SPEAXA_Official_Certificate_${certId}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }
+          ]
         });
-      } catch (e) { console.error('[Issue Cert Mail Error]:', e.message); }
+      } catch (mailErr) {
+        console.error('[Admin Issue Certificate Email Error]:', mailErr.message);
+      }
     }
 
     res.json({ message: 'Certificate issued, verified, and email dispatched!', id: certId, digital_signature: digitalSignature });

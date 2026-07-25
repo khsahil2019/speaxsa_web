@@ -10,6 +10,7 @@ const { logAudit } = require('../services/AuditService');
 const { updateTeacherLevel } = require('../services/teacherLevel.service');
 const SystemConfigService = require('../services/SystemConfigService');
 const configService = SystemConfigService;
+const { sendEmail } = require('../services/EmailService');
 
 
 // File upload for SOP and documents
@@ -1098,6 +1099,226 @@ router.get('/earnings', async (req, res) => {
   }
 });
 
+// ── POST /api/teacher/email-passbook-statement ─────────────────────────
+router.post('/email-passbook-statement', async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const userRes = await db.query('SELECT name, email, phone FROM users WHERE id = $1', [teacherId]);
+    if (userRes.rows.length === 0) return res.status(404).json({ error: 'Teacher not found' });
+    const teacherUser = userRes.rows[0];
+
+    if (!teacherUser.email) {
+      return res.status(400).json({ error: 'No email address registered with your account.' });
+    }
+
+    // 1. Fetch wallet data
+    let walletObj = { wallet_balance: 0, total_earnings: 0, paid_earnings: 0, pending_earnings: 0 };
+    try {
+      const wRes = await db.query('SELECT * FROM teacher_wallet WHERE teacher_id = $1', [teacherId]);
+      if (wRes.rows.length > 0) walletObj = wRes.rows[0];
+    } catch (e) {}
+
+    // 2. Fetch history & ledger
+    let historyRows = [];
+    try {
+      const hRes = await db.query('SELECT * FROM payout_requests WHERE teacher_id = $1 ORDER BY requested_at DESC', [teacherId]);
+      historyRows = hRes.rows;
+    } catch (e) {}
+
+    let ledgerRows = [];
+    try {
+      const lRes = await db.query('SELECT * FROM teacher_wallet_ledger WHERE teacher_id = $1 ORDER BY created_at ASC', [teacherId]);
+      ledgerRows = lRes.rows;
+    } catch (e) {}
+
+    let total_earnings = parseFloat(walletObj.total_earnings || 0);
+    let wallet_balance = parseFloat(walletObj.wallet_balance || walletObj.balance || 0);
+    let paidPayouts = parseFloat(walletObj.paid_earnings || 0);
+
+    const passbookEntries = [];
+    ledgerRows.forEach(l => {
+      passbookEntries.push({
+        id: l.id,
+        created_at: l.created_at,
+        type: l.type,
+        description: l.description,
+        amount: parseFloat(l.amount || 0)
+      });
+    });
+
+    historyRows.forEach(h => {
+      if (['paid', 'approved'].includes(h.status)) {
+        const payoutId = 'wth_' + h.id;
+        const alreadyExists = passbookEntries.some(e => e.id === payoutId || (e.description && e.description.includes(h.id)));
+        if (!alreadyExists) {
+          passbookEntries.push({
+            id: payoutId,
+            created_at: h.requested_at,
+            type: 'withdrawal',
+            description: `Wallet Payout Executed (${h.status.toUpperCase()}) Route: ${h.upi_id ? 'UPI ' + h.upi_id : h.bank_account || 'Bank Transfer'}`,
+            amount: parseFloat(h.amount || 0)
+          });
+        }
+      }
+    });
+
+    const totalCreditsInLedger = passbookEntries
+      .filter(e => e.type !== 'withdrawal' && e.type !== 'payout')
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+
+    if (total_earnings > totalCreditsInLedger) {
+      const unrecordedCredit = total_earnings - totalCreditsInLedger;
+      const earliestTimestamp = passbookEntries.length > 0
+        ? Math.min(...passbookEntries.map(e => new Date(e.created_at || Date.now()).getTime())) - 60000
+        : Date.now() - 86400000;
+
+      passbookEntries.push({
+        id: 'cred_init_' + teacherId,
+        created_at: walletObj.created_at || new Date(earliestTimestamp).toISOString(),
+        type: 'course_share',
+        description: 'Course Enrollment Share & Accumulated Earnings Base',
+        amount: unrecordedCredit
+      });
+    }
+
+    passbookEntries.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+
+    let runningBalance = 0;
+    const finalPassbook = passbookEntries.map(e => {
+      const isDebit = e.type === 'withdrawal' || e.type === 'payout';
+      const amt = Math.abs(parseFloat(e.amount || 0));
+      if (isDebit) {
+        runningBalance = Math.max(0, runningBalance - amt);
+      } else {
+        runningBalance += amt;
+      }
+      return {
+        ...e,
+        credit: isDebit ? 0 : amt,
+        debit: isDebit ? amt : 0,
+        running_balance: runningBalance
+      };
+    }).reverse();
+
+    const formattedDate = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const rowsHtml = finalPassbook.map(r => `
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 10px 12px; font-size: 12px; color: #64748b; white-space: nowrap;">${new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+        <td style="padding: 10px 12px; font-size: 13px; color: #0f172a; font-weight: 600;">${r.description || 'Earnings Transaction'}</td>
+        <td style="padding: 10px 12px; font-size: 12px; text-align: center;">
+          <span style="background: ${r.type === 'withdrawal' || r.type === 'payout' ? '#fef2f2' : '#f0fdf4'}; color: ${r.type === 'withdrawal' || r.type === 'payout' ? '#dc2626' : '#16a34a'}; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">
+            ${r.type === 'student_referral' ? 'Student Referral' : r.type === 'teacher_referral' ? 'Teacher Referral' : r.type === 'withdrawal' || r.type === 'payout' ? 'Wallet Payout' : 'Course Sale Share'}
+          </span>
+        </td>
+        <td style="padding: 10px 12px; font-size: 13px; text-align: right; color: #16a34a; font-weight: 700;">${r.credit > 0 ? '+₹' + r.credit.toLocaleString('en-IN') : '—'}</td>
+        <td style="padding: 10px 12px; font-size: 13px; text-align: right; color: #dc2626; font-weight: 700;">${r.debit > 0 ? '-₹' + r.debit.toLocaleString('en-IN') : '—'}</td>
+        <td style="padding: 10px 12px; font-size: 13px; text-align: right; color: #0284c7; font-weight: 700;">₹${r.running_balance.toLocaleString('en-IN')}</td>
+      </tr>
+    `).join('');
+
+    const emailHtml = `
+      <div style="font-family: sans-serif; max-width: 680px; margin: 0 auto; color: #334155; background: #ffffff; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #0d7a6d; padding-bottom: 16px; margin-bottom: 20px;">
+          <div>
+            <h2 style="color: #0d7a6d; margin: 0; font-size: 22px; font-weight: 800;">SPEAXA Digital Bank</h2>
+            <div style="color: #64748b; font-size: 13px; font-weight: 600;">Official Bank Passbook Statement</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="background: #0d7a6d; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block;">CERTIFIED STATEMENT</div>
+            <div style="color: #64748b; font-size: 11px; margin-top: 4px;">Date: ${formattedDate}</div>
+          </div>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="font-size: 13px; color: #64748b;">Account Holder: <strong style="color: #0f172a;">${teacherUser.name}</strong></td>
+              <td style="font-size: 13px; color: #64748b; text-align: right;">Email: <strong style="color: #0f172a;">${teacherUser.email}</strong></td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px; text-align: center;">
+            <div style="font-size: 11px; color: #166534; font-weight: 700; text-transform: uppercase;">Available Balance</div>
+            <div style="font-size: 18px; color: #15803d; font-weight: 800; margin-top: 4px;">₹${wallet_balance.toLocaleString('en-IN')}</div>
+          </div>
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px; text-align: center;">
+            <div style="font-size: 11px; color: #991b1b; font-weight: 700; text-transform: uppercase;">Total Paid Out</div>
+            <div style="font-size: 18px; color: #dc2626; font-weight: 800; margin-top: 4px;">₹${paidPayouts.toLocaleString('en-IN')}</div>
+          </div>
+          <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 12px; text-align: center;">
+            <div style="font-size: 11px; color: #075985; font-weight: 700; text-transform: uppercase;">Lifetime Gross Sales</div>
+            <div style="font-size: 18px; color: #0284c7; font-weight: 800; margin-top: 4px;">₹${total_earnings.toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+
+        <h4 style="color: #0f172a; margin-bottom: 12px; font-size: 15px;">Transaction Statement (${finalPassbook.length} Entries)</h4>
+        
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px;">
+          <thead>
+            <tr style="background: #0f172a; color: #ffffff;">
+              <th style="padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase;">Date</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase;">Description</th>
+              <th style="padding: 10px 12px; text-align: center; font-size: 11px; text-transform: uppercase;">Category</th>
+              <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase;">Credit (+₹)</th>
+              <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase;">Debit (-₹)</th>
+              <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase;">Balance (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 11px; color: #94a3b8; text-align: center;">
+          This is an official system-generated digital bank passbook statement certified by SPEAXA Financial Core.
+        </div>
+      </div>
+    `;
+
+    // Generate official PDF attachment buffer via PassbookPDFService
+    const { generatePassbookPDFBuffer } = require('../services/PassbookPDFService');
+    const pdfBuffer = await generatePassbookPDFBuffer({
+      teacherName: teacherUser.name,
+      teacherEmail: teacherUser.email,
+      formattedDate,
+      walletBalance: wallet_balance,
+      totalPaid: paidPayouts,
+      lifetimeGross: total_earnings,
+      passbookEntries: finalPassbook
+    });
+
+    const { sendEmail } = require('../services/EmailService');
+    await sendEmail({
+      to: teacherUser.email,
+      subject: `SPEAXA Official Bank Passbook Statement - ${teacherUser.name}`,
+      html: emailHtml,
+      type: 'passbook',
+      headerTitle: 'Digital Bank Passbook Statement',
+      badgeLabel: 'Official Financial Statement',
+      attachments: [
+        {
+          filename: `SPEAXA_Passbook_Statement_${(teacherUser.name || 'User').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    });
+
+    res.json({
+      message: `Passbook Statement PDF document has been attached & sent to your email (${teacherUser.email}).`
+    });
+
+  } catch (err) {
+    console.error('[Email Passbook Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/bank-details', async (req, res) => {
   const { bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id } = req.body;
   try {
@@ -1628,6 +1849,72 @@ router.get('/certificates', async (req, res) => {
     `, [req.user.id, req.user.email || '']);
     res.json(result.rows);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /teacher/certificates/:id/email - Email certificate PDF attachment
+router.post('/certificates/:id/email', async (req, res) => {
+  try {
+    const certId = req.params.id;
+    const certRes = await db.query(`
+      SELECT tc.*, u.name as teacher_name, u.email as teacher_email
+      FROM teacher_certificates tc
+      JOIN users u ON u.id = tc.teacher_id
+      WHERE tc.id = $1 AND (tc.teacher_id = $2 OR LOWER(u.email) = LOWER($3))
+    `, [certId, req.user.id, req.user.email || '']);
+
+    if (certRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Certificate not found or unauthorized.' });
+    }
+
+    const cert = certRes.rows[0];
+    if (!cert.teacher_email) {
+      return res.status(400).json({ error: 'No email address associated with your account.' });
+    }
+
+    const { sendEmail } = require('../services/EmailService');
+    const { generateCertificatePDFBuffer } = require('../services/CertificatePDFService');
+
+    const pdfBuffer = await generateCertificatePDFBuffer({
+      recipientName: cert.teacher_name || 'Valued Member',
+      title: cert.title || 'Official SPEAXA Certificate',
+      description: cert.description || '',
+      certificateId: cert.id,
+      issuedAt: cert.issued_at || new Date(),
+      certificateType: cert.certificate_type || 'custom'
+    });
+
+    await sendEmail({
+      to: cert.teacher_email,
+      subject: `🎓 SPEAXA Official Certificate PDF: ${cert.title}`,
+      type: 'notification',
+      headerTitle: 'Official Certificate PDF Document',
+      badgeLabel: 'Certified PDF Document',
+      html: `
+        <div style="font-family: sans-serif; color: #334155; max-width: 580px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #0d7a6d; margin-top: 0;">Hello ${cert.teacher_name}!</h2>
+          <p>As requested, your official PDF certificate for <strong>"${cert.title}"</strong> has been generated and attached to this email.</p>
+          <div style="background: #f8fafc; border-left: 4px solid #0d7a6d; padding: 16px; margin: 20px 0; border-radius: 8px;">
+            <h3 style="margin: 0 0 6px 0; color: #0f172a;">🎓 ${cert.title}</h3>
+            <p style="margin: 0; color: #475569; font-size: 13px;">${cert.description || ''}</p>
+            <div style="margin-top: 10px; font-size: 12px; color: #64748b;">Certificate ID: <code>${cert.id}</code></div>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">You can download and save the attached <strong>.pdf</strong> file directly from this email.</p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: `SPEAXA_Certificate_${cert.id}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ]
+    });
+
+    res.json({ message: `Official Certificate PDF has been sent to your email address (${cert.teacher_email}).` });
+  } catch (err) {
+    console.error('[Email Certificate Error]:', err);
     res.status(500).json({ error: err.message });
   }
 });

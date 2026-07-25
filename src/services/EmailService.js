@@ -125,6 +125,14 @@ async function sendEmail(options) {
     let sent = false;
     let errorMessage = null;
 
+    let brevoAttachments;
+    if (options.attachments && Array.isArray(options.attachments) && options.attachments.length > 0) {
+      brevoAttachments = options.attachments.map(att => ({
+        name: att.filename || att.name || 'attachment.pdf',
+        content: Buffer.isBuffer(att.content) ? att.content.toString('base64') : (typeof att.content === 'string' ? att.content : '')
+      }));
+    }
+
     if (emailProvider === 'dev') {
       // Dev Console Fallback
       console.log(`========================================`);
@@ -148,6 +156,7 @@ async function sendEmail(options) {
           to: [{ email: to }],
           subject: subject,
           htmlContent: finalHtml,
+          attachment: brevoAttachments,
           headers: {
             'X-Mailin-Tag': 'SpeaxaVerification',
             'X-Auto-Response-Suppress': 'OOF, AutoReply',
@@ -181,6 +190,7 @@ async function sendEmail(options) {
           to,
           subject,
           html: finalHtml,
+          attachments: options.attachments
         });
         sent = true;
       } catch (smtpErr) {
@@ -199,7 +209,8 @@ async function sendEmail(options) {
               sender: { name: `${platformName}`, email: senderEmail },
               to: [{ email: to }],
               subject: subject,
-              htmlContent: finalHtml
+              htmlContent: finalHtml,
+              attachment: brevoAttachments
             })
           });
 
@@ -227,7 +238,8 @@ async function sendEmail(options) {
           sender: { name: `${platformName}`, email: senderEmail },
           to: [{ email: to }],
           subject: subject,
-          htmlContent: finalHtml
+          htmlContent: finalHtml,
+          attachment: brevoAttachments
         })
       });
 

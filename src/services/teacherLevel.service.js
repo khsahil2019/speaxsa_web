@@ -152,11 +152,22 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
         ON CONFLICT DO NOTHING
       `, [certId, teacherId, 'tier_upgrade', certTitle, certDesc]);
 
-      // Dispatch Email Notification
+      // Dispatch Email Notification with PDF Certificate Attachment
       try {
         const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
         if (uRes.rows.length > 0 && uRes.rows[0].email) {
           const { sendEmail } = require('./EmailService');
+          const { generateCertificatePDFBuffer } = require('./CertificatePDFService');
+
+          const pdfBuffer = await generateCertificatePDFBuffer({
+            recipientName: uRes.rows[0].name || 'Teacher',
+            title: certTitle,
+            description: certDesc,
+            certificateId: certId,
+            issuedAt: new Date(),
+            certificateType: 'tier_upgrade'
+          });
+
           await sendEmail({
             to: uRes.rows[0].email,
             subject: `🎓 Congratulations! Designation Upgrade: ${newLevel}`,
@@ -172,9 +183,16 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
                   <p style="margin: 0; color: #475569; font-size: 14px;">${certDesc}</p>
                   <div style="margin-top: 10px; font-size: 12px; color: #64748b;">Certificate ID: <code>${certId}</code></div>
                 </div>
-                <p>You can view and download your official certificate anytime from your Teacher Portal under <strong>Certificates</strong>.</p>
+                <p>Your official PDF certificate has been generated and attached to this email. You can also view it anytime from your Teacher Portal under <strong>Certificates</strong>.</p>
               </div>
-            `
+            `,
+            attachments: [
+              {
+                filename: `SPEAXA_Designation_Certificate_${newLevel.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf'
+              }
+            ]
           });
         }
       } catch (mailErr) {

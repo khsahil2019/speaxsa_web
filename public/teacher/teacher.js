@@ -4476,37 +4476,40 @@ async function renderEarnings() {
                 <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="printPassbookStatement()">
                   <i class="fas fa-print me-1.5"></i> Print Passbook
                 </button>
+                <button type="button" class="btn btn-success btn-sm rounded-pill px-3 fw-bold d-inline-flex align-items-center gap-1.5" id="btnEmailPassbook" onclick="emailPassbookStatement()" title="Request full Passbook Statement PDF on Email">
+                  <i class="fas fa-file-pdf"></i> Email Passbook PDF
+                </button>
                 <span class="badge bg-primary px-3 py-2 rounded-pill fs-7">${passbookRows.length} Passbook Entries</span>
               </div>
             </div>
 
-            <div class="p-3" id="passbookTableContainer" style="overflow-x:auto; max-height: 280px; overflow-y: auto;">
-              <table class="table table-hover align-middle border-0 mb-0" style="font-size: 0.85rem;">
-                <thead style="text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 10;">
-                  <tr>
-                    <th style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Date & Time</th>
-                    <th style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Particulars / Description</th>
-                    <th style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Category</th>
-                    <th class="text-end text-success" style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Credit (+₹)</th>
-                    <th class="text-end text-danger" style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Debit (-₹)</th>
-                    <th class="text-end text-primary" style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Balance (₹)</th>
+            <div class="p-0" id="passbookTableContainer" style="overflow-x:auto; max-height: 320px; overflow-y: auto; position: relative; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px; background-color: #ffffff;">
+              <table class="table table-hover align-middle border-0 mb-0" style="font-size: 0.85rem; border-collapse: separate; border-spacing: 0; background-color: #ffffff;">
+                <thead style="position: sticky; top: 0; z-index: 50; background-color: #ffffff !important;">
+                  <tr style="position: sticky; top: 0; z-index: 50; background-color: #ffffff !important;">
+                    <th style="background-color: #ffffff !important; position: sticky; top: 0; z-index: 50; border-bottom: 2px solid #cbd5e1; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; padding: 12px 16px; white-space: nowrap; color: #334155;">Date &amp; Time</th>
+                    <th style="background-color: #ffffff !important; position: sticky; top: 0; z-index: 50; border-bottom: 2px solid #cbd5e1; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; padding: 12px 16px; color: #334155;">Particulars / Description</th>
+                    <th style="background-color: #ffffff !important; position: sticky; top: 0; z-index: 50; border-bottom: 2px solid #cbd5e1; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; padding: 12px 16px; color: #334155;">Category</th>
+                    <th class="text-end text-success" style="background-color: #ffffff !important; position: sticky; top: 0; z-index: 50; border-bottom: 2px solid #cbd5e1; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; padding: 12px 16px; white-space: nowrap;">Credit (+₹)</th>
+                    <th class="text-end text-danger" style="background-color: #ffffff !important; position: sticky; top: 0; z-index: 50; border-bottom: 2px solid #cbd5e1; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; padding: 12px 16px; white-space: nowrap;">Debit (-₹)</th>
+                    <th class="text-end text-primary" style="background-color: #ffffff !important; position: sticky; top: 0; z-index: 50; border-bottom: 2px solid #cbd5e1; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; padding: 12px 16px; white-space: nowrap;">Balance (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${passbookRows.map(r => {
                     const balVal = r.running_balance !== undefined ? r.running_balance : (r.balance !== undefined ? r.balance : (r.runningBalance !== undefined ? r.runningBalance : 0));
                     return `
-                    <tr>
-                      <td class="text-muted small" style="white-space:nowrap;">${fmtDate(r.created_at)}</td>
-                      <td><strong class="text-dark">${escapeHtml(r.description || 'Earnings Transaction')}</strong></td>
-                      <td>
+                    <tr style="background-color: #ffffff;">
+                      <td class="text-muted small" style="white-space:nowrap; padding: 12px 16px;">${fmtDate(r.created_at)}</td>
+                      <td style="padding: 12px 16px;"><strong class="text-dark">${escapeHtml(r.description || 'Earnings Transaction')}</strong></td>
+                      <td style="padding: 12px 16px;">
                         <span class="badge ${r.type === 'student_referral' || r.type === 'teacher_referral' ? 'bg-info-subtle text-info' : r.type === 'withdrawal' || r.type === 'payout' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'} px-2.5 py-1">
                           ${r.type === 'student_referral' ? 'Student Referral' : r.type === 'teacher_referral' ? 'Teacher Referral' : r.type === 'withdrawal' || r.type === 'payout' ? 'Wallet Payout' : 'Course Sale Share'}
                         </span>
                       </td>
-                      <td class="text-end fw-bold text-success">${r.credit > 0 ? '+' + fmtCurr(r.credit) : '—'}</td>
-                      <td class="text-end fw-bold text-danger">${r.debit > 0 ? '-' + fmtCurr(r.debit) : '—'}</td>
-                      <td class="text-end fw-bold text-primary">₹${fmtCurr(balVal)}</td>
+                      <td class="text-end fw-bold text-success" style="padding: 12px 16px;">${r.credit > 0 ? '+' + fmtCurr(r.credit) : '—'}</td>
+                      <td class="text-end fw-bold text-danger" style="padding: 12px 16px;">${r.debit > 0 ? '-' + fmtCurr(r.debit) : '—'}</td>
+                      <td class="text-end fw-bold text-primary" style="padding: 12px 16px;">₹${fmtCurr(balVal)}</td>
                     </tr>
                   `}).join('') || `
                     <tr>
@@ -6639,4 +6642,25 @@ window.printPassbookStatement = function () {
     </html>
   `);
   printWin.document.close();
+};
+
+window.emailPassbookStatement = async function () {
+  const btn = document.getElementById('btnEmailPassbook');
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Requesting PDF...';
+  }
+
+  try {
+    const res = await api('/teacher/email-passbook-statement', { method: 'POST' });
+    showToast(res.message || 'Full Passbook Statement PDF sent to your email successfully!', 'success');
+  } catch (err) {
+    showToast(err.message || 'Failed to email passbook statement. Please try again.', 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
 };
