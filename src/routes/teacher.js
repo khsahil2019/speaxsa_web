@@ -1019,18 +1019,6 @@ router.get('/earnings', async (req, res) => {
       });
     });
 
-    // If passbook has no credit entries but total_earnings > 0, add synthesized initial course credit
-    const hasCredit = passbookEntries.some(e => e.type !== 'withdrawal' && e.type !== 'payout');
-    if (!hasCredit && total_earnings > 0) {
-      passbookEntries.push({
-        id: 'cred_init_' + teacherId,
-        created_at: walletObj.created_at || new Date(Date.now() - 86400000).toISOString(),
-        type: 'course_share',
-        description: 'Course Enrollment Share & Teaching Revenue',
-        amount: total_earnings
-      });
-    }
-
     // Add ONLY paid/approved payout withdrawals from history if not already in ledger
     history.rows.forEach(h => {
       if (['paid', 'approved'].includes(h.status)) {
@@ -1047,6 +1035,26 @@ router.get('/earnings', async (req, res) => {
         }
       }
     });
+
+    // Reconcile passbook credits with total_earnings so running balance is 100% accurate
+    const totalCreditsInLedger = passbookEntries
+      .filter(e => e.type !== 'withdrawal' && e.type !== 'payout')
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+
+    if (total_earnings > totalCreditsInLedger) {
+      const unrecordedCredit = total_earnings - totalCreditsInLedger;
+      const earliestTimestamp = passbookEntries.length > 0
+        ? Math.min(...passbookEntries.map(e => new Date(e.created_at || Date.now()).getTime())) - 60000
+        : Date.now() - 86400000;
+      
+      passbookEntries.push({
+        id: 'cred_init_' + teacherId,
+        created_at: walletObj.created_at || new Date(earliestTimestamp).toISOString(),
+        type: 'course_share',
+        description: 'Course Enrollment Share & Accumulated Earnings Base',
+        amount: unrecordedCredit
+      });
+    }
 
     // Sort chronologically (oldest first) to compute running balance
     passbookEntries.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));

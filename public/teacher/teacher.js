@@ -4482,31 +4482,33 @@ async function renderEarnings() {
 
             <div class="p-3" id="passbookTableContainer" style="overflow-x:auto; max-height: 280px; overflow-y: auto;">
               <table class="table table-hover align-middle border-0 mb-0" style="font-size: 0.85rem;">
-                <thead style="background: rgba(15,23,42,0.04); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 2; background-color: #f8fafc;">
+                <thead style="text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 10;">
                   <tr>
-                    <th>Date & Time</th>
-                    <th>Particulars / Description</th>
-                    <th>Category</th>
-                    <th class="text-end text-success">Credit (+₹)</th>
-                    <th class="text-end text-danger">Debit (-₹)</th>
-                    <th class="text-end text-primary">Balance (₹)</th>
+                    <th style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Date & Time</th>
+                    <th style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Particulars / Description</th>
+                    <th style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Category</th>
+                    <th class="text-end text-success" style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Credit (+₹)</th>
+                    <th class="text-end text-danger" style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Debit (-₹)</th>
+                    <th class="text-end text-primary" style="background-color: #ffffff; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e2e8f0;">Balance (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${passbookRows.map(r => `
+                  ${passbookRows.map(r => {
+                    const balVal = r.running_balance !== undefined ? r.running_balance : (r.balance !== undefined ? r.balance : (r.runningBalance !== undefined ? r.runningBalance : 0));
+                    return `
                     <tr>
                       <td class="text-muted small" style="white-space:nowrap;">${fmtDate(r.created_at)}</td>
                       <td><strong class="text-dark">${escapeHtml(r.description || 'Earnings Transaction')}</strong></td>
                       <td>
                         <span class="badge ${r.type === 'student_referral' || r.type === 'teacher_referral' ? 'bg-info-subtle text-info' : r.type === 'withdrawal' || r.type === 'payout' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'} px-2.5 py-1">
-                          ${r.type === 'student_referral' ? 'Student Ref' : r.type === 'teacher_referral' ? 'Teacher Ref' : r.type === 'withdrawal' || r.type === 'payout' ? 'Withdrawal' : 'Course Sale Share'}
+                          ${r.type === 'student_referral' ? 'Student Referral' : r.type === 'teacher_referral' ? 'Teacher Referral' : r.type === 'withdrawal' || r.type === 'payout' ? 'Wallet Payout' : 'Course Sale Share'}
                         </span>
                       </td>
                       <td class="text-end fw-bold text-success">${r.credit > 0 ? '+' + fmtCurr(r.credit) : '—'}</td>
                       <td class="text-end fw-bold text-danger">${r.debit > 0 ? '-' + fmtCurr(r.debit) : '—'}</td>
-                      <td class="text-end fw-bold text-primary">₹${fmtCurr(r.running_balance)}</td>
+                      <td class="text-end fw-bold text-primary">₹${fmtCurr(balVal)}</td>
                     </tr>
-                  `).join('') || `
+                  `}).join('') || `
                     <tr>
                       <td colspan="6" class="text-center text-muted py-4">
                         <i class="fas fa-receipt fa-2x mb-2 opacity-50 d-block"></i>

@@ -736,29 +736,258 @@ async function showCourseDetails(courseId) {
   }
 }
 
+// ── Website Alert Modal Helper (Replaces Browser System alert()) ─────
+function showWebsiteAlert(message, title = 'Notice') {
+  const modalEl = document.getElementById('websiteAlertModal');
+  if (modalEl) {
+    const titleEl = document.getElementById('websiteAlertTitle');
+    const msgEl = document.getElementById('websiteAlertMessage');
+    if (titleEl) titleEl.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${title}`;
+    if (msgEl) msgEl.textContent = message;
+    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    modal.show();
+  } else {
+    const errEl = document.getElementById('checkoutErrorBanner');
+    if (errEl) {
+      errEl.textContent = message;
+      errEl.classList.remove('d-none');
+    }
+  }
+}
+
 function goBackToBatches() {
   document.getElementById('modalStepBatch').style.display = 'block';
   document.getElementById('modalStepCheckout').style.display = 'none';
+  if (document.getElementById('modalStepMobileOtp')) document.getElementById('modalStepMobileOtp').style.display = 'none';
 }
 
-function checkoutBatch(batchId) {
+async function checkoutBatch(batchId) {
   activeBatchId = batchId;
   const token = localStorage.getItem('student_token') || localStorage.getItem('token');
   if (token) {
-    startPaymentFlow(token);
-  } else {
-    document.getElementById('modalStepBatch').style.display = 'none';
-    document.getElementById('modalStepCheckout').style.display = 'block';
+    try {
+      const meRes = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        const meUser = meData.user || meData;
+        if (meUser && meUser.role === 'student') {
+          if (meUser.phone_verified) {
+            startPaymentFlow(token);
+            return;
+          } else {
+            await triggerPostPaymentMobileVerification(token, meUser.phone || meUser.mobile_number, meUser.email);
+            return;
+          }
+        }
+      }
+    } catch (e) {}
+    localStorage.removeItem('student_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('student_user');
+    localStorage.removeItem('user');
+    localStorage.removeItem('spx_token');
+    localStorage.removeItem('spx_user');
   }
+
+  document.getElementById('modalStepBatch').style.display = 'none';
+  if (document.getElementById('modalStepMobileOtp')) document.getElementById('modalStepMobileOtp').style.display = 'none';
+  document.getElementById('modalStepPayment').style.display = 'none';
+  document.getElementById('modalStepCheckout').style.display = 'block';
+}
+
+let postPaymentUserPhone = null;
+let currentCheckoutToken = null;
+
+async function triggerPostPaymentMobileVerification(token, phone, email) {
+  currentCheckoutToken = token;
+  postPaymentUserPhone = phone;
+  const mobileOtpStep = document.getElementById('modalStepMobileOtp');
+  const paymentStep = document.getElementById('modalStepPayment');
+  const batchStep = document.getElementById('modalStepBatch');
+  const checkoutStep = document.getElementById('modalStepCheckout');
+
+  if (batchStep) batchStep.style.display = 'none';
+  if (checkoutStep) checkoutStep.style.display = 'none';
+  if (paymentStep) paymentStep.style.display = 'none';
+
+  if (!mobileOtpStep) {
+    startPaymentFlow(token);
+    return;
+  }
+
+  mobileOtpStep.style.display = 'block';
+  const phoneDisp = document.getElementById('otpMobileDisplay');
+  if (phoneDisp) phoneDisp.textContent = phone || 'your mobile';
+
+  clearCheckoutOtpBoxes();
+
+  try {
+    const res = await fetch('/api/auth/send-mobile-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: phone || email })
+    });
+    const data = await res.json();
+    const errBanner = document.getElementById('otpStepErrorBanner');
+    const succBanner = document.getElementById('otpStepSuccessBanner');
+    if (errBanner) errBanner.classList.add('d-none');
+
+    if (succBanner) {
+      succBanner.textContent = data.message || 'SMS OTP code sent to your mobile number.';
+      succBanner.classList.remove('d-none');
+      setTimeout(() => succBanner.classList.add('d-none'), 5000);
+    }
+  } catch (e) {
+    console.warn('[Checkout] Auto-send mobile OTP failed:', e.message);
+  }
+}
+
+function clearCheckoutOtpBoxes() {
+  const boxes = document.querySelectorAll('.c-otp-box');
+  boxes.forEach(b => { b.value = ''; });
+  if (boxes.length > 0) boxes[0].focus();
+  const errBanner = document.getElementById('otpStepErrorBanner');
+  const succBanner = document.getElementById('otpStepSuccessBanner');
+  if (errBanner) errBanner.classList.add('d-none');
+  if (succBanner) succBanner.classList.add('d-none');
+}
+
+async function verifyCheckoutMobileOtp() {
+  const boxes = document.querySelectorAll('.c-otp-box');
+  let otp = '';
+  boxes.forEach(b => { otp += b.value.trim(); });
+
+  const errBanner = document.getElementById('otpStepErrorBanner');
+  const succBanner = document.getElementById('otpStepSuccessBanner');
+  const btn = document.getElementById('btnVerifyCheckoutOtp');
+
+  if (!otp || otp.length < 6) {
+    if (errBanner) {
+      errBanner.textContent = 'Please enter all 6 digits of the SMS OTP.';
+      errBanner.classList.remove('d-none');
+    } else {
+      showWebsiteAlert('Please enter all 6 digits of the SMS OTP.', 'Verification Error');
+    }
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Verifying...';
+  }
+
+  try {
+    const phone = postPaymentUserPhone || document.getElementById('checkoutPhone')?.value || '';
+    const email = document.getElementById('checkoutEmail')?.value || '';
+    const res = await fetch('/api/auth/verify-mobile-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: phone || email, otp })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Mobile verification failed');
+    }
+
+    const userStr = localStorage.getItem('student_user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        u.phone_verified = true;
+        localStorage.setItem('student_user', JSON.stringify(u));
+      } catch (e) {}
+    }
+
+    if (succBanner) {
+      succBanner.textContent = '🎉 Mobile verified successfully! Proceeding to payment...';
+      succBanner.classList.remove('d-none');
+    }
+
+    setTimeout(() => {
+      const token = currentCheckoutToken || localStorage.getItem('student_token') || localStorage.getItem('token');
+      startPaymentFlow(token);
+    }, 1000);
+
+  } catch (err) {
+    if (errBanner) {
+      errBanner.textContent = err.message;
+      errBanner.classList.remove('d-none');
+    } else {
+      showWebsiteAlert(err.message, 'Verification Failed');
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-check-circle me-1"></i> Verify Mobile & Proceed to Payment';
+    }
+  }
+}
+
+async function resendCheckoutMobileOtp() {
+  const phone = postPaymentUserPhone || document.getElementById('checkoutPhone')?.value || '';
+  const email = document.getElementById('checkoutEmail')?.value || '';
+  const errBanner = document.getElementById('otpStepErrorBanner');
+  const succBanner = document.getElementById('otpStepSuccessBanner');
+  if (errBanner) errBanner.classList.add('d-none');
+
+  try {
+    const res = await fetch('/api/auth/send-mobile-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: phone || email })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to resend OTP');
+
+    if (succBanner) {
+      succBanner.textContent = data.message || 'New 6-digit OTP code sent!';
+      succBanner.classList.remove('d-none');
+      setTimeout(() => succBanner.classList.add('d-none'), 5000);
+    }
+  } catch (err) {
+    if (errBanner) {
+      errBanner.textContent = err.message;
+      errBanner.classList.remove('d-none');
+    }
+  }
+}
+
+function skipMobileVerificationAndProceed() {
+  const token = currentCheckoutToken || localStorage.getItem('student_token') || localStorage.getItem('token');
+  startPaymentFlow(token);
+}
+
+function showSuccessScreenAndRedirect(email) {
+  const mobileOtpStep = document.getElementById('modalStepMobileOtp');
+  const successStep = document.getElementById('modalStepSuccess');
+  if (mobileOtpStep) mobileOtpStep.style.display = 'none';
+  if (document.getElementById('modalStepPayment')) document.getElementById('modalStepPayment').style.display = 'none';
+
+  if (successStep) successStep.style.display = 'block';
+
+  let secs = 3;
+  const countdownEl = document.getElementById('successCountdown');
+  const timer = setInterval(() => {
+    secs--;
+    if (countdownEl) countdownEl.textContent = secs;
+    if (secs <= 0) {
+      clearInterval(timer);
+      window.location.href = '/student';
+    }
+  }, 1000);
 }
 
 async function startPaymentFlow(token) {
   document.getElementById('modalStepBatch').style.display = 'none';
   document.getElementById('modalStepCheckout').style.display = 'none';
+  if (document.getElementById('modalStepMobileOtp')) document.getElementById('modalStepMobileOtp').style.display = 'none';
   document.getElementById('modalStepPayment').style.display = 'block';
   
   try {
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
     const paymentId = `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     const res = await fetch(`/api/student/batches/${activeBatchId}/enroll`, {
@@ -772,27 +1001,33 @@ async function startPaymentFlow(token) {
     
     const enrollData = await res.json();
     if (!res.ok) {
-      throw new Error(enrollData.error || 'Enrollment failed');
-    }
-    
-    document.getElementById('modalStepPayment').style.display = 'none';
-    document.getElementById('modalStepSuccess').style.display = 'block';
-    
-    let secs = 3;
-    const countdownEl = document.getElementById('successCountdown');
-    const timer = setInterval(() => {
-      secs--;
-      if (countdownEl) countdownEl.textContent = secs;
-      if (secs <= 0) {
-        clearInterval(timer);
-        window.location.href = '/student';
+      const errMessage = enrollData.error || 'Enrollment failed';
+      if (res.status === 401 || res.status === 403 || errMessage.toLowerCase().includes('token') || errMessage.toLowerCase().includes('unauthorized')) {
+        localStorage.removeItem('student_token');
+        localStorage.removeItem('token');
+        localStorage.removeItem('student_user');
+        localStorage.removeItem('user');
+        
+        document.getElementById('modalStepPayment').style.display = 'none';
+        document.getElementById('modalStepCheckout').style.display = 'block';
+        showWebsiteAlert('Your session has expired. Please enter your details below to complete your course registration.', 'Session Expired');
+        return;
       }
-    }, 1000);
+      throw new Error(errMessage);
+    }
+
+    const email = document.getElementById('checkoutEmail')?.value || '';
+    if (document.getElementById('successEmail')) document.getElementById('successEmail').textContent = email || 'your account email';
+    if (document.getElementById('successPassword') && document.getElementById('checkoutPassword')) {
+      document.getElementById('successPassword').textContent = document.getElementById('checkoutPassword').value || 'Speaxa@123';
+    }
+
+    showSuccessScreenAndRedirect(email);
     
   } catch (err) {
-    alert(`Payment / Enrollment failed: ${err.message}`);
     document.getElementById('modalStepPayment').style.display = 'none';
-    document.getElementById('modalStepBatch').style.display = 'block';
+    document.getElementById('modalStepCheckout').style.display = 'block';
+    showWebsiteAlert(`Payment / Enrollment failed: ${err.message}`, 'Enrollment Error');
   }
 }
 
@@ -804,13 +1039,19 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const submitBtn = document.getElementById('checkoutSubmitBtn');
       const originalHtml = submitBtn.innerHTML;
+      const errBanner = document.getElementById('checkoutErrorBanner');
+      if (errBanner) errBanner.classList.add('d-none');
+
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Processing...';
       submitBtn.disabled = true;
       
-      const name = document.getElementById('checkoutName').value;
-      const email = document.getElementById('checkoutEmail').value;
-      const phone = document.getElementById('checkoutPhone').value;
-      const password = document.getElementById('checkoutPassword').value;
+      const name = document.getElementById('checkoutName').value.trim();
+      const email = document.getElementById('checkoutEmail').value.trim();
+      const phone = document.getElementById('checkoutPhone').value.trim();
+      const password = document.getElementById('checkoutPassword').value.trim();
+      const grade = document.getElementById('checkoutGrade')?.value || document.getElementById('modalCourseGrade')?.textContent || 'Class 10';
+      const board = document.getElementById('checkoutBoard')?.value || document.getElementById('modalCourseBoard')?.textContent || 'CBSE';
+      const referred_by_code = document.getElementById('checkoutReferralCode')?.value.trim() || null;
       
       try {
         const regRes = await fetch('/api/auth/register', {
@@ -822,33 +1063,108 @@ document.addEventListener('DOMContentLoaded', () => {
             phone,
             password,
             role: 'student',
-            board: document.getElementById('modalCourseBoard').textContent,
-            grade: document.getElementById('modalCourseGrade').textContent
+            board,
+            grade,
+            referred_by_code
           })
         });
         
         const regData = await regRes.json();
+        let targetToken = null;
+        let targetUser = null;
+        
         if (!regRes.ok) {
-          throw new Error(regData.error || 'Registration failed');
+          const errStr = (regData.error || '').toLowerCase();
+          if (errStr.includes('already registered') || errStr.includes('already linked')) {
+            const loginRes = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password, role: 'student' })
+            });
+            const loginData = await loginRes.json();
+            if (loginRes.ok && loginData.token) {
+              targetToken = loginData.token;
+              targetUser = loginData.user;
+            } else {
+              throw new Error(loginData.error || regData.error || 'Account exists. Please check your password to enroll.');
+            }
+          } else {
+            throw new Error(regData.error || 'Registration failed');
+          }
+        } else {
+          targetToken = regData.token;
+          targetUser = regData.user;
+        }
+
+        if (!targetToken) {
+          throw new Error('Registration did not return an authentication token. Please try again.');
         }
         
-        localStorage.setItem('student_token', regData.token);
-        localStorage.setItem('student_user', JSON.stringify(regData.user));
+        localStorage.setItem('student_token', targetToken);
+        localStorage.setItem('student_user', JSON.stringify(targetUser));
+
+        // Fetch fresh profile from DB to get absolute ground truth on phone_verified status
+        let isPhoneVerifiedInDb = false;
+        try {
+          const meRes = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${targetToken}` }
+          });
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            const freshUser = meData.user || meData;
+            targetUser = freshUser;
+            localStorage.setItem('student_user', JSON.stringify(freshUser));
+            isPhoneVerifiedInDb = freshUser.phone_verified === true;
+          }
+        } catch (e) {
+          isPhoneVerifiedInDb = targetUser && targetUser.phone_verified === true;
+        }
         
-        document.getElementById('successEmail').textContent = email;
-        document.getElementById('successPassword').textContent = password;
+        if (document.getElementById('successEmail')) document.getElementById('successEmail').textContent = email;
+        if (document.getElementById('successPassword')) document.getElementById('successPassword').textContent = password;
         
         submitBtn.innerHTML = originalHtml;
         submitBtn.disabled = false;
         
-        await startPaymentFlow(regData.token);
+        if (isPhoneVerifiedInDb) {
+          await startPaymentFlow(targetToken);
+        } else {
+          await triggerPostPaymentMobileVerification(targetToken, phone, email);
+        }
         
       } catch (err) {
-        alert(err.message);
         submitBtn.innerHTML = originalHtml;
         submitBtn.disabled = false;
+        
+        if (errBanner) {
+          errBanner.textContent = err.message;
+          errBanner.classList.remove('d-none');
+        } else {
+          showWebsiteAlert(err.message, 'Registration Error');
+        }
       }
     });
+  }
+});
+
+// Auto-advance OTP box typing in checkout modal
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.classList.contains('c-otp-box')) {
+    const box = e.target;
+    if (box.value.length >= 1) {
+      box.value = box.value.slice(-1);
+      const next = box.nextElementSibling;
+      if (next && next.classList.contains('c-otp-box')) next.focus();
+    }
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.target && e.target.classList.contains('c-otp-box') && e.key === 'Backspace') {
+    const box = e.target;
+    if (!box.value) {
+      const prev = box.previousElementSibling;
+      if (prev && prev.classList.contains('c-otp-box')) prev.focus();
+    }
   }
 });
 
@@ -888,12 +1204,16 @@ function dismissAnnouncement() {
 // ── Footer App Action Handlers ────────────────────────────────
 function showAppComingSoon(event) {
   if (event) event.preventDefault();
-  alert("Speaxa Mobile Application is launching soon! Stay tuned for Google Play Store and iOS App Store releases.");
+  showWebsiteAlert("Speaxa Mobile Application is launching soon! Stay tuned for Google Play Store and iOS App Store releases.", "Mobile Application");
 }
 
 // Expose handlers to window scope
 window.dismissAnnouncement = dismissAnnouncement;
 window.showAppComingSoon = showAppComingSoon;
+window.showWebsiteAlert = showWebsiteAlert;
+window.verifyCheckoutMobileOtp = verifyCheckoutMobileOtp;
+window.resendCheckoutMobileOtp = resendCheckoutMobileOtp;
+window.skipMobileVerificationAndProceed = skipMobileVerificationAndProceed;
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize Landing Page Data & Settings from Backend Database

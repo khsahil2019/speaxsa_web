@@ -8,6 +8,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { sanitizeUser, generateUID } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
 const { sendEmail } = require('../services/EmailService');
+const SystemConfigService = require('../services/SystemConfigService');
 
 router.use(authenticateToken);
 
@@ -367,20 +368,36 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
     // 2. Insert payment row into payments ledger WITH coupon and teacher_id!
     try {
       await db.query(`
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS teacher_id VARCHAR(100);
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS course_id VARCHAR(100);
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS batch_id VARCHAR(100);
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'upi';
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_payment_id VARCHAR(255);
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(50);
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10,2) DEFAULT 0;
+        ALTER TABLE payments ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'completed';
+      `);
+    } catch (sErr) {}
+
+    let paymentSaved = false;
+    try {
+      await db.query(`
         INSERT INTO payments (id, student_id, teacher_id, batch_id, course_id, amount, status, payment_method, gateway_payment_id, coupon_code, discount_amount)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, 'captured', 'upi', $7, $8, $9)
         ON CONFLICT (id) DO NOTHING
-      `, [pId, req.user.id, teacherId || null, batchId, batchObj.course_id || null, amountPaid, 'completed', 'upi', pId, couponCode ? couponCode.trim().toUpperCase() : null, discountAmount]);
+      `, [pId, req.user.id, teacherId || null, batchId, batchObj.course_id || null, amountPaid, pId, couponCode ? couponCode.trim().toUpperCase() : null, discountAmount]);
+      paymentSaved = true;
     } catch (pErr) {
-      console.warn('[Payments Table Insert Fallback]:', pErr.message);
+      console.warn('[Payments Table Insert Primary Fallback]:', pErr.message);
       try {
         await db.query(`
-          INSERT INTO payments (id, student_id, batch_id, course_id, amount, status, coupon_code, discount_amount)
-          VALUES ($1, $2, $3, $4, $5, 'completed', $6, $7)
+          INSERT INTO payments (id, student_id, batch_id, amount, status)
+          VALUES ($1, $2, $3, $4, 'captured')
           ON CONFLICT (id) DO NOTHING
-        `, [pId, req.user.id, batchId, batchObj.course_id || null, amountPaid, couponCode ? couponCode.trim().toUpperCase() : null, discountAmount]);
+        `, [pId, req.user.id, batchId, amountPaid]);
+        paymentSaved = true;
       } catch (pErr2) {
-        console.warn('[Payments Table Insert Fallback 2]:', pErr2.message);
+        console.error('[Payments Table Insert Fallback Failed]:', pErr2.message);
       }
     }
 
@@ -403,16 +420,31 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
       `, [teacherId, teacherShare]);
 
       const ledgerId = `tx_course_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      await db.query(`
-        INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id)
-        VALUES ($1, $2, $3, 'course_share', $4, $5)
-      `, [
-        ledgerId,
-        teacherId,
-        teacherShare,
-        `Course sale share (${payoutPct}%): ${batchObj.course_title || 'Course'} (${batchObj.batch_name || 'Batch'}) - Student: ${req.user.name}`,
-        pId
-      ]);
+      const validPaymentIdForLedger = paymentSaved ? pId : null;
+
+      try {
+        await db.query(`
+          INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id)
+          VALUES ($1, $2, $3, 'course_share', $4, $5)
+        `, [
+          ledgerId,
+          teacherId,
+          teacherShare,
+          `Course sale share (${payoutPct}%): ${batchObj.course_title || 'Course'} (${batchObj.batch_name || 'Batch'}) - Student: ${req.user.name}`,
+          validPaymentIdForLedger
+        ]);
+      } catch (lErr) {
+        console.warn('[Ledger Insert Fallback without payment_id]:', lErr.message);
+        await db.query(`
+          INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description)
+          VALUES ($1, $2, $3, 'course_share', $4)
+        `, [
+          ledgerId,
+          teacherId,
+          teacherShare,
+          `Course sale share (${payoutPct}%): ${batchObj.course_title || 'Course'} (${batchObj.batch_name || 'Batch'}) - Student: ${req.user.name}`
+        ]);
+      }
       console.log(`[Student Enroll] Credited ₹${teacherShare} (${payoutPct}%) to teacher ${teacherId} wallet for course ${batchObj.course_title}`);
 
       // Handle Student Referral Bonus if student was referred by a teacher/user
@@ -432,17 +464,31 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
                 updated_at = NOW()
           `, [referrerId, refBonus]);
 
-          await db.query(`
-            INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id, referred_user_id)
-            VALUES ($1, $2, $3, 'student_referral', $4, $5, $6)
-          `, [
-            `tx_sref_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-            referrerId,
-            refBonus,
-            `Student Referral Bonus (${refBonusPct}%): ${req.user.name} enrolled in ${batchObj.course_title}`,
-            pId,
-            req.user.id
-          ]);
+          try {
+            await db.query(`
+              INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id, referred_user_id)
+              VALUES ($1, $2, $3, 'student_referral', $4, $5, $6)
+            `, [
+              `tx_sref_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              referrerId,
+              refBonus,
+              `Student Referral Bonus (${refBonusPct}%): ${req.user.name} enrolled in ${batchObj.course_title}`,
+              validPaymentIdForLedger,
+              req.user.id
+            ]);
+          } catch (rErr) {
+            console.warn('[Referral Ledger Insert Fallback without payment_id]:', rErr.message);
+            await db.query(`
+              INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, referred_user_id)
+              VALUES ($1, $2, $3, 'student_referral', $4, $5)
+            `, [
+              `tx_sref_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              referrerId,
+              refBonus,
+              `Student Referral Bonus (${refBonusPct}%): ${req.user.name} enrolled in ${batchObj.course_title}`,
+              req.user.id
+            ]);
+          }
         }
       }
     }

@@ -204,35 +204,94 @@
               <button class="btn btn-sm btn-outline-secondary mb-3" onclick="goBackToBatches()"><i class="fas fa-arrow-left me-1"></i>Back to Batches</button>
               <h5 class="text-white fw-bold mb-3"><i class="fas fa-user-plus text-primary me-2"></i>Checkout Details</h5>
               
-              <div class="alert alert-info py-2 px-3 small border-0" style="background: rgba(60,189,176,0.1); color: var(--primary);">
+              <div class="alert alert-info py-2 px-3 small border-0 mb-3" style="background: rgba(60,189,176,0.1); color: var(--primary);">
                 <i class="fas fa-info-circle me-1"></i>First time visiting? An account will be automatically created for you.
               </div>
+
+              <div id="checkoutErrorBanner" class="alert alert-danger py-2 px-3 small d-none mb-3" style="font-size:0.85rem; border-radius:8px;"></div>
               
               <form id="modalCheckoutForm">
-                <div class="mb-3">
-                  <label class="form-label text-muted small mb-1">Full Name</label>
-                  <input type="text" class="form-control spx-input" id="checkoutName" placeholder="Your Name" required>
+                <div class="mb-2">
+                  <label class="form-label text-muted small mb-1">Full Name *</label>
+                  <input type="text" class="form-control spx-input" id="checkoutName" placeholder="Your Full Name" required>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label text-muted small mb-1">Email Address</label>
+                <div class="mb-2">
+                  <label class="form-label text-muted small mb-1">Email Address *</label>
                   <input type="email" class="form-control spx-input" id="checkoutEmail" placeholder="email@example.com" required>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label text-muted small mb-1">Phone Number</label>
-                  <input type="tel" class="form-control spx-input" id="checkoutPhone" placeholder="9999999999" required>
+                <div class="mb-2">
+                  <label class="form-label text-muted small mb-1">Phone Number *</label>
+                  <input type="tel" class="form-control spx-input" id="checkoutPhone" placeholder="10-digit Mobile Number" required>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label text-muted small mb-1">Account Password</label>
+                <div class="mb-2">
+                  <label class="form-label text-muted small mb-1">Account Password *</label>
                   <input type="text" class="form-control spx-input" id="checkoutPassword" value="Speaxa@123" required>
-                  <div class="form-text text-muted small mt-1">Change this if you want, or use the auto-generated password.</div>
+                  <div class="form-text text-muted small mt-1">Default or custom password for logging into your dashboard.</div>
                 </div>
-                <button type="submit" class="btn btn-spx-primary w-100 py-3 mt-2 fw-semibold" id="checkoutSubmitBtn">
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <label class="form-label text-muted small mb-1">Grade / Class</label>
+                    <select class="form-select spx-input" id="checkoutGrade">
+                      <option value="Class 10">Class 10</option>
+                      <option value="Class 6">Class 6</option>
+                      <option value="Class 7">Class 7</option>
+                      <option value="Class 8">Class 8</option>
+                      <option value="Class 9">Class 9</option>
+                      <option value="Class 11">Class 11</option>
+                      <option value="Class 12">Class 12</option>
+                    </select>
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label text-muted small mb-1">Board</label>
+                    <select class="form-select spx-input" id="checkoutBoard">
+                      <option value="CBSE">CBSE</option>
+                      <option value="ICSE">ICSE</option>
+                      <option value="State">State Board</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label text-muted small mb-1">Referral Code (Optional)</label>
+                  <input type="text" class="form-control spx-input" id="checkoutReferralCode" placeholder="Enter referral code">
+                </div>
+                <button type="submit" class="btn btn-spx-primary w-100 py-3 mt-1 fw-semibold" id="checkoutSubmitBtn">
                   <i class="fas fa-shield-alt me-2"></i>Register & Proceed to Payment
                 </button>
               </form>
             </div>
+
+            <!-- Step 3: Mobile OTP Verification (Verify Mobile Before Payment!) -->
+            <div id="modalStepMobileOtp" class="py-2" style="display:none;">
+              <div class="text-center mb-3">
+                <div class="badge bg-primary text-white px-3 py-1 rounded-pill mb-2 font-semibold" style="font-size:0.78rem;">
+                  <i class="fas fa-shield-alt me-1"></i> Mobile Verification Step
+                </div>
+                <h5 class="text-white fw-bold mb-1"><i class="fas fa-mobile-alt text-primary me-2"></i>Verify Mobile Number</h5>
+                <p class="text-muted small mb-0" style="font-size:0.82rem;">Enter the 6-digit SMS verification code sent to <strong id="otpMobileDisplay" class="text-white font-monospace"></strong> to proceed to payment.</p>
+              </div>
+
+              <div id="otpStepErrorBanner" class="alert alert-danger py-2 px-3 small d-none mb-3" style="font-size:0.82rem; border-radius:8px;"></div>
+              <div id="otpStepSuccessBanner" class="alert alert-success py-2 px-3 small d-none mb-3" style="font-size:0.82rem; border-radius:8px;"></div>
+
+              <div class="d-flex justify-content-center gap-2 my-3" id="checkoutOtpInputs">
+                <input type="text" class="form-control text-center font-monospace fw-bold c-otp-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #334155; background: #1e293b; color: #fff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold c-otp-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #334155; background: #1e293b; color: #fff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold c-otp-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #334155; background: #1e293b; color: #fff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold c-otp-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #334155; background: #1e293b; color: #fff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold c-otp-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #334155; background: #1e293b; color: #fff;">
+                <input type="text" class="form-control text-center font-monospace fw-bold c-otp-box" maxlength="1" pattern="\d" inputmode="numeric" style="width: 42px; height: 48px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #334155; background: #1e293b; color: #fff;">
+              </div>
+
+              <button class="btn btn-spx-primary w-100 py-2.5 fw-bold mt-2" id="btnVerifyCheckoutOtp" onclick="verifyCheckoutMobileOtp()">
+                <i class="fas fa-check-circle me-1"></i> Verify Mobile & Proceed to Payment
+              </button>
+
+              <div class="d-flex justify-content-between align-items-center mt-3">
+                <button type="button" class="btn btn-link text-muted p-0 small text-decoration-none" onclick="resendCheckoutMobileOtp()"><i class="fas fa-sync-alt me-1"></i>Resend SMS OTP</button>
+              </div>
+            </div>
             
-            <!-- Step 3: Payment Status -->
+            <!-- Step 4: Payment Status -->
             <div id="modalStepPayment" class="text-center py-4" style="display:none;">
               <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
               <h5 class="text-white fw-bold">Processing Secure Payment...</h5>
@@ -271,6 +330,24 @@
           Your browser does not support the video tag.
         </video>
         <iframe id="batchDemoVideoIframe" class="w-100" style="height: 450px; border: none; display: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Website Alert Modal (Replaces browser system alert()) -->
+<div class="modal fade" id="websiteAlertModal" tabindex="-1" aria-hidden="true" style="z-index: 1095 !important;">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="background:#0f172a; border:1px solid #334155; color:#f8fafc; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,0.6);">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold text-warning" id="websiteAlertTitle"><i class="fas fa-exclamation-circle me-2"></i>Notice</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-3 text-center">
+        <p class="mb-0 text-white-50 small" id="websiteAlertMessage" style="font-size:0.88rem; line-height:1.5;"></p>
+      </div>
+      <div class="modal-footer border-0 pt-0 justify-content-center">
+        <button type="button" class="btn btn-sm btn-primary px-4 rounded-pill" data-bs-dismiss="modal">OK</button>
       </div>
     </div>
   </div>

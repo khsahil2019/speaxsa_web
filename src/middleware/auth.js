@@ -54,16 +54,14 @@ function authenticateToken(req, res, next) {
 
       const dbUser = userRes.rows[0];
       const isAdmin = dbUser.role === 'admin' || decodedUser.role === 'admin';
-      if (!isAdmin) {
-        if (dbUser.phone_verified === false) {
-          return res.status(403).json({
-            error: 'Mobile number not verified',
-            code: 'VERIFICATION_REQUIRED',
-            step: 'mobile',
-            email: decodedUser.email,
-            phone: decodedUser.phone
-          });
-        }
+      if (!isAdmin && dbUser.phone_verified === false) {
+        return res.status(403).json({
+          error: 'Mobile number not verified',
+          code: 'VERIFICATION_REQUIRED',
+          step: 'mobile',
+          email: decodedUser.email,
+          phone: decodedUser.phone
+        });
       }
 
       req.user = { ...decodedUser, ...dbUser };

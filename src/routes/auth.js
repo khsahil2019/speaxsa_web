@@ -66,9 +66,9 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Registration OTP Verification (Managed via Admin Settings - Email Only)
+    // Registration OTP Verification (Managed via Admin Settings)
     const requireOtp = await SystemConfigService.getSetting('require_registration_otp', true);
-    const requireOtpBool = String(requireOtp) === 'true' || requireOtp === true;
+    const requireOtpBool = (String(requireOtp) === 'true' || requireOtp === true) && role !== 'student';
 
     let { otp, emailOtp } = req.body;
     const verificationOtp = emailOtp || otp;
@@ -145,10 +145,23 @@ router.post('/register', async (req, res) => {
     }
 
     if (role === 'student') {
-      // Generate unique student code
-      const countRes = await db.query("SELECT COUNT(*) as cnt FROM users WHERE role = 'student'");
-      const count = parseInt(countRes.rows[0].cnt) + 1;
-      studentCode = generateStudentCode(count);
+      // Generate unique student code with collision check
+      let uniqueFound = false;
+      let attempts = 0;
+      while (!uniqueFound && attempts < 10) {
+        attempts++;
+        const countRes = await db.query("SELECT COUNT(*) as cnt FROM users WHERE role = 'student'");
+        const count = parseInt(countRes.rows[0].cnt || 0) + attempts + Math.floor(Math.random() * 50);
+        const candidateCode = generateStudentCode(count);
+        const codeCheck = await db.query("SELECT id FROM users WHERE student_code = $1", [candidateCode]);
+        if (codeCheck.rows.length === 0) {
+          studentCode = candidateCode;
+          uniqueFound = true;
+        }
+      }
+      if (!studentCode) {
+        studentCode = `SPX-STU-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+      }
     }
 
     const isVerifiedOnInit = requireOtpBool ? true : false;
@@ -225,14 +238,11 @@ router.post('/register', async (req, res) => {
       console.error('[Auth Register] Failed to create Firebase custom token:', fbErr.message);
     }
 
-    let token = null;
-    if (isVerifiedOnInit) {
-      token = jwt.sign(
-        { id: userRow.id, email: userRow.email, name: userRow.name, role: userRow.role },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
-      );
-    }
+    const token = jwt.sign(
+      { id: userRow.id, email: userRow.email, name: userRow.name, role: userRow.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     return res.status(201).json({
       message: isVerifiedOnInit ? 'Registration successful. Account verified.' : 'Registration successful. Verification required.',
@@ -637,6 +647,17 @@ router.get('/profile', authenticateToken, async (req, res) => {
     const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json(sanitizeUser(result.rows[0]));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = sanitizeUser(result.rows[0]);
+    res.json({ user, ...user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
