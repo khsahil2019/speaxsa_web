@@ -7,6 +7,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { generateUID } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
 const SystemConfigService = require('../services/SystemConfigService');
+const { sendPaymentReceiptEmail } = require('../services/EmailService');
 
 router.use(authenticateToken);
 
@@ -165,6 +166,26 @@ router.post('/verify', async (req, res) => {
         [payment.batch_id, payment.student_id, payment_id, 'active']
       );
       await db.query('UPDATE batches SET seats_filled = seats_filled + 1 WHERE id = $1', [payment.batch_id]);
+    }
+
+    // Trigger payment receipt email asynchronously to student
+    try {
+      const bRes = await db.query('SELECT b.batch_name, c.title as course_title, c.fees as original_fees FROM batches b LEFT JOIN courses c ON c.id = b.course_id WHERE b.id = $1', [payment.batch_id]);
+      const bInfo = bRes.rows[0] || {};
+      sendPaymentReceiptEmail({
+        studentEmail: payment.billing_email || req.user.email,
+        studentName: payment.billing_name || req.user.name,
+        courseTitle: bInfo.course_title || 'Course',
+        batchName: bInfo.batch_name || 'Batch',
+        amountPaid: payment.amount,
+        originalFees: bInfo.original_fees || payment.amount,
+        discountAmount: payment.discount_amount || 0,
+        couponCode: payment.coupon_code || null,
+        paymentId: payment.id || payment_id,
+        date: payment.created_at || new Date()
+      }).catch(e => console.error('[Razorpay Receipt Email Error]:', e.message));
+    } catch (eErr) {
+      console.warn('[Receipt Email Prep Error]:', eErr.message);
     }
 
     // Update teacher wallet and log ledger transaction

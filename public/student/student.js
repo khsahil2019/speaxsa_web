@@ -1497,7 +1497,7 @@ async function processMockEnrollment(event, courseId, batchId, fees) {
           </div>
           <h4 class="fw-bold mb-2" style="color:var(--text-primary);">Payment Verified & Enrolled! 🎉</h4>
           <p class="text-muted small mb-3">
-            Congratulations! You have successfully enrolled in this batch.<br>
+            Congratulations! You have successfully enrolled in this course batch.<br>
             Transaction Reference: <strong class="text-primary font-monospace">${paymentId}</strong>
           </p>
           
@@ -1507,21 +1507,34 @@ async function processMockEnrollment(event, courseId, batchId, fees) {
               <strong class="text-dark">Official Payment Receipt Sent!</strong>
             </div>
             <p class="small text-muted mb-0">
-              An official SPEAXA payment receipt and batch onboarding details have been sent to <strong>${billEmail || 'your registered email'}</strong>.
+              An official SPEAXA payment receipt & tax invoice has been sent to <strong>${billEmail || 'your email'}</strong> and added to your Payments & Receipts portal.
             </p>
           </div>
 
-          <div class="d-flex justify-content-center gap-3">
-            <button class="btn btn-spx px-4 py-2" data-bs-dismiss="modal" onclick="navigateTo('mybatches')">
-              <i class="fas fa-layer-group me-1"></i> Go to My Batches
+          <div class="d-flex flex-wrap justify-content-center gap-3">
+            <button class="btn btn-spx px-4 py-2 fw-bold" data-bs-dismiss="modal" onclick="navigateTo('payments')">
+              <i class="fas fa-file-invoice me-1.5"></i> View & Print Receipt
+            </button>
+            <button class="btn btn-outline-secondary px-4 py-2 fw-bold" data-bs-dismiss="modal" onclick="navigateTo('mybatches')">
+              <i class="fas fa-layer-group me-1.5"></i> Go to My Batches
             </button>
           </div>
         </div>
       `;
     }
 
-    showToast('Payment Verified! Official Receipt sent to your email.', 'success');
+    showToast('Payment Verified! Redirecting to Payment Receipts...', 'success');
     window._appliedCoupon = null;
+
+    // Auto-navigate to payments page after 1.8 seconds
+    setTimeout(() => {
+      const modalEl = document.getElementById('courseModal');
+      if (modalEl) {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+      }
+      navigateTo('payments');
+    }, 1800);
 
   } catch(e) {
     showToast(e.message || 'Payment processing failed', 'error');
@@ -2853,11 +2866,14 @@ async function renderStudentPayments() {
           <div class="small text-muted">${escapeHtml(p.batch_name || 'Batch')}</div>
         </td>
         <td class="align-middle small">${escapeHtml(p.teacher_name || 'Assigned Instructor')}</td>
-        <td class="align-middle fw-bold text-success">₹${parseFloat(p.amount || 0).toLocaleString('en-IN')}</td>
+        <td class="align-middle fw-bold text-success">
+          ₹${parseFloat(p.amount || 0).toLocaleString('en-IN')}
+          ${p.discount_amount > 0 ? `<div class="small text-muted fw-normal" style="font-size:0.7rem;"><span class="text-decoration-line-through">₹${parseFloat(p.original_fees || p.amount).toLocaleString('en-IN')}</span> <span class="text-success">(-₹${parseFloat(p.discount_amount).toLocaleString('en-IN')})</span></div>` : ''}
+        </td>
         <td class="align-middle small text-muted">${new Date(p.created_at || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
         <td class="align-middle"><span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i>Completed</span></td>
         <td class="align-middle text-end">
-          <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="showReceiptModal('${p.id}', '${escapeHtml(p.course_title || '')}', '${escapeHtml(p.batch_name || '')}', ${p.amount}, '${p.created_at}')"><i class="fas fa-file-invoice me-1"></i>Receipt</button>
+          <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="showReceiptModal('${p.id}', '${escapeHtml(p.course_title || '')}', '${escapeHtml(p.batch_name || '')}', ${p.amount}, '${p.created_at}', '${escapeHtml(p.teacher_name || '')}', ${p.original_fees || p.amount}, '${p.coupon_code || ''}', ${p.discount_amount || 0})"><i class="fas fa-file-invoice me-1"></i>Receipt</button>
         </td>
       </tr>
     `).join('');
@@ -2896,37 +2912,72 @@ async function renderStudentPayments() {
   }
 }
 
-window.showReceiptModal = function(id, course, batch, amount, date) {
+window.showReceiptModal = function(id, course, batch, amount, date, teacherName, originalFees, couponCode, discountAmount) {
+  const origFee = parseFloat(originalFees || amount || 0);
+  const discAmt = parseFloat(discountAmount || 0);
+  const netPaid = parseFloat(amount || 0);
+
   const modalHtml = `
     <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-          <div class="modal-header bg-dark text-white p-4">
+          <div class="modal-header text-white p-4" style="background: linear-gradient(135deg, #0d7a6d 0%, #0f172a 100%);">
             <div>
-              <h5 class="modal-title fw-bold mb-0">SPEAXA Official Payment Receipt</h5>
+              <h5 class="modal-title fw-bold mb-0"><i class="fas fa-file-invoice me-2 text-warning"></i>SPEAXA Official Payment Receipt</h5>
               <small class="opacity-75">Transaction ID: ${id}</small>
             </div>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body p-4">
-            <div class="text-center py-3 border-bottom mb-4">
-              <div class="display-6 fw-bold text-success mb-1">₹${parseFloat(amount || 0).toLocaleString('en-IN')}</div>
-              <span class="badge bg-success px-3 py-1 rounded-pill"><i class="fas fa-check me-1"></i>Payment Verified</span>
+            <div class="text-center py-3 border-bottom mb-4" style="background: #f8fafc; border-radius: 12px;">
+              <div class="display-5 fw-bold text-success mb-1">₹${netPaid.toLocaleString('en-IN')}</div>
+              <span class="badge bg-success-subtle text-success px-3 py-1.5 rounded-pill fs-7"><i class="fas fa-check-circle me-1"></i>Payment Verified & Completed</span>
             </div>
-            <div class="row g-3 small">
-              <div class="col-6 text-muted">Course Name:</div>
-              <div class="col-6 text-end fw-bold text-dark">${course}</div>
-              <div class="col-6 text-muted">Batch:</div>
-              <div class="col-6 text-end fw-bold text-dark">${batch}</div>
-              <div class="col-6 text-muted">Date & Time:</div>
-              <div class="col-6 text-end fw-bold text-dark">${new Date(date).toLocaleString('en-IN')}</div>
-              <div class="col-6 text-muted">Payment Mode:</div>
-              <div class="col-6 text-end fw-bold text-dark">UPI / Online Gateway</div>
+
+            <!-- Itemized Pricing Breakdown Box -->
+            <div class="p-3 mb-4 rounded-3" style="background: rgba(13, 122, 109, 0.05); border: 1px solid rgba(13, 122, 109, 0.2);">
+              <h6 class="fw-bold text-dark mb-2" style="font-size: 0.85rem;"><i class="fas fa-receipt text-primary me-1.5"></i>Payment Breakdown</h6>
+              <div class="d-flex justify-content-between small text-muted mb-1">
+                <span>Original Course Fee:</span>
+                <strong class="text-dark">₹${origFee.toLocaleString('en-IN')}</strong>
+              </div>
+              ${couponCode && discAmt > 0 ? `
+                <div class="d-flex justify-content-between small text-success mb-1">
+                  <span>Promo Coupon Discount (${couponCode}):</span>
+                  <strong class="text-success">-₹${discAmt.toLocaleString('en-IN')}</strong>
+                </div>
+              ` : ''}
+              <hr class="my-2 border-secondary border-opacity-25">
+              <div class="d-flex justify-content-between align-items-center fw-bold">
+                <span class="text-dark">Total Amount Paid:</span>
+                <span class="text-success fs-5">₹${netPaid.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Course Enrolled</div>
+                <div class="fw-bold text-dark fs-6">${course}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Batch & Instructor</div>
+                <div class="fw-bold text-dark fs-6">${batch} (${teacherName || 'Assigned Instructor'})</div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Transaction ID</div>
+                <div class="fw-bold text-primary font-monospace">${id}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="small text-muted mb-1">Date & Time of Purchase</div>
+                <div class="fw-bold text-dark">${new Date(date).toLocaleString('en-IN')}</div>
+              </div>
             </div>
           </div>
           <div class="modal-footer bg-light p-3">
             <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-spx rounded-pill px-4" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" onclick="printStudentReceipt('${id}', '${escapeHtml(course)}', '${escapeHtml(batch)}', ${netPaid}, '${date}', '${escapeHtml(teacherName || '')}', ${origFee}, '${couponCode || ''}', ${discAmt})">
+              <i class="fas fa-print me-1.5"></i> Print Official Receipt
+            </button>
           </div>
         </div>
       </div>
@@ -2938,4 +2989,137 @@ window.showReceiptModal = function(id, course, batch, amount, date) {
   document.body.insertAdjacentHTML('beforeend', modalHtml);
   const m = new bootstrap.Modal(document.getElementById('receiptModal'));
   m.show();
+};
+
+window.printStudentReceipt = function(id, course, batch, amount, date, teacherName, originalFees, couponCode, discountAmount) {
+  const printWin = window.open('', '', 'width=950,height=800');
+  const origFee = parseFloat(originalFees || amount || 0);
+  const discAmt = parseFloat(discountAmount || 0);
+  const netPaid = parseFloat(amount || 0);
+  const formattedDate = new Date(date || Date.now()).toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>SPEAXA Official Payment Receipt - ${id}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+          @page { size: A4 portrait; margin: 15mm; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; background: #fff; padding: 25px; }
+          .receipt-header { background: linear-gradient(135deg, #0d7a6d 0%, #0f172a 100%); color: #fff; padding: 22px; border-radius: 12px; margin-bottom: 25px; position: relative; }
+          .receipt-stamp { position: absolute; right: 30px; top: 20px; border: 3px double #34d399; color: #34d399; padding: 10px 14px; border-radius: 50%; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; transform: rotate(-12deg); text-align: center; line-height: 1.25; }
+          .info-card { border: 1.5px solid #e2e8f0; background: #f8fafc; padding: 18px; border-radius: 10px; margin-bottom: 25px; }
+          .detail-label { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 600; }
+          .detail-val { font-size: 0.95rem; font-weight: 700; color: #0f172a; }
+          table { font-size: 13px !important; }
+          th { background-color: #0d7a6d !important; color: #ffffff !important; font-size: 0.75rem; text-transform: uppercase; }
+          .footer-note { margin-top: 40px; border-top: 1px dashed #cbd5e1; padding-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <!-- Header -->
+        <div class="receipt-header d-flex align-items-center justify-content-between">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <i class="fas fa-graduation-cap fs-3 text-warning"></i>
+              <h2 class="fw-bold mb-0" style="letter-spacing:1px; font-family:'Outfit',sans-serif;">SPEAXA EDTECH</h2>
+            </div>
+            <div class="small opacity-75">Corporate HQ: SPEAXA EdTech Tower | GSTIN: 07AAACS0001P1Z5</div>
+            <div class="small opacity-75">Official Student Enrollment & Tax Payment Receipt</div>
+          </div>
+          <div class="text-end pe-5">
+            <div class="badge bg-warning text-dark fw-bold px-3 py-1.5 mb-1">OFFICIAL PAYMENT RECEIPT</div>
+            <div class="small font-monospace">${id}</div>
+          </div>
+          
+          <div class="receipt-stamp">
+            SPEAXA<br>PAID &<br>VERIFIED
+          </div>
+        </div>
+
+        <!-- Purchase & Transaction Info -->
+        <div class="info-card">
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="detail-label">Receipt / Transaction ID</div>
+              <div class="detail-val text-primary font-monospace">${id}</div>
+            </div>
+            <div class="col-6">
+              <div class="detail-label">Date & Time of Purchase</div>
+              <div class="detail-val">${formattedDate}</div>
+            </div>
+            <div class="col-6">
+              <div class="detail-label">Enrolled Course Title</div>
+              <div class="detail-val text-dark">${course}</div>
+            </div>
+            <div class="col-6">
+              <div class="detail-label">Batch Name / Instructor</div>
+              <div class="detail-val text-dark">${batch} (${teacherName || 'Assigned Instructor'})</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Breakdown Table -->
+        <h6 class="fw-bold text-dark mb-2"><i class="fas fa-file-invoice-dollar me-2 text-success"></i>ITEMIZED PAYMENT BREAKDOWN</h6>
+        <table class="table table-bordered align-middle mb-4">
+          <thead>
+            <tr>
+              <th>Description / Item</th>
+              <th>Status</th>
+              <th class="text-end">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <strong class="text-dark">${course}</strong>
+                <div class="small text-muted">Full Batch Access, Live Interactive Classes & Learning Notes</div>
+              </td>
+              <td><span class="badge bg-success-subtle text-success px-2.5 py-1">Standard Fee</span></td>
+              <td class="text-end fw-bold text-dark">₹${origFee.toLocaleString('en-IN')}</td>
+            </tr>
+            ${couponCode && discAmt > 0 ? `
+              <tr>
+                <td>
+                  <strong class="text-success">Promo Coupon Discount (${couponCode})</strong>
+                  <div class="small text-muted">Discount Voucher Applied</div>
+                </td>
+                <td><span class="badge bg-success-subtle text-success px-2.5 py-1">APPLIED</span></td>
+                <td class="text-end fw-bold text-success">-₹${discAmt.toLocaleString('en-IN')}</td>
+              </tr>
+            ` : ''}
+            <tr class="table-light">
+              <td colspan="2" class="text-end fw-bold fs-6">Total Net Amount Paid:</td>
+              <td class="text-end fw-bold text-success fs-5">₹${netPaid.toLocaleString('en-IN')}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Footer -->
+        <div class="footer-note d-flex align-items-center justify-content-between">
+          <div>
+            <div class="small text-muted">This is an official system-generated computerized payment receipt issued by SPEAXA EdTech.</div>
+            <div class="small text-muted">No physical signature required. Support: support@speaxa.in</div>
+          </div>
+          <div class="text-center">
+            <div class="border-bottom border-dark pb-1 mb-1 fw-bold text-dark" style="width: 170px;">SPEAXA Finance Core</div>
+            <div class="small text-success fw-bold"><i class="fas fa-check-circle me-1"></i>Verified & E-Stamped</div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); setTimeout(() => window.close(), 500); };
+        </script>
+      </body>
+    </html>
+  `);
+  printWin.document.close();
 };

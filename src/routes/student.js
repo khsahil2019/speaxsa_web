@@ -267,6 +267,9 @@ router.get('/payments', async (req, res) => {
         SELECT 
           COALESCE(p.id, bs.payment_id, 'pay_spx_' || SUBSTRING(MD5(bs.batch_id || bs.student_id), 1, 10)) as id,
           COALESCE(p.amount, c.fees, 0) as amount,
+          COALESCE(c.fees, p.amount, 0) as original_fees,
+          COALESCE(p.coupon_code, '') as coupon_code,
+          COALESCE(p.discount_amount, 0) as discount_amount,
           COALESCE(p.status, 'completed') as status,
           COALESCE(p.created_at, NOW()) as created_at,
           c.title as course_title,
@@ -283,7 +286,7 @@ router.get('/payments', async (req, res) => {
     } catch (sqlErr) {
       console.warn('[Student Payments] Fallback to direct payments table:', sqlErr.message);
       result = await db.query(`
-        SELECT p.*, c.title as course_title, b.batch_name, u.name as teacher_name
+        SELECT p.*, COALESCE(c.fees, p.amount, 0) as original_fees, c.title as course_title, b.batch_name, u.name as teacher_name
         FROM payments p
         LEFT JOIN courses c ON c.id = p.course_id
         LEFT JOIN batches b ON b.id = p.batch_id
@@ -361,12 +364,25 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
     );
     await db.query('UPDATE batches SET seats_filled = seats_filled + 1 WHERE id = $1', [batchId]);
 
-    // 2. Insert payment row into payments ledger WITH teacher_id!
-    await db.query(`
-      INSERT INTO payments (id, student_id, teacher_id, batch_id, course_id, amount, status, payment_method, gateway_payment_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      ON CONFLICT (id) DO NOTHING
-    `, [pId, req.user.id, teacherId || null, batchId, batchObj.course_id || null, amountPaid, 'completed', 'upi', pId]);
+    // 2. Insert payment row into payments ledger WITH coupon and teacher_id!
+    try {
+      await db.query(`
+        INSERT INTO payments (id, student_id, teacher_id, batch_id, course_id, amount, status, payment_method, gateway_payment_id, coupon_code, discount_amount)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (id) DO NOTHING
+      `, [pId, req.user.id, teacherId || null, batchId, batchObj.course_id || null, amountPaid, 'completed', 'upi', pId, couponCode ? couponCode.trim().toUpperCase() : null, discountAmount]);
+    } catch (pErr) {
+      console.warn('[Payments Table Insert Fallback]:', pErr.message);
+      try {
+        await db.query(`
+          INSERT INTO payments (id, student_id, batch_id, course_id, amount, status, coupon_code, discount_amount)
+          VALUES ($1, $2, $3, $4, $5, 'completed', $6, $7)
+          ON CONFLICT (id) DO NOTHING
+        `, [pId, req.user.id, batchId, batchObj.course_id || null, amountPaid, couponCode ? couponCode.trim().toUpperCase() : null, discountAmount]);
+      } catch (pErr2) {
+        console.warn('[Payments Table Insert Fallback 2]:', pErr2.message);
+      }
+    }
 
     // 3. REFLECT IN TEACHER WALLET & LEDGER IMMEDIATELY!
     if (teacherId) {

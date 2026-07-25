@@ -280,4 +280,87 @@ async function sendEmail(options) {
   }
 }
 
-module.exports = { sendEmail };
+async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle, batchName, amountPaid, originalFees, discountAmount, couponCode, paymentId, date }) {
+  if (!studentEmail) return;
+  const formattedDate = new Date(date || Date.now()).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  let couponLineHtml = '';
+  if (couponCode && discountAmount > 0) {
+    couponLineHtml = `
+      <tr style="border-bottom: 1px dashed #e2e8f0;">
+        <td style="padding: 10px 0; color: #16a34a; font-size: 14px;">Coupon Discount (${couponCode})</td>
+        <td style="padding: 10px 0; text-align: right; color: #16a34a; font-weight: 700; font-size: 14px;">-₹${parseFloat(discountAmount).toLocaleString('en-IN')}</td>
+      </tr>
+    `;
+  }
+
+  const html = `
+    <div style="font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 540px; margin: 0 auto; color: #334155;">
+      <h3 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Official Payment Receipt & Enrollment Confirmation</h3>
+      <p style="color: #475569; font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
+        Hi <strong>${studentName || 'Student'}</strong>,<br>
+        Thank you for your purchase! Your payment for <strong>${courseTitle} (${batchName})</strong> has been successfully processed and verified.
+      </p>
+
+      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">TRANSACTION DETAILS</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;">Transaction Receipt ID</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 700; font-family: monospace;">${paymentId}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;">Date & Time</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 500;">${formattedDate}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;">Course Title</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 600;">${courseTitle}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;">Batch Name</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 600;">${batchName}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;">Payment Status</td>
+            <td style="padding: 8px 0; text-align: right; color: #059669; font-weight: 700;">✔ COMPLETED & VERIFIED</td>
+          </tr>
+        </table>
+
+        <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.8px; margin-top: 20px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">PAYMENT BREAKDOWN</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 8px 0; color: #64748b;">Course Standard Fee</td>
+            <td style="padding: 8px 0; text-align: right; color: #0f172a; font-weight: 600;">₹${parseFloat(originalFees || amountPaid).toLocaleString('en-IN')}</td>
+          </tr>
+          ${couponLineHtml}
+          <tr>
+            <td style="padding: 12px 0 0 0; color: #0f172a; font-weight: 800; font-size: 15px;">Total Amount Paid</td>
+            <td style="padding: 12px 0 0 0; text-align: right; color: #0d7a6d; font-weight: 800; font-size: 18px;">₹${parseFloat(amountPaid).toLocaleString('en-IN')}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background: rgba(13, 122, 109, 0.08); border: 1px solid rgba(13, 122, 109, 0.25); border-radius: 10px; padding: 14px; text-align: center; font-size: 13px; color: #0d7a6d; font-weight: 600;">
+        🎓 Access live classes, study materials, and assignments directly from your <strong>SPEAXA Student Dashboard</strong>!
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: studentEmail,
+    subject: `SPEAXA Payment Receipt: Enrolled in ${batchName} (${paymentId})`,
+    html,
+    type: 'notification',
+    headerTitle: 'Official Payment Receipt',
+    badgeLabel: 'SPEAXA Billing'
+  });
+}
+
+module.exports = { sendEmail, sendPaymentReceiptEmail };

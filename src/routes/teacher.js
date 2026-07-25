@@ -9,6 +9,7 @@ const { sanitizeUser, generateUID } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
 const { updateTeacherLevel } = require('../services/teacherLevel.service');
 const SystemConfigService = require('../services/SystemConfigService');
+const configService = SystemConfigService;
 
 
 // File upload for SOP and documents
@@ -385,7 +386,7 @@ router.post('/batches', batchUpload.fields([{ name: 'planner', maxCount: 1 }, { 
     }
 
     // Validate capacity
-    const maxCapacity = await configService.getSetting('max_batch_capacity', 30);
+    const maxCapacity = await SystemConfigService.getSetting('max_batch_capacity', 30);
     const cap = parseInt(capacity) || maxCapacity;
     if (cap > maxCapacity) return res.status(400).json({ error: `Maximum batch capacity is ${maxCapacity} students` });
 
