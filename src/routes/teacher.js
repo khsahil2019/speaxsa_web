@@ -914,10 +914,26 @@ router.get('/earnings', async (req, res) => {
       WHERE teacher_id = $1
       ORDER BY created_at DESC
     `, [req.user.id]);
-    const teacherUser = await db.query(`
-      SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id 
-      FROM users WHERE id = $1
-    `, [req.user.id]);
+    let teacherUser;
+    try {
+      teacherUser = await db.query(`
+        SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id 
+        FROM users WHERE id = $1
+      `, [req.user.id]);
+    } catch (colErr) {
+      // Self-heal: ensure bank columns exist in PostgreSQL
+      await db.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
+      `);
+      teacherUser = await db.query(`
+        SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id 
+        FROM users WHERE id = $1
+      `, [req.user.id]);
+    }
 
     const walletObj = walletRes.rows[0] || { total_earnings: 0, paid_earnings: 0, pending_earnings: 0, wallet_balance: 0 };
     const wallet_balance = parseFloat(walletObj.wallet_balance || walletObj.balance || 0);
@@ -941,6 +957,15 @@ router.get('/earnings', async (req, res) => {
 router.post('/bank-details', async (req, res) => {
   const { bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id } = req.body;
   try {
+    // Self-heal column existence check
+    await db.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
+    `);
+
     await db.query(`
       UPDATE users SET
         bank_account_name = $1,
@@ -969,6 +994,14 @@ router.post('/payouts/request', async (req, res) => {
 
     // Save bank details to user profile as well
     if (bank_account_number || upi_id) {
+      await db.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
+      `);
+
       await db.query(`
         UPDATE users SET
           bank_account_name = COALESCE($1, bank_account_name),
