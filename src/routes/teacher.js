@@ -1318,7 +1318,13 @@ router.post('/notifications/:id/read', async (req, res) => {
 
 router.get('/certificates', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM teacher_certificates WHERE teacher_id = $1 ORDER BY issued_at DESC', [req.user.id]);
+    const result = await db.query(`
+      SELECT tc.*, u.name as teacher_name, u.photo_url as teacher_photo, u.email as teacher_email
+      FROM teacher_certificates tc
+      JOIN users u ON u.id = tc.teacher_id
+      WHERE tc.teacher_id = $1 OR LOWER(u.email) = LOWER($2)
+      ORDER BY tc.issued_at DESC
+    `, [req.user.id, req.user.email || '']);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

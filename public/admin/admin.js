@@ -263,7 +263,7 @@ function navigateTo(page) {
     parents: 'Parent Management', courses: 'Course Management', batches: 'Batch Management',
     liveclasses: 'Live Classes', payments: 'Payment History', payouts: 'Payout Requests',
     rewards: 'Rewards & Allowances',
-    refunds: 'Refunds', sop: 'SOP Review',
+    refunds: 'Refunds', sop: 'SOP Review', certificates: 'Certificates & Verification',
     coupons: 'Coupon Management', notifications: 'Send Notifications',
     settings: 'Platform Settings', auditlogs: 'Audit Logs', support: 'Connect Queries',
     mailmanager: 'Mail Manager', footer: 'Landing Footer Settings',
@@ -281,7 +281,7 @@ function navigateTo(page) {
     parents: renderParents, courses: renderCourses, batches: renderBatches,
     liveclasses: renderLiveClasses, payments: renderPayments, payouts: renderPayouts,
     rewards: renderRewards,
-    refunds: renderRefunds, sop: renderSOP,
+    refunds: renderRefunds, sop: renderSOP, certificates: renderCertificatesPage,
     coupons: renderCoupons, notifications: renderNotifications,
     settings: renderSettingsGeneral, auditlogs: renderAuditLogs, support: renderSupport,
     mailmanager: renderMailManager, footer: renderFooterPage,
@@ -5876,4 +5876,247 @@ async function approvePurgeItem(id, name) {
     showToast(err.message, 'error');
   }
 }
+
+// ── Certificate Verification & Issuance System ───────────────
+async function renderCertificatesPage() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-xl-7">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+          <div>
+            <h4 class="fw-bold mb-1 text-dark"><i class="fas fa-shield-alt text-teal me-2"></i>Certificate Verification & Email Tool</h4>
+            <p class="text-muted small mb-0">Enter a Certificate ID to retrieve details, verify digital signature, and send the official email.</p>
+          </div>
+          <button class="btn btn-outline-primary btn-sm rounded-pill font-semibold" onclick="openIssueCertificateModal()">
+            <i class="fas fa-plus-circle me-1"></i> Issue New Certificate
+          </button>
+        </div>
+
+        <!-- Lookup Card -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, rgba(13, 122, 109, 0.04) 0%, rgba(255, 255, 255, 1) 100%); border: 1px solid rgba(13, 122, 109, 0.15) !important;">
+          <form onsubmit="handleCertificateLookupSubmit(event)">
+            <label class="form-label fw-bold text-dark small mb-2"><i class="fas fa-search me-1 text-teal"></i> Enter Certificate ID *</label>
+            <div class="input-group input-group-lg">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-hashtag"></i></span>
+              <input type="text" class="form-control border-start-0 font-monospace fs-6" id="lookupCertIdInput" placeholder="e.g. cert_1784826811639_ttdvm or SPX-CERT-XXXX" required style="letter-spacing: 0.5px;">
+              <button type="submit" class="btn btn-spx px-4 font-semibold" id="btnLookupCert">
+                <i class="fas fa-search me-1"></i> Fetch Details
+              </button>
+            </div>
+            <div class="form-text text-muted small mt-2"><i class="fas fa-info-circle me-1"></i> Paste the exact Certificate ID (e.g., from teacher SOP, course verification, or milestone).</div>
+          </form>
+        </div>
+
+        <!-- Result Container -->
+        <div id="certLookupResultContainer"></div>
+      </div>
+    </div>
+  `;
+}
+
+window.handleCertificateLookupSubmit = function(e) {
+  e.preventDefault();
+  const id = document.getElementById('lookupCertIdInput')?.value.trim();
+  if (!id) return;
+  fetchAdminCertificate(id);
+};
+
+window.fetchAdminCertificate = async function(certId) {
+  const container = document.getElementById('certLookupResultContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
+      <div class="spinner-border text-teal mx-auto mb-3" role="status"></div>
+      <h6 class="fw-bold text-dark mb-1">Fetching Certificate Details...</h6>
+      <p class="text-muted small mb-0">Searching database for ID <code>${certId}</code></p>
+    </div>
+  `;
+
+  try {
+    const cert = await apiGet(`/admin/certificates/lookup?id=${encodeURIComponent(certId)}`);
+    const isVer = cert.is_verified || cert.digital_signature;
+
+    container.innerHTML = `
+      <div class="card border-0 shadow-lg rounded-4 overflow-hidden" style="border: 1px solid rgba(13, 122, 109, 0.2) !important;">
+        <div class="p-4" style="background: linear-gradient(135deg, #0d7a6d 0%, #08544b 100%); color: white;">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <span class="badge bg-white text-teal font-semibold px-3 py-1.5 rounded-pill mb-2" style="font-size:0.75rem;">
+                <i class="fas fa-award me-1"></i> ${cert.certificate_type ? cert.certificate_type.replace('_', ' ').toUpperCase() : 'CERTIFICATE'}
+              </span>
+              <h4 class="fw-bold mb-1 text-white">${cert.title}</h4>
+              <div class="font-monospace small opacity-90"><i class="fas fa-hashtag me-1"></i>${cert.id}</div>
+            </div>
+            <div class="text-end">
+              ${isVer ? `
+                <span class="badge bg-success border border-white px-3 py-2 rounded-pill font-semibold shadow-sm" style="font-size:0.82rem;">
+                  <i class="fas fa-shield-alt me-1"></i> Verified & Signed
+                </span>
+              ` : `
+                <span class="badge bg-warning text-dark border border-white px-3 py-2 rounded-pill font-semibold shadow-sm" style="font-size:0.82rem;">
+                  <i class="fas fa-clock me-1"></i> Pending Verification
+                </span>
+              `}
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <!-- Recipient info box -->
+          <div class="bg-light p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between border flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <img src="${cert.recipient_photo || '/logo.png'}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #0d7a6d;" alt="">
+              <div>
+                <div class="fw-bold text-dark fs-6">${cert.recipient_name || 'N/A'}</div>
+                <div class="small text-muted"><i class="fas fa-envelope me-1"></i>${cert.recipient_email || 'No email attached'}</div>
+              </div>
+            </div>
+            <div class="text-end">
+              <div class="text-uppercase text-muted" style="font-size:0.68rem; letter-spacing:0.5px;">Issued Date</div>
+              <div class="fw-bold text-dark small">${new Date(cert.issued_at).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}</div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="small text-muted text-uppercase fw-bold mb-1" style="font-size:0.7rem;">Citation & Description</label>
+            <p class="text-dark bg-white p-3 rounded-3 border mb-0 small" style="line-height:1.6;">
+              ${cert.description || 'Official SPEAXA credential awarded for academic excellence.'}
+            </p>
+          </div>
+
+          ${cert.digital_signature ? `
+            <div class="alert alert-success border-0 rounded-3 p-3 mb-4 shadow-sm" style="background: rgba(16, 185, 129, 0.08); border-left: 4px solid #10b981 !important;">
+              <div class="small text-success fw-bold text-uppercase mb-1" style="font-size:0.72rem;"><i class="fas fa-key me-1"></i> Cryptographic Digital Signature</div>
+              <div class="fw-bold text-dark font-monospace fs-6">${cert.digital_signature}</div>
+            </div>
+          ` : `
+            <div class="alert alert-warning border-0 rounded-3 p-3 mb-4 shadow-sm" style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid #f59e0b !important;">
+              <div class="small text-warning fw-bold text-uppercase mb-1" style="font-size:0.72rem;"><i class="fas fa-exclamation-circle me-1"></i> Verification Pending</div>
+              <div class="small text-dark">This certificate has not been digitally signed yet. Click "Verify & Send Digital Signature Email" below to sign it and email the recipient.</div>
+            </div>
+          `}
+
+          <!-- Main Actions -->
+          <div class="d-flex gap-2 justify-content-end flex-wrap pt-2 border-top">
+            <a href="/verify-certificate.html?id=${encodeURIComponent(cert.id)}" target="_blank" class="btn btn-outline-secondary px-4 font-semibold">
+              <i class="fas fa-external-link-alt me-1"></i> View Public Verification Page
+            </a>
+            <button type="button" class="btn btn-success px-4 font-semibold shadow-sm" onclick="adminVerifyCertificate('${cert.id}')">
+              <i class="fas fa-paper-plane me-1"></i> ${isVer ? 'Resend Digital Signature Email' : 'Verify & Send Digital Signature Email'}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `
+      <div class="alert alert-danger border-0 shadow-sm rounded-4 p-4 text-center">
+        <i class="fas fa-exclamation-triangle fs-3 mb-2 d-block text-danger"></i>
+        <h6 class="fw-bold mb-1">${err.message || 'Certificate Not Found'}</h6>
+        <p class="small text-muted mb-0">Double check the Certificate ID and try again.</p>
+      </div>
+    `;
+  }
+};
+
+window.adminVerifyCertificate = function(certId) {
+  confirmAction({
+    title: 'Verify & Digitally Sign Certificate?',
+    body: `Are you sure you want to verify Certificate <strong>${certId}</strong>? A Speaxa Digital Signature will be assigned and an official verification email will be dispatched to the recipient.`,
+    confirmText: 'Verify & Send Email',
+    confirmClass: 'btn-success',
+    onConfirm: async () => {
+      loading();
+      try {
+        const res = await apiPost('/admin/certificates/verify', { certificate_id: certId });
+        showToast(res.message || 'Certificate verified & email sent!');
+        fetchAdminCertificate(certId);
+      } catch (e) {
+        showToast(e.message || 'Verification failed', 'error');
+        fetchAdminCertificate(certId);
+      }
+    }
+  });
+};
+
+window.openIssueCertificateModal = async function() {
+  let teachers = [];
+  try {
+    teachers = await apiGet('/admin/teachers');
+  } catch(e){}
+
+  const modalHtml = `
+    <div class="modal fade" id="issueCertModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+          <div class="modal-header border-bottom px-4">
+            <h5 class="modal-title fw-bold"><i class="fas fa-certificate text-warning me-2"></i>Issue New Verified Certificate</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form onsubmit="submitIssueCertificate(event)">
+              <div class="mb-3">
+                <label class="form-label fw-bold small">Select Recipient User *</label>
+                <select class="form-select spx-input" id="issueCertUser" required>
+                  <option value="">Choose User...</option>
+                  ${teachers && teachers.length > 0 ? teachers.map(t => `<option value="${t.id}">${t.name} (${t.email}) — Teacher</option>`).join('') : ''}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold small">Certificate Type *</label>
+                <select class="form-select spx-input" id="issueCertType">
+                  <option value="excellence_certificate">Excellence & Quality Certificate</option>
+                  <option value="sop_completed">SOP Verification Certificate</option>
+                  <option value="course_verified">Course Selection Certificate</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold small">Certificate Title *</label>
+                <input type="text" class="form-control spx-input" id="issueCertTitle" placeholder="e.g. Master Educator & Curriculum Specialist Certificate" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold small">Description / Citation *</label>
+                <textarea class="form-control spx-input" id="issueCertDesc" rows="3" placeholder="Explain why this official credential is awarded to the user..." required></textarea>
+              </div>
+              <button type="submit" class="btn btn-spx w-100 fw-bold py-2"><i class="fas fa-paper-plane me-1"></i>Issue & Send Verification Email</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  const exist = document.getElementById('issueCertModal');
+  if (exist) exist.remove();
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  const m = new bootstrap.Modal(document.getElementById('issueCertModal'));
+  m.show();
+};
+
+window.submitIssueCertificate = async function(e) {
+  e.preventDefault();
+  const userId = document.getElementById('issueCertUser').value;
+  const type = document.getElementById('issueCertType').value;
+  const title = document.getElementById('issueCertTitle').value.trim();
+  const desc = document.getElementById('issueCertDesc').value.trim();
+
+  try {
+    showToast('Issuing certificate & sending email...', 'info');
+    const res = await apiPost('/admin/certificates/issue', {
+      recipient_user_id: userId,
+      certificate_type: type,
+      title: title,
+      description: desc
+    });
+    const modalEl = document.getElementById('issueCertModal');
+    if (modalEl) {
+      const m = bootstrap.Modal.getInstance(modalEl);
+      if (m) m.hide();
+    }
+    showToast(res.message || 'Certificate issued!');
+    renderCertificatesPage();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
 

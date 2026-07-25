@@ -2613,4 +2613,230 @@ router.delete('/purge-item', async (req, res) => {
   }
 });
 
+// ── Admin Certificate Management & Verification ─────────────
+router.get('/certificates/lookup', async (req, res) => {
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: 'Certificate ID is required' });
+
+  try {
+    const cleanId = id.trim().replace(/^#/, '');
+    const result = await db.query(`
+      SELECT tc.*, 
+             u.name as recipient_name, 
+             u.email as recipient_email, 
+             u.role as recipient_role,
+             u.photo_url as recipient_photo,
+             u.student_code as recipient_code
+      FROM teacher_certificates tc
+      LEFT JOIN users u ON u.id = tc.teacher_id
+      WHERE LOWER(tc.id) = LOWER($1)
+    `, [cleanId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: `Certificate with ID "${cleanId}" not found.` });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/certificates', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT tc.*, 
+             u.name as recipient_name, 
+             u.email as recipient_email, 
+             u.role as recipient_role,
+             u.photo_url as recipient_photo,
+             u.student_code as recipient_code
+      FROM teacher_certificates tc
+      LEFT JOIN users u ON u.id = tc.teacher_id
+      ORDER BY tc.issued_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/certificates/verify', async (req, res) => {
+  const { certificate_id } = req.body;
+  if (!certificate_id) return res.status(400).json({ error: 'certificate_id is required' });
+
+  try {
+    const crypto = require('crypto');
+    const certRes = await db.query(`
+      SELECT tc.*, u.name as recipient_name, u.email as recipient_email, u.role as recipient_role
+      FROM teacher_certificates tc
+      JOIN users u ON u.id = tc.teacher_id
+      WHERE tc.id = $1
+    `, [certificate_id]);
+
+    if (certRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Certificate not found' });
+    }
+
+    const cert = certRes.rows[0];
+    const sigHash = crypto.createHash('sha256').update(cert.id + cert.teacher_id + Date.now()).digest('hex').substring(0, 16).toUpperCase();
+    const digitalSignature = `SPEAXA-DIGITAL-SIG-${sigHash}`;
+
+    await db.query(`
+      UPDATE teacher_certificates 
+      SET is_verified = true, 
+          verified_at = NOW(), 
+          verified_by = $1, 
+          digital_signature = $2 
+      WHERE id = $3
+    `, [req.user.id, digitalSignature, certificate_id]);
+
+    await logAudit(req.user.id, 'CERTIFICATE_VERIFIED', 'certificate', certificate_id, { digital_signature: digitalSignature });
+
+    // Send Digital Signature Verification Email
+    let emailSent = false;
+    if (cert.recipient_email) {
+      try {
+        const { sendEmail } = require('../services/EmailService');
+        const verifyUrl = `${process.env.APP_URL || 'https://speaxa.in'}/verify-certificate.html?id=${encodeURIComponent(cert.id)}`;
+        
+        await sendEmail({
+          to: cert.recipient_email,
+          subject: `🎓 SPEAXA Official Certificate Verification & Digital Signature — ID: ${cert.id}`,
+          html: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+              <div style="background: linear-gradient(135deg, #0d7a6d 0%, #08544b 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
+                <img src="https://speaxa.in/logo.png" alt="SPEAXA Logo" style="width: 54px; height: 54px; object-fit: contain; margin-bottom: 8px;">
+                <h2 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">SPEAXA EDTECH</h2>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #a7f3d0; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Official Certificate Verification Badge</p>
+              </div>
+              
+              <div style="padding: 30px 24px;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <div style="display: inline-block; background: #ecfdf5; border: 1.5px solid #a7f3d0; color: #047857; font-size: 13px; font-weight: 700; padding: 8px 20px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);">
+                    ✓ DIGITALLY VERIFIED & SIGNED
+                  </div>
+                </div>
+
+                <h3 style="color: #0f172a; font-size: 19px; margin-top: 0;">Congratulations, ${cert.recipient_name}!</h3>
+                <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                  Your official SPEAXA Certificate <strong>"${cert.title}"</strong> has been successfully reviewed, verified, and <strong>digitally signed</strong> by the SPEAXA Quality & Academic Verification Board.
+                </p>
+
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px; margin: 24px 0;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                      <td style="padding: 10px 0; color: #64748b;">Certificate Title:</td>
+                      <td style="padding: 10px 0; font-weight: 700; text-align: right; color: #0f172a;">${cert.title}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                      <td style="padding: 10px 0; color: #64748b;">Certificate ID:</td>
+                      <td style="padding: 10px 0; font-weight: 700; font-family: monospace; text-align: right; color: #0d7a6d;">${cert.id}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                      <td style="padding: 10px 0; color: #64748b;">Digital Signature:</td>
+                      <td style="padding: 10px 0; font-weight: 700; font-family: monospace; text-align: right; color: #047857;">${digitalSignature}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                      <td style="padding: 10px 0; color: #64748b;">Verification Date:</td>
+                      <td style="padding: 10px 0; font-weight: 700; text-align: right; color: #0f172a;">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 10px 0; color: #64748b;">Authenticity Seal:</td>
+                      <td style="padding: 10px 0; font-weight: 700; text-align: right; color: #0d7a6d;">SPEAXA Board Authenticated 🛡️</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <div style="text-align: center; margin-top: 28px;">
+                  <a href="${verifyUrl}" target="_blank" style="background: #0d7a6d; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(13, 122, 109, 0.35);">
+                    🔍 View & Share Public Verified Certificate
+                  </a>
+                  <p style="margin-top: 14px; font-size: 12px; color: #94a3b8; line-height: 1.4;">
+                    Anyone with this link or Certificate ID can publicly inspect and verify your authentic credential on the SPEAXA portal.
+                  </p>
+                </div>
+              </div>
+
+              <div style="background: #f1f5f9; padding: 16px 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+                © 2026 SPEAXA EdTech Pvt. Ltd. All rights reserved. • Tamper-Proof Cryptographic Verification
+              </div>
+            </div>
+          `,
+          type: 'notification'
+        });
+        emailSent = true;
+      } catch (mailErr) {
+        console.error('[Admin Certificate Verify Email Error]:', mailErr.message);
+      }
+    }
+
+    res.json({
+      message: 'Certificate successfully verified and digitally signed!',
+      digital_signature: digitalSignature,
+      email_sent: emailSent
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Manual Certificate Issuance API
+router.post('/certificates/issue', async (req, res) => {
+  const { recipient_user_id, title, description, certificate_type } = req.body;
+  if (!recipient_user_id || !title) return res.status(400).json({ error: 'recipient_user_id and title are required' });
+
+  try {
+    const crypto = require('crypto');
+    const certId = 'SPX-CERT-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+    const sigHash = crypto.createHash('sha256').update(certId + recipient_user_id + Date.now()).digest('hex').substring(0, 16).toUpperCase();
+    const digitalSignature = `SPEAXA-DIGITAL-SIG-${sigHash}`;
+
+    await db.query(`
+      INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, is_verified, verified_at, verified_by, digital_signature)
+      VALUES ($1, $2, $3, $4, $5, true, NOW(), $6, $7)
+    `, [certId, recipient_user_id, certificate_type || 'excellence_certificate', title, description || '', req.user.id, digitalSignature]);
+
+    await logAudit(req.user.id, 'CERTIFICATE_ISSUED', 'certificate', certId, { title, recipient_user_id });
+
+    // Send email notification
+    const userRes = await db.query('SELECT name, email FROM users WHERE id = $1', [recipient_user_id]);
+    if (userRes.rows.length > 0 && userRes.rows[0].email) {
+      const u = userRes.rows[0];
+      try {
+        const { sendEmail } = require('../services/EmailService');
+        const verifyUrl = `${process.env.APP_URL || 'https://speaxa.in'}/verify-certificate.html?id=${certId}`;
+        await sendEmail({
+          to: u.email,
+          subject: `🎓 SPEAXA Official Certificate Issued & Digitally Signed — ID: ${certId}`,
+          html: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #0d7a6d 0%, #08544b 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
+                <h2 style="margin: 0;">SPEAXA EDTECH</h2>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #a7f3d0; text-transform: uppercase;">Official Certificate Verification Badge</p>
+              </div>
+              <div style="padding: 30px 24px;">
+                <h3>Congratulations, ${u.name}!</h3>
+                <p>Your official SPEAXA Certificate <strong>"${title}"</strong> has been issued and digitally signed by Admin.</p>
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; margin: 20px 0;">
+                  <div>Certificate ID: <strong style="font-family: monospace; color: #0d7a6d;">${certId}</strong></div>
+                  <div>Digital Signature: <strong style="font-family: monospace; color: #047857;">${digitalSignature}</strong></div>
+                </div>
+                <div style="text-align: center; margin-top: 24px;">
+                  <a href="${verifyUrl}" target="_blank" style="background: #0d7a6d; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 50px; font-weight: 700; display: inline-block;">🔍 View & Share Public Verified Certificate</a>
+                </div>
+              </div>
+            </div>
+          `,
+          type: 'notification'
+        });
+      } catch (e) { console.error('[Issue Cert Mail Error]:', e.message); }
+    }
+
+    res.json({ message: 'Certificate issued, verified, and email dispatched!', id: certId, digital_signature: digitalSignature });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

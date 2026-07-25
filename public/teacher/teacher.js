@@ -4802,6 +4802,7 @@ async function renderCertificates() {
         let iconClass = 'fa-award';
         if (c.certificate_type === 'sop_completed') iconClass = 'fa-clipboard-check';
         if (c.certificate_type === 'course_verified') iconClass = 'fa-certificate';
+        const isVer = c.is_verified || c.digital_signature;
 
         return `
               <div class="certificate-card">
@@ -4809,9 +4810,21 @@ async function renderCertificates() {
                   <i class="fas ${iconClass}"></i>
                 </div>
                 <div>
-                  <div class="certificate-type-label">${c.certificate_type.replace('_', ' ')}</div>
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="certificate-type-label">${c.certificate_type ? c.certificate_type.replace('_', ' ') : 'Certificate'}</div>
+                    ${isVer ? `
+                      <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill fw-bold" style="font-size:0.65rem;">
+                        <i class="fas fa-check-circle me-1"></i>Verified & Signed
+                      </span>
+                    ` : ''}
+                  </div>
                   <h6 class="certificate-title">${c.title}</h6>
                   <p class="certificate-desc">${c.description || 'Certificate of achievement issued by Speaxa platform.'}</p>
+                  ${c.digital_signature ? `
+                    <div class="mt-2 text-success font-monospace" style="font-size:0.7rem; background:rgba(16,185,129,0.06); padding:4px 8px; border-radius:6px; border:1px solid rgba(16,185,129,0.2);">
+                      <i class="fas fa-key me-1"></i>${c.digital_signature}
+                    </div>
+                  ` : ''}
                 </div>
                 <div>
                   <div class="certificate-footer">
@@ -4824,10 +4837,13 @@ async function renderCertificates() {
                       <span class="certificate-meta-val" style="font-family: monospace; font-size: 0.65rem;">${c.id}</span>
                     </div>
                   </div>
-                  <div class="certificate-actions">
-                    <button class="btn btn-sm btn-outline-primary w-100 mt-3 py-2" onclick="previewCertificate('${c.id}')">
+                  <div class="certificate-actions d-flex gap-2 mt-3">
+                    <button class="btn btn-sm btn-outline-primary flex-grow-1 py-2" onclick="previewCertificate('${c.id}')">
                       <i class="fas fa-eye me-1"></i> Preview & Print
                     </button>
+                    <a href="/verify-certificate.html?id=${encodeURIComponent(c.id)}" target="_blank" class="btn btn-sm btn-outline-success py-2 px-3" title="Verify Credential Online">
+                      <i class="fas fa-shield-alt me-1"></i> Verify
+                    </a>
                   </div>
                 </div>
               </div>

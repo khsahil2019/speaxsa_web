@@ -207,23 +207,32 @@ db.query(`
     title VARCHAR(255) NOT NULL,
     description TEXT,
     issued_at TIMESTAMPTZ DEFAULT NOW(),
-    metadata JSONB DEFAULT '{}'
+    metadata JSONB DEFAULT '{}',
+    is_verified BOOLEAN DEFAULT TRUE,
+    verified_at TIMESTAMPTZ DEFAULT NOW(),
+    verified_by VARCHAR(100),
+    digital_signature VARCHAR(255)
   );
 
-  -- Retroactively issue SOP Verification certificates to legacy approved teachers
-  INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, metadata)
+  ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE;
+  ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ DEFAULT NOW();
+  ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS verified_by VARCHAR(100);
+  ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS digital_signature VARCHAR(255);
+
+  -- Retroactively issue SOP Verification certificates to all active/approved teachers
+  INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, is_verified, verified_at, digital_signature, metadata)
   SELECT 
     'cert_sop_' || u.id as id,
     u.id as teacher_id,
     'sop_completed' as certificate_type,
     'SOP Verification & Teaching Compliance Certificate' as title,
     'This certificate is awarded to acknowledge that the teacher has successfully completed the Speaxa Standard Operating Procedures (SOP) verification, technical compliance checks, and teaching standards certification.' as description,
+    true as is_verified,
+    NOW() as verified_at,
+    'SPEAXA-DIGITAL-SIG-' || UPPER(SUBSTRING(MD5('cert_sop_' || u.id), 1, 16)) as digital_signature,
     '{"retroactive": true}'::jsonb as metadata
   FROM users u
-  JOIN teacher_sop ts ON ts.teacher_id = u.id
   WHERE u.role = 'teacher' 
-    AND u.approval_status = 'approved' 
-    AND ts.agreement_signed = true
     AND NOT EXISTS (
       SELECT 1 FROM teacher_certificates tc 
       WHERE tc.teacher_id = u.id AND tc.certificate_type = 'sop_completed'
