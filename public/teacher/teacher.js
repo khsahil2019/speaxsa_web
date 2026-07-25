@@ -678,7 +678,7 @@ function showApp() {
     document.getElementById('avatarSidebar').src = av;
     document.getElementById('avatarHeader').src = av;
     document.getElementById('nameSidebar').textContent = user.name;
-    document.getElementById('levelSidebar').textContent = user.teacher_level || 'New Joiner';
+    document.getElementById('levelSidebar').textContent = user.teacher_level || 'Junior Teacher';
   }
   checkSopStatus();
   loadTeacherNotificationCounts();
@@ -1088,7 +1088,7 @@ async function renderHome() {
             <h6 class="mb-3 fw-bold">Educator Level</h6>
             <div class="text-center p-3 rounded" style="background:rgba(255,255,255,.02)">
               <div class="display-5 text-warning mb-2"><i class="fas fa-medal"></i></div>
-               <h5 class="text-dark fw-bold mb-1">${analytics.level === 'New Joiner' || !analytics.level ? 'New Joiner' : `${analytics.level} Mentor`}</h5>
+               <h5 class="text-dark fw-bold mb-1">${analytics.level || 'Junior Teacher'}</h5>
               <p class="text-muted small mb-0">Engagement score based on attendance, student ratings & homework submission feedback.</p>
             </div>
           </div>
