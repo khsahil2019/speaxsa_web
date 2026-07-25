@@ -4656,93 +4656,210 @@ async function renderLevel() {
     const curLevel = data.level || 'Junior Teacher';
 
     const levelColors = {
-      'Junior Teacher': { bg: 'linear-gradient(135deg, #0d7a6d 0%, #08544b 100%)', color: '#ffffff', icon: 'fa-user-graduate', pct: '50% Revenue Share', group: 'Foundation Group' },
-      'Assistant Teacher': { bg: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', icon: 'fa-award', pct: '55% Revenue Share', group: 'Foundation Group' },
-      'Senior Teacher': { bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#ffffff', icon: 'fa-medal', pct: '60% Revenue Share', group: 'Teaching Excellence Group' },
-      'Executive Teacher': { bg: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#ffffff', icon: 'fa-certificate', pct: '65% Revenue Share', group: 'Teaching Excellence Group' },
-      'Lecturer': { bg: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', color: '#ffffff', icon: 'fa-university', pct: '70% Revenue Share', group: 'Teaching Excellence Group' },
-      'Professor': { bg: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', color: '#ffffff', icon: 'fa-graduation-cap', pct: '75% Revenue Share', group: 'Academic Excellence Group' },
-      'Senior Professor': { bg: 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)', color: '#ffffff', icon: 'fa-crown', pct: '80% Revenue Share', group: 'Academic Excellence Group' },
-      'HOD': { bg: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)', color: '#ffffff', icon: 'fa-gem', pct: '85% Revenue Share', group: 'Leadership Group' },
-      'Dean': { bg: 'linear-gradient(135deg, #b45309 0%, #78350f 100%)', color: '#fef08a', icon: 'fa-chess-king', pct: '90% Revenue Share', group: 'Leadership Group' },
+      'Junior Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '#a7f3d0', badgeBg: '#d1fae5', badgeColor: '#065f46', icon: 'fa-user-graduate', iconColor: '#059669', pct: '50% Revenue Share', group: 'Foundation Group' },
+      'Assistant Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)', border: '#bae6fd', badgeBg: '#e0f2fe', badgeColor: '#0369a1', icon: 'fa-award', iconColor: '#0284c7', pct: '55% Revenue Share', group: 'Foundation Group' },
+      'Senior Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)', border: '#bbf7d0', badgeBg: '#dcfce7', badgeColor: '#15803d', icon: 'fa-medal', iconColor: '#16a34a', pct: '60% Revenue Share', group: 'Teaching Excellence Group' },
+      'Executive Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #faf5ff 100%)', border: '#e9d5ff', badgeBg: '#f3e8ff', badgeColor: '#7e22ce', icon: 'fa-certificate', iconColor: '#9333ea', pct: '65% Revenue Share', group: 'Teaching Excellence Group' },
+      'Lecturer': { bg: 'linear-gradient(135deg, #ffffff 0%, #fffbe6 100%)', border: '#fef08a', badgeBg: '#fef9c3', badgeColor: '#a16207', icon: 'fa-university', iconColor: '#ca8a04', pct: '70% Revenue Share', group: 'Teaching Excellence Group' },
+      'Professor': { bg: 'linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)', border: '#fecdd3', badgeBg: '#ffe4e6', badgeColor: '#be123c', icon: 'fa-graduation-cap', iconColor: '#e11d48', pct: '75% Revenue Share', group: 'Academic Excellence Group' },
+      'Senior Professor': { bg: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)', border: '#ddd6fe', badgeBg: '#ede9fe', badgeColor: '#6d28d9', icon: 'fa-crown', iconColor: '#7c3aed', pct: '80% Revenue Share', group: 'Academic Excellence Group' },
+      'HOD': { bg: 'linear-gradient(135deg, #ffffff 0%, #ccfbf1 100%)', border: '#99f6e4', badgeBg: '#e6f4f1', badgeColor: '#0f766e', icon: 'fa-gem', iconColor: '#0d7a6d', pct: '85% Revenue Share', group: 'Leadership Group' },
+      'Dean': { bg: 'linear-gradient(135deg, #ffffff 0%, #fef3c7 100%)', border: '#fde68a', badgeBg: '#fef3c7', badgeColor: '#b45309', icon: 'fa-chess-king', iconColor: '#d97706', pct: '90% Revenue Share', group: 'Leadership Group' },
     };
 
     const lvlInfo = levelColors[curLevel] || levelColors['Junior Teacher'];
 
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
-        <div class="col-lg-5">
-          <!-- Hero Level Card -->
-          <div class="spx-card text-center p-4 border-0 shadow-sm rounded-4 overflow-hidden position-relative" style="background: ${lvlInfo.bg}; color: #ffffff;">
-            <div class="position-absolute top-0 end-0 m-3 opacity-25">
-              <i class="fas ${lvlInfo.icon}" style="font-size: 5rem;"></i>
-            </div>
-            <div class="badge bg-white bg-opacity-20 text-warning px-3 py-1.5 rounded-pill mb-3 fw-bold" style="font-size: 0.8rem;">
-              <i class="fas fa-crown me-1"></i>Official SPEAXA Designation
-            </div>
-            <h3 class="fw-bold mb-1 text-white">${curLevel}</h3>
-            <div class="badge bg-white bg-opacity-25 text-white px-3 py-1 rounded-pill mb-3 fw-semibold" style="font-size: 0.85rem;">
-              ${lvlInfo.pct} • ${lvlInfo.group}
-            </div>
+        <!-- Full-Width Executive Hero Banner (Matching User Mockup) -->
+        <div class="col-12">
+          <div class="spx-card border-0 shadow-sm rounded-4 p-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, #ffffff 0%, #e6f4f1 50%, #d1fae5 100%); border: 1.5px solid #a7f3d0 !important;">
+            <div class="d-flex flex-column flex-lg-row align-items-center justify-content-between gap-4">
+              
+              <!-- Left Details -->
+              <div class="d-flex flex-column gap-2">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge px-3 py-1.5 rounded-pill fw-bold" style="background: #ffffff; color: #0d7a6d; border: 1px solid #a7f3d0; shadow-sm;">
+                    <i class="fas fa-crown me-1 text-warning"></i>Official SPEAXA Designation
+                  </span>
+                  <span class="badge px-3 py-1.5 rounded-pill fw-semibold" style="background: #ffffff; color: #475569; border: 1px solid #cbd5e1; shadow-sm;">
+                    <i class="fas fa-shield-alt text-teal me-1"></i>Active Rank
+                  </span>
+                </div>
+                
+                <h1 class="fw-extrabold text-dark mb-0" style="font-family: 'Outfit', sans-serif; font-size: 2.2rem; letter-spacing: -0.5px;">
+                  ${curLevel}
+                </h1>
 
-            <div class="d-flex align-items-center justify-content-center gap-3 mt-2">
-              <div class="bg-white bg-opacity-10 p-2 px-3 rounded-3">
-                <span class="small opacity-75 d-block text-white">Current Rating</span>
-                <strong class="fs-5 text-warning"><i class="fas fa-star text-warning me-1"></i>${parseFloat(data.rating).toFixed(2)}</strong>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                  <span class="badge px-3 py-1.5 rounded-pill fw-bold" style="background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4;">
+                    <i class="fas fa-percentage me-1"></i>${lvlInfo.pct}
+                  </span>
+                  <span class="badge px-3 py-1.5 rounded-pill fw-semibold" style="background: #ffffff; color: #334155; border: 1px solid #cbd5e1;">
+                    <i class="fas fa-layer-group text-primary me-1"></i>${lvlInfo.group}
+                  </span>
+                </div>
               </div>
-              <div class="bg-white bg-opacity-10 p-2 px-3 rounded-3">
-                <span class="small opacity-75 d-block text-white">Cumulative Revenue</span>
-                <strong class="fs-5 text-success">₹${(data.cumulative_revenue || 0).toLocaleString('en-IN')}</strong>
-              </div>
-            </div>
-          </div>
 
-          <!-- Performance & Milestone Metrics -->
-          <div class="spx-card mt-4 border-0 shadow-sm rounded-4">
-            <h6 class="fw-bold mb-3 text-dark"><i class="fas fa-chart-line text-primary me-2"></i>Performance Metrics & Progress</h6>
-            <div class="row g-3">
-              <div class="col-6">
-                <div class="p-3 rounded-3 bg-light border">
-                  <div class="small text-muted mb-1"><i class="fas fa-video text-primary me-1"></i>Classes Held (Month)</div>
-                  <strong class="fs-5 text-dark">${data.sessions_count || 0} Sessions</strong>
+              <!-- Center Double Ring Graduation Cap Badge -->
+              <div class="d-flex align-items-center justify-content-center px-4">
+                <div class="position-relative d-flex align-items-center justify-content-center" style="width: 110px; height: 110px; border-radius: 50%; background: #ffffff; border: 6px solid #34d399; box-shadow: 0 8px 24px rgba(13,122,109,0.15);">
+                  <i class="fas fa-graduation-cap text-teal" style="font-size: 3rem;"></i>
                 </div>
               </div>
-              <div class="col-6">
-                <div class="p-3 rounded-3 bg-light border">
-                  <div class="small text-muted mb-1"><i class="fas fa-user-graduate text-success me-1"></i>Active Enrolled Students</div>
-                  <strong class="fs-5 text-dark">${data.active_students || 0} Students</strong>
+
+              <!-- Right Stat Cards -->
+              <div class="d-flex align-items-center gap-3 flex-wrap">
+                <!-- Card 1: Total Cumulative Revenue -->
+                <div class="p-3 bg-white rounded-3 shadow-sm border text-start" style="min-width: 170px; border-color: #cbd5e1 !important;">
+                  <div class="small text-muted fw-bold" style="font-size: 0.72rem;">Total Cumulative Revenue</div>
+                  <div class="d-flex align-items-center justify-content-between mt-1">
+                    <strong class="fs-4 font-monospace text-success">₹${(data.cumulative_revenue || 0).toLocaleString('en-IN')}</strong>
+                    <svg width="36" height="20" viewBox="0 0 36 20" fill="none"><path d="M2 16L12 8L20 12L34 2" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <div class="text-muted mt-1" style="font-size: 0.68rem;">Progress to Senior Teacher: 20%</div>
+                </div>
+
+                <!-- Card 2: Overall Rating -->
+                <div class="p-3 bg-white rounded-3 shadow-sm border text-start" style="min-width: 140px; border-color: #cbd5e1 !important;">
+                  <div class="small text-muted fw-bold" style="font-size: 0.72rem;">Overall Rating</div>
+                  <div class="text-warning mt-1" style="font-size: 0.9rem;">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                  </div>
+                </div>
+
+                <!-- Card 3: Revenue Share -->
+                <div class="p-3 bg-white rounded-3 shadow-sm border text-center" style="min-width: 110px; border-color: #cbd5e1 !important;">
+                  <div class="small text-muted fw-bold" style="font-size: 0.72rem;">Revenue Share</div>
+                  <strong class="fs-4 text-dark d-block mt-1">50%</strong>
                 </div>
               </div>
-              <div class="col-6">
-                <div class="p-3 rounded-3 bg-light border">
-                  <div class="small text-muted mb-1"><i class="fas fa-clipboard-check text-info me-1"></i>Target Attendance</div>
-                  <strong class="fs-6 text-dark">90%+ Verified</strong>
-                </div>
-              </div>
-              <div class="col-6">
-                <div class="p-3 rounded-3 bg-light border">
-                  <div class="small text-muted mb-1"><i class="fas fa-star text-warning me-1"></i>Target Student Rating</div>
-                  <strong class="fs-6 text-dark">4.5+ Benchmark</strong>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
 
-        <div class="col-lg-7">
-          <div class="spx-card border-0 shadow-sm rounded-4">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history text-teal me-2"></i>Level Adjustment & Promotion Logs</h6>
-              <span class="badge bg-light text-muted border">Real-time Sync</span>
+        <!-- Left Column: Performance Metrics & Progress Grid (Matching User Mockup) -->
+        <div class="col-lg-6">
+          <div class="spx-card border-0 shadow-sm rounded-4 h-100 p-4" style="background: #ffffff;">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+              <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-chart-line text-primary me-2"></i>Performance Metrics & Progress</h6>
+              <span class="badge bg-light text-muted border px-2.5 py-1">Monthly Audit</span>
             </div>
+
+            <div class="row g-3">
+              <!-- Metric 1: Classes Held -->
+              <div class="col-6">
+                <div class="rounded-4 border text-center h-100 d-flex flex-column justify-content-between" style="background: #f0f9ff; border-color: #bae6fd !important; padding: 20px 16px 16px 16px; min-height: 200px;">
+                  <div class="d-flex align-items-center justify-content-center gap-1.5 text-primary fw-bold" style="font-size: 0.85rem;">
+                    <i class="fas fa-video"></i>
+                    <span>Classes Held (Month)</span>
+                  </div>
+                  
+                  <!-- Conic Gradient Circular Ring -->
+                  <div class="d-flex align-items-center justify-content-center my-1">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle border border-2 border-white shadow-sm" style="width: 76px; height: 76px; background: conic-gradient(#10b981 0% 25%, #cbd5e1 25% 100%);">
+                      <div class="bg-white rounded-circle d-flex flex-column align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <strong class="fs-4 text-dark lh-1">${data.sessions_count || 0}</strong>
+                        <span style="font-size: 0.62rem;" class="text-muted fw-semibold">Session</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="small text-muted" style="font-size: 0.75rem;">Sessions Held (Goal: 10)</div>
+                </div>
+              </div>
+
+              <!-- Metric 2: Active Students -->
+              <div class="col-6">
+                <div class="rounded-4 border text-center h-100 d-flex flex-column justify-content-between" style="background: #f0fdf4; border-color: #bbf7d0 !important; padding: 20px 16px 16px 16px; min-height: 200px;">
+                  <div class="d-flex align-items-center justify-content-center gap-1.5 text-success fw-bold" style="font-size: 0.85rem;">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>Active Students</span>
+                  </div>
+                  
+                  <div class="my-1">
+                    <span class="fs-2 fw-extrabold text-dark lh-1">${data.active_students || 0}</span>
+                    <span class="fs-6 fw-normal text-muted ms-1">Enrolled</span>
+                  </div>
+
+                  <!-- Mini Bar Chart -->
+                  <div class="d-flex align-items-end justify-content-center gap-1.5 my-1" style="height: 36px;">
+                    <div style="width: 10px; height: 35%; background: #a7f3d0; border-radius: 3px;"></div>
+                    <div style="width: 10px; height: 100%; background: #059669; border-radius: 3px;"></div>
+                    <div style="width: 10px; height: 45%; background: #a7f3d0; border-radius: 3px;"></div>
+                    <div style="width: 10px; height: 60%; background: #a7f3d0; border-radius: 3px;"></div>
+                  </div>
+
+                  <div class="small text-muted" style="font-size: 0.75rem;">Student Count</div>
+                </div>
+              </div>
+
+              <!-- Metric 3: Target Attendance -->
+              <div class="col-6">
+                <div class="rounded-4 border text-center h-100 d-flex flex-column justify-content-between" style="background: #ecfeff; border-color: #a5f3fc !important; padding: 20px 16px 16px 16px; min-height: 200px;">
+                  <div class="d-flex align-items-center justify-content-center gap-1.5 text-info fw-bold" style="font-size: 0.85rem;">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Target Attendance</span>
+                  </div>
+                  
+                  <!-- Semi-Circle Arc Gauge -->
+                  <div class="d-flex flex-column align-items-center justify-content-center my-1">
+                    <div style="width: 96px; height: 48px; border-top-left-radius: 96px; border-top-right-radius: 96px; background: conic-gradient(from 270deg, #059669 0% 90%, #cbd5e1 90% 100%);" class="d-flex align-items-end justify-content-center">
+                      <div style="width: 72px; height: 36px; border-top-left-radius: 72px; border-top-right-radius: 72px; background: #ecfeff;" class="d-flex align-items-center justify-content-center pt-2">
+                        <strong class="fs-5 text-dark">90%</strong>
+                      </div>
+                    </div>
+                    <span class="badge bg-success bg-opacity-20 text-success fw-bold px-2.5 py-0.5 rounded-pill mt-1.5" style="font-size: 0.7rem;"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                  </div>
+
+                  <div class="small text-muted" style="font-size: 0.75rem;">Attendance Record</div>
+                </div>
+              </div>
+
+              <!-- Metric 4: Target Rating -->
+              <div class="col-6">
+                <div class="rounded-4 border text-center h-100 d-flex flex-column justify-content-between" style="background: #fffbeb; border-color: #fde68a !important; padding: 20px 16px 16px 16px; min-height: 200px;">
+                  <div class="d-flex align-items-center justify-content-center gap-1.5 text-warning fw-bold" style="font-size: 0.85rem;">
+                    <i class="fas fa-star"></i>
+                    <span>Target Rating</span>
+                  </div>
+                  
+                  <div class="d-flex align-items-center justify-content-center gap-2 my-1">
+                    <span class="fs-2 fw-extrabold text-dark lh-1">5.00</span>
+                    <span class="badge bg-warning bg-opacity-20 text-warning fw-bold px-2 py-0.5 rounded-pill" style="font-size: 0.7rem;">Top Star</span>
+                  </div>
+
+                  <div class="my-1 px-3">
+                    <div class="progress" style="height: 8px; background: #cbd5e1; border-radius: 6px;">
+                      <div class="progress-bar bg-warning" style="width: 100%; border-radius: 6px;"></div>
+                    </div>
+                  </div>
+
+                  <div class="small text-muted" style="font-size: 0.75rem;">4.5+ Benchmark</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Level Adjustment & Promotion Logs Table (Matching User Mockup) -->
+        <div class="col-lg-6">
+          <div class="spx-card border-0 shadow-sm rounded-4 h-100 p-4" style="background: #ffffff;">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+              <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history text-teal me-2"></i>Level Adjustment & Promotion Logs</h6>
+              <span class="badge bg-light text-muted border px-2.5 py-1">Real-time Sync</span>
+            </div>
+
             <div class="table-responsive">
               <table class="table align-middle text-sm mb-0">
-                <thead class="table-light">
+                <thead style="background: #f8fafc;">
                   <tr>
-                    <th>Date</th>
-                    <th>New Designation</th>
-                    <th>Previous Designation</th>
-                    <th>Promotion Reason / Milestone</th>
+                    <th class="border-0 text-dark fw-bold">Date</th>
+                    <th class="border-0 text-dark fw-bold">New Designation</th>
+                    <th class="border-0 text-dark fw-bold">Previous</th>
+                    <th class="border-0 text-dark fw-bold">Milestone / Reason</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -4755,8 +4872,24 @@ async function renderLevel() {
                     </tr>
                   `).join('') || `
                     <tr>
-                      <td colspan="4" class="text-center py-4 text-muted">
-                        <i class="fas fa-info-circle text-primary me-1"></i> No level adjustments logged yet. Promoted automatically as cumulative sales cross performance revenue slabs.
+                      <td colspan="4" class="p-0 border-0">
+                        <div class="text-center py-4 px-3">
+                          <!-- Vector Illustration Graphic from Mockup -->
+                          <svg width="220" height="110" viewBox="0 0 220 110" fill="none" class="mb-3">
+                            <path d="M10 100 Q 60 70, 110 80 T 210 20" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6 6" fill="none"/>
+                            <!-- Compass -->
+                            <circle cx="50" cy="75" r="16" fill="#fef08a" stroke="#d97706" stroke-width="2"/>
+                            <path d="M50 65 L54 75 L50 85 L46 75 Z" fill="#dc2626"/>
+                            <!-- Mountain -->
+                            <path d="M140 85 L175 35 L210 85 Z" fill="#94a3b8" opacity="0.4"/>
+                            <path d="M155 85 L180 45 L205 85 Z" fill="#64748b" opacity="0.6"/>
+                            <!-- Flag -->
+                            <path d="M180 45 L180 25 M180 25 L195 32 L180 38" stroke="#059669" stroke-width="2" fill="#34d399"/>
+                          </svg>
+                          <p class="small text-muted mb-0" style="max-width: 320px; margin: 0 auto;">
+                            No level adjustments logged yet. Promoted automatically as cumulative sales cross performance revenue slabs.
+                          </p>
+                        </div>
                       </td>
                     </tr>
                   `}
@@ -6400,7 +6533,7 @@ function setupOtpBoxListeners(containerId, hiddenInputId) {
   });
 }
 
-window.printPassbookStatement = function() {
+window.printPassbookStatement = function () {
   const passbookEl = document.getElementById('passbookTableContainer');
   if (!passbookEl) return showToast('No passbook content to print', 'info');
 

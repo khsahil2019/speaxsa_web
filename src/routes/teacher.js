@@ -1326,7 +1326,7 @@ router.get('/level', async (req, res) => {
     const batchStats = await db.query(`
       SELECT 
         (SELECT COUNT(DISTINCT bs.student_id) FROM batch_students bs JOIN batches b ON b.id = bs.batch_id WHERE b.teacher_id = $1 AND bs.status = 'active') as active_students,
-        (SELECT COUNT(*) FROM classes c JOIN batches b ON b.id = c.batch_id WHERE b.teacher_id = $1 AND c.status = 'completed') as sessions_count
+        (SELECT COUNT(*) FROM live_classes lc WHERE lc.teacher_id = $1 AND lc.status IN ('ended','completed')) as sessions_count
     `, [req.user.id]);
 
     const activeStudents = parseInt(batchStats.rows[0]?.active_students || 0);
