@@ -3310,6 +3310,7 @@ async function renderSettingsRegPayouts() {
         { key: 'payout_pct_Senior_Professor', label: 'Senior Professor Share (%)', default: '80.00' },
         { key: 'payout_pct_HOD', label: 'HOD Share (%)', default: '85.00' },
         { key: 'payout_pct_Dean', label: 'Dean Share (%)', default: '90.00' },
+        { key: 'min_withdrawal_amount', label: 'Minimum Payout Withdrawal Amount (₹)', default: '200.00' },
       ].map(f => `
                   <div class="mb-3">
                     <label class="spx-label text-dark">${f.label}</label>
@@ -3752,7 +3753,7 @@ async function saveLevelPayouts(e) {
   const keys = [
     'payout_pct_Junior_Teacher', 'payout_pct_Assistant_Teacher', 'payout_pct_Senior_Teacher',
     'payout_pct_Executive_Teacher', 'payout_pct_Lecturer', 'payout_pct_Professor',
-    'payout_pct_Senior_Professor', 'payout_pct_HOD', 'payout_pct_Dean'
+    'payout_pct_Senior_Professor', 'payout_pct_HOD', 'payout_pct_Dean', 'min_withdrawal_amount'
   ];
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });

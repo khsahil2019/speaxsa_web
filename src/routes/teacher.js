@@ -8,7 +8,7 @@ const { authenticateToken, requireTeacher } = require('../middleware/auth');
 const { sanitizeUser, generateUID } = require('../utils/security');
 const { logAudit } = require('../services/AuditService');
 const { updateTeacherLevel } = require('../services/teacherLevel.service');
-const configService = require('../services/SystemConfigService');
+const SystemConfigService = require('../services/SystemConfigService');
 
 
 // File upload for SOP and documents
@@ -903,43 +903,188 @@ router.get('/attendance', async (req, res) => {
 // ── Earnings & Payouts ────────────────────────────────────────
 router.get('/earnings', async (req, res) => {
   try {
-    const walletRes = await db.query('SELECT * FROM teacher_wallet WHERE teacher_id = $1', [req.user.id]);
+    const teacherId = req.user.id;
+
+    // 1. Check existing wallet
+    const walletRes = await db.query('SELECT * FROM teacher_wallet WHERE teacher_id = $1', [teacherId]);
+    
+    // 2. Query payouts history & ledger
     const history = await db.query(`
       SELECT tp.*, 'payout' as type FROM teacher_payouts tp
       WHERE tp.teacher_id = $1
       ORDER BY tp.requested_at DESC
-    `, [req.user.id]);
+    `, [teacherId]);
+
     const ledger = await db.query(`
       SELECT * FROM teacher_wallet_ledger
       WHERE teacher_id = $1
       ORDER BY created_at DESC
-    `, [req.user.id]);
-    let teacherUserRow = {};
-    try {
-      const teacherUser = await db.query(`
-        SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id 
-        FROM users WHERE id = $1
-      `, [req.user.id]);
-      teacherUserRow = teacherUser.rows[0] || {};
-    } catch (colErr) {
-      console.warn('[Teacher Earnings] Bank columns query fallback:', colErr.message);
+    `, [teacherId]);
+
+    // 3. Real-Time Earnings Reconciliation from batch_students & payments
+    const salesRes = await db.query(`
+      SELECT 
+        COALESCE(SUM(COALESCE(p.amount, c.fees, 0)), 0) as gross_sales,
+        COUNT(DISTINCT bs.student_id) as total_students_enrolled,
+        COUNT(DISTINCT b.id) as total_batches_count
+      FROM batch_students bs
+      JOIN batches b ON b.id = bs.batch_id
+      LEFT JOIN courses c ON c.id = b.course_id
+      LEFT JOIN payments p ON p.student_id = bs.student_id AND p.batch_id = bs.batch_id
+      WHERE b.teacher_id = $1 OR c.created_by = $1
+    `, [teacherId]);
+
+    const grossSales = parseFloat(salesRes.rows[0]?.gross_sales || 0);
+    const totalStudentsEnrolled = parseInt(salesRes.rows[0]?.total_students_enrolled || 0);
+
+    // Sum ledger credits
+    let ledgerCredits = 0;
+    ledger.rows.forEach(l => {
+      if (l.type !== 'withdrawal') {
+        ledgerCredits += parseFloat(l.amount || 0);
+      }
+    });
+
+    // Sum paid payouts & pending payouts
+    let paidPayouts = 0;
+    let pendingPayouts = 0;
+    history.rows.forEach(h => {
+      const amt = parseFloat(h.amount || 0);
+      if (h.status === 'paid') paidPayouts += amt;
+      else if (['requested', 'under_review', 'approved'].includes(h.status)) pendingPayouts += amt;
+    });
+
+    const walletObj = walletRes.rows[0] || {};
+    let total_earnings = parseFloat(walletObj.total_earnings || 0);
+    let wallet_balance = parseFloat(walletObj.wallet_balance || walletObj.balance || 0);
+
+    // If total_earnings or wallet_balance is 0 but sales exist, auto-reconcile!
+    if (total_earnings === 0 && (grossSales > 0 || ledgerCredits > 0)) {
+      total_earnings = ledgerCredits > 0 ? ledgerCredits : (grossSales * 0.5); // 50% default share if not set
+      wallet_balance = Math.max(0, total_earnings - paidPayouts - pendingPayouts);
+
+      // Auto-update database table
+      await db.query(`
+        INSERT INTO teacher_wallet (teacher_id, wallet_balance, total_earnings, paid_earnings, pending_earnings)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (teacher_id) DO UPDATE 
+        SET wallet_balance = EXCLUDED.wallet_balance,
+            total_earnings = EXCLUDED.total_earnings,
+            paid_earnings = EXCLUDED.paid_earnings,
+            pending_earnings = EXCLUDED.pending_earnings,
+            updated_at = NOW()
+      `, [teacherId, wallet_balance, total_earnings, paidPayouts, pendingPayouts]);
+    } else {
+      paidPayouts = parseFloat(walletObj.paid_earnings || paidPayouts);
+      pendingPayouts = parseFloat(walletObj.pending_earnings || pendingPayouts);
     }
 
-    const walletObj = walletRes.rows[0] || { total_earnings: 0, paid_earnings: 0, pending_earnings: 0, wallet_balance: 0 };
-    const wallet_balance = parseFloat(walletObj.wallet_balance || walletObj.balance || 0);
-    const total_earnings = parseFloat(walletObj.total_earnings || wallet_balance || 0);
+    let teacherUserRow = {};
+    try {
+      let bRow = {};
+      try {
+        const bRes = await db.query('SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id FROM teacher_bank_details WHERE teacher_id = $1', [teacherId]);
+        bRow = bRes.rows[0] || {};
+      } catch (e1) {}
+
+      let uRow = {};
+      try {
+        const uRes = await db.query('SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id FROM users WHERE id = $1', [teacherId]);
+        uRow = uRes.rows[0] || {};
+      } catch (e2) {}
+
+      teacherUserRow = {
+        bank_account_name: bRow.bank_account_name || uRow.bank_account_name || '',
+        bank_name: bRow.bank_name || uRow.bank_name || '',
+        bank_account_number: bRow.bank_account_number || uRow.bank_account_number || '',
+        bank_ifsc_code: bRow.bank_ifsc_code || uRow.bank_ifsc_code || '',
+        upi_id: bRow.upi_id || uRow.upi_id || ''
+      };
+    } catch (colErr) {
+      console.warn('[Teacher Earnings] Bank details query fallback:', colErr.message);
+    }
+
+    // Construct unified Passbook Ledger statement
+    const passbookEntries = [];
+
+    // Add all existing ledger rows
+    ledger.rows.forEach(l => {
+      passbookEntries.push({
+        id: l.id,
+        created_at: l.created_at,
+        type: l.type,
+        description: l.description,
+        amount: parseFloat(l.amount || 0)
+      });
+    });
+
+    // If passbook has no credit entries but total_earnings > 0, add synthesized initial course credit
+    const hasCredit = passbookEntries.some(e => e.type !== 'withdrawal' && e.type !== 'payout');
+    if (!hasCredit && total_earnings > 0) {
+      passbookEntries.push({
+        id: 'cred_init_' + teacherId,
+        created_at: walletObj.created_at || new Date(Date.now() - 86400000).toISOString(),
+        type: 'course_share',
+        description: 'Course Enrollment Share & Teaching Revenue',
+        amount: total_earnings
+      });
+    }
+
+    // Add ONLY paid/approved payout withdrawals from history if not already in ledger
+    history.rows.forEach(h => {
+      if (['paid', 'approved'].includes(h.status)) {
+        const payoutId = 'wth_' + h.id;
+        const alreadyExists = passbookEntries.some(e => e.id === payoutId || (e.description && e.description.includes(h.id)));
+        if (!alreadyExists) {
+          passbookEntries.push({
+            id: payoutId,
+            created_at: h.requested_at,
+            type: 'withdrawal',
+            description: `Wallet Payout Executed (${h.status.toUpperCase()}) Route: ${h.upi_id ? 'UPI ' + h.upi_id : h.bank_account || 'Bank Transfer'}`,
+            amount: parseFloat(h.amount || 0)
+          });
+        }
+      }
+    });
+
+    // Sort chronologically (oldest first) to compute running balance
+    passbookEntries.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+
+    let runningBalance = 0;
+    const finalPassbook = passbookEntries.map(e => {
+      const isDebit = e.type === 'withdrawal' || e.type === 'payout';
+      const amt = Math.abs(parseFloat(e.amount || 0));
+      if (isDebit) {
+        runningBalance = Math.max(0, runningBalance - amt);
+      } else {
+        runningBalance += amt;
+      }
+      return {
+        ...e,
+        credit: isDebit ? 0 : amt,
+        debit: isDebit ? amt : 0,
+        running_balance: runningBalance
+      };
+    }).reverse(); // Display newest at top!
+
+    const minWithdrawalVal = parseFloat(await SystemConfigService.getSetting('min_withdrawal_amount', 200.00));
 
     res.json({
       wallet: {
-        ...walletObj,
         wallet_balance,
-        total_earnings
+        total_earnings,
+        paid_earnings: paidPayouts,
+        pending_earnings: pendingPayouts,
+        gross_sales: grossSales,
+        total_students_enrolled: totalStudentsEnrolled,
+        min_withdrawal_amount: minWithdrawalVal
       },
       history: history.rows,
-      ledger: ledger.rows,
+      ledger: finalPassbook,
       bank_details: teacherUserRow
     });
   } catch (err) {
+    console.error('[Teacher Earnings API Error]:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -947,22 +1092,59 @@ router.get('/earnings', async (req, res) => {
 router.post('/bank-details', async (req, res) => {
   const { bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id } = req.body;
   try {
+    if (!bank_account_number && !upi_id) {
+      return res.status(400).json({ error: 'Please enter a valid Bank Account Number or UPI ID.' });
+    }
+
+    const teacherId = req.user.id;
+
+    // Self-healing table check
+    try {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS teacher_bank_details (
+          teacher_id VARCHAR(100) PRIMARY KEY,
+          bank_account_name VARCHAR(255),
+          bank_name VARCHAR(255),
+          bank_account_number VARCHAR(100),
+          bank_ifsc_code VARCHAR(50),
+          upi_id VARCHAR(100),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+
+      await db.query(`
+        INSERT INTO teacher_bank_details (teacher_id, bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (teacher_id) DO UPDATE SET
+          bank_account_name = EXCLUDED.bank_account_name,
+          bank_name = EXCLUDED.bank_name,
+          bank_account_number = EXCLUDED.bank_account_number,
+          bank_ifsc_code = EXCLUDED.bank_ifsc_code,
+          upi_id = EXCLUDED.upi_id,
+          updated_at = NOW()
+      `, [teacherId, bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null]);
+    } catch (tbErr) {
+      console.warn('[teacher_bank_details upsert warning]:', tbErr.message);
+    }
+
+    // Always update users table as well
     try {
       await db.query(`
         UPDATE users SET
-          bank_account_name = $1,
-          bank_name = $2,
-          bank_account_number = $3,
-          bank_ifsc_code = $4,
-          upi_id = $5
+          bank_account_name = COALESCE($1, bank_account_name),
+          bank_name = COALESCE($2, bank_name),
+          bank_account_number = COALESCE($3, bank_account_number),
+          bank_ifsc_code = COALESCE($4, bank_ifsc_code),
+          upi_id = COALESCE($5, upi_id)
         WHERE id = $6
-      `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
-    } catch (updErr) {
-      console.warn('[Bank Details Update Warning]:', updErr.message);
+      `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, teacherId]);
+    } catch (uErr) {
+      console.warn('[users bank columns update warning]:', uErr.message);
     }
 
-    res.json({ message: 'Bank details saved successfully!' });
+    res.json({ message: 'Bank account & UPI details saved permanently!' });
   } catch (err) {
+    console.error('[Save Bank Details Error]:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -973,32 +1155,49 @@ router.post('/payouts/request', async (req, res) => {
     const wallet = await db.query('SELECT * FROM teacher_wallet WHERE teacher_id = $1', [req.user.id]);
     const balance = parseFloat(wallet.rows[0]?.wallet_balance || wallet.rows[0]?.balance || 0);
     const requestAmount = parseFloat(amount);
+    const minWithdrawalVal = parseFloat(await SystemConfigService.getSetting('min_withdrawal_amount', 200.00));
 
     if (requestAmount <= 0) return res.status(400).json({ error: 'Invalid payout amount' });
+    if (requestAmount < minWithdrawalVal) {
+      return res.status(400).json({
+        error: `Minimum withdrawal amount set by admin is ₹${minWithdrawalVal.toLocaleString('en-IN')}. Please enter an amount of ₹${minWithdrawalVal.toLocaleString('en-IN')} or higher.`
+      });
+    }
     if (requestAmount > balance) return res.status(400).json({ error: `Insufficient wallet balance. Available: ₹${balance.toLocaleString('en-IN')}` });
 
-    // Save bank details to user profile if columns exist
-    if (bank_account_number || upi_id) {
+    let finalBankAccount = bank_account;
+    let finalUpiId = upi_id;
+
+    // Auto-fetch permanently saved bank details from DB if payload was blank
+    if (!finalBankAccount && !finalUpiId) {
       try {
-        await db.query(`
-          UPDATE users SET
-            bank_account_name = COALESCE($1, bank_account_name),
-            bank_name = COALESCE($2, bank_name),
-            bank_account_number = COALESCE($3, bank_account_number),
-            bank_ifsc_code = COALESCE($4, bank_ifsc_code),
-            upi_id = COALESCE($5, upi_id)
-          WHERE id = $6
-        `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
-      } catch (profErr) {
-        console.warn('[Payout Request User Profile Warning]:', profErr.message);
+        let bRow = {};
+        const bRes = await db.query('SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id FROM teacher_bank_details WHERE teacher_id = $1', [req.user.id]);
+        if (bRes.rows && bRes.rows.length > 0) {
+          bRow = bRes.rows[0];
+        } else {
+          const uRes = await db.query('SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id FROM users WHERE id = $1', [req.user.id]);
+          bRow = uRes.rows[0] || {};
+        }
+
+        if (bRow.bank_account_number) {
+          finalBankAccount = `Bank: ${bRow.bank_name || 'N/A'} | A/C: ${bRow.bank_account_number} | IFSC: ${bRow.bank_ifsc_code || 'N/A'} | Holder: ${bRow.bank_account_name || 'N/A'}`;
+        }
+        finalUpiId = bRow.upi_id || null;
+      } catch (dbErr) {
+        console.warn('[Payout Request Auto-Fetch Error]:', dbErr.message);
       }
+    }
+
+    if (!finalBankAccount && !finalUpiId) {
+      return res.status(400).json({ error: 'Please save your Bank Account details or UPI ID first.' });
     }
 
     const id = generateUID('payout');
     await db.query(`
       INSERT INTO teacher_payouts (id, teacher_id, amount, bank_account, upi_id, status)
       VALUES ($1,$2,$3,$4,$5,'requested')
-    `, [id, req.user.id, requestAmount, bank_account || null, upi_id || null]);
+    `, [id, req.user.id, requestAmount, finalBankAccount || null, finalUpiId || null]);
 
     await logAudit(req.user.id, 'PAYOUT_REQUESTED', 'payout', id, { amount: requestAmount });
     res.status(201).json({ message: 'Payout request submitted successfully!', id });

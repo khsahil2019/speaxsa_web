@@ -4,6 +4,17 @@ const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy5
 let token = localStorage.getItem('student_token') || sessionStorage.getItem('student_token');
 let user = JSON.parse(localStorage.getItem('student_user') || sessionStorage.getItem('student_user') || 'null');
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
 window.togglePasswordVisibility = function(inputId, triggerEl) {
   const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
   if (!input) return;

@@ -7,6 +7,16 @@ window.removeStrayModalBackdrops = function() {
   } catch(e) {}
 };
 
+window.escapeHtml = function(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', window.removeStrayModalBackdrops);
   window.addEventListener('pageshow', window.removeStrayModalBackdrops);

@@ -266,7 +266,7 @@ router.get('/payments', async (req, res) => {
       result = await db.query(`
         SELECT 
           COALESCE(p.id, bs.payment_id, 'pay_spx_' || SUBSTRING(MD5(bs.batch_id || bs.student_id), 1, 10)) as id,
-          COALESCE(p.amount, c.fees, b.fees, 0) as amount,
+          COALESCE(p.amount, c.fees, 0) as amount,
           COALESCE(p.status, 'completed') as status,
           COALESCE(p.created_at, NOW()) as created_at,
           c.title as course_title,

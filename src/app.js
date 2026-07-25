@@ -148,6 +148,28 @@ db.query(`
   ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS razorpay_payout_status VARCHAR(50);
   ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS razorpay_fund_account_id VARCHAR(200);
   ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS razorpay_contact_id VARCHAR(200);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(255);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+  ALTER TABLE teacher_payouts ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
+
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
+
+  CREATE TABLE IF NOT EXISTS teacher_bank_details (
+    teacher_id VARCHAR(100) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    bank_account_name VARCHAR(255),
+    bank_name VARCHAR(255),
+    bank_account_number VARCHAR(100),
+    bank_ifsc_code VARCHAR(50),
+    upi_id VARCHAR(100),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
 
   CREATE TABLE IF NOT EXISTS performance_slabs_config (
     id VARCHAR(100) PRIMARY KEY,
@@ -201,7 +223,8 @@ db.query(`
   ('payout_pct_Professor', '75.00'),
   ('payout_pct_Senior_Professor', '80.00'),
   ('payout_pct_HOD', '85.00'),
-  ('payout_pct_Dean', '90.00')
+  ('payout_pct_Dean', '90.00'),
+  ('min_withdrawal_amount', '200.00')
   ON CONFLICT (key) DO NOTHING;
 
 

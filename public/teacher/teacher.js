@@ -4,6 +4,17 @@ const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy5
 let token = localStorage.getItem('teacher_token') || sessionStorage.getItem('teacher_token');
 let user = JSON.parse(localStorage.getItem('teacher_user') || sessionStorage.getItem('teacher_user') || 'null');
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
 window.togglePasswordVisibility = function (inputId, triggerEl) {
   const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
   if (!input) return;
@@ -1094,7 +1105,7 @@ async function dismissTeacherNotification(notifId) {
     await api(`/teacher/notifications/${notifId}/read`, { method: 'POST' });
     showToast('Notification marked as read');
     if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
-    
+
     // Refresh page depending on active tab
     const activeNav = document.querySelector('.nav-item.active');
     if (activeNav && activeNav.dataset.page === 'notifications') {
@@ -1148,7 +1159,7 @@ async function renderTeacherNotificationsPage() {
         </div>
       </div>
     `;
-  } catch(e) {
+  } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
 }
@@ -1160,7 +1171,7 @@ async function markAllTeacherNotifsRead() {
     showToast('All notifications marked as read');
     if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
     renderTeacherNotificationsPage();
-  } catch(e) {
+  } catch (e) {
     showToast(e.message, 'error');
   }
 }
@@ -4281,134 +4292,243 @@ async function renderEarnings() {
     const history = data.history || [];
     const ledger = data.ledger || [];
     const bank = data.bank_details || {};
+    window.savedTeacherBank = bank;
 
     const balanceVal = parseFloat(wallet.wallet_balance || wallet.balance || 0);
     const paidVal = parseFloat(wallet.paid_earnings || 0);
     const pendingVal = parseFloat(wallet.pending_earnings || 0);
     const totalVal = parseFloat(wallet.total_earnings || balanceVal || 0);
 
+    const fmtCurr = (num) => {
+      const val = parseFloat(num || 0);
+      return val.toLocaleString('en-IN', {
+        minimumFractionDigits: val % 1 === 0 ? 0 : 2,
+        maximumFractionDigits: 2
+      });
+    };
+
+    const passbookRows = ledger;
+    const hasSavedBank = !!(bank.bank_account_number || bank.upi_id);
+    const minWithdrawalAmt = parseFloat(wallet.min_withdrawal_amount || 200);
+
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
-        <!-- 1. Wallet Overview & Payout Request -->
-        <div class="col-lg-5">
-          <div class="spx-card text-center mb-4" style="background: radial-gradient(circle at top left, var(--bg-card), var(--bg-dark-alt)); border: 1px solid rgba(60,189,176,0.25);">
-            <h6 class="text-muted mb-2 text-uppercase" style="font-size:0.75rem; letter-spacing:1px; font-weight:700;">Available Wallet Balance</h6>
-            <div class="display-6 fw-bold text-success mb-3" style="font-family:'Outfit',sans-serif;">₹${balanceVal.toLocaleString('en-IN')}</div>
+        <!-- 1. HERO WALLET BALANCE CARD (Light Clean Theme) -->
+        <div class="col-12">
+          <div class="spx-card text-center p-4 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #e6f4f1 100%); border: 1.5px solid #3CBDB0; border-radius: 20px; color: #0f172a;">
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+              <i class="fas fa-wallet text-success fs-5"></i>
+              <span class="text-uppercase fw-bold" style="font-size:0.8rem; letter-spacing:1.2px; color: #0f172a;">Available Wallet Balance</span>
+              <i class="fas fa-info-circle text-primary" style="cursor:pointer;" data-bs-toggle="tooltip" title="Net earnings available for instant withdrawal to your bank account or UPI ID."></i>
+            </div>
             
-            <div class="row g-2 p-2 rounded-3 mb-3" style="background: rgba(15,23,42,0.4); border: 1px solid var(--border);">
-              <div class="col-6 border-end border-secondary">
-                <div class="text-success fw-bold">₹${paidVal.toLocaleString('en-IN')}</div>
-                <div class="text-muted" style="font-size:.68rem">Total Payouts Paid</div>
-              </div>
-              <div class="col-6">
-                <div class="text-warning fw-bold">₹${pendingVal.toLocaleString('en-IN')}</div>
-                <div class="text-muted" style="font-size:.68rem">Pending Escrow</div>
-              </div>
+            <div class="display-4 fw-bold mb-3" style="font-family:'Outfit',sans-serif; color: #0d7a6d; text-shadow: 0 2px 6px rgba(13,122,109,0.15);">
+              ₹${fmtCurr(balanceVal)}
             </div>
-            <div class="small text-muted">Lifetime Gross Earnings: <strong class="text-dark">₹${totalVal.toLocaleString('en-IN')}</strong></div>
-          </div>
-
-          <!-- Bank Account Details Form -->
-          <div class="spx-card mb-4">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-university me-2"></i>Bank & UPI Details</h6>
-              <span class="badge bg-primary-subtle text-primary" style="font-size:0.68rem;">Saved for Payouts</span>
-            </div>
-            <form onsubmit="saveTeacherBankDetails(event)">
-              <div class="mb-2">
-                <label class="spx-label" style="font-size:0.75rem;">Account Holder Name</label>
-                <input type="text" class="form-control spx-input" id="payoutBankHolder" value="${escapeHtml(bank.bank_account_name || '')}" placeholder="e.g. Sahil Khan" required>
+            
+            <div class="row g-3 p-3 rounded-3 mb-3 text-center" style="background: #ffffff; border: 1px solid rgba(13,122,109,0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+              <div class="col-md-6 border-end border-secondary border-opacity-25">
+                <div class="fw-bold fs-4 mb-1" style="color: #059669 !important;">
+                  ₹${fmtCurr(paidVal)}
+                </div>
+                <div class="small d-flex align-items-center justify-content-center gap-1" style="color: #334155 !important; font-size:.78rem">
+                  <span class="fw-semibold">Total Paid Out</span>
+                  <i class="fas fa-info-circle text-success" style="cursor:pointer;" data-bs-toggle="tooltip" title="Total money successfully paid out to your bank account."></i>
+                </div>
               </div>
               
-              <div class="row g-2 mb-2">
-                <div class="col-6">
-                  <label class="spx-label" style="font-size:0.75rem;">Bank Name</label>
-                  <input type="text" class="form-control spx-input" id="payoutBankName" value="${escapeHtml(bank.bank_name || '')}" placeholder="e.g. HDFC Bank" required>
+              <div class="col-md-6">
+                <div class="fw-bold fs-4 mb-1" style="color: #d97706 !important;">
+                  ₹${fmtCurr(pendingVal)}
                 </div>
-                <div class="col-6">
-                  <label class="spx-label" style="font-size:0.75rem;">IFSC Code</label>
-                  <input type="text" class="form-control spx-input text-uppercase" id="payoutBankIfsc" value="${escapeHtml(bank.bank_ifsc_code || '')}" placeholder="e.g. HDFC0000045" required>
+                <div class="small d-flex align-items-center justify-content-center gap-1" style="color: #334155 !important; font-size:.78rem">
+                  <span class="fw-semibold">Pending Escrow</span>
+                  <i class="fas fa-info-circle text-warning" style="cursor:pointer;" data-bs-toggle="tooltip" title="Withdrawal requests currently being processed by admin."></i>
                 </div>
               </div>
-
-              <div class="mb-2">
-                <label class="spx-label" style="font-size:0.75rem;">Account Number</label>
-                <input type="text" class="form-control spx-input" id="payoutBankAcc" value="${escapeHtml(bank.bank_account_number || '')}" placeholder="e.g. 5010023489112" required>
-              </div>
-
-              <div class="mb-3">
-                <label class="spx-label" style="font-size:0.75rem;">UPI ID (Optional)</label>
-                <input type="text" class="form-control spx-input" id="payoutUpi" value="${escapeHtml(bank.upi_id || '')}" placeholder="e.g. sahil@okaxis">
-              </div>
-
-              <button type="submit" class="btn btn-outline-primary btn-sm w-100 fw-bold py-2" id="btnSaveBank">
-                <i class="fas fa-save me-1"></i> Save Bank Account Details
-              </button>
-            </form>
+            </div>
+            
+            <div class="d-flex align-items-center justify-content-between px-4 py-2.5 rounded-3" style="background: #e0f2fe; border: 1px solid #bae6fd;">
+              <span class="small d-flex align-items-center gap-1" style="color: #0369a1 !important; font-weight: 600;">
+                <i class="fas fa-chart-line text-primary me-1"></i> Lifetime Gross Earnings:
+              </span>
+              <strong style="color: #0c4a6e !important; font-size: 1.25rem !important; font-weight: 800;">₹${fmtCurr(totalVal)}</strong>
+            </div>
           </div>
+        </div>
 
+        <!-- 2. MIDDLE ROW: BANK DETAILS & REQUEST PAYOUT -->
+        <div class="col-lg-6">
+          <!-- Bank Account Details Card -->
+          <div class="spx-card mb-4" id="bankDetailsCard">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-university me-2"></i>Bank & UPI Details</h6>
+              <span class="badge ${hasSavedBank ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary'}" style="font-size:0.68rem;">
+                ${hasSavedBank ? '<i class="fas fa-check-circle me-1"></i>Saved & Locked' : 'Saved for Payouts'}
+              </span>
+            </div>
+
+            ${hasSavedBank ? `
+              <div id="bankDetailsView">
+                <div class="p-3 rounded-3 mb-3" style="background: rgba(13,122,109,0.05); border: 1px solid rgba(13,122,109,0.15);">
+                  <div class="row g-2">
+                    <div class="col-12 border-bottom pb-2 mb-2">
+                      <div class="text-muted small" style="font-size:0.7rem;">Account Holder</div>
+                      <div class="fw-bold text-dark">${escapeHtml(bank.bank_account_name || 'N/A')}</div>
+                    </div>
+                    <div class="col-6">
+                      <div class="text-muted small" style="font-size:0.7rem;">Bank Name</div>
+                      <div class="fw-bold text-dark">${escapeHtml(bank.bank_name || 'N/A')}</div>
+                    </div>
+                    <div class="col-6">
+                      <div class="text-muted small" style="font-size:0.7rem;">IFSC Code</div>
+                      <div class="fw-bold text-dark text-uppercase">${escapeHtml(bank.bank_ifsc_code || 'N/A')}</div>
+                    </div>
+                    <div class="col-12 pt-2 border-top">
+                      <div class="text-muted small" style="font-size:0.7rem;">Account Number</div>
+                      <div class="fw-bold text-dark">${escapeHtml(bank.bank_account_number || 'N/A')}</div>
+                    </div>
+                    ${bank.upi_id ? `
+                      <div class="col-12 pt-2 border-top">
+                        <div class="text-muted small" style="font-size:0.7rem;">UPI ID</div>
+                        <div class="fw-bold text-primary">${escapeHtml(bank.upi_id)}</div>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 fw-bold py-2" onclick="toggleEditBankDetails(true)">
+                  <i class="fas fa-edit me-1"></i> Edit Bank & UPI Details
+                </button>
+              </div>
+            ` : ''}
+
+            <div id="bankDetailsForm" style="${hasSavedBank ? 'display: none;' : ''}">
+              <form onsubmit="saveTeacherBankDetails(event)">
+                <div class="mb-2">
+                  <label class="spx-label" style="font-size:0.75rem;">Account Holder Name</label>
+                  <input type="text" class="form-control spx-input" id="payoutBankHolder" value="${escapeHtml(bank.bank_account_name || '')}" placeholder="e.g. Sahil Khan" required>
+                </div>
+                
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <label class="spx-label" style="font-size:0.75rem;">Bank Name</label>
+                    <input type="text" class="form-control spx-input" id="payoutBankName" value="${escapeHtml(bank.bank_name || '')}" placeholder="e.g. HDFC Bank" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="spx-label" style="font-size:0.75rem;">IFSC Code</label>
+                    <input type="text" class="form-control spx-input text-uppercase" id="payoutBankIfsc" value="${escapeHtml(bank.bank_ifsc_code || '')}" placeholder="e.g. HDFC0000045" required>
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="spx-label" style="font-size:0.75rem;">Account Number</label>
+                  <input type="text" class="form-control spx-input" id="payoutBankAcc" value="${escapeHtml(bank.bank_account_number || '')}" placeholder="e.g. 5010023489112" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="spx-label" style="font-size:0.75rem;">UPI ID (Optional)</label>
+                  <input type="text" class="form-control spx-input" id="payoutUpi" value="${escapeHtml(bank.upi_id || '')}" placeholder="e.g. sahil@okaxis">
+                </div>
+
+                <div class="d-flex gap-2">
+                  ${hasSavedBank ? `
+                    <button type="button" class="btn btn-light btn-sm fw-bold w-50" onclick="toggleEditBankDetails(false)">Cancel</button>
+                  ` : ''}
+                  <button type="submit" class="btn btn-primary btn-sm fw-bold py-2 ${hasSavedBank ? 'w-50' : 'w-100'}" id="btnSaveBank">
+                    <i class="fas fa-save me-1"></i> Save Details
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
           <!-- Request Payout Card -->
-          <div class="spx-card">
+          <div class="spx-card mb-4">
             <h6 class="mb-3 fw-bold text-dark"><i class="fas fa-hand-holding-usd me-2 text-success"></i>Request Payout Withdrawal</h6>
             <form onsubmit="requestPayout(event)">
               <div class="mb-3">
                 <label class="spx-label" style="font-size:0.75rem;">Withdrawal Amount (₹)</label>
-                <input type="number" class="form-control spx-input" id="payoutAmt" placeholder="e.g. 5000" min="1" max="${balanceVal}" required>
-                <div class="form-text small">Max withdrawable balance: <strong>₹${balanceVal.toLocaleString('en-IN')}</strong></div>
+                <input type="number" class="form-control spx-input" id="payoutAmt" placeholder="e.g. 500" min="${minWithdrawalAmt}" max="${balanceVal}" required>
+                <div class="form-text small">Min withdrawal: <strong>₹${fmtCurr(minWithdrawalAmt)}</strong> | Max available: <strong>₹${fmtCurr(balanceVal)}</strong></div>
               </div>
-              <button type="submit" class="btn btn-spx w-100 py-2 fw-bold" id="btnSubmitPayout" ${balanceVal <= 0 ? 'disabled' : ''}>
+              <button type="submit" class="btn btn-spx w-100 py-2 fw-bold" id="btnSubmitPayout" ${balanceVal < minWithdrawalAmt ? 'disabled' : ''}>
                 <i class="fas fa-paper-plane me-1"></i> Submit Payout Request
               </button>
             </form>
           </div>
         </div>
 
-        <!-- 2. Ledger & Payout History -->
-        <div class="col-lg-7">
-          <!-- Earnings Ledger Table -->
-          <div class="spx-card mb-4">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-list-alt text-primary me-2"></i>Earnings & Referral Ledger</h6>
-              <span class="badge bg-success-subtle text-success">${ledger.length} Entries</span>
+        <!-- 3. FULL-WIDTH DIGITAL BANK PASSBOOK STATEMENT (5 Rows Visible + Scrollable + Printable) -->
+        <div class="col-12">
+          <div class="spx-card mb-4 border-0 shadow-sm" style="background: var(--bg-card); border-radius: 18px;">
+            <div class="d-flex align-items-center justify-content-between p-3.5 border-bottom" style="background: rgba(13,122,109,0.06); border-top-left-radius: 18px; border-top-right-radius: 18px;">
+              <div>
+                <h6 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2" style="font-size: 1rem;">
+                  <i class="fas fa-book-open text-primary fs-5"></i> SPEAXA Digital Bank Passbook Statement
+                </h6>
+                <div class="text-muted" style="font-size: 0.75rem;">Chronological Record of All Course Sales Shares, Referral Bonuses, and Withdrawal Payouts</div>
+              </div>
+
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="printPassbookStatement()">
+                  <i class="fas fa-print me-1.5"></i> Print Passbook
+                </button>
+                <span class="badge bg-primary px-3 py-2 rounded-pill fs-7">${passbookRows.length} Passbook Entries</span>
+              </div>
             </div>
-            <div style="overflow-x:auto; max-height: 380px;">
-              <table class="spx-table align-middle">
-                <thead>
+
+            <div class="p-3" id="passbookTableContainer" style="overflow-x:auto; max-height: 280px; overflow-y: auto;">
+              <table class="table table-hover align-middle border-0 mb-0" style="font-size: 0.85rem;">
+                <thead style="background: rgba(15,23,42,0.04); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 2; background-color: #f8fafc;">
                   <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th class="text-end">Amount</th>
+                    <th>Date & Time</th>
+                    <th>Particulars / Description</th>
+                    <th>Category</th>
+                    <th class="text-end text-success">Credit (+₹)</th>
+                    <th class="text-end text-danger">Debit (-₹)</th>
+                    <th class="text-end text-primary">Balance (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${ledger.map(l => `
+                  ${passbookRows.map(r => `
                     <tr>
-                      <td class="small text-muted">${fmtDate(l.created_at)}</td>
+                      <td class="text-muted small" style="white-space:nowrap;">${fmtDate(r.created_at)}</td>
+                      <td><strong class="text-dark">${escapeHtml(r.description || 'Earnings Transaction')}</strong></td>
                       <td>
-                        <span class="badge ${l.type === 'student_referral' || l.type === 'teacher_referral' ? 'bg-info-subtle text-info' : l.type === 'withdrawal' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'} px-2 py-1 small">
-                          ${l.type === 'student_referral' ? 'Student Ref Bonus' : l.type === 'teacher_referral' ? 'Teacher Ref Bonus' : l.type === 'withdrawal' ? 'Withdrawal' : 'Course Share'}
+                        <span class="badge ${r.type === 'student_referral' || r.type === 'teacher_referral' ? 'bg-info-subtle text-info' : r.type === 'withdrawal' || r.type === 'payout' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'} px-2.5 py-1">
+                          ${r.type === 'student_referral' ? 'Student Ref' : r.type === 'teacher_referral' ? 'Teacher Ref' : r.type === 'withdrawal' || r.type === 'payout' ? 'Withdrawal' : 'Course Sale Share'}
                         </span>
                       </td>
-                      <td class="small">${escapeHtml(l.description || 'Earnings transaction')}</td>
-                      <td class="text-end fw-bold ${l.type === 'withdrawal' ? 'text-danger' : 'text-success'}">
-                        ${l.type === 'withdrawal' ? '-' : '+'}₹${parseFloat(l.amount || 0).toLocaleString('en-IN')}
+                      <td class="text-end fw-bold text-success">${r.credit > 0 ? '+' + fmtCurr(r.credit) : '—'}</td>
+                      <td class="text-end fw-bold text-danger">${r.debit > 0 ? '-' + fmtCurr(r.debit) : '—'}</td>
+                      <td class="text-end fw-bold text-primary">₹${fmtCurr(r.running_balance)}</td>
+                    </tr>
+                  `).join('') || `
+                    <tr>
+                      <td colspan="6" class="text-center text-muted py-4">
+                        <i class="fas fa-receipt fa-2x mb-2 opacity-50 d-block"></i>
+                        No passbook statement entries recorded yet.
                       </td>
                     </tr>
-                  `).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No earnings ledger entries found yet.</td></tr>'}
+                  `}
                 </tbody>
               </table>
             </div>
           </div>
+        </div>
 
-          <!-- Payout Requests History Table -->
+        <!-- 4. PAYOUT REQUESTS HISTORY -->
+        <div class="col-12">
           <div class="spx-card">
             <h6 class="mb-3 fw-bold text-dark"><i class="fas fa-history text-warning me-2"></i>Payout Requests History</h6>
             <div style="overflow-x:auto">
               <table class="spx-table align-middle">
                 <thead>
                   <tr>
-                    <th>Date</th>
+                    <th>Date Requested</th>
                     <th>Amount</th>
                     <th>Payment Route</th>
                     <th>Status</th>
@@ -4419,7 +4539,7 @@ async function renderEarnings() {
                   ${history.map(h => `
                     <tr>
                       <td class="small text-muted">${fmtDate(h.requested_at)}</td>
-                      <td class="text-dark fw-bold">₹${parseFloat(h.amount || 0).toLocaleString('en-IN')}</td>
+                      <td class="text-dark fw-bold">₹${fmtCurr(h.amount)}</td>
                       <td class="small">${h.upi_id ? `UPI: ${h.upi_id}` : h.bank_account ? `<span style="font-size:0.75rem;">${escapeHtml(h.bank_account)}</span>` : 'Bank Transfer'}</td>
                       <td>
                         <span class="badge ${h.status === 'paid' ? 'bg-success' : h.status === 'requested' || h.status === 'under_review' || h.status === 'approved' ? 'bg-warning' : 'bg-danger'} px-2.5 py-1">
@@ -4441,6 +4561,16 @@ async function renderEarnings() {
   }
 }
 
+window.toggleEditBankDetails = function (showEdit) {
+  const viewEl = document.getElementById('bankDetailsView');
+  const formEl = document.getElementById('bankDetailsForm');
+  if (viewEl && formEl) {
+    viewEl.style.display = showEdit ? 'none' : 'block';
+    formEl.style.display = showEdit ? 'block' : 'none';
+  }
+};
+
+
 async function saveTeacherBankDetails(e) {
   if (e) e.preventDefault();
   const btn = document.getElementById('btnSaveBank');
@@ -4459,7 +4589,9 @@ async function saveTeacherBankDetails(e) {
       method: 'POST',
       body: JSON.stringify(payload)
     });
-    showToast(data.message || 'Bank account details saved successfully!', 'success');
+    window.savedTeacherBank = payload;
+    showToast(data.message || 'Bank account details saved permanently!', 'success');
+    renderEarnings(); // Immediately lock view with saved bank summary!
   } catch (err) {
     showToast(err.message || 'Failed to save bank details', 'error');
   } finally {
@@ -4471,11 +4603,13 @@ window.saveTeacherBankDetails = saveTeacherBankDetails;
 async function requestPayout(e) {
   e.preventDefault();
 
-  const bankHolder = document.getElementById('payoutBankHolder')?.value.trim() || '';
-  const bankName = document.getElementById('payoutBankName')?.value.trim() || '';
-  const bankAcc = document.getElementById('payoutBankAcc')?.value.trim() || '';
-  const bankIfsc = document.getElementById('payoutBankIfsc')?.value.trim() || '';
-  const upiId = document.getElementById('payoutUpi')?.value.trim() || '';
+  const savedBank = window.savedTeacherBank || {};
+
+  const bankHolder = document.getElementById('payoutBankHolder')?.value.trim() || savedBank.bank_account_name || '';
+  const bankName = document.getElementById('payoutBankName')?.value.trim() || savedBank.bank_name || '';
+  const bankAcc = document.getElementById('payoutBankAcc')?.value.trim() || savedBank.bank_account_number || '';
+  const bankIfsc = document.getElementById('payoutBankIfsc')?.value.trim() || savedBank.bank_ifsc_code || '';
+  const upiId = document.getElementById('payoutUpi')?.value.trim() || savedBank.upi_id || '';
   const amount = parseFloat(document.getElementById('payoutAmt')?.value || 0);
 
   if (!amount || amount <= 0) {
@@ -4485,16 +4619,7 @@ async function requestPayout(e) {
 
   let bankAccountStr = '';
   if (bankAcc || bankHolder || bankName || bankIfsc) {
-    if (!bankAcc || !bankHolder || !bankIfsc) {
-      showToast('Please fill out all bank account details (Holder, Account No, IFSC)', 'error');
-      return;
-    }
     bankAccountStr = `Bank: ${bankName || 'N/A'} | A/C: ${bankAcc} | IFSC: ${bankIfsc} | Holder: ${bankHolder}`;
-  }
-
-  if (!bankAccountStr && !upiId) {
-    showToast('Please save bank account details or a UPI ID.', 'error');
-    return;
   }
 
   const btn = document.getElementById('btnSubmitPayout');
@@ -6198,3 +6323,109 @@ function setupOtpBoxListeners(containerId, hiddenInputId) {
     });
   });
 }
+
+window.printPassbookStatement = function() {
+  const passbookEl = document.getElementById('passbookTableContainer');
+  if (!passbookEl) return showToast('No passbook content to print', 'info');
+
+  const savedBank = window.savedTeacherBank || {};
+
+  const printWin = window.open('', '', 'width=1000,height=800');
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>SPEAXA Official Bank Passbook Statement</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+          @page { size: A4 portrait; margin: 12mm; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; background: #fff; padding: 20px; }
+          .passbook-header { background: linear-gradient(135deg, #0d7a6d 0%, #0f172a 100%); color: #fff; padding: 22px; border-radius: 12px; margin-bottom: 20px; position: relative; }
+          .passbook-stamp { position: absolute; right: 30px; top: 18px; border: 3px double #34d399; color: #34d399; padding: 10px 14px; border-radius: 50%; font-weight: 800; font-size: 0.65rem; text-transform: uppercase; transform: rotate(-12deg); text-align: center; line-height: 1.25; box-shadow: 0 0 10px rgba(52,211,153,0.3); }
+          .details-card { border: 2px dashed #0d7a6d; background: #f8fafc; padding: 18px; border-radius: 10px; margin-bottom: 25px; }
+          .detail-label { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 600; }
+          .detail-val { font-size: 0.92rem; font-weight: 700; color: #0f172a; }
+          table { font-size: 12px !important; }
+          th { background-color: #0d7a6d !important; color: #ffffff !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+          .footer-sign { margin-top: 35px; border-top: 1px solid #cbd5e1; padding-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <!-- Passbook Bank Cover Header -->
+        <div class="passbook-header d-flex align-items-center justify-content-between">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <i class="fas fa-university fs-3 text-warning"></i>
+              <h2 class="fw-bold mb-0" style="letter-spacing:1px; font-family:'Outfit',sans-serif;">SPEAXA DIGITAL BANK</h2>
+            </div>
+            <div class="small opacity-75">Head Office: SPEAXA EdTech Tower, Financial District | IFSC: SPX0001008</div>
+            <div class="small opacity-75">Official Certified Financial Passbook Ledger</div>
+          </div>
+          <div class="text-end pe-5">
+            <div class="badge bg-warning text-dark fw-bold px-3 py-1.5 mb-1">OFFICIAL PASSBOOK STATEMENT</div>
+            <div class="small">Issued Date: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+          </div>
+          
+          <!-- Official Stamp -->
+          <div class="passbook-stamp">
+            SPEAXA<br>VERIFIED<br>AUDITED
+          </div>
+        </div>
+
+        <!-- Teacher & Bank Details Card -->
+        <div class="details-card">
+          <h6 class="fw-bold text-success border-bottom pb-2 mb-3"><i class="fas fa-id-card me-2"></i>ACCOUNT HOLDER & BANK DETAILS</h6>
+          <div class="row g-3">
+            <div class="col-4">
+              <div class="detail-label">Account Holder Name</div>
+              <div class="detail-val">${escapeHtml(user?.name || 'Teacher Profile')}</div>
+            </div>
+            <div class="col-4">
+              <div class="detail-label">Teacher User ID</div>
+              <div class="detail-val">${escapeHtml(user?.id || 'N/A')}</div>
+            </div>
+            <div class="col-4">
+              <div class="detail-label">Registered Contact</div>
+              <div class="detail-val">${escapeHtml(user?.phone || user?.email || 'N/A')}</div>
+            </div>
+            
+            <div class="col-4">
+              <div class="detail-label">Payout Bank Name</div>
+              <div class="detail-val text-primary">${escapeHtml(savedBank.bank_name || 'SPEAXA Wallet')}</div>
+            </div>
+            <div class="col-4">
+              <div class="detail-label">Bank Account Number</div>
+              <div class="detail-val text-dark">${escapeHtml(savedBank.bank_account_number || 'N/A')}</div>
+            </div>
+            <div class="col-4">
+              <div class="detail-label">IFSC Code / UPI ID</div>
+              <div class="detail-val text-uppercase">${escapeHtml(savedBank.bank_ifsc_code || savedBank.upi_id || 'N/A')}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Passbook Statement Table -->
+        <h6 class="fw-bold text-dark mb-2"><i class="fas fa-receipt me-2 text-primary"></i>STATEMENT OF TRANSACTIONS</h6>
+        ${passbookEl.innerHTML}
+
+        <!-- Official Authorization Footer -->
+        <div class="footer-sign d-flex align-items-center justify-content-between">
+          <div>
+            <div class="small text-muted">This is a system-generated computerised Bank Passbook Statement certified by SPEAXA Financial Core.</div>
+            <div class="small text-muted">Generated at ${new Date().toLocaleString('en-IN')}</div>
+          </div>
+          <div class="text-center">
+            <div class="border-bottom border-dark pb-1 mb-1 fw-bold text-dark" style="width: 180px;">SPEAXA Accounts Officer</div>
+            <div class="small text-success fw-bold"><i class="fas fa-check-double me-1"></i>Digitally Signed & Stamp Verified</div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() { window.print(); setTimeout(() => window.close(), 500); };
+        </script>
+      </body>
+    </html>
+  `);
+  printWin.document.close();
+};
