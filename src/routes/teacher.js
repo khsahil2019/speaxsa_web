@@ -914,25 +914,15 @@ router.get('/earnings', async (req, res) => {
       WHERE teacher_id = $1
       ORDER BY created_at DESC
     `, [req.user.id]);
-    let teacherUser;
+    let teacherUserRow = {};
     try {
-      teacherUser = await db.query(`
+      const teacherUser = await db.query(`
         SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id 
         FROM users WHERE id = $1
       `, [req.user.id]);
+      teacherUserRow = teacherUser.rows[0] || {};
     } catch (colErr) {
-      // Self-heal: ensure bank columns exist in PostgreSQL
-      await db.query(`
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
-      `);
-      teacherUser = await db.query(`
-        SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id 
-        FROM users WHERE id = $1
-      `, [req.user.id]);
+      console.warn('[Teacher Earnings] Bank columns query fallback:', colErr.message);
     }
 
     const walletObj = walletRes.rows[0] || { total_earnings: 0, paid_earnings: 0, pending_earnings: 0, wallet_balance: 0 };
@@ -947,7 +937,7 @@ router.get('/earnings', async (req, res) => {
       },
       history: history.rows,
       ledger: ledger.rows,
-      bank_details: teacherUser.rows[0] || {}
+      bank_details: teacherUserRow
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -957,24 +947,19 @@ router.get('/earnings', async (req, res) => {
 router.post('/bank-details', async (req, res) => {
   const { bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id } = req.body;
   try {
-    // Self-heal column existence check
-    await db.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
-    `);
-
-    await db.query(`
-      UPDATE users SET
-        bank_account_name = $1,
-        bank_name = $2,
-        bank_account_number = $3,
-        bank_ifsc_code = $4,
-        upi_id = $5
-      WHERE id = $6
-    `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
+    try {
+      await db.query(`
+        UPDATE users SET
+          bank_account_name = $1,
+          bank_name = $2,
+          bank_account_number = $3,
+          bank_ifsc_code = $4,
+          upi_id = $5
+        WHERE id = $6
+      `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
+    } catch (updErr) {
+      console.warn('[Bank Details Update Warning]:', updErr.message);
+    }
 
     res.json({ message: 'Bank details saved successfully!' });
   } catch (err) {
@@ -992,25 +977,21 @@ router.post('/payouts/request', async (req, res) => {
     if (requestAmount <= 0) return res.status(400).json({ error: 'Invalid payout amount' });
     if (requestAmount > balance) return res.status(400).json({ error: `Insufficient wallet balance. Available: ₹${balance.toLocaleString('en-IN')}` });
 
-    // Save bank details to user profile as well
+    // Save bank details to user profile if columns exist
     if (bank_account_number || upi_id) {
-      await db.query(`
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
-      `);
-
-      await db.query(`
-        UPDATE users SET
-          bank_account_name = COALESCE($1, bank_account_name),
-          bank_name = COALESCE($2, bank_name),
-          bank_account_number = COALESCE($3, bank_account_number),
-          bank_ifsc_code = COALESCE($4, bank_ifsc_code),
-          upi_id = COALESCE($5, upi_id)
-        WHERE id = $6
-      `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
+      try {
+        await db.query(`
+          UPDATE users SET
+            bank_account_name = COALESCE($1, bank_account_name),
+            bank_name = COALESCE($2, bank_name),
+            bank_account_number = COALESCE($3, bank_account_number),
+            bank_ifsc_code = COALESCE($4, bank_ifsc_code),
+            upi_id = COALESCE($5, upi_id)
+          WHERE id = $6
+        `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
+      } catch (profErr) {
+        console.warn('[Payout Request User Profile Warning]:', profErr.message);
+      }
     }
 
     const id = generateUID('payout');

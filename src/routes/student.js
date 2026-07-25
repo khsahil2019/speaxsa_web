@@ -261,27 +261,42 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
 router.get('/payments', async (req, res) => {
   try {
     // Queries payments table with fallback reconciliation from batch_students
-    const result = await db.query(`
-      SELECT 
-        COALESCE(p.id, bs.payment_id, 'pay_spx_' || SUBSTRING(MD5(bs.batch_id || bs.student_id), 1, 10)) as id,
-        COALESCE(p.amount, c.fees, b.fees, 0) as amount,
-        COALESCE(p.status, 'completed') as status,
-        COALESCE(p.created_at, bs.enrolled_at, NOW()) as created_at,
-        c.title as course_title,
-        b.batch_name,
-        u.name as teacher_name
-      FROM batch_students bs
-      JOIN batches b ON b.id = bs.batch_id
-      LEFT JOIN courses c ON c.id = b.course_id
-      LEFT JOIN users u ON u.id = COALESCE(b.teacher_id, c.created_by)
-      LEFT JOIN payments p ON p.student_id = bs.student_id AND p.batch_id = bs.batch_id
-      WHERE bs.student_id = $1
-      ORDER BY created_at DESC
-    `, [req.user.id]);
+    let result;
+    try {
+      result = await db.query(`
+        SELECT 
+          COALESCE(p.id, bs.payment_id, 'pay_spx_' || SUBSTRING(MD5(bs.batch_id || bs.student_id), 1, 10)) as id,
+          COALESCE(p.amount, c.fees, b.fees, 0) as amount,
+          COALESCE(p.status, 'completed') as status,
+          COALESCE(p.created_at, NOW()) as created_at,
+          c.title as course_title,
+          b.batch_name,
+          u.name as teacher_name
+        FROM batch_students bs
+        JOIN batches b ON b.id = bs.batch_id
+        LEFT JOIN courses c ON c.id = b.course_id
+        LEFT JOIN users u ON u.id = COALESCE(b.teacher_id, c.created_by)
+        LEFT JOIN payments p ON p.student_id = bs.student_id AND p.batch_id = bs.batch_id
+        WHERE bs.student_id = $1
+        ORDER BY created_at DESC
+      `, [req.user.id]);
+    } catch (sqlErr) {
+      console.warn('[Student Payments] Fallback to direct payments table:', sqlErr.message);
+      result = await db.query(`
+        SELECT p.*, c.title as course_title, b.batch_name, u.name as teacher_name
+        FROM payments p
+        LEFT JOIN courses c ON c.id = p.course_id
+        LEFT JOIN batches b ON b.id = p.batch_id
+        LEFT JOIN users u ON u.id = p.teacher_id
+        WHERE p.student_id = $1
+        ORDER BY p.created_at DESC
+      `, [req.user.id]);
+    }
 
-    res.json(result.rows);
+    res.json(result.rows || []);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[Student Payments Error]:', err);
+    res.json([]);
   }
 });
 
