@@ -5624,13 +5624,16 @@ async function renderSubscribersPage() {
               </div>
 
               <div class="mb-3">
-                <label class="spx-label mb-1">Advertisement Banner Image (Optional)</label>
+                <label class="spx-label mb-1"><i class="fas fa-images me-1 text-teal"></i>Advertisement Banner Image (Optional)</label>
                 <div class="input-group">
-                  <input class="form-control spx-input" id="adCampaignImageUrl" placeholder="e.g. https://speaxa.in/logo.png or select file below">
-                  <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('adCampaignFileInput').click()"><i class="fas fa-upload me-1"></i> Upload Image</button>
+                  <input class="form-control spx-input" id="adCampaignImageUrl" placeholder="Select banner from Speaxa Media Gallery..." readonly style="background: rgba(15,23,42,0.6); cursor: pointer;" onclick="openSpeaxaMediaGalleryPicker('adCampaignImageUrl')">
+                  <button type="button" class="btn btn-spx fw-bold px-3" onclick="openSpeaxaMediaGalleryPicker('adCampaignImageUrl')">
+                    <i class="fas fa-photo-video me-1.5 text-warning"></i> Speaxa Gallery
+                  </button>
                 </div>
-                <input type="file" id="adCampaignFileInput" accept="image/*" style="display:none;" onchange="uploadCampaignImageFile(this)">
-                <div class="text-muted small mt-1" style="font-size:0.72rem;">Upload an image from your device or paste a web URL.</div>
+                <div class="text-muted small mt-1" style="font-size:0.72rem;">
+                  Select official banners & graphics from <strong>SPEAXA Media Gallery</strong> (Production URL: <code>https://speaxa.in/...</code>).
+                </div>
               </div>
 
               <div class="mb-3">
@@ -5698,6 +5701,160 @@ async function renderSubscribersPage() {
   }
 }
 
+function formatSpeaxaProductionUrl(urlPath) {
+  if (!urlPath) return '';
+  if (urlPath.startsWith('http://') || urlPath.startsWith('https://')) {
+    if (urlPath.includes('localhost') || urlPath.includes('127.0.0.1')) {
+      const pathPart = urlPath.substring(urlPath.indexOf('/', urlPath.indexOf('//') + 2));
+      return `https://speaxa.in${pathPart}`;
+    }
+    return urlPath;
+  }
+  const cleanPath = urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
+  return `https://speaxa.in${cleanPath}`;
+}
+window.formatSpeaxaProductionUrl = formatSpeaxaProductionUrl;
+
+window.openSpeaxaMediaGalleryPicker = async function(targetInputId) {
+  try {
+    const media = await apiGet('/admin/gallery');
+    const items = Array.isArray(media) ? media : [];
+
+    let mediaCardsHtml = '';
+    if (items.length === 0) {
+      mediaCardsHtml = `
+        <div class="text-center py-5 col-12" style="color: #64748b !important;">
+          <i class="fas fa-images fs-1 mb-3" style="color: #94a3b8 !important;"></i>
+          <h6 class="fw-bold mb-2" style="color: #0f172a !important;">No Images in Speaxa Media Gallery</h6>
+          <p class="small mb-0" style="color: #64748b !important;">Upload images under <strong>Website CMS ➔ Media Gallery</strong> to use them in advertisement emails.</p>
+        </div>
+      `;
+    } else {
+      mediaCardsHtml = items.map(item => {
+        const prodUrl = formatSpeaxaProductionUrl(item.url);
+        const fileNameDisplay = escapeHtml(item.original_name || item.filename || 'Speaxa Media');
+        return `
+          <div class="col-6 col-md-4 col-lg-3 gallery-picker-card-item" data-name="${fileNameDisplay.toLowerCase()}">
+            <div class="card h-100 border-0 shadow-sm" style="background: #ffffff !important; border: 1.5px solid #cbd5e1 !important; border-radius: 14px; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+              <div style="height: 150px; background: #f1f5f9 !important; display: flex; align-items: center; justify-content: center; padding: 10px; position: relative; border-bottom: 1px solid #e2e8f0;">
+                <img src="${item.url}" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 6px;" alt="${fileNameDisplay}" loading="lazy">
+                <span style="position: absolute; top: 8px; right: 8px; background: #0d7a6d !important; color: #ffffff !important; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">SPEAXA CDN</span>
+              </div>
+              <div class="card-body p-3 d-flex flex-column justify-content-between text-center" style="background: #ffffff !important;">
+                <div style="background: #f8fafc !important; color: #0f172a !important; font-weight: 700; font-size: 0.8rem; padding: 6px 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileNameDisplay}">
+                  <i class="fas fa-image" style="color: #0d7a6d !important; margin-right: 5px;"></i>${fileNameDisplay}
+                </div>
+                <button type="button" class="btn fw-bold" style="background: linear-gradient(135deg, #0d7a6d 0%, #08544b 100%) !important; color: #ffffff !important; font-weight: 700; font-size: 0.82rem; padding: 8px 16px; border-radius: 50px; border: none; width: 100%; cursor: pointer; box-shadow: 0 3px 8px rgba(13,122,109,0.25);" onclick="selectSpeaxaGalleryItem('${prodUrl}', '${targetInputId}')">
+                  <i class="fas fa-check-circle me-1.5" style="color: #34d399 !important;"></i> Select & Use Banner
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    const modalHtml = `
+      <div class="modal fade" id="speaxaGalleryPickerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+          <div class="modal-content border-0 shadow-lg" style="background: #ffffff !important; color: #0f172a !important; border-radius: 16px; overflow: hidden;">
+            <div class="modal-header border-0 p-3.5 px-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #0d7a6d 0%, #08544b 100%) !important;">
+              <div class="d-flex align-items-center gap-3">
+                <div style="background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 10px; color: #f59e0b;">
+                  <i class="fas fa-photo-video fs-4"></i>
+                </div>
+                <div>
+                  <h5 class="modal-title fw-bold mb-0" style="color: #ffffff !important; letter-spacing: 0.5px;">SPEAXA Official Media Gallery</h5>
+                  <small style="color: rgba(255,255,255,0.85) !important;">Select an official banner image for broadcast email campaign</small>
+                </div>
+              </div>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Search Bar Sub-header -->
+            <div class="p-3 px-4 d-flex align-items-center justify-content-between" style="background: #f8fafc !important; border-bottom: 1px solid #e2e8f0;">
+              <div class="input-group input-group-sm" style="max-width: 380px;">
+                <span class="input-group-text" style="background: #ffffff !important; border: 1.5px solid #cbd5e1; border-right: none; color: #64748b !important;"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" style="background: #ffffff !important; color: #0f172a !important; border: 1.5px solid #cbd5e1; border-left: none; font-weight: 600;" placeholder="Search gallery images..." onkeyup="filterSpeaxaGalleryPicker(this.value)">
+              </div>
+              <div class="small d-none d-md-block" style="color: #475569 !important;">
+                <i class="fas fa-globe me-1" style="color: #059669 !important;"></i> Production Domain: <strong style="color: #0d7a6d !important; font-family: monospace; font-weight: 700;">https://speaxa.in/uploads/...</strong>
+              </div>
+            </div>
+
+            <div class="modal-body p-4" style="background: #f1f5f9 !important;">
+              <div class="row g-3" id="speaxaGalleryPickerGrid">
+                ${mediaCardsHtml}
+              </div>
+            </div>
+            <div class="modal-footer p-3 d-flex align-items-center justify-content-between" style="background: #ffffff !important; border-top: 1px solid #e2e8f0;">
+              <span class="small" style="color: #64748b !important;"><i class="fas fa-shield-alt me-1" style="color: #0d7a6d !important;"></i> Images hosted securely on SPEAXA Production Storage</span>
+              <button type="button" class="btn btn-secondary rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    let existing = document.getElementById('speaxaGalleryPickerModal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const m = new bootstrap.Modal(document.getElementById('speaxaGalleryPickerModal'));
+    m.show();
+
+  } catch (err) {
+    showToast(err.message || 'Failed to load Speaxa Media Gallery', 'error');
+  }
+};
+
+window.filterSpeaxaGalleryPicker = function(query) {
+  const q = (query || '').toLowerCase().trim();
+  document.querySelectorAll('.gallery-picker-card-item').forEach(card => {
+    const name = card.getAttribute('data-name') || '';
+    if (!q || name.includes(q)) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+};
+
+window.selectSpeaxaGalleryItem = function(prodUrl, targetInputId) {
+  const inputEl = document.getElementById(targetInputId);
+  if (inputEl) {
+    inputEl.value = prodUrl;
+  }
+  showToast('Image URL selected from Speaxa Media Gallery!');
+  const modalEl = document.getElementById('speaxaGalleryPickerModal');
+  if (modalEl) {
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+  }
+};
+
+window.uploadGalleryPickerFile = async function(input, targetInputId) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    showToast('Uploading to Speaxa Media Gallery...', 'info');
+    const token = localStorage.getItem('admin_token');
+    const res = await fetch('/api/admin/gallery/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    }).then(r => r.json());
+
+    if (res.error) throw new Error(res.error);
+    const rawUrl = res.file?.url || '';
+    const prodUrl = formatSpeaxaProductionUrl(rawUrl);
+    selectSpeaxaGalleryItem(prodUrl, targetInputId);
+  } catch (err) {
+    showToast(err.message || 'Gallery upload failed', 'error');
+  }
+};
+
 async function uploadCampaignImageFile(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
@@ -5714,8 +5871,9 @@ async function uploadCampaignImageFile(input) {
     if (res.error) throw new Error(res.error);
     const url = res.file?.url || '';
     if (url) {
-      document.getElementById('adCampaignImageUrl').value = window.location.origin + url;
-      showToast('Banner image uploaded successfully!');
+      const prodUrl = formatSpeaxaProductionUrl(url);
+      document.getElementById('adCampaignImageUrl').value = prodUrl;
+      showToast('Banner image uploaded and formatted to https://speaxa.in URL!');
     }
   } catch (err) {
     showToast(err.message || 'Image upload failed', 'error');
