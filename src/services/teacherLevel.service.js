@@ -90,24 +90,40 @@ function scoreTolevel(score) {
 
 async function updateTeacherLevel(teacherId, changedBy = null) {
   try {
-    const historyCheck = await db.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM batches WHERE teacher_id = $1) as batch_count,
-        (SELECT total_ratings FROM users WHERE id = $1) as rating_count
+    // Calculate cumulative revenue from completed payments + teacher_wallet
+    const revRes = await db.query(`
+      SELECT COALESCE(SUM(amount), 0) as total_rev
+      FROM payments
+      WHERE teacher_id = $1 AND status = 'completed'
     `, [teacherId]);
-    const batchCount = parseInt(historyCheck.rows[0]?.batch_count || 0);
-    const ratingCount = parseInt(historyCheck.rows[0]?.rating_count || 0);
+    
+    const walletRes = await db.query(`
+      SELECT COALESCE(total_earnings, 0) as wallet_tot
+      FROM teacher_wallet
+      WHERE teacher_id = $1
+    `, [teacherId]);
 
-    if (batchCount === 0 && ratingCount === 0) {
-      console.log(`[TeacherLevel] Skipping level auto-calculation for ${teacherId}: No batches or ratings yet.`);
-      return { teacherId, level: null, score: 0, components: {}, changed: false };
+    const cumulativeRevenue = Math.max(
+      parseFloat(revRes.rows[0]?.total_rev || 0),
+      parseFloat(walletRes.rows[0]?.wallet_tot || 0)
+    );
+
+    // Query performance slabs ordered by target_revenue ASC
+    const slabsRes = await db.query(
+      "SELECT slab_name, target_revenue FROM performance_slabs_config ORDER BY target_revenue ASC"
+    );
+
+    let newLevel = 'Junior Teacher';
+    if (slabsRes.rows.length > 0) {
+      for (const slab of slabsRes.rows) {
+        if (cumulativeRevenue >= parseFloat(slab.target_revenue)) {
+          newLevel = slab.slab_name;
+        }
+      }
     }
 
-    const { overallScore, components } = await calculateTeacherScore(teacherId);
-    const newLevel = scoreTolevel(overallScore);
-
     const currentRes = await db.query('SELECT teacher_level FROM users WHERE id = $1', [teacherId]);
-    const currentLevel = currentRes.rows[0]?.teacher_level;
+    const currentLevel = currentRes.rows[0]?.teacher_level || 'Junior Teacher';
 
     if (newLevel !== currentLevel) {
       await db.query('UPDATE users SET teacher_level = $1 WHERE id = $2', [newLevel, teacherId]);
@@ -117,18 +133,18 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
         INSERT INTO teacher_levels (id, teacher_id, level, previous_level, changed_by, reason)
         VALUES ($1, $2, $3, $4, $5, $6)
       `, [
-        `lvl_${Date.now()}`,
+        `lvl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         teacherId,
         newLevel,
         currentLevel,
         changedBy,
-        `Auto-calculated. Score: ${overallScore}`
+        `Auto-promoted by Cumulative Revenue Milestones (Total: ₹${cumulativeRevenue.toLocaleString('en-IN')})`
       ]);
 
       // Issue certificate for tier upgrade
       const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      const certTitle = `${newLevel} Teacher Tier Certificate`;
-      const certDesc = `Awarded for achieving ${newLevel} Level status on SPEAXA with an overall performance score of ${overallScore}/100.`;
+      const certTitle = `${newLevel} Designation Milestone Certificate`;
+      const certDesc = `Awarded for unlocking ${newLevel} Level status on SPEAXA with cumulative course sales revenue of ₹${cumulativeRevenue.toLocaleString('en-IN')}.`;
 
       await db.query(`
         INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description)
@@ -143,10 +159,10 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
           const { sendEmail } = require('./EmailService');
           await sendEmail({
             to: uRes.rows[0].email,
-            subject: `🎓 Congratulations! New Certificate & Tier Upgrade: ${newLevel}`,
+            subject: `🎓 Congratulations! Designation Upgrade: ${newLevel}`,
             type: 'notification',
             headerTitle: 'Performance Certificate Issued',
-            badgeLabel: `${newLevel} Level Achieved`,
+            badgeLabel: `${newLevel} Designation Achieved`,
             html: `
               <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
                 <h2 style="color: #0d7a6d; margin-top: 0;">Congratulations ${uRes.rows[0].name || 'Teacher'}!</h2>
@@ -165,13 +181,13 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
         console.error('[TeacherLevel] Certificate Email Error:', mailErr.message);
       }
 
-      console.log(`[TeacherLevel] Teacher ${teacherId}: ${currentLevel} → ${newLevel} (score: ${overallScore})`);
+      console.log(`[TeacherLevel] Teacher ${teacherId}: ${currentLevel} → ${newLevel}`);
     }
 
-    return { teacherId, level: newLevel, score: overallScore, components, changed: newLevel !== currentLevel };
+    return { teacherId, level: newLevel, cumulativeRevenue, changed: newLevel !== currentLevel };
   } catch (err) {
-    console.error('[TeacherLevel] Update error:', err.message);
-    throw err;
+    console.error('[TeacherLevel] Auto-update error:', err.message);
+    return { teacherId, level: 'Junior Teacher', cumulativeRevenue: 0, changed: false };
   }
 }
 

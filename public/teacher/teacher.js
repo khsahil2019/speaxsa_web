@@ -4653,50 +4653,113 @@ async function renderLevel() {
   loading();
   try {
     const data = await api('/teacher/level');
+    const curLevel = data.level || 'Junior Teacher';
+
+    const levelColors = {
+      'Junior Teacher': { bg: 'linear-gradient(135deg, #0d7a6d 0%, #08544b 100%)', color: '#ffffff', icon: 'fa-user-graduate', pct: '50% Revenue Share', group: 'Foundation Group' },
+      'Assistant Teacher': { bg: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', icon: 'fa-award', pct: '55% Revenue Share', group: 'Foundation Group' },
+      'Senior Teacher': { bg: 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#ffffff', icon: 'fa-medal', pct: '60% Revenue Share', group: 'Teaching Excellence Group' },
+      'Executive Teacher': { bg: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: '#ffffff', icon: 'fa-certificate', pct: '65% Revenue Share', group: 'Teaching Excellence Group' },
+      'Lecturer': { bg: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', color: '#ffffff', icon: 'fa-university', pct: '70% Revenue Share', group: 'Teaching Excellence Group' },
+      'Professor': { bg: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', color: '#ffffff', icon: 'fa-graduation-cap', pct: '75% Revenue Share', group: 'Academic Excellence Group' },
+      'Senior Professor': { bg: 'linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)', color: '#ffffff', icon: 'fa-crown', pct: '80% Revenue Share', group: 'Academic Excellence Group' },
+      'HOD': { bg: 'linear-gradient(135deg, #0f766e 0%, #115e59 100%)', color: '#ffffff', icon: 'fa-gem', pct: '85% Revenue Share', group: 'Leadership Group' },
+      'Dean': { bg: 'linear-gradient(135deg, #b45309 0%, #78350f 100%)', color: '#fef08a', icon: 'fa-chess-king', pct: '90% Revenue Share', group: 'Leadership Group' },
+    };
+
+    const lvlInfo = levelColors[curLevel] || levelColors['Junior Teacher'];
 
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
         <div class="col-lg-5">
-          <div class="spx-card text-center">
-            <h6 class="text-muted mb-2">My Current Level</h6>
-            <div class="display-4 text-warning mb-2"><i class="fas fa-medal"></i></div>
-            <h4 class="text-dark fw-bold mb-1">${data.level || 'New Joiner'}</h4>
-            <div class="text-muted small">Current Rating: <strong>${parseFloat(data.rating).toFixed(2)}</strong></div>
-            
-            <hr style="border-color:var(--border);margin:20px 0">
-            
-            <h6 class="fw-bold mb-3">Milestone Progress</h6>
-            <div style="text-align:left;" class="small text-muted">
-              <div class="d-flex justify-content-between mb-1"><span>Target Class Attendance:</span><strong class="text-dark">90%+</strong></div>
-              <div class="d-flex justify-content-between mb-1"><span>Target Student Rating:</span><strong class="text-dark">4.5+</strong></div>
-              <div class="d-flex justify-content-between mb-1"><span>Classes Held (this month):</span><strong class="text-dark">${data.sessions_count || 0}</strong></div>
-              <div class="d-flex justify-content-between"><span>Active Students:</span><strong class="text-dark">${data.active_students || 0}</strong></div>
+          <!-- Hero Level Card -->
+          <div class="spx-card text-center p-4 border-0 shadow-sm rounded-4 overflow-hidden position-relative" style="background: ${lvlInfo.bg}; color: #ffffff;">
+            <div class="position-absolute top-0 end-0 m-3 opacity-25">
+              <i class="fas ${lvlInfo.icon}" style="font-size: 5rem;"></i>
+            </div>
+            <div class="badge bg-white bg-opacity-20 text-warning px-3 py-1.5 rounded-pill mb-3 fw-bold" style="font-size: 0.8rem;">
+              <i class="fas fa-crown me-1"></i>Official SPEAXA Designation
+            </div>
+            <h3 class="fw-bold mb-1 text-white">${curLevel}</h3>
+            <div class="badge bg-white bg-opacity-25 text-white px-3 py-1 rounded-pill mb-3 fw-semibold" style="font-size: 0.85rem;">
+              ${lvlInfo.pct} • ${lvlInfo.group}
+            </div>
+
+            <div class="d-flex align-items-center justify-content-center gap-3 mt-2">
+              <div class="bg-white bg-opacity-10 p-2 px-3 rounded-3">
+                <span class="small opacity-75 d-block text-white">Current Rating</span>
+                <strong class="fs-5 text-warning"><i class="fas fa-star text-warning me-1"></i>${parseFloat(data.rating).toFixed(2)}</strong>
+              </div>
+              <div class="bg-white bg-opacity-10 p-2 px-3 rounded-3">
+                <span class="small opacity-75 d-block text-white">Cumulative Revenue</span>
+                <strong class="fs-5 text-success">₹${(data.cumulative_revenue || 0).toLocaleString('en-IN')}</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance & Milestone Metrics -->
+          <div class="spx-card mt-4 border-0 shadow-sm rounded-4">
+            <h6 class="fw-bold mb-3 text-dark"><i class="fas fa-chart-line text-primary me-2"></i>Performance Metrics & Progress</h6>
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="p-3 rounded-3 bg-light border">
+                  <div class="small text-muted mb-1"><i class="fas fa-video text-primary me-1"></i>Classes Held (Month)</div>
+                  <strong class="fs-5 text-dark">${data.sessions_count || 0} Sessions</strong>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 rounded-3 bg-light border">
+                  <div class="small text-muted mb-1"><i class="fas fa-user-graduate text-success me-1"></i>Active Enrolled Students</div>
+                  <strong class="fs-5 text-dark">${data.active_students || 0} Students</strong>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 rounded-3 bg-light border">
+                  <div class="small text-muted mb-1"><i class="fas fa-clipboard-check text-info me-1"></i>Target Attendance</div>
+                  <strong class="fs-6 text-dark">90%+ Verified</strong>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 rounded-3 bg-light border">
+                  <div class="small text-muted mb-1"><i class="fas fa-star text-warning me-1"></i>Target Student Rating</div>
+                  <strong class="fs-6 text-dark">4.5+ Benchmark</strong>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="col-lg-7">
-          <div class="spx-card">
-            <h6 class="mb-4 fw-bold">Level Adjustment Logs</h6>
-            <div style="overflow-x:auto">
-              <table class="spx-table">
-                <thead>
+          <div class="spx-card border-0 shadow-sm rounded-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history text-teal me-2"></i>Level Adjustment & Promotion Logs</h6>
+              <span class="badge bg-light text-muted border">Real-time Sync</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle text-sm mb-0">
+                <thead class="table-light">
                   <tr>
                     <th>Date</th>
-                    <th>New Level</th>
-                    <th>Previous Level</th>
-                    <th>Reason</th>
+                    <th>New Designation</th>
+                    <th>Previous Designation</th>
+                    <th>Promotion Reason / Milestone</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${(data.history || []).map(h => `
                     <tr>
-                      <td>${fmtDate(h.changed_at)}</td>
-                      <td class="text-dark fw-bold">${h.level}</td>
-                      <td>${h.previous_level || '—'}</td>
-                      <td>${h.reason || 'Auto calculation update'}</td>
+                      <td class="small text-muted">${fmtDate(h.changed_at)}</td>
+                      <td><span class="badge bg-success bg-opacity-10 text-success fw-bold px-2.5 py-1 rounded-pill">${h.level}</span></td>
+                      <td class="text-muted">${h.previous_level || '—'}</td>
+                      <td class="small text-secondary">${h.reason || 'Cumulative Revenue Milestone Reached'}</td>
                     </tr>
-                  `).join('') || '<tr><td colspan="4" class="text-center text-muted">No level adjustments logged yet. Level is calculated automatically every Saturday.</td></tr>'}
+                  `).join('') || `
+                    <tr>
+                      <td colspan="4" class="text-center py-4 text-muted">
+                        <i class="fas fa-info-circle text-primary me-1"></i> No level adjustments logged yet. Promoted automatically as cumulative sales cross performance revenue slabs.
+                      </td>
+                    </tr>
+                  `}
                 </tbody>
               </table>
             </div>
@@ -4715,19 +4778,32 @@ async function renderProfile() {
   try {
     const profile = await api('/auth/profile');
 
-    // Determine level badge details
-    let levelBadgeHtml = '';
-    if (profile.teacher_level === 'Platinum') {
-      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#7C3AED,#C084FC);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-trophy me-1"></i>Platinum Class Mentor</span>`;
-    } else if (profile.teacher_level === 'Gold') {
-      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#F59E0B,#FCD34D);color:#78350F;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-award me-1"></i>Gold Class Mentor</span>`;
-    } else if (profile.teacher_level === 'Silver') {
-      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#64748B,#94A3B8);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-medal me-1"></i>Silver Class Mentor</span>`;
-    } else if (profile.teacher_level === 'Bronze') {
-      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#B45309,#D97706);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-certificate me-1"></i>Bronze Class Mentor</span>`;
-    } else {
-      levelBadgeHtml = `<span class="badge" style="background:linear-gradient(135deg,#64748B,#94A3B8);color:white;font-size:0.75rem;padding:6px 12px;border-radius:8px;"><i class="fas fa-user me-1"></i>New Joiner</span>`;
-    }
+    // Determine level badge details based on official Performance Slabs Level
+    const currentLevel = profile.teacher_level || 'Junior Teacher';
+    const levelColors = {
+      'Junior Teacher': { bg: '#ffffff', border: '2px solid #0d7a6d', color: '#0d7a6d', icon: 'fa-user-graduate', iconColor: '#0d7a6d', subBg: '#e6f4f1', subColor: '#08544b', pct: '50% Share | Foundation Group', group: 'Foundation Group' },
+      'Assistant Teacher': { bg: '#ffffff', border: '2px solid #0284c7', color: '#0284c7', icon: 'fa-award', iconColor: '#0284c7', subBg: '#e0f2fe', subColor: '#0369a1', pct: '55% Share | Foundation Group', group: 'Foundation Group' },
+      'Senior Teacher': { bg: '#ffffff', border: '2px solid #059669', color: '#059669', icon: 'fa-medal', iconColor: '#059669', subBg: '#d1fae5', subColor: '#047857', pct: '60% Share | Teaching Excellence Group (₹5k/mo)', group: 'Teaching Excellence Group' },
+      'Executive Teacher': { bg: '#ffffff', border: '2px solid #7c3aed', color: '#7c3aed', icon: 'fa-certificate', iconColor: '#7c3aed', subBg: '#f3e8ff', subColor: '#6d28d9', pct: '65% Share | Teaching Excellence Group (₹5k/mo)', group: 'Teaching Excellence Group' },
+      'Lecturer': { bg: '#ffffff', border: '2px solid #d97706', color: '#d97706', icon: 'fa-university', iconColor: '#d97706', subBg: '#fef3c7', subColor: '#b45309', pct: '70% Share | Teaching Excellence Group (₹5k/mo)', group: 'Teaching Excellence Group' },
+      'Professor': { bg: '#ffffff', border: '2px solid #dc2626', color: '#dc2626', icon: 'fa-graduation-cap', iconColor: '#dc2626', subBg: '#ffe4e6', subColor: '#be123c', pct: '75% Share | Academic Excellence Group (₹10k/mo)', group: 'Academic Excellence Group' },
+      'Senior Professor': { bg: '#ffffff', border: '2px solid #4c1d95', color: '#4c1d95', icon: 'fa-crown', iconColor: '#4c1d95', subBg: '#ede9fe', subColor: '#5b21b6', pct: '80% Share | Academic Excellence Group (₹10k/mo)', group: 'Academic Excellence Group' },
+      'HOD': { bg: '#ffffff', border: '2px solid #0f766e', color: '#0f766e', icon: 'fa-gem', iconColor: '#0f766e', subBg: '#ccfbf1', subColor: '#115e59', pct: '85% Share | Leadership Group (₹25k/mo)', group: 'Leadership Group' },
+      'Dean': { bg: '#ffffff', border: '2px solid #b45309', color: '#b45309', icon: 'fa-chess-king', iconColor: '#b45309', subBg: '#fef3c7', subColor: '#78350f', pct: '90% Share | Leadership Group (₹25k/mo)', group: 'Leadership Group' },
+    };
+
+    const lvlInfo = levelColors[currentLevel] || levelColors['Junior Teacher'];
+    let levelBadgeHtml = `
+      <div class="p-3 rounded-4 shadow-sm text-center position-relative my-3 overflow-hidden" style="background: ${lvlInfo.bg} !important; border: ${lvlInfo.border} !important; box-shadow: 0 4px 14px rgba(13,122,109,0.12) !important;">
+        <div class="d-flex align-items-center justify-content-center gap-2 mb-1.5">
+          <i class="fas ${lvlInfo.icon} fs-5" style="color: ${lvlInfo.iconColor} !important;"></i>
+          <h6 class="fw-bold mb-0" style="color: ${lvlInfo.color} !important; letter-spacing: 0.5px; font-size: 1.05rem;">${currentLevel}</h6>
+        </div>
+        <div class="badge fw-bold px-3 py-1.5 rounded-pill mt-1 shadow-sm" style="background: ${lvlInfo.subBg} !important; color: ${lvlInfo.subColor} !important; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.05);">
+          ${lvlInfo.pct}
+        </div>
+      </div>
+    `;
 
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">

@@ -1314,11 +1314,38 @@ router.put('/notes/:id', notesUpload.single('file'), async (req, res) => {
 // ── Level Info ────────────────────────────────────────────────
 router.get('/level', async (req, res) => {
   try {
+    const { updateTeacherLevel, calculateTeacherScore } = require('../services/teacherLevel.service');
+    // Auto-update level with cumulative revenue milestones
+    const levelRes = await updateTeacherLevel(req.user.id);
+    
     const user = await db.query('SELECT teacher_level, rating, total_ratings FROM users WHERE id = $1', [req.user.id]);
     const history = await db.query('SELECT * FROM teacher_levels WHERE teacher_id = $1 ORDER BY changed_at DESC LIMIT 10', [req.user.id]);
-    const { calculateTeacherScore } = require('../services/teacherLevel.service');
     const scoreData = await calculateTeacherScore(req.user.id);
-    res.json({ level: user.rows[0]?.teacher_level, rating: user.rows[0]?.rating, ...scoreData, history: history.rows });
+
+    // Get active students & completed classes count
+    const batchStats = await db.query(`
+      SELECT 
+        (SELECT COUNT(DISTINCT bs.student_id) FROM batch_students bs JOIN batches b ON b.id = bs.batch_id WHERE b.teacher_id = $1 AND bs.status = 'active') as active_students,
+        (SELECT COUNT(*) FROM classes c JOIN batches b ON b.id = c.batch_id WHERE b.teacher_id = $1 AND c.status = 'completed') as sessions_count
+    `, [req.user.id]);
+
+    const activeStudents = parseInt(batchStats.rows[0]?.active_students || 0);
+    const sessionsCount = parseInt(batchStats.rows[0]?.sessions_count || 0);
+
+    const curLevel = user.rows[0]?.teacher_level || 'Junior Teacher';
+    const slabInfoRes = await db.query('SELECT * FROM performance_slabs_config WHERE slab_name = $1', [curLevel]);
+    const currentSlab = slabInfoRes.rows[0] || {};
+
+    res.json({ 
+      level: curLevel, 
+      rating: parseFloat(user.rows[0]?.rating || 5.0), 
+      cumulative_revenue: levelRes.cumulativeRevenue || 0,
+      current_slab: currentSlab,
+      active_students: activeStudents,
+      sessions_count: sessionsCount,
+      ...scoreData, 
+      history: history.rows 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
