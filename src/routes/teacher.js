@@ -903,30 +903,82 @@ router.get('/attendance', async (req, res) => {
 // ── Earnings & Payouts ────────────────────────────────────────
 router.get('/earnings', async (req, res) => {
   try {
-    const wallet = await db.query('SELECT * FROM teacher_wallet WHERE teacher_id = $1', [req.user.id]);
+    const walletRes = await db.query('SELECT * FROM teacher_wallet WHERE teacher_id = $1', [req.user.id]);
     const history = await db.query(`
       SELECT tp.*, 'payout' as type FROM teacher_payouts tp
       WHERE tp.teacher_id = $1
       ORDER BY tp.requested_at DESC
     `, [req.user.id]);
+    const ledger = await db.query(`
+      SELECT * FROM teacher_wallet_ledger
+      WHERE teacher_id = $1
+      ORDER BY created_at DESC
+    `, [req.user.id]);
+    const teacherUser = await db.query(`
+      SELECT bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id 
+      FROM users WHERE id = $1
+    `, [req.user.id]);
+
+    const walletObj = walletRes.rows[0] || { total_earnings: 0, paid_earnings: 0, pending_earnings: 0, wallet_balance: 0 };
+    const wallet_balance = parseFloat(walletObj.wallet_balance || walletObj.balance || 0);
+    const total_earnings = parseFloat(walletObj.total_earnings || wallet_balance || 0);
+
     res.json({
-      wallet: wallet.rows[0] || { total_earnings: 0, paid_earnings: 0, pending_earnings: 0, wallet_balance: 0 },
+      wallet: {
+        ...walletObj,
+        wallet_balance,
+        total_earnings
+      },
       history: history.rows,
+      ledger: ledger.rows,
+      bank_details: teacherUser.rows[0] || {}
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+router.post('/bank-details', async (req, res) => {
+  const { bank_account_name, bank_name, bank_account_number, bank_ifsc_code, upi_id } = req.body;
+  try {
+    await db.query(`
+      UPDATE users SET
+        bank_account_name = $1,
+        bank_name = $2,
+        bank_account_number = $3,
+        bank_ifsc_code = $4,
+        upi_id = $5
+      WHERE id = $6
+    `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
+
+    res.json({ message: 'Bank details saved successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/payouts/request', async (req, res) => {
-  const { amount, bank_account, upi_id } = req.body;
+  const { amount, bank_account, upi_id, bank_account_name, bank_name, bank_account_number, bank_ifsc_code } = req.body;
   try {
     const wallet = await db.query('SELECT * FROM teacher_wallet WHERE teacher_id = $1', [req.user.id]);
-    const balance = parseFloat(wallet.rows[0]?.wallet_balance || 0);
+    const balance = parseFloat(wallet.rows[0]?.wallet_balance || wallet.rows[0]?.balance || 0);
     const requestAmount = parseFloat(amount);
 
     if (requestAmount <= 0) return res.status(400).json({ error: 'Invalid payout amount' });
-    if (requestAmount > balance) return res.status(400).json({ error: `Insufficient wallet balance. Available: ₹${balance}` });
+    if (requestAmount > balance) return res.status(400).json({ error: `Insufficient wallet balance. Available: ₹${balance.toLocaleString('en-IN')}` });
+
+    // Save bank details to user profile as well
+    if (bank_account_number || upi_id) {
+      await db.query(`
+        UPDATE users SET
+          bank_account_name = COALESCE($1, bank_account_name),
+          bank_name = COALESCE($2, bank_name),
+          bank_account_number = COALESCE($3, bank_account_number),
+          bank_ifsc_code = COALESCE($4, bank_ifsc_code),
+          upi_id = COALESCE($5, upi_id)
+        WHERE id = $6
+      `, [bank_account_name || null, bank_name || null, bank_account_number || null, bank_ifsc_code || null, upi_id || null, req.user.id]);
+    }
 
     const id = generateUID('payout');
     await db.query(`
@@ -935,7 +987,7 @@ router.post('/payouts/request', async (req, res) => {
     `, [id, req.user.id, requestAmount, bank_account || null, upi_id || null]);
 
     await logAudit(req.user.id, 'PAYOUT_REQUESTED', 'payout', id, { amount: requestAmount });
-    res.status(201).json({ message: 'Payout request submitted', id });
+    res.status(201).json({ message: 'Payout request submitted successfully!', id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

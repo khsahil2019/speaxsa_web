@@ -4277,97 +4277,158 @@ async function renderEarnings() {
   loading();
   try {
     const data = await api('/teacher/earnings');
-    const wallet = data.wallet;
-    const history = data.history;
+    const wallet = data.wallet || {};
+    const history = data.history || [];
+    const ledger = data.ledger || [];
+    const bank = data.bank_details || {};
+
+    const balanceVal = parseFloat(wallet.wallet_balance || wallet.balance || 0);
+    const paidVal = parseFloat(wallet.paid_earnings || 0);
+    const pendingVal = parseFloat(wallet.pending_earnings || 0);
+    const totalVal = parseFloat(wallet.total_earnings || balanceVal || 0);
 
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
+        <!-- 1. Wallet Overview & Payout Request -->
         <div class="col-lg-5">
-          <div class="spx-card text-center mb-4">
-            <h5 class="text-muted mb-2">Wallet Balance</h5>
-            <div class="display-6 fw-bold text-dark mb-4">₹${parseFloat(wallet.wallet_balance).toLocaleString('en-IN')}</div>
-            <div class="row g-2 mb-4">
+          <div class="spx-card text-center mb-4" style="background: radial-gradient(circle at top left, var(--bg-card), var(--bg-dark-alt)); border: 1px solid rgba(60,189,176,0.25);">
+            <h6 class="text-muted mb-2 text-uppercase" style="font-size:0.75rem; letter-spacing:1px; font-weight:700;">Available Wallet Balance</h6>
+            <div class="display-6 fw-bold text-success mb-3" style="font-family:'Outfit',sans-serif;">₹${balanceVal.toLocaleString('en-IN')}</div>
+            
+            <div class="row g-2 p-2 rounded-3 mb-3" style="background: rgba(15,23,42,0.4); border: 1px solid var(--border);">
               <div class="col-6 border-end border-secondary">
-                <div class="text-success fw-bold">₹${parseFloat(wallet.paid_earnings).toLocaleString('en-IN')}</div>
-                <div class="text-muted" style="font-size:.7rem">Total Payouts Paid</div>
+                <div class="text-success fw-bold">₹${paidVal.toLocaleString('en-IN')}</div>
+                <div class="text-muted" style="font-size:.68rem">Total Payouts Paid</div>
               </div>
               <div class="col-6">
-                <div class="text-warning fw-bold">₹${parseFloat(wallet.pending_earnings).toLocaleString('en-IN')}</div>
-                <div class="text-muted" style="font-size:.7rem">Pending Escrow</div>
+                <div class="text-warning fw-bold">₹${pendingVal.toLocaleString('en-IN')}</div>
+                <div class="text-muted" style="font-size:.68rem">Pending Escrow</div>
               </div>
             </div>
-            <div class="small text-muted">Lifetime Gross: <strong>₹${parseFloat(wallet.total_earnings).toLocaleString('en-IN')}</strong></div>
+            <div class="small text-muted">Lifetime Gross Earnings: <strong class="text-dark">₹${totalVal.toLocaleString('en-IN')}</strong></div>
           </div>
 
-          <div class="spx-card">
-            <h6 class="mb-4 fw-bold">Request Payout Withdrawal</h6>
-            <form onsubmit="requestPayout(event)">
-              <div class="mb-3">
-                <label class="spx-label">Withdrawal Amount (₹)</label>
-                <input type="number" class="form-control spx-input" id="payoutAmt" placeholder="e.g. 5000" min="1" required>
+          <!-- Bank Account Details Form -->
+          <div class="spx-card mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-bold mb-0 text-primary"><i class="fas fa-university me-2"></i>Bank & UPI Details</h6>
+              <span class="badge bg-primary-subtle text-primary" style="font-size:0.68rem;">Saved for Payouts</span>
+            </div>
+            <form onsubmit="saveTeacherBankDetails(event)">
+              <div class="mb-2">
+                <label class="spx-label" style="font-size:0.75rem;">Account Holder Name</label>
+                <input type="text" class="form-control spx-input" id="payoutBankHolder" value="${escapeHtml(bank.bank_account_name || '')}" placeholder="e.g. Sahil Khan" required>
               </div>
               
-              <div class="p-3 mb-3 rounded shadow-sm" style="background: var(--bg-dark); border: 1px solid var(--border);">
-                <label class="spx-label fw-bold mb-2 text-primary">Bank Account details (For Bank Transfer)</label>
-                
-                <div class="mb-2">
-                  <label class="spx-label" style="font-size: 0.7rem;">Account Holder Name</label>
-                  <input type="text" class="form-control spx-input" id="payoutBankHolder" placeholder="e.g. Sahil Khan">
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="spx-label" style="font-size:0.75rem;">Bank Name</label>
+                  <input type="text" class="form-control spx-input" id="payoutBankName" value="${escapeHtml(bank.bank_name || '')}" placeholder="e.g. HDFC Bank" required>
                 </div>
-                
-                <div class="mb-2">
-                  <label class="spx-label" style="font-size: 0.7rem;">Bank Name</label>
-                  <input type="text" class="form-control spx-input" id="payoutBankName" placeholder="e.g. HDFC Bank">
+                <div class="col-6">
+                  <label class="spx-label" style="font-size:0.75rem;">IFSC Code</label>
+                  <input type="text" class="form-control spx-input text-uppercase" id="payoutBankIfsc" value="${escapeHtml(bank.bank_ifsc_code || '')}" placeholder="e.g. HDFC0000045" required>
                 </div>
+              </div>
 
-                <div class="mb-2">
-                  <label class="spx-label" style="font-size: 0.7rem;">Account Number</label>
-                  <input type="text" class="form-control spx-input" id="payoutBankAcc" placeholder="e.g. 5010023489112">
-                </div>
-
-                <div class="mb-0">
-                  <label class="spx-label" style="font-size: 0.7rem;">IFSC Code</label>
-                  <input type="text" class="form-control spx-input" id="payoutBankIfsc" placeholder="e.g. HDFC0000045">
-                </div>
+              <div class="mb-2">
+                <label class="spx-label" style="font-size:0.75rem;">Account Number</label>
+                <input type="text" class="form-control spx-input" id="payoutBankAcc" value="${escapeHtml(bank.bank_account_number || '')}" placeholder="e.g. 5010023489112" required>
               </div>
 
               <div class="mb-3">
-                <label class="spx-label">UPI ID (optional)</label>
-                <input class="form-control spx-input" id="payoutUpi" placeholder="e.g. name@okaxis">
+                <label class="spx-label" style="font-size:0.75rem;">UPI ID (Optional)</label>
+                <input type="text" class="form-control spx-input" id="payoutUpi" value="${escapeHtml(bank.upi_id || '')}" placeholder="e.g. sahil@okaxis">
               </div>
-              <button type="submit" class="btn btn-spx w-100">Submit Request</button>
+
+              <button type="submit" class="btn btn-outline-primary btn-sm w-100 fw-bold py-2" id="btnSaveBank">
+                <i class="fas fa-save me-1"></i> Save Bank Account Details
+              </button>
+            </form>
+          </div>
+
+          <!-- Request Payout Card -->
+          <div class="spx-card">
+            <h6 class="mb-3 fw-bold text-dark"><i class="fas fa-hand-holding-usd me-2 text-success"></i>Request Payout Withdrawal</h6>
+            <form onsubmit="requestPayout(event)">
+              <div class="mb-3">
+                <label class="spx-label" style="font-size:0.75rem;">Withdrawal Amount (₹)</label>
+                <input type="number" class="form-control spx-input" id="payoutAmt" placeholder="e.g. 5000" min="1" max="${balanceVal}" required>
+                <div class="form-text small">Max withdrawable balance: <strong>₹${balanceVal.toLocaleString('en-IN')}</strong></div>
+              </div>
+              <button type="submit" class="btn btn-spx w-100 py-2 fw-bold" id="btnSubmitPayout" ${balanceVal <= 0 ? 'disabled' : ''}>
+                <i class="fas fa-paper-plane me-1"></i> Submit Payout Request
+              </button>
             </form>
           </div>
         </div>
 
+        <!-- 2. Ledger & Payout History -->
         <div class="col-lg-7">
-          <div class="spx-card">
-            <h6 class="mb-4 fw-bold">Payouts History</h6>
-            <div style="overflow-x:auto">
-              <table class="spx-table">
+          <!-- Earnings Ledger Table -->
+          <div class="spx-card mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-list-alt text-primary me-2"></i>Earnings & Referral Ledger</h6>
+              <span class="badge bg-success-subtle text-success">${ledger.length} Entries</span>
+            </div>
+            <div style="overflow-x:auto; max-height: 380px;">
+              <table class="spx-table align-middle">
                 <thead>
                   <tr>
-                    <th>Date Requested</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th class="text-end">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ledger.map(l => `
+                    <tr>
+                      <td class="small text-muted">${fmtDate(l.created_at)}</td>
+                      <td>
+                        <span class="badge ${l.type === 'student_referral' || l.type === 'teacher_referral' ? 'bg-info-subtle text-info' : l.type === 'withdrawal' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'} px-2 py-1 small">
+                          ${l.type === 'student_referral' ? 'Student Ref Bonus' : l.type === 'teacher_referral' ? 'Teacher Ref Bonus' : l.type === 'withdrawal' ? 'Withdrawal' : 'Course Share'}
+                        </span>
+                      </td>
+                      <td class="small">${escapeHtml(l.description || 'Earnings transaction')}</td>
+                      <td class="text-end fw-bold ${l.type === 'withdrawal' ? 'text-danger' : 'text-success'}">
+                        ${l.type === 'withdrawal' ? '-' : '+'}₹${parseFloat(l.amount || 0).toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  `).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No earnings ledger entries found yet.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Payout Requests History Table -->
+          <div class="spx-card">
+            <h6 class="mb-3 fw-bold text-dark"><i class="fas fa-history text-warning me-2"></i>Payout Requests History</h6>
+            <div style="overflow-x:auto">
+              <table class="spx-table align-middle">
+                <thead>
+                  <tr>
+                    <th>Date</th>
                     <th>Amount</th>
-                    <th>Payment Route Info</th>
+                    <th>Payment Route</th>
                     <th>Status</th>
-                    <th>Remarks / Revert Note</th>
+                    <th>Admin Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${history.map(h => `
                     <tr>
-                      <td>${fmtDate(h.requested_at)}</td>
-                      <td class="text-dark fw-bold">₹${parseFloat(h.amount).toLocaleString('en-IN')}</td>
-                      <td>${h.upi_id ? `UPI: ${h.upi_id}` : h.bank_account ? `<span style="font-size:0.75rem;">${h.bank_account}</span>` : 'Manual'}</td>
+                      <td class="small text-muted">${fmtDate(h.requested_at)}</td>
+                      <td class="text-dark fw-bold">₹${parseFloat(h.amount || 0).toLocaleString('en-IN')}</td>
+                      <td class="small">${h.upi_id ? `UPI: ${h.upi_id}` : h.bank_account ? `<span style="font-size:0.75rem;">${escapeHtml(h.bank_account)}</span>` : 'Bank Transfer'}</td>
                       <td>
-                        <span class="badge ${h.status === 'paid' ? 'bg-success' :
-        h.status === 'requested' || h.status === 'under_review' || h.status === 'approved' ? 'bg-warning' : 'bg-danger'
-      }">${h.status.toUpperCase()}</span>
+                        <span class="badge ${h.status === 'paid' ? 'bg-success' : h.status === 'requested' || h.status === 'under_review' || h.status === 'approved' ? 'bg-warning' : 'bg-danger'} px-2.5 py-1">
+                          ${h.status.toUpperCase()}
+                        </span>
                       </td>
-                      <td class="small text-danger">${h.admin_notes || '<span class="text-muted">—</span>'}</td>
+                      <td class="small text-muted">${h.admin_notes || '—'}</td>
                     </tr>
-                  `).join('') || '<tr><td colspan="5" class="text-center text-muted">No payout requests.</td></tr>'}
+                  `).join('') || '<tr><td colspan="5" class="text-center text-muted py-4">No payout requests submitted yet.</td></tr>'}
                 </tbody>
               </table>
             </div>
@@ -4380,14 +4441,47 @@ async function renderEarnings() {
   }
 }
 
+async function saveTeacherBankDetails(e) {
+  if (e) e.preventDefault();
+  const btn = document.getElementById('btnSaveBank');
+  if (btn) btn.disabled = true;
+
+  const payload = {
+    bank_account_name: document.getElementById('payoutBankHolder')?.value.trim() || '',
+    bank_name: document.getElementById('payoutBankName')?.value.trim() || '',
+    bank_account_number: document.getElementById('payoutBankAcc')?.value.trim() || '',
+    bank_ifsc_code: document.getElementById('payoutBankIfsc')?.value.trim() || '',
+    upi_id: document.getElementById('payoutUpi')?.value.trim() || ''
+  };
+
+  try {
+    const data = await api('/teacher/bank-details', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    showToast(data.message || 'Bank account details saved successfully!', 'success');
+  } catch (err) {
+    showToast(err.message || 'Failed to save bank details', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+window.saveTeacherBankDetails = saveTeacherBankDetails;
+
 async function requestPayout(e) {
   e.preventDefault();
 
-  const bankHolder = document.getElementById('payoutBankHolder').value.trim();
-  const bankName = document.getElementById('payoutBankName').value.trim();
-  const bankAcc = document.getElementById('payoutBankAcc').value.trim();
-  const bankIfsc = document.getElementById('payoutBankIfsc').value.trim();
-  const upiId = document.getElementById('payoutUpi').value.trim();
+  const bankHolder = document.getElementById('payoutBankHolder')?.value.trim() || '';
+  const bankName = document.getElementById('payoutBankName')?.value.trim() || '';
+  const bankAcc = document.getElementById('payoutBankAcc')?.value.trim() || '';
+  const bankIfsc = document.getElementById('payoutBankIfsc')?.value.trim() || '';
+  const upiId = document.getElementById('payoutUpi')?.value.trim() || '';
+  const amount = parseFloat(document.getElementById('payoutAmt')?.value || 0);
+
+  if (!amount || amount <= 0) {
+    showToast('Please enter a valid payout amount', 'error');
+    return;
+  }
 
   let bankAccountStr = '';
   if (bankAcc || bankHolder || bankName || bankIfsc) {
@@ -4399,27 +4493,35 @@ async function requestPayout(e) {
   }
 
   if (!bankAccountStr && !upiId) {
-    showToast('Please provide either bank account details or a UPI ID.', 'error');
+    showToast('Please save bank account details or a UPI ID.', 'error');
     return;
   }
 
-  const payload = {
-    amount: parseFloat(document.getElementById('payoutAmt').value),
-    bank_account: bankAccountStr || null,
-    upi_id: upiId || null,
-  };
+  const btn = document.getElementById('btnSubmitPayout');
+  if (btn) btn.disabled = true;
 
   try {
     const data = await api('/teacher/payouts/request', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        amount,
+        bank_account: bankAccountStr || null,
+        upi_id: upiId || null,
+        bank_account_name: bankHolder,
+        bank_name: bankName,
+        bank_account_number: bankAcc,
+        bank_ifsc_code: bankIfsc
+      })
     });
-    showToast(data.message || 'Payout request submitted successfully!');
+    showToast(data.message || 'Payout request submitted successfully!', 'success');
     renderEarnings();
   } catch (e) {
-    showToast(e.message, 'error');
+    showToast(e.message || 'Failed to submit payout request', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
+window.requestPayout = requestPayout;
 
 // ── Teacher Level ─────────────────────────────────────────────
 async function renderLevel() {

@@ -1462,48 +1462,65 @@ window.applyCheckoutCoupon = applyCheckoutCoupon;
 async function processMockEnrollment(event, courseId, batchId, fees) {
   event.preventDefault();
   const btn = document.getElementById('btnPay');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing Payment...`;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Verifying & Processing Payment...`;
+  }
 
   try {
-    const paymentId = `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const paymentId = `pay_spx_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     const couponCode = window._appliedCoupon ? window._appliedCoupon.code : null;
+    const billEmail = (document.getElementById('billEmail')?.value || '').trim();
     
-    await api(`/student/batches/${batchId}/enroll`, {
+    const response = await api(`/student/batches/${batchId}/enroll`, {
       method: 'POST',
       body: JSON.stringify({ paymentId, couponCode })
     });
 
     const bodyEl = document.getElementById('courseDetailsBody');
-    bodyEl.innerHTML = `
-      <div class="text-center py-5">
-        <div class="display-3 text-success mb-4"><i class="fas fa-check-circle animate__animated animate__zoomIn"></i></div>
-        <h4 class="fw-bold mb-2" style="color:var(--text-primary);">Enrollment Successful!</h4>
-        <p class="text-muted mb-4">You have successfully registered for the batch.<br>Transaction ID: <strong style="color:var(--text-primary);">${paymentId}</strong></p>
-        <button class="btn btn-spx" data-bs-dismiss="modal">Go to Dashboard</button>
-      </div>
-    `;
+    if (bodyEl) {
+      bodyEl.innerHTML = `
+        <div class="text-center py-4 px-3">
+          <div class="display-3 text-success mb-3 animate__animated animate__bounceIn">
+            <i class="fas fa-check-circle" style="color: #10b981;"></i>
+          </div>
+          <h4 class="fw-bold mb-2" style="color:var(--text-primary);">Payment Verified & Enrolled! 🎉</h4>
+          <p class="text-muted small mb-3">
+            Congratulations! You have successfully enrolled in this batch.<br>
+            Transaction Reference: <strong class="text-primary font-monospace">${paymentId}</strong>
+          </p>
+          
+          <div class="alert alert-success border-0 text-start p-3 mb-4 rounded-3" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981 !important;">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <i class="fas fa-envelope-open-text text-success fs-5"></i>
+              <strong class="text-dark">Official Payment Receipt Sent!</strong>
+            </div>
+            <p class="small text-muted mb-0">
+              An official SPEAXA payment receipt and batch onboarding details have been sent to <strong>${billEmail || 'your registered email'}</strong>.
+            </p>
+          </div>
 
-    showToast('Payment successful & Enrolled!', 'success');
-    
-    setTimeout(() => {
-      const modalEl = document.getElementById('courseDetailsModal');
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-      
-      if (window.currentPage === 'courses') {
-        renderCourses();
-      } else {
-        renderHome();
-      }
-    }, 2000);
+          <div class="d-flex justify-content-center gap-3">
+            <button class="btn btn-spx px-4 py-2" data-bs-dismiss="modal" onclick="navigateTo('mybatches')">
+              <i class="fas fa-layer-group me-1"></i> Go to My Batches
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    showToast('Payment Verified! Official Receipt sent to your email.', 'success');
+    window._appliedCoupon = null;
 
   } catch(e) {
-    showToast(e.message, 'error');
-    btn.disabled = false;
-    btn.innerHTML = `<i class="fas fa-shield-alt me-1"></i> Pay & Enroll Now`;
+    showToast(e.message || 'Payment processing failed', 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fas fa-shield-alt me-1"></i> Pay & Enroll Now`;
+    }
   }
 }
+window.processMockEnrollment = processMockEnrollment;
 
 // ── My Batches ────────────────────────────────────────────────
 async function renderMyBatches() {

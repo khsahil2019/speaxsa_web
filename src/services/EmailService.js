@@ -20,10 +20,10 @@ async function sendEmail(options) {
 
     const brevoApiKey = (settings.brevo_api_key && settings.brevo_api_key.trim().startsWith('xkeysib-')) ? settings.brevo_api_key.trim()
       : (settings.smtp_pass && settings.smtp_pass.trim().startsWith('xkeysib-')) ? settings.smtp_pass.trim()
-      : (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim().startsWith('xkeysib-')) ? process.env.BREVO_API_KEY.trim()
-      : (process.env.SMTP_PASS && process.env.SMTP_PASS.trim().startsWith('xkeysib-')) ? process.env.SMTP_PASS.trim()
-      : null;
-    
+        : (process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim().startsWith('xkeysib-')) ? process.env.BREVO_API_KEY.trim()
+          : (process.env.SMTP_PASS && process.env.SMTP_PASS.trim().startsWith('xkeysib-')) ? process.env.SMTP_PASS.trim()
+            : null;
+
     let platformName = settings.platform_name || 'Speaxa';
     if (platformName.toLowerCase() === 'speaxa') {
       platformName = 'Speaxa';
@@ -36,7 +36,7 @@ async function sendEmail(options) {
       const primaryColor = '#0d7a6d';
       const secondaryColor = '#3CBDB0';
       const darkColor = '#0f172a';
-      
+
       let headerGradient = 'linear-gradient(135deg, #0d7a6d, #08544b)';
       let headerIcon = '🛡️';
       let titleLabel = 'Security Verification';
@@ -255,7 +255,7 @@ async function sendEmail(options) {
     return { sent, logId };
   } catch (err) {
     console.error('[EmailService] Failed to send email:', err);
-    
+
     let loggedError = err.message;
     if (loggedError.includes('525 5.7.1') || loggedError.toLowerCase().includes('unauthorized ip')) {
       loggedError += ' | TIP: Your Brevo account settings block SMTP connections from this server\'s IP. Go to Brevo Settings > Security > Authorized IPs to whitelist this IP or disable restrictions. Alternatively, generate a Brevo API Key (prefixed with xkeysib-) and set it as SMTP Password to bypass SMTP entirely via HTTP REST API.';

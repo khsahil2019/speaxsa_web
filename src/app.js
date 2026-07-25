@@ -39,6 +39,11 @@ db.query(`
   ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
   ALTER TABLE users ADD COLUMN IF NOT EXISTS learning_streak INT DEFAULT 0;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS impersonated_by VARCHAR(100);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ifsc_code VARCHAR(50);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);
 
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_name VARCHAR(150);
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_email VARCHAR(200);
@@ -219,16 +224,33 @@ db.query(`
   ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS verified_by VARCHAR(100);
   ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS digital_signature VARCHAR(255);
 
-  -- High-Performance Database Indexes for Ultra-Fast Queries & Speed
+  -- Production-Grade Self-Healing Table Consistency Checks & Column Guards
+  ALTER TABLE teacher_wallet ADD COLUMN IF NOT EXISTS wallet_balance DECIMAL(10,2) DEFAULT 0.00;
+  ALTER TABLE teacher_wallet ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0.00;
+  ALTER TABLE teacher_wallet ADD COLUMN IF NOT EXISTS total_earnings DECIMAL(10,2) DEFAULT 0.00;
+  ALTER TABLE teacher_wallet ADD COLUMN IF NOT EXISTS pending_earnings DECIMAL(10,2) DEFAULT 0.00;
+  ALTER TABLE teacher_wallet ADD COLUMN IF NOT EXISTS paid_earnings DECIMAL(10,2) DEFAULT 0.00;
+  
+  -- Sync balance & wallet_balance columns if either was updated separately
+  UPDATE teacher_wallet SET wallet_balance = balance WHERE (wallet_balance IS NULL OR wallet_balance = 0) AND balance > 0;
+  UPDATE teacher_wallet SET balance = wallet_balance WHERE (balance IS NULL OR balance = 0) AND wallet_balance > 0;
+
+  -- High-Performance Production Database Indexes for Ultra-Fast Queries & Scale
   CREATE INDEX IF NOT EXISTS idx_users_role_status ON users (role, approval_status);
   CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
   CREATE INDEX IF NOT EXISTS idx_users_mobile ON users (mobile_number);
   CREATE INDEX IF NOT EXISTS idx_courses_status ON courses (status, created_by);
   CREATE INDEX IF NOT EXISTS idx_batches_course_status ON batches (course_id, status);
+  CREATE INDEX IF NOT EXISTS idx_batch_students_lookup ON batch_students (student_id, batch_id);
   CREATE INDEX IF NOT EXISTS idx_live_classes_batch ON live_classes (batch_id, start_time);
   CREATE INDEX IF NOT EXISTS idx_assignments_batch ON assignments (batch_id, due_date);
+  CREATE INDEX IF NOT EXISTS idx_payments_student ON payments (student_id, status);
+  CREATE INDEX IF NOT EXISTS idx_payments_teacher ON payments (teacher_id, status);
   CREATE INDEX IF NOT EXISTS idx_teacher_certificates_lookup ON teacher_certificates (teacher_id, is_verified);
   CREATE INDEX IF NOT EXISTS idx_teacher_certificates_digital_sig ON teacher_certificates (digital_signature);
+  CREATE INDEX IF NOT EXISTS idx_teacher_wallet_ledger ON teacher_wallet_ledger (teacher_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_teacher_payouts_status ON teacher_payouts (teacher_id, status);
+  CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs (recipient_email, status);
 
   -- Retroactively issue SOP Verification certificates to all active/approved teachers
   INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, is_verified, verified_at, digital_signature, metadata)

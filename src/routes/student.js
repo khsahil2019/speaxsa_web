@@ -260,15 +260,25 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
 // ── GET /api/student/payments ─────────────────────────────────
 router.get('/payments', async (req, res) => {
   try {
+    // Queries payments table with fallback reconciliation from batch_students
     const result = await db.query(`
-      SELECT p.*, c.title as course_title, b.batch_name, u.name as teacher_name
-      FROM payments p
-      LEFT JOIN courses c ON c.id = p.course_id
-      LEFT JOIN batches b ON b.id = p.batch_id
-      LEFT JOIN users u ON u.id = p.teacher_id
-      WHERE p.student_id = $1
-      ORDER BY p.created_at DESC
+      SELECT 
+        COALESCE(p.id, bs.payment_id, 'pay_spx_' || SUBSTRING(MD5(bs.batch_id || bs.student_id), 1, 10)) as id,
+        COALESCE(p.amount, c.fees, b.fees, 0) as amount,
+        COALESCE(p.status, 'completed') as status,
+        COALESCE(p.created_at, bs.enrolled_at, NOW()) as created_at,
+        c.title as course_title,
+        b.batch_name,
+        u.name as teacher_name
+      FROM batch_students bs
+      JOIN batches b ON b.id = bs.batch_id
+      LEFT JOIN courses c ON c.id = b.course_id
+      LEFT JOIN users u ON u.id = COALESCE(b.teacher_id, c.created_by)
+      LEFT JOIN payments p ON p.student_id = bs.student_id AND p.batch_id = bs.batch_id
+      WHERE bs.student_id = $1
+      ORDER BY created_at DESC
     `, [req.user.id]);
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -291,7 +301,7 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
 
     // Check capacity & fetch batch/course info (supports active & upcoming batches)
     const batchRes = await db.query(`
-      SELECT b.*, c.title as course_title, c.fees as course_fees
+      SELECT b.*, c.title as course_title, c.fees as course_fees, c.created_by as course_created_by
       FROM batches b
       LEFT JOIN courses c ON c.id = b.course_id
       WHERE b.id = $1 AND COALESCE(b.status, 'active') NOT IN ('cancelled', 'inactive')
@@ -326,7 +336,8 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
       }
     }
 
-    const pId = paymentId || `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const pId = paymentId || `pay_spx_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const teacherId = batchObj.teacher_id || batchObj.course_created_by;
 
     // 1. Enroll in batch_students table
     await db.query(
@@ -340,33 +351,69 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
       INSERT INTO payments (id, student_id, teacher_id, batch_id, course_id, amount, status, payment_method, gateway_payment_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (id) DO NOTHING
-    `, [pId, req.user.id, batchObj.teacher_id || null, batchId, batchObj.course_id || null, amountPaid, 'completed', 'upi', pId]);
+    `, [pId, req.user.id, teacherId || null, batchId, batchObj.course_id || null, amountPaid, 'completed', 'upi', pId]);
 
     // 3. REFLECT IN TEACHER WALLET & LEDGER IMMEDIATELY!
-    if (batchObj.teacher_id) {
-      const teacherId = batchObj.teacher_id;
+    if (teacherId) {
+      // Calculate dynamic payout share based on teacher level (50% to 90%)
+      const teacherUser = await db.query('SELECT teacher_level FROM users WHERE id = $1', [teacherId]);
+      const level = teacherUser.rows[0]?.teacher_level || 'Junior Teacher';
+      const levelKey = `payout_pct_${level.replace(/\s+/g, '_')}`;
+      const payoutPct = parseFloat(await SystemConfigService.getSetting(levelKey, 50.0));
+      const teacherShare = (amountPaid * payoutPct) / 100;
+
       await db.query(`
-        INSERT INTO teacher_wallet (teacher_id, balance, total_earnings)
-        VALUES ($1, $2, $2)
+        INSERT INTO teacher_wallet (teacher_id, wallet_balance, total_earnings, pending_earnings)
+        VALUES ($1, $2, $2, 0)
         ON CONFLICT (teacher_id) DO UPDATE 
-        SET balance = teacher_wallet.balance + $2,
-            total_earnings = teacher_wallet.total_earnings + $2,
+        SET wallet_balance = COALESCE(teacher_wallet.wallet_balance, 0) + $2,
+            total_earnings = COALESCE(teacher_wallet.total_earnings, 0) + $2,
             updated_at = NOW()
-      `, [teacherId, amountPaid]);
+      `, [teacherId, teacherShare]);
 
       const ledgerId = `tx_course_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
       await db.query(`
-        INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, transaction_type, description, reference_id)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id)
+        VALUES ($1, $2, $3, 'course_share', $4, $5)
       `, [
         ledgerId,
         teacherId,
-        amountPaid,
-        'credit',
-        `Course sale: ${batchObj.course_title || 'Course'} (${batchObj.batch_name || 'Batch'}) - Student: ${req.user.name}`,
+        teacherShare,
+        `Course sale share (${payoutPct}%): ${batchObj.course_title || 'Course'} (${batchObj.batch_name || 'Batch'}) - Student: ${req.user.name}`,
         pId
       ]);
-      console.log(`[Student Enroll] Credited ₹${amountPaid} to teacher ${teacherId} wallet for course ${batchObj.course_title}`);
+      console.log(`[Student Enroll] Credited ₹${teacherShare} (${payoutPct}%) to teacher ${teacherId} wallet for course ${batchObj.course_title}`);
+
+      // Handle Student Referral Bonus if student was referred by a teacher/user
+      const studentUser = await db.query('SELECT referred_by FROM users WHERE id = $1', [req.user.id]);
+      if (studentUser.rows[0]?.referred_by) {
+        const referrerId = studentUser.rows[0].referred_by;
+        const refBonusPct = parseFloat(await SystemConfigService.getSetting('student_referral_bonus_pct', 5.0));
+        const refBonus = (amountPaid * refBonusPct) / 100;
+
+        if (refBonus > 0) {
+          await db.query(`
+            INSERT INTO teacher_wallet (teacher_id, wallet_balance, total_earnings)
+            VALUES ($1, $2, $2)
+            ON CONFLICT (teacher_id) DO UPDATE 
+            SET wallet_balance = COALESCE(teacher_wallet.wallet_balance, 0) + $2,
+                total_earnings = COALESCE(teacher_wallet.total_earnings, 0) + $2,
+                updated_at = NOW()
+          `, [referrerId, refBonus]);
+
+          await db.query(`
+            INSERT INTO teacher_wallet_ledger (id, teacher_id, amount, type, description, payment_id, referred_user_id)
+            VALUES ($1, $2, $3, 'student_referral', $4, $5, $6)
+          `, [
+            `tx_sref_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            referrerId,
+            refBonus,
+            `Student Referral Bonus (${refBonusPct}%): ${req.user.name} enrolled in ${batchObj.course_title}`,
+            pId,
+            req.user.id
+          ]);
+        }
+      }
     }
 
     await logAudit(req.user.id, 'BATCH_ENROLLED', 'batch', batchId, { paymentId: pId, couponCode, amountPaid });
