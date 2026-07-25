@@ -118,11 +118,20 @@
         </div>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-section-label">Overview</div>
+        <!-- 1. Overview & Reports -->
+        <div class="nav-section-label">Overview & Reports</div>
         <a class="nav-item active" data-page="dashboard" id="nav-dashboard">
           <i class="fas fa-th-large"></i><span>Dashboard</span>
         </a>
-        <div class="nav-section-label">Users</div>
+        <a class="nav-item" data-page="auditlogs" id="nav-auditlogs">
+          <i class="fas fa-history"></i><span>Audit Logs</span>
+        </a>
+        <a class="nav-item" data-page="restore_system" id="nav-restore_system">
+          <i class="fas fa-trash-restore"></i><span>Restore System</span>
+        </a>
+
+        <!-- 2. User Management -->
+        <div class="nav-section-label">User Management</div>
         <a class="nav-item" data-page="teachers" id="nav-teachers">
           <i class="fas fa-chalkboard-teacher"></i><span>Teachers</span>
         </a>
@@ -132,7 +141,13 @@
         <a class="nav-item" data-page="parents" id="nav-parents">
           <i class="fas fa-users"></i><span>Parents</span>
         </a>
-        <div class="nav-section-label">Content</div>
+        <a class="nav-item" data-page="sop" id="nav-sop">
+          <i class="fas fa-clipboard-check"></i><span>SOP Review</span>
+          <span class="nav-badge" id="sopBadge" style="display:none">0</span>
+        </a>
+
+        <!-- 3. Academic & Course Management -->
+        <div class="nav-section-label">Academic & Courses</div>
         <a class="nav-item" data-page="courses" id="nav-courses">
           <i class="fas fa-book"></i><span>Courses</span>
         </a>
@@ -142,7 +157,9 @@
         <a class="nav-item" data-page="liveclasses" id="nav-liveclasses">
           <i class="fas fa-video"></i><span>Live Classes</span>
         </a>
-        <div class="nav-section-label">Finance</div>
+
+        <!-- 4. Finance & Payments -->
+        <div class="nav-section-label">Finance & Payments</div>
         <a class="nav-item" data-page="payments" id="nav-payments">
           <i class="fas fa-credit-card"></i><span>Payments</span>
         </a>
@@ -155,17 +172,12 @@
         <a class="nav-item" data-page="refunds" id="nav-refunds">
           <i class="fas fa-undo"></i><span>Refunds</span>
         </a>
-        <div class="nav-section-label">Management</div>
-        <a class="nav-item" data-page="sop" id="nav-sop">
-          <i class="fas fa-clipboard-check"></i><span>SOP Review</span>
-          <span class="nav-badge" id="sopBadge" style="display:none">0</span>
-        </a>
-        <a class="nav-item" data-page="certificates" id="nav-certificates">
-          <i class="fas fa-certificate text-warning"></i><span>Certificates & Verification</span>
-        </a>
         <a class="nav-item" data-page="coupons" id="nav-coupons">
           <i class="fas fa-tag"></i><span>Coupons</span>
         </a>
+
+        <!-- 5. Communications & Broadcasts -->
+        <div class="nav-section-label">Communications</div>
         <a class="nav-item" data-page="support" id="nav-support">
           <i class="fas fa-question-circle"></i><span>Connect Queries</span>
         </a>
@@ -175,6 +187,12 @@
         <a class="nav-item" data-page="mailmanager" id="nav-mailmanager">
           <i class="fas fa-envelope-open-text"></i><span>Mail Manager</span>
         </a>
+        <a class="nav-item" data-page="subscribers" id="nav-subscribers">
+          <i class="fas fa-paper-plane"></i><span>Subscribers & Ad Broadcasts</span>
+        </a>
+
+        <!-- 6. Website CMS & Content -->
+        <div class="nav-section-label">Website CMS</div>
         <a class="nav-item" data-page="blogs" id="nav-blogs">
           <i class="fas fa-blog"></i><span>Manage Blogs</span>
         </a>
@@ -184,12 +202,12 @@
         <a class="nav-item" data-page="faqs" id="nav-faqs">
           <i class="fas fa-info-circle"></i><span>Manage FAQs</span>
         </a>
-        <a class="nav-item" data-page="subscribers" id="nav-subscribers">
-          <i class="fas fa-paper-plane"></i><span>Subscribers & Ad Broadcasts</span>
-        </a>
         <a class="nav-item" data-page="footer" id="nav-footer">
           <i class="fas fa-desktop"></i><span>Landing Footer</span>
         </a>
+
+        <!-- 7. System & Settings -->
+        <div class="nav-section-label">System & Settings</div>
         <a class="nav-item" data-page="settings_general" id="nav-settings_general">
           <i class="fas fa-sliders-h"></i><span>Platform General</span>
         </a>
@@ -207,12 +225,6 @@
         </a>
         <a class="nav-item" data-page="settings_otp_logs" id="nav-settings_otp_logs">
           <i class="fas fa-history"></i><span>OTP Audit Logs</span>
-        </a>
-        <a class="nav-item" data-page="auditlogs" id="nav-auditlogs">
-          <i class="fas fa-history"></i><span>Audit Logs</span>
-        </a>
-        <a class="nav-item" data-page="restore_system" id="nav-restore_system">
-          <i class="fas fa-trash-restore text-warning"></i><span>Restore System</span>
         </a>
       </nav>
       <button class="sidebar-logout" id="logoutBtn">

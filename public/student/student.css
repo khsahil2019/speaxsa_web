@@ -543,6 +543,23 @@ h1, h2, h3, h4, h5, h6 {
   padding: 8px 12px;
 }
 
+.nav-section-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--teal, #0d7a6d);
+  padding: 14px 10px 6px;
+  font-weight: 800;
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+  margin-top: 6px;
+}
+
+.nav-section-label:first-of-type {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 4px;
+}
+
 .nav-item {
   display: flex;
   align-items: center;

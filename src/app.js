@@ -219,6 +219,17 @@ db.query(`
   ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS verified_by VARCHAR(100);
   ALTER TABLE teacher_certificates ADD COLUMN IF NOT EXISTS digital_signature VARCHAR(255);
 
+  -- High-Performance Database Indexes for Ultra-Fast Queries & Speed
+  CREATE INDEX IF NOT EXISTS idx_users_role_status ON users (role, approval_status);
+  CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
+  CREATE INDEX IF NOT EXISTS idx_users_mobile ON users (mobile_number);
+  CREATE INDEX IF NOT EXISTS idx_courses_status ON courses (status, created_by);
+  CREATE INDEX IF NOT EXISTS idx_batches_course_status ON batches (course_id, status);
+  CREATE INDEX IF NOT EXISTS idx_live_classes_batch ON live_classes (batch_id, start_time);
+  CREATE INDEX IF NOT EXISTS idx_assignments_batch ON assignments (batch_id, due_date);
+  CREATE INDEX IF NOT EXISTS idx_teacher_certificates_lookup ON teacher_certificates (teacher_id, is_verified);
+  CREATE INDEX IF NOT EXISTS idx_teacher_certificates_digital_sig ON teacher_certificates (digital_signature);
+
   -- Retroactively issue SOP Verification certificates to all active/approved teachers
   INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, is_verified, verified_at, digital_signature, metadata)
   SELECT 
