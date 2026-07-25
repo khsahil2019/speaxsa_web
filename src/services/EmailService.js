@@ -119,6 +119,8 @@ async function sendEmail(options) {
     // Filter placeholder keys
     const cleanHost = smtpHost && !smtpHost.includes('YOUR_') && !smtpHost.includes('CHANGE_') ? smtpHost.trim() : null;
     const cleanUser = smtpUser && !smtpUser.includes('YOUR_') && !smtpUser.includes('CHANGE_') ? smtpUser.trim() : null;
+    const cleanPass = smtpPass && !smtpPass.includes('YOUR_') && !smtpPass.includes('CHANGE_') ? smtpPass.trim() : null;
+    const hasValidSmtp = cleanHost && cleanUser && cleanPass;
 
     let sent = false;
     let errorMessage = null;
@@ -130,8 +132,8 @@ async function sendEmail(options) {
       console.log(`Body (truncated): ${html.substring(0, 300)}...`);
       console.log(`========================================`);
       sent = true;
-    } else if (emailProvider === 'brevo' || (brevoApiKey && (smtpPass?.trim().startsWith('xkeysib-') || !cleanHost || cleanHost.includes('brevo')))) {
-      // Brevo REST API Mode for xkeysib- API Keys (bypasses SMTP 535 authentication errors)
+    } else if (emailProvider === 'brevo' || (brevoApiKey && (!hasValidSmtp || cleanHost.includes('brevo')))) {
+      // Brevo REST API Mode for xkeysib- API Keys
       console.log(`[EmailService] Sending email to ${to} via Brevo REST API...`);
       const senderEmail = process.env.BREVO_SENDER_EMAIL || (fromEmail && fromEmail.includes('@') && !fromEmail.includes('no-reply@speaxa.in') ? fromEmail : 'speaxaindia@gmail.com');
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -160,15 +162,15 @@ async function sendEmail(options) {
         throw new Error(`Brevo REST API failed (status ${response.status}): ${errBody}`);
       }
       sent = true;
-    } else if (cleanHost) {
-      // Nodemailer SMTP Mode (Primary mode when SMTP is configured via Admin panel or settings)
+    } else if (hasValidSmtp) {
+      // Nodemailer SMTP Mode
       try {
         console.log(`[EmailService] Sending email to ${to} via SMTP server (${cleanHost}:${smtpPort})...`);
         const transporter = nodemailer.createTransport({
           host: cleanHost,
           port: parseInt(smtpPort, 10),
           secure: parseInt(smtpPort, 10) === 465,
-          auth: cleanUser ? { user: cleanUser, pass: smtpPass } : undefined,
+          auth: { user: cleanUser, pass: cleanPass },
           tls: {
             rejectUnauthorized: false
           }
@@ -235,9 +237,9 @@ async function sendEmail(options) {
       }
       sent = true;
     } else {
-      // Dev Console Fallback
+      // Local / Dev Fallback mode when no production SMTP credentials are configured
       console.log(`========================================`);
-      console.log(`[Email Console Fallback] To: ${to} | Subject: ${subject}`);
+      console.log(`[Email Local/Dev Fallback] To: ${to} | Subject: ${subject}`);
       console.log(`Body (truncated): ${html.substring(0, 300)}...`);
       console.log(`========================================`);
       sent = true;
@@ -268,6 +270,10 @@ async function sendEmail(options) {
       `, [logId, to, subject, html, type, 'failed', loggedError]);
     } catch (dbErr) {
       console.error('[EmailService] Failed to insert failed email log:', dbErr.message);
+    }
+
+    if (options && options.throwOnError) {
+      throw new Error(loggedError);
     }
 
     return { sent: false, error: loggedError };
