@@ -13,10 +13,38 @@ const multer = require('multer');
 
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../middleware/auth');
 
+// Middleware to block all admin API routes if Developer has locked the entire Admin Portal
+router.use(async (req, res, next) => {
+  if (req.path.startsWith('/public/')) return next();
+  try {
+    const lockRes = await db.query("SELECT value FROM platform_settings WHERE key = 'locked_modules'");
+    if (lockRes.rows.length && lockRes.rows[0].value) {
+      const parsed = JSON.parse(lockRes.rows[0].value);
+      if (parsed && (parsed.admin_portal_locked || (parsed.admin && parsed.admin.entire_portal))) {
+        const msg = (parsed.admin && parsed.admin.entire_portal) || parsed.admin_portal_locked_msg || 'Admin Portal entry has been disabled by the Developer.';
+        return res.status(403).json({ error: msg, is_portal_locked: true });
+      }
+    }
+  } catch(e) {}
+  next();
+});
+
 // ── Admin Login ───────────────────────────────────────────────
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
+    // Check if entire Admin Portal entry is locked by Developer
+    const lockRes = await db.query("SELECT value FROM platform_settings WHERE key = 'locked_modules'");
+    if (lockRes.rows.length && lockRes.rows[0].value) {
+      try {
+        const parsed = JSON.parse(lockRes.rows[0].value);
+        if (parsed && (parsed.admin_portal_locked || (parsed.admin && parsed.admin.entire_portal))) {
+          const msg = (parsed.admin && parsed.admin.entire_portal) || parsed.admin_portal_locked_msg || 'Admin Portal entry has been disabled by the Developer.';
+          return res.status(403).json({ error: msg, is_portal_locked: true });
+        }
+      } catch(e) {}
+    }
+
     const { verifyPassword } = require('../utils/security');
     const result = await db.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND role = 'admin'", [email]);
     if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid admin credentials' });
@@ -691,6 +719,42 @@ router.get('/parent-links', async (req, res) => {
       ORDER BY psl.linked_at DESC
     `);
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET public module locks configuration for all portals (Admin, Teacher, Student, Parent)
+router.get('/public/module-locks', async (req, res) => {
+  try {
+    const dbRes = await db.query("SELECT value FROM platform_settings WHERE key = 'locked_modules'");
+    let lockedModules = { admin: [], teacher: [], student: [], parent: [] };
+    if (dbRes.rows.length && dbRes.rows[0].value) {
+      try { 
+        const parsed = JSON.parse(dbRes.rows[0].value); 
+        lockedModules = {
+          admin: Array.isArray(parsed.admin) ? parsed.admin : [],
+          teacher: Array.isArray(parsed.teacher) ? parsed.teacher : [],
+          student: Array.isArray(parsed.student) ? parsed.student : [],
+          parent: Array.isArray(parsed.parent) ? parsed.parent : []
+        };
+      } catch(e) {}
+    }
+    res.json({ locked_modules: lockedModules });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET public admin tabs configuration for sidebar toggle synchronization
+router.get('/public/admin-tabs-config', async (req, res) => {
+  try {
+    const dbRes = await db.query("SELECT value FROM platform_settings WHERE key = 'disabled_admin_tabs'");
+    let disabledTabs = [];
+    if (dbRes.rows.length && dbRes.rows[0].value) {
+      try { disabledTabs = JSON.parse(dbRes.rows[0].value); } catch (e) {}
+    }
+    res.json({ disabled_tabs: disabledTabs });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

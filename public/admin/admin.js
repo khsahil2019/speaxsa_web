@@ -14,27 +14,27 @@ document.addEventListener('DOMContentLoaded', () => {
   confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
   formModal = new bootstrap.Modal(document.getElementById('formModal'));
 
-window.togglePasswordVisibility = function(inputId, triggerEl) {
-  const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
-  if (!input) return;
-  const isPassword = input.type === 'password';
-  input.type = isPassword ? 'text' : 'password';
+  window.togglePasswordVisibility = function (inputId, triggerEl) {
+    const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
 
-  let icon = null;
-  if (triggerEl) {
-    icon = triggerEl.tagName === 'I' || triggerEl.tagName === 'i' ? triggerEl : (triggerEl.querySelector ? triggerEl.querySelector('i') || triggerEl : triggerEl);
-  }
-
-  if (icon && icon.classList) {
-    if (isPassword) {
-      icon.classList.remove('fa-eye');
-      icon.classList.add('fa-eye-slash');
-    } else {
-      icon.classList.remove('fa-eye-slash');
-      icon.classList.add('fa-eye');
+    let icon = null;
+    if (triggerEl) {
+      icon = triggerEl.tagName === 'I' || triggerEl.tagName === 'i' ? triggerEl : (triggerEl.querySelector ? triggerEl.querySelector('i') || triggerEl : triggerEl);
     }
-  }
-};
+
+    if (icon && icon.classList) {
+      if (isPassword) {
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    }
+  };
 
   // Toggle password visibility
   document.getElementById('togglePass')?.addEventListener('click', (e) => {
@@ -48,6 +48,75 @@ window.togglePasswordVisibility = function(inputId, triggerEl) {
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {
     item.addEventListener('click', () => navigateTo(item.dataset.page));
   });
+
+  // Developer Sidebar Tab & Module Lock Sync
+  syncSidebarTabControls();
+  setInterval(syncSidebarTabControls, 3000);
+  window.addEventListener('focus', syncSidebarTabControls);
+
+async function syncSidebarTabControls() {
+  try {
+    const res = await fetch('/api/public/module-locks');
+    if (!res.ok) return;
+    const data = await res.json();
+    const locks = data.locked_modules || {};
+    window.adminLockedModules = locks.admin || {};
+
+    if (window.adminLockedModules['entire_portal'] !== undefined) {
+      const lockMsg = window.adminLockedModules['entire_portal'] || 'Admin Portal entry has been disabled by the Developer.';
+      const appContainer = document.getElementById('app') || document.body;
+      appContainer.innerHTML = `
+        <div class="d-flex align-items-center justify-content-center min-vh-100 bg-light p-4">
+          <div class="spx-card p-5 text-center shadow-lg bg-white" style="border: 3px solid #ef4444; border-radius: 20px; max-width: 600px; width: 100%;">
+            <div class="stat-badge danger mx-auto mb-4" style="width: 80px; height: 80px; font-size: 2.5rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 20px; display:flex; align-items:center; justify-content:center;">
+              <i class="fas fa-user-shield"></i>
+            </div>
+            <h2 class="fw-bold text-danger mb-2">Admin Portal Entry Disabled</h2>
+            <h5 class="fw-semibold text-dark mb-4">${lockMsg}</h5>
+            <p class="text-muted small mb-4">
+              The Developer has disabled entry to the Admin Portal from the API Center. All admin functions, logins, and API permissions are currently blocked.
+            </p>
+            <div class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-6">
+              <i class="fas fa-lock me-1"></i>Developer Override Active
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    document.querySelectorAll('.sidebar-nav .nav-item[data-page]').forEach(item => {
+      const page = item.dataset.page;
+      const customMsg = window.adminLockedModules[page];
+      const isLocked = customMsg !== undefined;
+      if (isLocked) {
+        const displayMsg = customMsg || 'Work in Progress';
+        item.classList.add('module-locked');
+        item.style.opacity = '0.55';
+        item.setAttribute('title', displayMsg);
+        if (!item.querySelector('.lock-indicator-icon')) {
+          const span = item.querySelector('span');
+          if (span) {
+            span.insertAdjacentHTML('beforeend', ' <i class="fas fa-lock text-danger ms-1 lock-indicator-icon"></i>');
+          }
+        }
+        if (typeof currentPage !== 'undefined' && currentPage === page && !item.dataset.renderedLock) {
+          item.dataset.renderedLock = 'true';
+          navigateTo(page);
+        }
+      } else {
+        item.classList.remove('module-locked');
+        item.style.opacity = '';
+        item.removeAttribute('title');
+        item.querySelector('.lock-indicator-icon')?.remove();
+        delete item.dataset.renderedLock;
+      }
+    });
+  } catch (err) {
+    console.warn('Sidebar tab sync warning:', err);
+  }
+}
+window.syncSidebarTabControls = syncSidebarTabControls;
 
   // Sidebar toggle
   document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
@@ -87,6 +156,14 @@ window.togglePasswordVisibility = function(inputId, triggerEl) {
 
   // Logout
   document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+
+  // Search
+  document.getElementById('globalSearch')?.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    if (query.length > 2) {
+      showToast(`Searching for "${query}"...`);
+    }
+  });
 
   // Check existing auth
   if (token && adminUser) {
@@ -254,6 +331,30 @@ function adminPrompt(title, label, defaultValue, callback) {
 
 // ── Navigation ────────────────────────────────────────────────
 function navigateTo(page) {
+  const customMsg = window.adminLockedModules ? window.adminLockedModules[page] : undefined;
+  if (customMsg !== undefined) {
+    const displayMsg = customMsg || 'Work in Progress';
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(`nav-${page}`)?.classList.add('active');
+    const container = document.getElementById('pageContent');
+    if (container) {
+      container.innerHTML = `
+        <div class="spx-card p-5 text-center my-4 shadow-sm bg-white" style="border: 2px solid #ef4444; border-radius: 16px;">
+          <div class="stat-badge danger mx-auto mb-3" style="width: 64px; height: 64px; font-size: 1.8rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 16px; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-lock"></i>
+          </div>
+          <h3 class="fw-bold text-danger mb-2">Module Disabled</h3>
+          <h5 class="fw-semibold text-dark mb-3">${displayMsg}</h5>
+          <p class="text-muted small mb-0" style="max-width: 500px; margin: 0 auto;">
+            This module has been locked from the Developer Panel (API Center).
+          </p>
+        </div>
+      `;
+    }
+    if (typeof showToast === 'function') showToast(`🔒 ${displayMsg}`, 'error');
+    return;
+  }
+
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`nav-${page}`)?.classList.add('active');
@@ -6160,7 +6261,7 @@ function formatSpeaxaProductionUrl(urlPath) {
 }
 window.formatSpeaxaProductionUrl = formatSpeaxaProductionUrl;
 
-window.openSpeaxaMediaGalleryPicker = async function(targetInputId) {
+window.openSpeaxaMediaGalleryPicker = async function (targetInputId) {
   try {
     const media = await apiGet('/admin/gallery');
     const items = Array.isArray(media) ? media : [];
@@ -6252,7 +6353,7 @@ window.openSpeaxaMediaGalleryPicker = async function(targetInputId) {
   }
 };
 
-window.filterSpeaxaGalleryPicker = function(query) {
+window.filterSpeaxaGalleryPicker = function (query) {
   const q = (query || '').toLowerCase().trim();
   document.querySelectorAll('.gallery-picker-card-item').forEach(card => {
     const name = card.getAttribute('data-name') || '';
@@ -6264,7 +6365,7 @@ window.filterSpeaxaGalleryPicker = function(query) {
   });
 };
 
-window.selectSpeaxaGalleryItem = function(prodUrl, targetInputId) {
+window.selectSpeaxaGalleryItem = function (prodUrl, targetInputId) {
   const inputEl = document.getElementById(targetInputId);
   if (inputEl) {
     inputEl.value = prodUrl;
@@ -6277,7 +6378,7 @@ window.selectSpeaxaGalleryItem = function(prodUrl, targetInputId) {
   }
 };
 
-window.uploadGalleryPickerFile = async function(input, targetInputId) {
+window.uploadGalleryPickerFile = async function (input, targetInputId) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
   const formData = new FormData();
@@ -6411,8 +6512,8 @@ async function renderRestoreSystem() {
             <p class="mb-0">No pending deletion requests. The restore queue is clean.</p>
           </div>
         ` : table(
-          ['Item Name', 'Category', 'Requested By', 'Requested Date', 'Status', 'Actions'],
-          items.map(item => `
+      ['Item Name', 'Category', 'Requested By', 'Requested Date', 'Status', 'Actions'],
+      items.map(item => `
             <tr>
               <td class="fw-bold text-dark">${item.item_name}</td>
               <td><span class="badge bg-secondary-subtle text-uppercase px-2 py-1">${item.item_type}</span></td>
@@ -6434,8 +6535,8 @@ async function renderRestoreSystem() {
               </td>
             </tr>
           `).join(''),
-          false
-        )}
+      false
+    )}
       </div>
     `;
   } catch (err) {
@@ -6518,14 +6619,14 @@ async function renderCertificatesPage() {
   `;
 }
 
-window.handleCertificateLookupSubmit = function(e) {
+window.handleCertificateLookupSubmit = function (e) {
   e.preventDefault();
   const id = document.getElementById('lookupCertIdInput')?.value.trim();
   if (!id) return;
   fetchAdminCertificate(id);
 };
 
-window.fetchAdminCertificate = async function(certId) {
+window.fetchAdminCertificate = async function (certId) {
   const container = document.getElementById('certLookupResultContainer');
   if (!container) return;
 
@@ -6578,7 +6679,7 @@ window.fetchAdminCertificate = async function(certId) {
             </div>
             <div class="text-end">
               <div class="text-uppercase text-muted" style="font-size:0.68rem; letter-spacing:0.5px;">Issued Date</div>
-              <div class="fw-bold text-dark small">${new Date(cert.issued_at).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}</div>
+              <div class="fw-bold text-dark small">${new Date(cert.issued_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
             </div>
           </div>
 
@@ -6624,7 +6725,7 @@ window.fetchAdminCertificate = async function(certId) {
   }
 };
 
-window.adminVerifyCertificate = function(certId) {
+window.adminVerifyCertificate = function (certId) {
   confirmAction({
     title: 'Verify & Digitally Sign Certificate?',
     body: `Are you sure you want to verify Certificate <strong>${certId}</strong>? A Speaxa Digital Signature will be assigned and an official verification email will be dispatched to the recipient.`,
@@ -6644,11 +6745,11 @@ window.adminVerifyCertificate = function(certId) {
   });
 };
 
-window.openIssueCertificateModal = async function() {
+window.openIssueCertificateModal = async function () {
   let teachers = [];
   try {
     teachers = await apiGet('/admin/teachers');
-  } catch(e){}
+  } catch (e) { }
 
   const modalHtml = `
     <div class="modal fade" id="issueCertModal" tabindex="-1">
@@ -6697,7 +6798,7 @@ window.openIssueCertificateModal = async function() {
   m.show();
 };
 
-window.submitIssueCertificate = async function(e) {
+window.submitIssueCertificate = async function (e) {
   e.preventDefault();
   const userId = document.getElementById('issueCertUser').value;
   const type = document.getElementById('issueCertType').value;

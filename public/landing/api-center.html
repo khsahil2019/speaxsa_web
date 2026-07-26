@@ -396,6 +396,9 @@
             <button class="nav-link" id="dbmanager-tab" data-bs-toggle="tab" data-bs-target="#dbmanager" type="button" role="tab" aria-controls="dbmanager" aria-selected="false"><i class="fas fa-database me-2"></i>Database Manager</button>
           </li>
           <li class="nav-item" role="presentation">
+            <button class="nav-link" id="modulelock-tab" data-bs-toggle="tab" data-bs-target="#modulelock" type="button" role="tab" aria-controls="modulelock" aria-selected="false"><i class="fas fa-lock me-2"></i>Module Lock System</button>
+          </li>
+          <li class="nav-item" role="presentation">
             <button class="nav-link" id="deployment-tab" data-bs-toggle="tab" data-bs-target="#deployment" type="button" role="tab" aria-controls="deployment" aria-selected="false"><i class="fas fa-server me-2"></i>Hostinger VPS Guide</button>
           </li>
         </ul>
@@ -449,17 +452,29 @@
                 <button class="btn btn-spx w-100 mt-4 py-2" onclick="runAllProbes()"><i class="fas fa-vial me-2"></i>Test All Endpoints</button>
               </div>
 
+              <!-- 👑 Always-Visible Admin Credentials Card -->
+              <div class="spx-card p-4 mb-4 border border-warning" style="background: rgba(245, 158, 11, 0.03);">
+                <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
+                  <h6 class="mb-0 text-dark fw-bold"><i class="fas fa-crown text-warning me-2"></i>Admin Credentials</h6>
+                  <button class="btn btn-xs btn-outline-secondary rounded-circle" style="width: 24px; height: 24px; padding: 0;" onclick="loadAdminCredentialsCard()" title="Refresh Credentials"><i class="fas fa-sync" style="font-size: 0.65rem;"></i></button>
+                </div>
+                <p class="text-muted micro-text mb-3">Always-available developer credentials for testing admin features.</p>
+                <div id="adminCredentialsContainer">
+                  <div class="text-center py-2 text-muted micro-text"><i class="fas fa-circle-notch fa-spin me-1"></i>Loading admin accounts...</div>
+                </div>
+              </div>
+
               <!-- Auth Configuration -->
               <div class="spx-card p-4 mb-4">
                 <h5 class="mb-2 text-secondary border-bottom pb-2">Authorization Settings</h5>
-                <p class="text-muted small mb-3">Paste a JWT access token here to authenticate live requests.</p>
+                <p class="text-muted small mb-3">Paste a JWT access token here or use quick developer login helpers below.</p>
                 <div class="mb-3">
                   <label class="form-label small fw-bold">Bearer Auth Token</label>
                   <textarea class="form-control json-textarea w-100" id="authTokenInput" rows="2" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
                 </div>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-outline-danger btn-sm w-100 rounded-pill" onclick="clearToken()"><i class="fas fa-trash me-2"></i>Clear</button>
-                  <button class="btn btn-outline-primary btn-sm w-100 rounded-pill" onclick="saveToken()"><i class="fas fa-save me-2"></i>Save</button>
+                  <button class="btn btn-outline-danger btn-sm w-100 rounded-pill" onclick="clearToken()"><i class="fas fa-trash me-1"></i>Clear</button>
+                  <button class="btn btn-outline-primary btn-sm w-100 rounded-pill" onclick="saveToken()"><i class="fas fa-save me-1"></i>Save</button>
                 </div>
               </div>
 
@@ -576,6 +591,28 @@
               </div>
             </div>
           </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- TAB: DEVELOPER MODULE LOCK SYSTEM -->
+    <div class="tab-pane fade" id="modulelock" role="tabpanel" aria-labelledby="modulelock-tab">
+      <main class="container-fluid px-md-5 py-4">
+        <div class="spx-card p-4 p-md-5 mb-5">
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4 pb-3 border-bottom">
+            <div>
+              <h3 class="mb-1"><i class="fas fa-user-shield text-danger me-2"></i>Developer Module Lock Control Panel</h3>
+              <p class="text-muted small mb-0">Lock or unlock any sidebar menu module in Admin Panel, Teacher Portal, Student Portal, and Parent Portal. Locked modules display a 🔒 lock icon and block access.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span id="lockAutoSaveBadge" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2" style="font-size: 0.82rem;"><i class="fas fa-bolt me-1"></i>Real-time Auto Sync Active</span>
+              <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="loadModuleLockSettings()"><i class="fas fa-sync me-1"></i>Refresh</button>
+            </div>
+          </div>
+
+          <div class="row" id="moduleLockContainer">
+            <!-- Dynamically populated module lock cards per portal -->
+          </div>
         </div>
       </main>
     </div>
@@ -1151,6 +1188,126 @@
         auth: true,
         desc: "Fetches table data rows with limit capping.",
         payload: null
+      },
+      {
+        id: "parent-link-child",
+        name: "Parent - Submit Link Child Request",
+        method: "POST",
+        path: "/api/parent/link-child",
+        category: "parent",
+        auth: true,
+        desc: "Submits a connection link request to a student account. Triggers immediate email & in-app notification to the student.",
+        payload: {
+          student_identifier: "sahilkh3014@gmail.com"
+        }
+      },
+      {
+        id: "parent-resend-email",
+        name: "Parent - Resend Connection Email (5-Min Cooldown)",
+        method: "POST",
+        path: "/api/parent/link-child/resend-email",
+        category: "parent",
+        auth: true,
+        desc: "Resends pending link reminder email to student with a 5-minute rate-limit cooldown (HTTP 429).",
+        payload: {
+          student_email: "sahilkh3014@gmail.com"
+        }
+      },
+      {
+        id: "admin-parent-links",
+        name: "Admin - Review All Parent Connections",
+        method: "GET",
+        path: "/api/admin/parent-links",
+        category: "admin",
+        auth: true,
+        desc: "Lists all parent-student connection records with parent name, student name, and approval status.",
+        payload: null
+      },
+      {
+        id: "admin-parent-link-approve",
+        name: "Admin - Force Approve Parent Connection",
+        method: "POST",
+        path: "/api/admin/parent-links/par_123:::stu_456/approve",
+        category: "admin",
+        auth: true,
+        desc: "Directly force-approves a parent-student connection request as Admin.",
+        payload: null
+      },
+      {
+        id: "admin-parent-link-revert",
+        name: "Admin - Revert Parent Connection Access",
+        method: "POST",
+        path: "/api/admin/parent-links/par_123:::stu_456/revert",
+        category: "admin",
+        auth: true,
+        desc: "Revokes parent access (sets status to rejected) and sends email notifications to both parent and student.",
+        payload: null
+      },
+      {
+        id: "admin-parent-link-delete",
+        name: "Admin - Delete Parent Connection Record",
+        method: "DELETE",
+        path: "/api/admin/parent-links/par_123:::stu_456",
+        category: "admin",
+        auth: true,
+        desc: "Permanently deletes a parent-student connection record from the database.",
+        payload: null
+      },
+      {
+        id: "admin-impersonate",
+        name: "Admin - Generate Impersonation Access Token",
+        method: "POST",
+        path: "/api/admin/impersonate/stu_12345",
+        category: "admin",
+        auth: true,
+        desc: "Generates a 2-hour JWT impersonation token allowing admins to view teacher, student, or parent portals as the user.",
+        payload: null
+      },
+      {
+        id: "auth-firebase-config",
+        name: "Firebase Cloud Messaging Web SDK Config",
+        method: "GET",
+        path: "/api/auth/firebase-config",
+        category: "auth",
+        auth: false,
+        desc: "Returns public Firebase project credentials for initializing push notification service workers.",
+        payload: null
+      },
+      {
+        id: "auth-fcm-token",
+        name: "Register FCM Device Push Token",
+        method: "POST",
+        path: "/api/auth/fcm-token",
+        category: "auth",
+        auth: true,
+        desc: "Registers browser FCM registration tokens with backend user accounts for push notification dispatch.",
+        payload: {
+          token: "fcm_mock_device_token_123",
+          device_type: "web"
+        }
+      },
+      {
+        id: "teacher-sop-get",
+        name: "Teacher SOP Checklist & Agreement",
+        method: "GET",
+        path: "/api/teacher/sop",
+        category: "teacher",
+        auth: true,
+        desc: "Retrieves teacher onboarding SOP checklist, availability, and digital governance signature status.",
+        payload: null
+      },
+      {
+        id: "teacher-sop-agree",
+        name: "Teacher Submit Digital Agreement Signature",
+        method: "POST",
+        path: "/api/teacher/sop/agree",
+        category: "teacher",
+        auth: true,
+        desc: "Submits digital signature and confirms agreement to SPEAXA Teacher Governance Policy.",
+        payload: {
+          digital_signature: "Teacher Full Name",
+          availability: "Mon-Fri 4PM-8PM"
+        }
       }
     ];
 
@@ -1175,6 +1332,28 @@
         searchApis(query);
       });
     });
+
+    async function quickLogin(email, password, roleLabel) {
+      try {
+        const endpoint = roleLabel === 'admin' ? '/api/admin/login' : '/api/auth/login';
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.token) {
+          authToken = data.token;
+          document.getElementById('authTokenInput').value = authToken;
+          localStorage.setItem('spx_api_center_token', authToken);
+          alert(`✅ Quick Authenticated as ${roleLabel.toUpperCase()} (${data.user?.name || email})`);
+        } else {
+          alert(`Quick Auth failed: ${data.error || 'Invalid credentials'}`);
+        }
+      } catch (err) {
+        alert('Quick Auth error: ' + err.message);
+      }
+    }
 
     function saveToken() {
       const val = document.getElementById("authTokenInput").value.trim();
@@ -1504,6 +1683,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       dbRowModalInstance = new bootstrap.Modal(document.getElementById('dbRowModal'));
+      loadAdminCredentialsCard();
       
       const dbTabEl = document.getElementById('dbmanager-tab');
       if (dbTabEl) {
@@ -1511,7 +1691,423 @@
           loadDbTables();
         });
       }
+
+      const modLockEl = document.getElementById('modulelock-tab');
+      if (modLockEl) {
+        modLockEl.addEventListener('shown.bs.tab', () => {
+          loadModuleLockSettings();
+        });
+      }
     });
+
+    // ── Admin Credentials Always-Visible Card & Management Logic ──
+    let currentAdminRecord = { id: '', email: 'admin@speaxa.com', password: '123456' };
+
+    async function loadAdminCredentialsCard() {
+      const container = document.getElementById('adminCredentialsContainer');
+      if (!container) return;
+      container.innerHTML = '<div class="text-center py-2 text-muted micro-text"><i class="fas fa-circle-notch fa-spin me-1"></i>Loading admin credentials...</div>';
+      try {
+        const res = await fetch('/api/public/admin-credentials');
+        if (!res.ok) throw new Error('Failed to load admin accounts');
+        const data = await res.json();
+        const admins = data.admins || [];
+        const defaultPass = data.default_dev_password || '123456';
+        const primaryAdmin = admins.find(a => a.role === 'admin' && (a.email.includes('admin') || a.email.includes('speaxa'))) || admins.find(a => a.role === 'admin') || admins[0] || { id: '', email: 'admin@speaxa.com' };
+
+        currentAdminRecord = {
+          id: primaryAdmin.id || '',
+          email: primaryAdmin.email || 'admin@speaxa.com',
+          password: defaultPass
+        };
+
+        container.innerHTML = `
+          <div class="p-3 rounded border bg-white shadow-sm" style="font-size: 0.8rem;">
+            <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+              <span class="fw-bold text-dark"><i class="fas fa-shield-alt text-warning me-1"></i>${primaryAdmin.name || 'Super Admin'}</span>
+              <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">ADMIN</span>
+            </div>
+            
+            <div class="mb-2">
+              <label class="form-label micro-text fw-bold text-muted mb-1">Admin Login Email</label>
+              <input type="email" class="form-control form-control-sm json-textarea border-secondary-subtle" id="adminEditEmail" value="${currentAdminRecord.email}" style="font-size: 0.78rem;">
+            </div>
+            
+            <div class="mb-2">
+              <label class="form-label micro-text fw-bold text-muted mb-1">Admin Login Password</label>
+              <input type="text" class="form-control form-control-sm json-textarea border-secondary-subtle font-monospace" id="adminEditPassword" value="${currentAdminRecord.password}" style="font-size: 0.78rem;">
+            </div>
+
+            <div class="mb-3 pt-2 border-top">
+              <label class="form-label micro-text fw-bold text-success mb-1"><i class="fas fa-paper-plane me-1"></i>Send Email To (Recipient Address)</label>
+              <input type="email" class="form-control form-control-sm json-textarea border-success-subtle bg-success-subtle text-dark" id="adminRecipientEmail" value="sahilkh3014@gmail.com" placeholder="e.g. sahilkh3014@gmail.com" style="font-size: 0.78rem;">
+            </div>
+
+            <div class="d-flex flex-column gap-2">
+              <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-primary w-100 py-1" style="font-size: 0.72rem;" onclick="updateAdminCredentials('${currentAdminRecord.id}')"><i class="fas fa-save me-1"></i>Update Credentials</button>
+                <button class="btn btn-sm btn-outline-secondary py-1" style="font-size: 0.72rem;" onclick="copyToClipboard(document.getElementById('adminEditEmail').value)" title="Copy Email"><i class="fas fa-copy"></i></button>
+              </div>
+              <button class="btn btn-sm btn-success text-white w-100 py-1 fw-bold shadow-sm" style="font-size: 0.74rem;" onclick="sendAdminCredentialsEmail()"><i class="fas fa-envelope-open-text me-1"></i>Send Executive Credentials Email</button>
+              <a href="/admin/index.html" target="_blank" class="btn btn-sm btn-warning text-dark w-100 py-1 fw-bold text-center" style="font-size: 0.72rem;"><i class="fas fa-external-link-alt me-1"></i>Open Admin Panel ↗</a>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        console.warn('Admin credentials load warning:', err);
+        container.innerHTML = `
+          <div class="p-2 rounded border border-danger-subtle bg-danger-subtle text-danger micro-text">
+            <div class="fw-bold mb-1"><i class="fas fa-shield-alt me-1"></i>Admin Credentials</div>
+            <div>Email: <code class="text-dark">admin@speaxa.com</code></div>
+            <div>Password: <code class="text-dark">123456</code></div>
+          </div>
+        `;
+      }
+    }
+
+    async function updateAdminCredentials(adminId) {
+      const emailVal = (document.getElementById('adminEditEmail')?.value || '').trim();
+      const passVal = (document.getElementById('adminEditPassword')?.value || '').trim();
+
+      if (!emailVal || !passVal) {
+        alert('Please enter both Email and Password to update credentials.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/public/update-admin-credentials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ admin_id: adminId, new_email: emailVal, new_password: passVal })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          currentAdminRecord.email = emailVal;
+          currentAdminRecord.password = passVal;
+          alert('✅ Admin credentials updated successfully in database!\n\nEmail: ' + emailVal + '\nNew Password: ' + passVal);
+          loadAdminCredentialsCard();
+        } else {
+          alert('Error updating credentials: ' + (data.error || 'Failed to update'));
+        }
+      } catch (e) {
+        alert('Update error: ' + e.message);
+      }
+    }
+
+    async function sendAdminCredentialsEmail() {
+      const emailVal = (document.getElementById('adminEditEmail')?.value || currentAdminRecord.email || 'admin@speaxa.com').trim();
+      const passVal = (document.getElementById('adminEditPassword')?.value || currentAdminRecord.password || '123456').trim();
+      const recipientVal = (document.getElementById('adminRecipientEmail')?.value || emailVal || 'sahilkh3014@gmail.com').trim();
+
+      if (!recipientVal) {
+        alert('Please enter a recipient email address to send credentials to.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/public/send-admin-credentials-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipient_email: recipientVal, email: emailVal, password: passVal })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('📧 Executive Credentials Email Dispatched Successfully!\n\nSent to: ' + recipientVal + '\nAdmin Login Email: ' + emailVal + '\nPassword: ' + passVal);
+        } else {
+          alert('Error sending email: ' + (data.error || 'Failed to send'));
+        }
+      } catch (e) {
+        alert('Email error: ' + e.message);
+      }
+    }
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          alert('📋 Copied to clipboard:\n' + text);
+        }).catch(() => {
+          prompt('Copy email manually:', text);
+        });
+      } else {
+        prompt('Copy email manually:', text);
+      }
+    }
+
+    // ── Developer Module Lock System JS Logic ──
+    const allPortalModules = {
+      admin: [
+        { id: 'dashboard', label: 'Dashboard' },
+        { id: 'teachers', label: 'Teachers' },
+        { id: 'students', label: 'Students' },
+        { id: 'parents', label: 'Parents' },
+        { id: 'sop', label: 'SOP Review' },
+        { id: 'courses', label: 'Courses' },
+        { id: 'batches', label: 'Batches' },
+        { id: 'liveclasses', label: 'Live Classes' },
+        { id: 'payments', label: 'Payments' },
+        { id: 'payouts', label: 'Payouts' },
+        { id: 'rewards', label: 'Rewards & Allowances' },
+        { id: 'refunds', label: 'Refunds' },
+        { id: 'coupons', label: 'Coupons' },
+        { id: 'support', label: 'Connect Queries' },
+        { id: 'notifications', label: 'Notifications' },
+        { id: 'mailmanager', label: 'Mail Manager' },
+        { id: 'subscribers', label: 'Subscribers & Broadcasts' },
+        { id: 'blogs', label: 'Manage Blogs' },
+        { id: 'gallery', label: 'Media Gallery' },
+        { id: 'faqs', label: 'Manage FAQs' },
+        { id: 'footer', label: 'Landing Footer' },
+        { id: 'settings_general', label: 'Platform General' },
+        { id: 'settings_reg_payouts', label: 'Registration & Payouts' },
+        { id: 'settings_gateways', label: 'OTP Gateways' },
+        { id: 'settings_tester', label: 'Gateway Tester' },
+        { id: 'settings_credentials', label: 'API Credentials' },
+        { id: 'settings_otp_logs', label: 'OTP Audit Logs' },
+        { id: 'auditlogs', label: 'Audit Logs' },
+        { id: 'restore_system', label: 'Restore System' }
+      ],
+      teacher: [
+        { id: 'home', label: 'Dashboard' },
+        { id: 'sop', label: 'SOP Setup' },
+        { id: 'courses', label: 'My Courses' },
+        { id: 'batches', label: 'My Batches' },
+        { id: 'liveclasses', label: 'Live Classes' },
+        { id: 'notes', label: 'Study Materials' },
+        { id: 'assignments', label: 'Assignments' },
+        { id: 'observations', label: 'Observations' },
+        { id: 'attendance', label: 'Attendance' },
+        { id: 'chats', label: 'Parent Connect' },
+        { id: 'earnings', label: 'Earnings' },
+        { id: 'referrals', label: 'Referrals & Rewards' },
+        { id: 'level', label: 'My Level' },
+        { id: 'certificates', label: 'My Certificates' },
+        { id: 'notifications', label: 'Notifications' },
+        { id: 'profile', label: 'Profile' }
+      ],
+      student: [
+        { id: 'home', label: 'Dashboard' },
+        { id: 'courses', label: 'Browse Courses' },
+        { id: 'mybatches', label: 'My Batches' },
+        { id: 'upcoming-classes', label: 'Upcoming Classes' },
+        { id: 'recordings', label: 'Class Recordings' },
+        { id: 'assignments', label: 'Assignments' },
+        { id: 'attendance', label: 'Attendance' },
+        { id: 'reports', label: 'My Reports' },
+        { id: 'payments', label: 'Payments & Receipts' },
+        { id: 'notifications', label: 'Notifications' },
+        { id: 'profile', label: 'My Profile' },
+        { id: 'parents', label: 'Parent Access' }
+      ],
+      parent: [
+        { id: 'overview', label: 'Overview & Summary' },
+        { id: 'attendance', label: 'Attendance & Schedule' },
+        { id: 'performance', label: 'Performance & Reports' },
+        { id: 'payments', label: 'Payments & Receipts' },
+        { id: 'teacher-chat', label: 'Teacher Direct Chat' }
+      ]
+    };
+
+    let currentLockedModules = { admin: {}, teacher: {}, student: {}, parent: {} };
+
+    async function loadModuleLockSettings() {
+      const container = document.getElementById('moduleLockContainer');
+      if (!container) return;
+      container.innerHTML = '<div class="col-12 text-center py-4 text-muted"><i class="fas fa-circle-notch fa-spin me-2"></i>Loading module locks...</div>';
+      try {
+        const res = await fetch('/api/public/module-locks');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.locked_modules) {
+            const normalize = (val) => {
+              if (Array.isArray(val)) {
+                const obj = {};
+                val.forEach(k => obj[k] = 'Work in Progress');
+                return obj;
+              }
+              return (val && typeof val === 'object') ? val : {};
+            };
+            currentLockedModules = {
+              admin: normalize(data.locked_modules.admin),
+              teacher: normalize(data.locked_modules.teacher),
+              student: normalize(data.locked_modules.student),
+              parent: normalize(data.locked_modules.parent)
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load module locks:', e);
+      }
+      renderModuleLockGrid();
+    }
+
+    function renderModuleLockGrid() {
+      const container = document.getElementById('moduleLockContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // Master Admin Portal Entry Lock Box
+      const adminMap = currentLockedModules.admin || {};
+      const isAdminPortalLocked = adminMap['entire_portal'] !== undefined;
+      const masterMsg = adminMap['entire_portal'] || 'Admin Portal entry has been disabled by the Developer.';
+
+      const masterLockBanner = `
+        <div class="col-12 mb-4">
+          <div class="p-4 rounded-3 border ${isAdminPortalLocked ? 'bg-danger text-white border-danger shadow-lg' : 'bg-light border-secondary-subtle text-dark'}" 
+               style="cursor: pointer; transition: all 0.2s;"
+               onclick="toggleMasterAdminLock()">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+              <div class="d-flex align-items-center gap-3">
+                <div style="font-size: 2rem;">${isAdminPortalLocked ? '🚨' : '🛡️'}</div>
+                <div>
+                  <h5 class="mb-1 fw-bold ${isAdminPortalLocked ? 'text-white' : 'text-danger'}">
+                    MASTER CONTROL: Block Entire Admin Portal Entry & Login
+                  </h5>
+                  <p class="mb-0 micro-text ${isAdminPortalLocked ? 'text-white-50' : 'text-muted'}">
+                    When enabled, admins CANNOT log in or access any part of the Admin Panel (/admin). All admin logins and API calls will return HTTP 403 Forbidden.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <span class="badge ${isAdminPortalLocked ? 'bg-white text-danger fs-6 px-3 py-2' : 'bg-success text-white fs-6 px-3 py-2'} fw-bold">
+                  ${isAdminPortalLocked ? '🔒 ADMIN ENTRY BLOCKED' : '✅ ADMIN ENTRY ALLOWED'}
+                </span>
+              </div>
+            </div>
+            ${isAdminPortalLocked ? `
+              <div class="mt-3 pt-3 border-top border-white-50" onclick="event.stopPropagation();">
+                <label class="form-label micro-text fw-bold text-white mb-1">Custom Portal Block Message Shown to Admins</label>
+                <input type="text" class="form-control form-control-sm border-white bg-white text-danger fw-bold" style="font-size: 0.85rem;" value="${masterMsg}" placeholder="Admin Portal entry has been disabled by the Developer." oninput="updateMasterLockMessage(this.value)" onclick="event.stopPropagation();">
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', masterLockBanner);
+
+      const portalConfigs = [
+        { key: 'admin', title: '🛡️ Admin Panel Sidebar Modules', badgeClass: 'bg-primary' },
+        { key: 'teacher', title: '👨‍🏫 Teacher Portal Sidebar Modules', badgeClass: 'bg-success' },
+        { key: 'student', title: '🎓 Student Portal Sidebar Modules', badgeClass: 'bg-info' },
+        { key: 'parent', title: '👨‍👩‍👧 Parent Portal Sidebar Modules', badgeClass: 'bg-warning text-dark' }
+      ];
+
+      portalConfigs.forEach(portal => {
+        const modules = allPortalModules[portal.key] || [];
+        const lockedMap = currentLockedModules[portal.key] || {};
+        const lockedKeys = Object.keys(lockedMap);
+
+        const portalCard = `
+          <div class="col-12 mb-4">
+            <div class="spx-card p-4">
+              <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-3">
+                <h5 class="mb-0 fw-bold text-dark">${portal.title}</h5>
+                <span class="badge ${portal.badgeClass} rounded-pill px-3 py-2 fs-6">${lockedKeys.length} Module(s) Locked</span>
+              </div>
+              <div class="row g-3">
+                ${modules.map(mod => {
+                  const isLocked = lockedKeys.includes(mod.id);
+                  const msg = lockedMap[mod.id] || 'Work in Progress';
+                  return `
+                    <div class="col-md-6 col-lg-3">
+                      <div class="p-3 rounded-3 border ${isLocked ? 'bg-danger-subtle border-danger text-danger' : 'bg-light border-secondary-subtle text-dark'} h-100 d-flex flex-column justify-content-between module-lock-box" 
+                           style="cursor: pointer; transition: all 0.2s; user-select: none;"
+                           onclick="toggleModuleBoxClick('${portal.key}', '${mod.id}')">
+                        <div>
+                          <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fw-bold small">${isLocked ? '🔒' : '🔓'} ${mod.label}</span>
+                            <span class="badge ${isLocked ? 'bg-danger text-white' : 'bg-secondary text-white'}" style="font-size: 0.68rem; padding: 4px 8px;">
+                              ${isLocked ? 'LOCKED' : 'ACTIVE'}
+                            </span>
+                          </div>
+                          ${isLocked ? `
+                            <div class="mt-2" onclick="event.stopPropagation();">
+                              <label class="form-label micro-text fw-bold text-danger mb-1">Custom Lock Message</label>
+                              <input type="text" class="form-control form-control-sm json-textarea border-danger-subtle bg-white text-dark" style="font-size: 0.75rem; padding: 4px 8px;" id="msg_${portal.key}_${mod.id}" value="${msg}" placeholder="Default: Work in Progress" oninput="updateLockMessage('${portal.key}', '${mod.id}', this.value)" onclick="event.stopPropagation();">
+                            </div>
+                          ` : ''}
+                        </div>
+                        <div class="micro-text mt-2 ${isLocked ? 'text-danger fw-bold' : 'text-muted'}">
+                          ${isLocked ? '🔒 Click box to UNLOCK' : '⚡ Click box to LOCK'}
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', portalCard);
+      });
+    }
+
+    function toggleMasterAdminLock() {
+      if (!currentLockedModules.admin) currentLockedModules.admin = {};
+      if (currentLockedModules.admin['entire_portal'] !== undefined) {
+        delete currentLockedModules.admin['entire_portal'];
+      } else {
+        currentLockedModules.admin['entire_portal'] = 'Admin Portal entry has been disabled by the Developer.';
+      }
+      renderModuleLockGrid();
+      autoSaveModuleLockSettings();
+    }
+
+    function updateMasterLockMessage(msgVal) {
+      if (!currentLockedModules.admin) currentLockedModules.admin = {};
+      currentLockedModules.admin['entire_portal'] = msgVal.trim() || 'Admin Portal entry has been disabled by the Developer.';
+      clearTimeout(_lockDebounceTimer);
+      _lockDebounceTimer = setTimeout(() => {
+        autoSaveModuleLockSettings();
+      }, 500);
+    }
+
+    function toggleModuleBoxClick(portalKey, modId) {
+      if (!currentLockedModules[portalKey]) currentLockedModules[portalKey] = {};
+      if (currentLockedModules[portalKey][modId] !== undefined) {
+        delete currentLockedModules[portalKey][modId];
+      } else {
+        currentLockedModules[portalKey][modId] = 'Work in Progress';
+      }
+      renderModuleLockGrid();
+      autoSaveModuleLockSettings();
+    }
+
+    let _lockDebounceTimer = null;
+    function updateLockMessage(portalKey, modId, messageVal) {
+      if (!currentLockedModules[portalKey]) currentLockedModules[portalKey] = {};
+      currentLockedModules[portalKey][modId] = messageVal.trim() || 'Work in Progress';
+      clearTimeout(_lockDebounceTimer);
+      _lockDebounceTimer = setTimeout(() => {
+        autoSaveModuleLockSettings();
+      }, 500);
+    }
+
+    async function autoSaveModuleLockSettings() {
+      const badge = document.getElementById('lockAutoSaveBadge');
+      if (badge) badge.innerHTML = '<i class="fas fa-circle-notch fa-spin me-1"></i>Saving real-time...';
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const res = await fetch('/api/db-admin/module-locks', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ locked_modules: currentLockedModules })
+        });
+        if (res.ok && badge) {
+          badge.className = 'badge bg-success text-white border border-success-subtle px-3 py-2';
+          badge.innerHTML = '<i class="fas fa-check-circle me-1"></i>Saved & Real-time Synced!';
+          setTimeout(() => {
+            if (badge) {
+              badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2';
+              badge.innerHTML = '<i class="fas fa-bolt me-1"></i>Real-time Auto Sync Active';
+            }
+          }, 2000);
+        }
+      } catch (err) {
+        console.error('Auto-save lock error:', err);
+        if (badge) badge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Auto Save Failed';
+      }
+    }
 
     async function loadDbTables() {
       const listEl = document.getElementById("dbTableList");

@@ -322,4 +322,235 @@ router.delete('/tables/:table/rows', requireDevOrAdmin, validateTable, async (re
   }
 });
 
+// GET /api/db-admin/tabs-config — Get disabled admin sidebar tabs
+router.get('/tabs-config', requireDevOrAdmin, async (req, res) => {
+  try {
+    const dbRes = await db.query("SELECT value FROM platform_settings WHERE key = 'disabled_admin_tabs'");
+    let disabledTabs = [];
+    if (dbRes.rows.length && dbRes.rows[0].value) {
+      try { disabledTabs = JSON.parse(dbRes.rows[0].value); } catch (e) {}
+    }
+    res.json({ disabled_tabs: disabledTabs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/db-admin/tabs-config — Save disabled admin sidebar tabs
+router.post('/tabs-config', requireDevOrAdmin, async (req, res) => {
+  const { disabled_tabs } = req.body;
+  if (!Array.isArray(disabled_tabs)) {
+    return res.status(400).json({ error: 'disabled_tabs must be an array' });
+  }
+  try {
+    const val = JSON.stringify(disabled_tabs);
+    await db.query(`
+      INSERT INTO platform_settings (key, value, updated_at)
+      VALUES ('disabled_admin_tabs', $1, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `, [val]);
+    res.json({ message: 'Admin sidebar tab controls updated successfully', disabled_tabs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/db-admin/module-locks — Developer Module Lock Settings
+router.get('/module-locks', requireDevOrAdmin, async (req, res) => {
+  try {
+    const dbRes = await db.query("SELECT value FROM platform_settings WHERE key = 'locked_modules'");
+    let lockedModules = { admin: {}, teacher: {}, student: {}, parent: {} };
+    if (dbRes.rows.length && dbRes.rows[0].value) {
+      try { 
+        const parsed = JSON.parse(dbRes.rows[0].value);
+        const normalize = (val) => {
+          if (Array.isArray(val)) {
+            const obj = {};
+            val.forEach(k => obj[k] = 'Work in Progress');
+            return obj;
+          }
+          return (val && typeof val === 'object') ? val : {};
+        };
+        lockedModules = {
+          admin: normalize(parsed.admin),
+          teacher: normalize(parsed.teacher),
+          student: normalize(parsed.student),
+          parent: normalize(parsed.parent)
+        };
+      } catch(e) {}
+    }
+    res.json({ locked_modules: lockedModules });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/db-admin/module-locks — Save Developer Module Lock Settings (Developer Only)
+router.post('/module-locks', requireDevOrAdmin, async (req, res) => {
+  const { locked_modules } = req.body;
+  if (!locked_modules || typeof locked_modules !== 'object') {
+    return res.status(400).json({ error: 'locked_modules must be an object' });
+  }
+  try {
+    const normalize = (val) => (val && typeof val === 'object' && !Array.isArray(val)) ? val : {};
+    const val = JSON.stringify({
+      admin: normalize(locked_modules.admin),
+      teacher: normalize(locked_modules.teacher),
+      student: normalize(locked_modules.student),
+      parent: normalize(locked_modules.parent)
+    });
+    await db.query(`
+      INSERT INTO platform_settings (key, value, updated_at)
+      VALUES ('locked_modules', $1, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+    `, [val]);
+    res.json({ message: 'Developer Module Locks updated successfully', locked_modules: JSON.parse(val) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/db-admin/update-admin-credentials — Update Admin Email/Password
+router.post('/update-admin-credentials', async (req, res) => {
+  const { admin_id, new_email, new_password } = req.body;
+  const cleanEmail = (new_email || '').trim().toLowerCase();
+  const cleanPass = (new_password || '').trim();
+
+  if (!cleanEmail || !cleanPass) {
+    return res.status(400).json({ error: 'New Email and Password are required.' });
+  }
+
+  try {
+    const { hashPassword } = require('../utils/security');
+    const hash = hashPassword(cleanPass);
+
+    let result;
+    if (admin_id) {
+      result = await db.query(`
+        UPDATE users
+        SET email = $1, password_hash = $2, password_plain = $3, updated_at = NOW()
+        WHERE id = $4 AND role = 'admin'
+        RETURNING id, name, email, role
+      `, [cleanEmail, hash, cleanPass, admin_id]);
+    } else {
+      result = await db.query(`
+        UPDATE users
+        SET email = $1, password_hash = $2, password_plain = $3, updated_at = NOW()
+        WHERE role = 'admin' OR LOWER(email) = 'admin@speaxa.com'
+        RETURNING id, name, email, role
+      `, [cleanEmail, hash, cleanPass]);
+    }
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Admin account not found to update.' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Admin credentials updated in database successfully!',
+      admin: result.rows[0],
+      new_password: cleanPass
+    });
+  } catch (err) {
+    console.error('[Update Admin Credentials Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/db-admin/send-admin-credentials-email — Dispatch credentials email to Admin
+router.post('/send-admin-credentials-email', async (req, res) => {
+  const { email, password, recipient_email } = req.body;
+  const adminLoginEmail = (email || 'admin@speaxa.com').trim();
+  const targetEmail = (recipient_email || adminLoginEmail).trim();
+  const adminPass = (password || '123456').trim();
+
+  try {
+    const { sendEmail } = require('../services/EmailService');
+    const adminUrl = 'https://speaxa.in/admin';
+
+    await sendEmail({
+      to: targetEmail,
+      subject: '👑 SPEAXA Admin Credentials & Executive Control Access',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+        </head>
+        <body style="margin: 0; padding: 20px; background-color: #0f172a; font-family: 'Segoe UI', Arial, sans-serif; color: #f8fafc;">
+          <div style="max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 20px; overflow: hidden; border: 2px solid #0d7a6d; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            
+            <!-- Executive Header Banner -->
+            <div style="background: linear-gradient(135deg, #0d7a6d 0%, #0f766e 50%, #1e1b4b 100%); padding: 35px 25px; text-align: center; border-bottom: 2px solid #f59e0b;">
+              <div style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; padding: 5px 16px; border-radius: 50px; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px;">
+                👑 HIGHER AUTHORITY ACCESS GRANTED
+              </div>
+              <div style="font-size: 48px; margin-bottom: 8px;">🛡️</div>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">SPEAXA Executive Admin Access</h1>
+              <p style="margin: 6px 0 0 0; color: #99f6e4; font-size: 13px;">Official Administrative Credentials & Control Console Link</p>
+            </div>
+
+            <!-- Main Email Body -->
+            <div style="padding: 30px 25px;">
+              <p style="margin-top: 0; font-size: 14px; line-height: 1.6; color: #cbd5e1;">
+                Hello Executive,<br><br>
+                Below are your official, confidential credentials to access the <strong>SPEAXA Admin Control Panel</strong>. Use these credentials to manage teachers, students, courses, payments, and platform configurations.
+              </p>
+              
+              <!-- Credentials Card -->
+              <div style="background: #0f172a; border: 1px solid rgba(13, 122, 109, 0.4); border-radius: 14px; padding: 22px; margin: 20px 0;">
+                
+                <div style="margin-bottom: 16px;">
+                  <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px;">🌐 Admin Portal URL</div>
+                  <div style="background: #1e293b; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155;">
+                    <a href="${adminUrl}" style="color: #2dd4bf; font-weight: bold; text-decoration: underline; font-family: monospace; font-size: 14px;">${adminUrl}</a>
+                  </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                  <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px;">📧 Admin Login Email</div>
+                  <div style="background: #1e293b; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; color: #38bdf8; font-family: monospace; font-size: 14px; font-weight: bold;">
+                    ${adminLoginEmail}
+                  </div>
+                </div>
+
+                <div>
+                  <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px;">🔑 Executive Access Password</div>
+                  <div style="background: #1e293b; padding: 10px 14px; border-radius: 8px; border: 1px solid #f43f5e; color: #f43f5e; font-family: monospace; font-size: 15px; font-weight: bold; letter-spacing: 1px;">
+                    ${adminPass}
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Call to Action Button -->
+              <div style="text-align: center; margin-top: 25px;">
+                <a href="${adminUrl}" style="display: inline-block; background: linear-gradient(135deg, #0d7a6d 0%, #14b8a6 100%); color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 50px; font-size: 14px; font-weight: 800; letter-spacing: 0.5px; box-shadow: 0 8px 20px rgba(13, 122, 109, 0.4);">
+                  🚀 Launch Executive Control Console ↗
+                </a>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding: 18px; font-size: 11px; color: #64748b; border-top: 1px solid #334155; background: #0f172a;">
+              🔒 Strictly Confidential • Automated Credentials Dispatch from SPEAXA Developer API Center
+            </div>
+
+          </div>
+        </body>
+        </html>
+      `,
+      type: 'notification'
+    });
+
+    res.json({
+      success: true,
+      message: `Executive login credentials successfully dispatched to ${targetEmail}!`
+    });
+  } catch (err) {
+    console.error('[Send Admin Credentials Email Error]:', err);
+    res.status(500).json({ error: 'Failed to send credentials email: ' + err.message });
+  }
+});
+
 module.exports = router;

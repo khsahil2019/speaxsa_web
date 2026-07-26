@@ -1651,9 +1651,56 @@
 
     // ── Tab switching ──────────────────────────────────────────────────────────
     const tabLabels = { overview: 'Overview', performance: 'Performance', attendance: 'Attendance', connect: 'Teacher Connect', profile: 'My Profile' };
-    let currentTab = 'overview';
+    window.parentLockedModules = {};
+
+    async function syncParentModuleLocks() {
+      try {
+        const res = await fetch('/api/public/module-locks');
+        if (!res.ok) return;
+        const data = await res.json();
+        const locks = data.locked_modules || {};
+        window.parentLockedModules = locks.parent || {};
+
+        document.querySelectorAll('.nav-item[id^="nav-"]').forEach(item => {
+          const tabId = item.id.replace('nav-', '');
+          const customMsg = window.parentLockedModules[tabId];
+          const isLocked = customMsg !== undefined;
+          if (isLocked) {
+            const displayMsg = customMsg || 'Work in Progress';
+            item.classList.add('module-locked');
+            item.style.opacity = '0.55';
+            item.setAttribute('title', displayMsg);
+            if (!item.querySelector('.lock-indicator-icon')) {
+              const span = item.querySelector('span');
+              if (span) {
+                span.insertAdjacentHTML('beforeend', ' <i class="fas fa-lock text-danger ms-1 lock-indicator-icon"></i>');
+              }
+            }
+          } else {
+            item.classList.remove('module-locked');
+            item.style.opacity = '';
+            item.removeAttribute('title');
+            item.querySelector('.lock-indicator-icon')?.remove();
+          }
+        });
+      } catch (err) {
+        console.warn('Parent module lock sync warning:', err);
+      }
+    }
+    window.syncParentModuleLocks = syncParentModuleLocks;
+    document.addEventListener('DOMContentLoaded', () => { 
+      syncParentModuleLocks(); 
+      setInterval(syncParentModuleLocks, 3000);
+      window.addEventListener('focus', syncParentModuleLocks);
+    });
 
     function switchTab(id, el) {
+      const customMsg = window.parentLockedModules ? window.parentLockedModules[id] : undefined;
+      if (customMsg !== undefined) {
+        const displayMsg = customMsg || 'Work in Progress';
+        alert(`🔒 ${displayMsg}`);
+        return;
+      }
       document.querySelectorAll('.tab-section').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.getElementById(`tab-${id}`).classList.add('active');

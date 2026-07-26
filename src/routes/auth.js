@@ -340,6 +340,20 @@ router.post('/login', async (req, res) => {
     }
     if (user.is_disabled) return res.status(403).json({ error: 'Account disabled. Contact admin.' });
 
+    // Check if Developer has blocked Admin Portal entry
+    if (user.role === 'admin') {
+      const lockRes = await db.query("SELECT value FROM platform_settings WHERE key = 'locked_modules'");
+      if (lockRes.rows.length && lockRes.rows[0].value) {
+        try {
+          const parsed = JSON.parse(lockRes.rows[0].value);
+          if (parsed && (parsed.admin_portal_locked || (parsed.admin && parsed.admin.entire_portal))) {
+            const msg = (parsed.admin && parsed.admin.entire_portal) || parsed.admin_portal_locked_msg || 'Admin Portal entry has been disabled by the Developer.';
+            return res.status(403).json({ error: msg, is_portal_locked: true });
+          }
+        } catch(e) {}
+      }
+    }
+
     // Auto-send verification email if pending without blocking login into panel
     if (user.role !== 'admin' && user.role !== 'parent') {
       if (!user.email_verified) {

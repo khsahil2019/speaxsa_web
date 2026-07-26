@@ -857,12 +857,77 @@ async function loadStudentNotificationCounts() {
   } catch (e) { }
 }
 
+// ── Developer Module Lock Sync for Student Portal ────────────
+syncStudentModuleLocks();
+setInterval(syncStudentModuleLocks, 3000);
+window.addEventListener('focus', syncStudentModuleLocks);
+
+async function syncStudentModuleLocks() {
+  try {
+    const res = await fetch('/api/public/module-locks');
+    if (!res.ok) return;
+    const data = await res.json();
+    const locks = data.locked_modules || {};
+    window.studentLockedModules = locks.student || {};
+
+    document.querySelectorAll('.sidebar-nav .nav-item[data-page]').forEach(item => {
+      const page = item.dataset.page;
+      const customMsg = window.studentLockedModules[page];
+      const isLocked = customMsg !== undefined;
+      if (isLocked) {
+        const displayMsg = customMsg || 'Work in Progress';
+        item.classList.add('module-locked');
+        item.style.opacity = '0.55';
+        item.setAttribute('title', displayMsg);
+        if (!item.querySelector('.lock-indicator-icon')) {
+          const span = item.querySelector('span');
+          if (span) {
+            span.insertAdjacentHTML('beforeend', ' <i class="fas fa-lock text-danger ms-1 lock-indicator-icon"></i>');
+          }
+        }
+      } else {
+        item.classList.remove('module-locked');
+        item.style.opacity = '';
+        item.removeAttribute('title');
+        item.querySelector('.lock-indicator-icon')?.remove();
+      }
+    });
+  } catch (err) {
+    console.warn('Student module lock sync warning:', err);
+  }
+}
+window.syncStudentModuleLocks = syncStudentModuleLocks;
+
 // ── Navigation ─────────────────────────────────────────────────
 document.querySelectorAll('.nav-item[data-page]').forEach(item => {
   item.addEventListener('click', () => navigateTo(item.dataset.page));
 });
 
 function navigateTo(page) {
+  const customMsg = window.studentLockedModules ? window.studentLockedModules[page] : undefined;
+  if (customMsg !== undefined) {
+    const displayMsg = customMsg || 'Work in Progress';
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+    const container = document.getElementById('pageContent');
+    if (container) {
+      container.innerHTML = `
+        <div class="spx-card p-5 text-center my-4 shadow-sm bg-white" style="border: 2px solid #ef4444; border-radius: 16px;">
+          <div class="stat-badge danger mx-auto mb-3" style="width: 64px; height: 64px; font-size: 1.8rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 16px; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-lock"></i>
+          </div>
+          <h3 class="fw-bold text-danger mb-2">Module Disabled</h3>
+          <h5 class="fw-semibold text-dark mb-3">${displayMsg}</h5>
+          <p class="text-muted small mb-0" style="max-width: 500px; margin: 0 auto;">
+            This module has been locked from the Developer Panel (API Center).
+          </p>
+        </div>
+      `;
+    }
+    if (typeof showToast === 'function') showToast(`🔒 ${displayMsg}`, 'error');
+    return;
+  }
+
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
   const titles = { home:'Dashboard', courses:'Browse Courses', mybatches:'My Batches', 'upcoming-classes':'Upcoming Classes',
