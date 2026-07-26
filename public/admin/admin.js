@@ -3488,15 +3488,54 @@ async function deleteCoupon(code) {
 }
 
 // ── Notifications ─────────────────────────────────────────────
+let adminNotifFilter = 'all';
+
+async function markAdminNotifRead(id) {
+  try {
+    await apiPost(`/admin/notifications/${id}/read`);
+    showToast('Marked as read');
+    renderNotifications();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function markAllAdminNotifsRead() {
+  try {
+    await apiPost('/admin/notifications/read-all');
+    showToast('All admin notifications marked as read');
+    renderNotifications();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function deleteAdminNotif(id) {
+  if (!confirm('Are you sure you want to delete this notification?')) return;
+  try {
+    await apiDelete(`/admin/notifications/${id}`);
+    showToast('Notification deleted');
+    renderNotifications();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function filterAdminNotifTab(tab) {
+  adminNotifFilter = tab;
+  renderNotifications();
+}
+
 async function renderNotifications() {
   loading();
   try {
-    const notifs = await apiGet('/admin/notifications');
+    const res = await apiGet('/admin/notifications');
+    const notifs = Array.isArray(res) ? res : (res.notifications || []);
+    const unreadCount = Array.isArray(res) ? notifs.filter(n => !n.is_read).length : (res.unread_count || 0);
+
+    let filteredNotifs = notifs;
+    if (adminNotifFilter === 'unread') filteredNotifs = notifs.filter(n => !n.is_read);
+    else if (adminNotifFilter === 'read') filteredNotifs = notifs.filter(n => n.is_read);
+
     document.getElementById('pageContent').innerHTML = `
       <div class="row g-4">
-        <div class="col-lg-5">
+        <div class="col-lg-4">
           <div class="spx-card">
-            <h6 class="mb-4">Send Notification</h6>
+            <h6 class="mb-3 fw-bold"><i class="fas fa-paper-plane text-primary me-2"></i>Dispatch Platform Broadcast</h6>
             <form onsubmit="sendNotif(event)">
               <div class="mb-3"><label class="spx-label">Title *</label><input class="form-control spx-input" id="notifTitle" required></div>
               <div class="mb-3"><label class="spx-label">Message *</label><textarea class="form-control spx-input" id="notifMsg" rows="4" required></textarea></div>

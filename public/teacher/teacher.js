@@ -1112,79 +1112,123 @@ async function renderHome() {
   }
 }
 
-async function dismissTeacherNotification(notifId) {
+let currentNotifFilter = 'all';
+
+async function markTeacherNotifRead(notifId) {
   try {
     await api(`/teacher/notifications/${notifId}/read`, { method: 'POST' });
     showToast('Notification marked as read');
     if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
-
-    // Refresh page depending on active tab
-    const activeNav = document.querySelector('.nav-item.active');
-    if (activeNav && activeNav.dataset.page === 'notifications') {
-      renderTeacherNotificationsPage();
-    } else {
-      renderHome();
-    }
+    renderTeacherNotificationsPage();
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
 
-async function renderTeacherNotificationsPage() {
-  loading();
+async function deleteTeacherNotification(notifId) {
+  if (!confirm('Are you sure you want to delete this notification?')) return;
   try {
-    const notifs = await api('/teacher/notifications');
-    const activeNotifs = notifs.filter(n => n.is_active && !n.is_read);
-
-    document.getElementById('pageContent').innerHTML = `
-      <div class="spx-card">
-        <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
-          <div>
-            <h5 class="fw-bold mb-1" style="color:var(--text-primary);"><i class="fas fa-bell text-primary me-2"></i>Notifications & System Alerts</h5>
-            <p class="text-muted small mb-0">Stay updated on course approvals, SOP updates, class schedule alerts, and platform announcements.</p>
-          </div>
-          ${activeNotifs.length ? `
-            <button class="btn btn-sm btn-outline-primary fw-semibold px-3 py-1.5" onclick="markAllTeacherNotifsRead()">
-              <i class="fas fa-check-double me-1"></i>Mark All Read
-            </button>
-          ` : ''}
-        </div>
-
-        <div class="notifications-list">
-          ${notifs.length ? notifs.map(n => `
-            <div class="p-3 mb-3 rounded-3 d-flex align-items-start justify-content-between gap-3" style="background:${n.is_read ? 'rgba(0,0,0,0.02)' : 'rgba(60,189,176,0.08)'}; border:1px solid ${n.type === 'warning' ? '#fde68a' : 'var(--border)'}; transition:all 0.2s;">
-              <div class="d-flex align-items-start gap-3">
-                <div style="width:40px;height:40px;border-radius:10px;background:${n.type === 'warning' ? 'rgba(245, 158, 11, 0.15)' : n.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(60, 189, 176, 0.15)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                  <i class="fas ${n.type === 'warning' ? 'fa-exclamation-triangle text-warning' : n.type === 'success' ? 'fa-check-circle text-success' : 'fa-bell text-primary'}" style="font-size:1.1rem;"></i>
-                </div>
-                <div>
-                  <div class="fw-bold text-dark mb-1" style="font-size:0.92rem;">${n.title}</div>
-                  <div class="text-secondary small mb-2" style="line-height:1.5;">${n.message}</div>
-                  <div class="text-muted" style="font-size:0.75rem;"><i class="far fa-clock me-1"></i>${fmtDate(n.created_at)}</div>
-                </div>
-              </div>
-              <button onclick="dismissTeacherNotification('${n.id}')" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" title="Dismiss Notification">
-                <i class="fas fa-trash-alt"></i>
-              </button>
-            </div>
-          `).join('') : '<p class="text-muted text-center py-5">No notifications found.</p>'}
-        </div>
-      </div>
-    `;
-  } catch (e) {
-    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+    await api(`/teacher/notifications/${notifId}`, { method: 'DELETE' });
+    showToast('Notification deleted');
+    if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
+    renderTeacherNotificationsPage();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 
 async function markAllTeacherNotifsRead() {
   try {
-    const notifs = await api('/teacher/notifications');
-    await Promise.all(notifs.map(n => api(`/teacher/notifications/${n.id}/read`, { method: 'POST' })));
+    await api('/teacher/notifications/read-all', { method: 'POST' });
     showToast('All notifications marked as read');
     if (typeof loadTeacherNotificationCounts === 'function') loadTeacherNotificationCounts();
     renderTeacherNotificationsPage();
   } catch (e) {
     showToast(e.message, 'error');
+  }
+}
+
+function filterTeacherNotifsTab(tab) {
+  currentNotifFilter = tab;
+  renderTeacherNotificationsPage();
+}
+
+async function renderTeacherNotificationsPage() {
+  loading();
+  try {
+    const notifs = await api('/teacher/notifications') || [];
+    const unreadCount = notifs.filter(n => !n.is_read).length;
+
+    let filteredNotifs = notifs;
+    if (currentNotifFilter === 'unread') {
+      filteredNotifs = notifs.filter(n => !n.is_read);
+    } else if (currentNotifFilter === 'read') {
+      filteredNotifs = notifs.filter(n => n.is_read);
+    }
+
+    document.getElementById('pageContent').innerHTML = `
+      <div class="spx-card">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4 pb-2 border-bottom">
+          <div>
+            <h5 class="fw-bold mb-1" style="color:var(--text-primary);"><i class="fas fa-bell text-primary me-2"></i>Notifications & System Alerts</h5>
+            <p class="text-muted small mb-0">Stay updated on course approvals, SOP updates, class schedule alerts, and platform announcements.</p>
+          </div>
+          <div class="d-flex gap-2">
+            ${unreadCount > 0 ? `
+              <button class="btn btn-sm btn-outline-primary fw-semibold px-3 py-1.5" onclick="markAllTeacherNotifsRead()">
+                <i class="fas fa-check-double me-1"></i>Mark All as Read
+              </button>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="d-flex gap-2 mb-4">
+          <button class="btn btn-sm ${currentNotifFilter === 'all' ? 'btn-primary' : 'btn-outline-secondary'} rounded-pill px-3" onclick="filterTeacherNotifsTab('all')">
+            All (${notifs.length})
+          </button>
+          <button class="btn btn-sm ${currentNotifFilter === 'unread' ? 'btn-primary' : 'btn-outline-secondary'} rounded-pill px-3" onclick="filterTeacherNotifsTab('unread')">
+            Unread (${unreadCount})
+          </button>
+          <button class="btn btn-sm ${currentNotifFilter === 'read' ? 'btn-primary' : 'btn-outline-secondary'} rounded-pill px-3" onclick="filterTeacherNotifsTab('read')">
+            Read (${notifs.length - unreadCount})
+          </button>
+        </div>
+
+        <div class="notifications-list">
+          ${filteredNotifs.length ? filteredNotifs.map(n => `
+            <div class="p-3 mb-3 rounded-3 d-flex align-items-start justify-content-between gap-3" style="background:${n.is_read ? '#f8fafc' : 'rgba(60,189,176,0.08)'}; border:1px solid ${!n.is_read ? 'rgba(60,189,176,0.3)' : 'rgba(15,23,42,0.08)'}; transition:all 0.2s;">
+              <div class="d-flex align-items-start gap-3">
+                <div style="width:40px;height:40px;border-radius:10px;background:${n.type === 'warning' ? 'rgba(245, 158, 11, 0.15)' : n.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(60, 189, 176, 0.15)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <i class="fas ${n.type === 'warning' ? 'fa-exclamation-triangle text-warning' : n.type === 'success' ? 'fa-check-circle text-success' : 'fa-bell text-primary'}" style="font-size:1.1rem;"></i>
+                </div>
+                <div>
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="fw-bold text-dark" style="font-size:0.92rem;">${escapeHtml(n.title)}</span>
+                    ${!n.is_read ? `<span class="badge bg-danger rounded-pill px-2 py-0.5" style="font-size:0.65rem;">NEW</span>` : `<span class="badge bg-secondary rounded-pill px-2 py-0.5" style="font-size:0.65rem;">READ</span>`}
+                  </div>
+                  <div class="text-secondary small mb-2" style="line-height:1.5;">${escapeHtml(n.message)}</div>
+                  <div class="text-muted" style="font-size:0.75rem;"><i class="far fa-clock me-1"></i>${fmtDate(n.created_at)}</div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-1">
+                ${!n.is_read ? `
+                  <button onclick="markTeacherNotifRead('${n.id}')" class="btn btn-sm btn-outline-success border-0 px-2 py-1" title="Mark as Read">
+                    <i class="fas fa-check me-1"></i>Mark Read
+                  </button>
+                ` : ''}
+                <button onclick="deleteTeacherNotification('${n.id}')" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" title="Delete Notification">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </div>
+            </div>
+          `).join('') : '<p class="text-muted text-center py-5">No notifications found in this category.</p>'}
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
 }
 
@@ -4435,25 +4479,37 @@ async function renderEarnings() {
             <div id="bankDetailsForm" style="${hasSavedBank ? 'display: none;' : ''}">
               <form onsubmit="saveTeacherBankDetails(event)">
                 <div class="mb-2">
-                  <label class="spx-label" style="font-size:0.75rem;">Account Holder Name</label>
+                  <label class="spx-label" style="font-size:0.75rem;">Account Holder Name *</label>
                   <input type="text" class="form-control spx-input" id="payoutBankHolder" value="${escapeHtml(bank.bank_account_name || '')}" placeholder="e.g. Sahil Khan" required>
                 </div>
                 
                 <div class="row g-2 mb-2">
                   <div class="col-6">
-                    <label class="spx-label" style="font-size:0.75rem;">Bank Name</label>
-                    <input type="text" class="form-control spx-input" id="payoutBankName" value="${escapeHtml(bank.bank_name || '')}" placeholder="e.g. HDFC Bank" required>
+                    <label class="spx-label" style="font-size:0.75rem;">IFSC Code *</label>
+                    <input type="text" class="form-control spx-input text-uppercase" id="payoutBankIfsc" value="${escapeHtml(bank.bank_ifsc_code || '')}" placeholder="e.g. HDFC0000045" maxlength="11" oninput="handleIfscAutoLookup(this.value)" required>
+                    <small id="ifscErrorHint" class="text-danger d-none" style="font-size:0.7rem;"></small>
                   </div>
                   <div class="col-6">
-                    <label class="spx-label" style="font-size:0.75rem;">IFSC Code</label>
-                    <input type="text" class="form-control spx-input text-uppercase" id="payoutBankIfsc" value="${escapeHtml(bank.bank_ifsc_code || '')}" placeholder="e.g. HDFC0000045" required>
+                    <label class="spx-label" style="font-size:0.75rem;">Bank Name</label>
+                    <input type="text" class="form-control spx-input" id="payoutBankName" value="${escapeHtml(bank.bank_name || '')}" placeholder="Auto-filled via IFSC" required readonly style="background:#f8fafc;">
                   </div>
                 </div>
 
                 <div class="mb-2">
-                  <label class="spx-label" style="font-size:0.75rem;">Account Number</label>
-                  <input type="text" class="form-control spx-input" id="payoutBankAcc" value="${escapeHtml(bank.bank_account_number || '')}" placeholder="e.g. 5010023489112" required>
+                  <small id="ifscBranchDisplay" class="text-muted d-block mb-1" style="font-size:0.75rem; font-style:italic;"></small>
                 </div>
+
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <label class="spx-label" style="font-size:0.75rem;">Account Number *</label>
+                    <input type="password" class="form-control spx-input" id="payoutBankAcc" value="${escapeHtml(bank.bank_account_number || '')}" placeholder="Digits only (9-18)" oninput="validateBankAccountsMatch()" required>
+                  </div>
+                  <div class="col-6">
+                    <label class="spx-label" style="font-size:0.75rem;">Confirm Account Number *</label>
+                    <input type="text" class="form-control spx-input" id="payoutBankAccConfirm" value="${escapeHtml(bank.bank_account_number || '')}" placeholder="Re-enter Account No." oninput="validateBankAccountsMatch()" required>
+                  </div>
+                </div>
+                <small id="accMismatchHint" class="text-danger d-none mb-2 d-block" style="font-size:0.72rem;"></small>
 
                 <div class="mb-3">
                   <label class="spx-label" style="font-size:0.75rem;">UPI ID (Optional)</label>
@@ -4605,8 +4661,96 @@ window.toggleEditBankDetails = function (showEdit) {
 };
 
 
+async function handleIfscAutoLookup(val) {
+  const code = (val || '').trim().toUpperCase();
+  const errEl = document.getElementById('ifscErrorHint');
+  const branchEl = document.getElementById('ifscBranchDisplay');
+  const nameEl = document.getElementById('payoutBankName');
+
+  if (!code) {
+    if (errEl) errEl.classList.add('d-none');
+    if (branchEl) branchEl.textContent = '';
+    return;
+  }
+
+  const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+  if (code.length < 11) {
+    if (errEl) {
+      errEl.textContent = 'IFSC must be 11 characters long (e.g. SBIN0000691)';
+      errEl.classList.remove('d-none');
+    }
+    if (branchEl) branchEl.textContent = '';
+    return;
+  }
+
+  if (!ifscRegex.test(code)) {
+    if (errEl) {
+      errEl.textContent = 'Invalid IFSC format. 5th character must be zero (0).';
+      errEl.classList.remove('d-none');
+    }
+    if (branchEl) branchEl.textContent = '';
+    return;
+  }
+
+  if (errEl) errEl.classList.add('d-none');
+  if (branchEl) branchEl.textContent = 'Fetching bank & branch details...';
+
+  try {
+    const res = await fetch(`https://ifsc.razorpay.com/${code}`);
+    if (!res.ok) {
+      throw new Error('IFSC code not found in National Clearing DB');
+    }
+    const data = await res.json();
+    if (nameEl) nameEl.value = data.BANK || 'Bank Found';
+    if (branchEl) branchEl.textContent = `Branch: ${data.BRANCH || 'N/A'}, ${data.CITY || ''} (${data.STATE || ''})`;
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message;
+      errEl.classList.remove('d-none');
+    }
+    if (branchEl) branchEl.textContent = '';
+  }
+}
+window.handleIfscAutoLookup = handleIfscAutoLookup;
+
+function validateBankAccountsMatch() {
+  const acc1 = document.getElementById('payoutBankAcc')?.value.trim() || '';
+  const acc2 = document.getElementById('payoutBankAccConfirm')?.value.trim() || '';
+  const hint = document.getElementById('accMismatchHint');
+
+  if (!acc1 || !acc2) {
+    if (hint) hint.classList.add('d-none');
+    return true;
+  }
+
+  if (!/^\d{9,18}$/.test(acc1)) {
+    if (hint) {
+      hint.textContent = 'Account number must contain 9 to 18 numeric digits only.';
+      hint.classList.remove('d-none');
+    }
+    return false;
+  }
+
+  if (acc1 !== acc2) {
+    if (hint) {
+      hint.textContent = 'Account Number and Confirm Account Number do not match!';
+      hint.classList.remove('d-none');
+    }
+    return false;
+  }
+
+  if (hint) hint.classList.add('d-none');
+  return true;
+}
+window.validateBankAccountsMatch = validateBankAccountsMatch;
+
 async function saveTeacherBankDetails(e) {
   if (e) e.preventDefault();
+  
+  if (!validateBankAccountsMatch()) {
+    showToast('Please fix Account Number validation errors before saving.', 'error');
+    return;
+  }
   const btn = document.getElementById('btnSaveBank');
   if (btn) btn.disabled = true;
 
@@ -5065,8 +5209,11 @@ async function renderProfile() {
                   <input type="number" class="form-control spx-input" id="profYrs" value="${profile.experience_years || 0}">
                 </div>
                 <div class="col-12">
-                  <label class="spx-label mb-1">Professional Bio / Introduction</label>
-                  <textarea class="form-control spx-input" id="profBio" rows="3" placeholder="Share your teaching philosophy, milestones, and introduction for students...">${profile.bio || ''}</textarea>
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="spx-label mb-0">Professional Bio / Introduction</label>
+                    <small class="text-muted fw-bold" id="bioCounter" style="font-size:0.78rem;">0 / 1000</small>
+                  </div>
+                  <textarea class="form-control spx-input" id="profBio" rows="4" maxlength="1000" oninput="updateBioCounter()" placeholder="Share your teaching philosophy, milestones, and introduction for students...">${profile.bio || ''}</textarea>
                 </div>
                 <div class="col-12 mt-4">
                   <button type="submit" class="btn btn-spx px-4 py-2 fw-semibold"><i class="fas fa-save me-1"></i> Save Profile Details</button>
@@ -5113,6 +5260,7 @@ async function renderProfile() {
       'profName', 'profPhone', 'profAltEmail', 'profMobileNumber',
       'profLinkedIn', 'profTwitter', 'profQual', 'profExp', 'profLang', 'profYrs', 'profBio'
     ]);
+    setTimeout(() => updateBioCounter(), 100);
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
@@ -5149,6 +5297,25 @@ async function updateProfile(e) {
     showApp();
     renderProfile();
   } catch (e) { showToast(e.message, 'error'); }
+}
+
+function updateBioCounter() {
+  const bioEl = document.getElementById('profBio');
+  const counterEl = document.getElementById('bioCounter');
+  if (!bioEl || !counterEl) return;
+  let val = bioEl.value || '';
+  if (val.length > 1000) {
+    val = val.substring(0, 1000);
+    bioEl.value = val;
+  }
+  counterEl.textContent = `${val.length} / 1000`;
+  if (val.length >= 950) {
+    counterEl.classList.remove('text-muted');
+    counterEl.classList.add('text-warning');
+  } else {
+    counterEl.classList.remove('text-warning');
+    counterEl.classList.add('text-muted');
+  }
 }
 
 async function changePassword(e) {

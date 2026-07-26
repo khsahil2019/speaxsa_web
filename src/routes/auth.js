@@ -242,6 +242,15 @@ router.post('/register', async (req, res) => {
     const userRow = (await db.query('SELECT * FROM users WHERE id = $1', [id])).rows[0];
     await logAudit(id, 'REGISTER', 'user', id, { role, email });
 
+    // Send real-time notification to Admin Panel
+    const { sendAdminNotification } = require('../services/AdminNotificationService');
+    sendAdminNotification({
+      title: `New ${role.toUpperCase()} Registered`,
+      message: `${name} (${email}) registered as a ${role}.`,
+      type: 'success',
+      sentBy: id
+    }).catch(e => console.error(e.message));
+
     // Send instant Welcome & Email Verification link to user's email ID
     try {
       await sendEmailVerificationLink(userRow.id, req);

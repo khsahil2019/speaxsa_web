@@ -609,6 +609,28 @@
               <button class="btn btn-sm py-0.5 px-2 rounded-1 border-0 size-btn" data-size="12" style="font-size:0.7rem; font-weight:600; background:rgba(0,0,0,0.05); padding: 2px 6px;">Thick</button>
             </div>
 
+            <!-- Rich Text Formatting Controls Group -->
+            <div id="whiteboardTextControls" class="d-flex align-items-center gap-1 bg-light p-1 rounded-2 border border-light" style="font-size:0.8rem;">
+              <span class="text-muted small me-1"><i class="fas fa-font text-teal me-1"></i>Text:</span>
+              
+              <select id="wbFontFamily" class="form-select form-select-sm border-0 py-0 px-1 font-monospace" style="font-size:0.75rem; width:100px; height:24px; cursor:pointer;" title="Font Family">
+                <option value="Outfit, sans-serif" selected>Outfit</option>
+                <option value="Plus Jakarta Sans, sans-serif">Jakarta</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Roboto, sans-serif">Roboto</option>
+                <option value="Courier New, monospace">Courier</option>
+                <option value="Georgia, serif">Georgia</option>
+              </select>
+
+              <button class="btn btn-sm py-0.5 px-1.5 btn-outline-secondary border-0 fw-bold" id="btnWbFontSizeMinus" style="font-size:0.75rem;" title="Decrease Font Size"><i class="fas fa-minus"></i></button>
+              <span class="fw-bold px-1" id="wbFontSizeDisplay" style="font-size:0.75rem; min-width:28px; text-align:center;">24px</span>
+              <button class="btn btn-sm py-0.5 px-1.5 btn-outline-secondary border-0 fw-bold" id="btnWbFontSizePlus" style="font-size:0.75rem;" title="Increase Font Size"><i class="fas fa-plus"></i></button>
+
+              <button class="btn btn-sm py-0.5 px-2 btn-outline-secondary border-0 fw-bold format-btn" id="btnWbBold" title="Bold (Ctrl+B)"><b>B</b></button>
+              <button class="btn btn-sm py-0.5 px-2 btn-outline-secondary border-0 format-btn" id="btnWbItalic" title="Italic (Ctrl+I)"><i>I</i></button>
+              <button class="btn btn-sm py-0.5 px-2 btn-outline-secondary border-0 format-btn" id="btnWbUnderline" title="Underline (Ctrl+U)"><u>U</u></button>
+            </div>
+
             <button class="btn btn-sm btn-outline-danger" id="btnClearBoard">Clear Board</button>
           </div>
           <button class="btn-close" onclick="toggleWhiteboard(false)"></button>
@@ -801,7 +823,9 @@
     }
 
     if (!token || !user) {
-      showErrorOverlay('Authentication required. Please login first.', 'Authentication Alert', 'Go to Login', () => window.location.href = '/', false);
+      sessionStorage.setItem('redirect_after_login', window.location.href);
+      const loginUrl = (urlRole === 'teacher') ? '/teacher' : '/student/index.html?redirect=' + encodeURIComponent(window.location.href);
+      showErrorOverlay('Authentication required to join live classroom. Please login to continue.', 'Authentication Alert', 'Go to Login', () => window.location.href = loginUrl, false);
       throw new Error('Authentication required');
     }
 
@@ -938,22 +962,154 @@
       });
     });
 
-    // Handle Text Input via Keyboard
+    // Whiteboard Rich Text State
+    let wbFontSize = 24;
+    let wbFontFamily = 'Outfit, sans-serif';
+    let wbIsBold = false;
+    let wbIsItalic = false;
+    let wbIsUnderline = false;
+    let activeTextInputEl = null;
+
+    document.getElementById('wbFontFamily')?.addEventListener('change', (e) => {
+      wbFontFamily = e.target.value;
+      if (activeTextInputEl) activeTextInputEl.style.fontFamily = wbFontFamily;
+    });
+
+    document.getElementById('btnWbFontSizeMinus')?.addEventListener('click', () => {
+      wbFontSize = Math.max(12, wbFontSize - 2);
+      document.getElementById('wbFontSizeDisplay').textContent = wbFontSize + 'px';
+      if (activeTextInputEl) activeTextInputEl.style.fontSize = wbFontSize + 'px';
+    });
+
+    document.getElementById('btnWbFontSizePlus')?.addEventListener('click', () => {
+      wbFontSize = Math.min(72, wbFontSize + 2);
+      document.getElementById('wbFontSizeDisplay').textContent = wbFontSize + 'px';
+      if (activeTextInputEl) activeTextInputEl.style.fontSize = wbFontSize + 'px';
+    });
+
+    document.getElementById('btnWbBold')?.addEventListener('click', (e) => {
+      wbIsBold = !wbIsBold;
+      const btn = document.getElementById('btnWbBold');
+      btn.classList.toggle('active', wbIsBold);
+      btn.style.background = wbIsBold ? 'var(--primary)' : 'transparent';
+      btn.style.color = wbIsBold ? '#ffffff' : '';
+      if (activeTextInputEl) activeTextInputEl.style.fontWeight = wbIsBold ? 'bold' : 'normal';
+    });
+
+    document.getElementById('btnWbItalic')?.addEventListener('click', (e) => {
+      wbIsItalic = !wbIsItalic;
+      const btn = document.getElementById('btnWbItalic');
+      btn.classList.toggle('active', wbIsItalic);
+      btn.style.background = wbIsItalic ? 'var(--primary)' : 'transparent';
+      btn.style.color = wbIsItalic ? '#ffffff' : '';
+      if (activeTextInputEl) activeTextInputEl.style.fontStyle = wbIsItalic ? 'italic' : 'normal';
+    });
+
+    document.getElementById('btnWbUnderline')?.addEventListener('click', (e) => {
+      wbIsUnderline = !wbIsUnderline;
+      const btn = document.getElementById('btnWbUnderline');
+      btn.classList.toggle('active', wbIsUnderline);
+      btn.style.background = wbIsUnderline ? 'var(--primary)' : 'transparent';
+      btn.style.color = wbIsUnderline ? '#ffffff' : '';
+      if (activeTextInputEl) activeTextInputEl.style.textDecoration = wbIsUnderline ? 'underline' : 'none';
+    });
+
+    // Direct Canvas Inline Click-to-Type Text Input
     function handleCanvasTextInput(x, y) {
-      const text = prompt('Type text to insert on Whiteboard:');
-      if (text && text.trim()) {
-        const cleanText = text.trim();
-        drawCanvasText(cleanText, x, y, currentStrokeColor, currentLineWidth);
-        relayDrawText(cleanText, x, y);
+      if (activeTextInputEl) {
+        activeTextInputEl.blur();
       }
+
+      const container = document.getElementById('whiteboardContainer');
+      const input = document.createElement('textarea');
+      input.className = 'canvas-inline-input';
+      input.style.position = 'absolute';
+      input.style.left = `${x}px`;
+      input.style.top = `${y}px`;
+      input.style.fontSize = `${wbFontSize}px`;
+      input.style.fontFamily = wbFontFamily;
+      input.style.fontWeight = wbIsBold ? 'bold' : 'normal';
+      input.style.fontStyle = wbIsItalic ? 'italic' : 'normal';
+      input.style.textDecoration = wbIsUnderline ? 'underline' : 'none';
+      input.style.color = currentStrokeColor;
+      input.style.background = 'rgba(255, 255, 255, 0.9)';
+      input.style.border = '1.5px dashed #3CBDB0';
+      input.style.borderRadius = '4px';
+      input.style.outline = 'none';
+      input.style.padding = '4px 8px';
+      input.style.zIndex = '100';
+      input.style.minWidth = '140px';
+      input.style.minHeight = `${wbFontSize + 16}px`;
+      input.style.resize = 'both';
+      input.placeholder = 'Type text here...';
+
+      container.appendChild(input);
+      setTimeout(() => input.focus(), 10);
+      activeTextInputEl = input;
+
+      function commitInlineText() {
+        if (!activeTextInputEl || activeTextInputEl !== input) return;
+        const txt = input.value.trim();
+        if (txt) {
+          const textOpts = {
+            text: txt,
+            x,
+            y: y + wbFontSize,
+            color: currentStrokeColor,
+            fontSize: wbFontSize,
+            fontFamily: wbFontFamily,
+            isBold: wbIsBold,
+            isItalic: wbIsItalic,
+            isUnderline: wbIsUnderline
+          };
+          drawCanvasText(textOpts);
+          relayDrawText(textOpts);
+        }
+        input.remove();
+        if (activeTextInputEl === input) activeTextInputEl = null;
+      }
+
+      input.addEventListener('blur', () => {
+        commitInlineText();
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          commitInlineText();
+        } else if (e.key === 'Escape') {
+          input.remove();
+          if (activeTextInputEl === input) activeTextInputEl = null;
+        }
+      });
     }
 
-    function drawCanvasText(text, x, y, color, size) {
+    function drawCanvasText(opts) {
+      let text, x, y, color, fontSize, fontFamily, isBold, isItalic, isUnderline;
+      if (typeof opts === 'object' && opts !== null) {
+        ({ text, x, y, color, fontSize, fontFamily, isBold, isItalic, isUnderline } = opts);
+      } else {
+        text = opts;
+        x = arguments[1];
+        y = arguments[2];
+        color = arguments[3];
+        fontSize = Math.max(14, (parseInt(arguments[4]) || 3) * 5);
+      }
       ctx.save();
-      const fontSize = Math.max(14, (parseInt(size) || 3) * 5);
-      ctx.font = `600 ${fontSize}px sans-serif`;
+      const styleStr = `${isItalic ? 'italic ' : ''}${isBold ? 'bold ' : ''}${fontSize || 24}px ${fontFamily || 'sans-serif'}`;
+      ctx.font = styleStr;
       ctx.fillStyle = color || currentStrokeColor;
       ctx.fillText(text, x, y);
+
+      if (isUnderline) {
+        const textWidth = ctx.measureText(text).width;
+        ctx.beginPath();
+        ctx.strokeStyle = color || currentStrokeColor;
+        ctx.lineWidth = Math.max(1, (fontSize || 24) / 14);
+        ctx.moveTo(x, y + 3);
+        ctx.lineTo(x + textWidth, y + 3);
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
@@ -2093,10 +2249,11 @@
               socket.emit('board-clear', { classId });
             }
           }
-          function relayDrawText(text, x, y) {
+          function relayDrawText(textOpts) {
             if (!isTeacher && !isAdmin) return;
             if (socket && socket.connected) {
-              socket.emit('board-text', { classId, text, x, y, color: currentStrokeColor, size: currentLineWidth });
+              const payload = (typeof textOpts === 'object' && textOpts !== null) ? textOpts : { text: textOpts, x: arguments[1], y: arguments[2], color: currentStrokeColor, size: currentLineWidth };
+              socket.emit('board-text', { classId, ...payload });
             }
           }
           function relayDrawShape(shapeData) {

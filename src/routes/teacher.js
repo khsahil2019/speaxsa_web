@@ -1863,10 +1863,36 @@ router.post('/notifications/:id/read', async (req, res) => {
   try {
     await db.query(`
       UPDATE notifications 
-      SET is_read = true, is_active = false 
+      SET is_read = true 
       WHERE id = $1 AND (target_user = $2 OR target_role = 'teacher' OR target_role = 'all')
     `, [id, req.user.id]);
-    res.json({ success: true });
+    res.json({ success: true, message: 'Notification marked as read' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/notifications/read-all', async (req, res) => {
+  try {
+    await db.query(`
+      UPDATE notifications 
+      SET is_read = true 
+      WHERE (target_user = $1 OR target_role = 'teacher' OR target_role = 'all') AND is_active = true
+    `, [req.user.id]);
+    res.json({ success: true, message: 'All notifications marked as read' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/notifications/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query(`
+      DELETE FROM notifications 
+      WHERE id = $1 AND (target_user = $2 OR target_role = 'teacher' OR target_role = 'all')
+    `, [id, req.user.id]);
+    res.json({ success: true, message: 'Notification deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

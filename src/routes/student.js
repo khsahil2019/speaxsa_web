@@ -646,7 +646,40 @@ router.get('/notifications', async (req, res) => {
         AND is_active = true
       ORDER BY created_at DESC LIMIT 100
     `, [req.user.id]);
-    res.json(result.rows);
+    
+    const unreadCountRes = await db.query(`
+      SELECT COUNT(*) FROM notifications
+      WHERE (target_role = 'student' OR target_role = 'all' OR target_user = $1)
+        AND is_active = true AND (is_read IS NOT TRUE)
+    `, [req.user.id]);
+
+    res.json({
+      notifications: result.rows,
+      unread_count: parseInt(unreadCountRes.rows[0].count) || 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/notifications/:id/read', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('UPDATE notifications SET is_read = true WHERE id = $1', [id]);
+    res.json({ message: 'Notification marked as read' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/notifications/read-all', async (req, res) => {
+  try {
+    await db.query(`
+      UPDATE notifications SET is_read = true
+      WHERE (target_role = 'student' OR target_role = 'all' OR target_user = $1)
+        AND is_active = true
+    `, [req.user.id]);
+    res.json({ message: 'All notifications marked as read' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

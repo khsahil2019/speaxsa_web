@@ -570,6 +570,13 @@ function saveAuth(tok, usr) {
   sessionStorage.setItem('student_token', tok);
   sessionStorage.setItem('student_user', JSON.stringify(usr));
 
+  const redirectUrl = sessionStorage.getItem('redirect_after_login') || new URLSearchParams(window.location.search).get('redirect');
+  if (redirectUrl) {
+    sessionStorage.removeItem('redirect_after_login');
+    window.location.href = redirectUrl;
+    return;
+  }
+
   showApp();
   navigateTo('home');
 }
@@ -835,11 +842,13 @@ async function loadFCMToken() {
 
 async function loadStudentNotificationCounts() {
   try {
-    const notifs = await api('/student/notifications');
+    const res = await api('/student/notifications');
+    const notifs = Array.isArray(res) ? res : (res.notifications || []);
+    const unreadCount = Array.isArray(res) ? notifs.filter(n => !n.is_read).length : (res.unread_count || 0);
     const badge = document.getElementById('studentNotifBadge');
     if (badge) {
-      if (notifs && notifs.length > 0) {
-        badge.textContent = notifs.length > 99 ? '99+' : notifs.length;
+      if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
         badge.style.display = 'inline-block';
       } else {
         badge.style.display = 'none';
@@ -1010,15 +1019,20 @@ async function renderHome() {
         </div>
         <div class="col-lg-4">
           <div class="spx-card">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h6 class="mb-0">Notifications (${notifs.length})</h6>
-              <a onclick="navigateTo('notifications')" class="text-primary small" style="cursor:pointer">View All →</a>
-            </div>
-            ${notifs.slice(0,5).map(n => `
-              <div class="mb-3 p-2 rounded" style="background:var(--bg-dark)">
-                <div class="fw-semibold small text-dark">${n.title}</div>
-                <div class="text-muted" style="font-size:.75rem">${n.message?.substr(0,80)}${n.message?.length>80?'...':''}</div>
-              </div>`).join('') || '<p class="text-muted small">No notifications</p>'}
+            ${(() => {
+              const notifsList = Array.isArray(notifs) ? notifs : (notifs?.notifications || []);
+              return `
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <h6 class="mb-0">Notifications (${notifsList.length})</h6>
+                  <a onclick="navigateTo('notifications')" class="text-primary small" style="cursor:pointer">View All →</a>
+                </div>
+                ${notifsList.slice(0,5).map(n => `
+                  <div class="mb-3 p-2 rounded" style="background:var(--bg-dark)">
+                    <div class="fw-semibold small text-white">${escapeHtml(n.title)}</div>
+                    <div class="text-muted" style="font-size:.75rem">${escapeHtml(n.message?.substr(0,80))}${n.message?.length>80?'...':''}</div>
+                  </div>`).join('') || '<p class="text-muted small">No notifications</p>'}
+              `;
+            })()}
           </div>
         </div>
       </div>`;
@@ -2267,40 +2281,76 @@ async function renderReports() {
 // ── Notifications ──────────────────────────────────────────────
 let currentNotificationLimit = 10;
 let cachedNotifications = [];
+let studentNotifFilter = 'all';
 
 async function renderNotifications() {
   loading();
   try {
-    const notifs = await api('/student/notifications');
-    cachedNotifications = notifs;
-    currentNotificationLimit = 10; // reset limit
+    const res = await api('/student/notifications');
+    cachedNotifications = Array.isArray(res) ? res : (res.notifications || []);
+    const unreadCount = Array.isArray(res) ? cachedNotifications.filter(n => !n.is_read).length : (res.unread_count || 0);
+    updateStudentNotifBadge(unreadCount);
+    currentNotificationLimit = 10;
     displayNotificationsList();
   } catch(e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
 }
 
+function updateStudentNotifBadge(count) {
+  const badgeEl = document.getElementById('notifBadge') || document.querySelector('.notif-badge');
+  if (badgeEl) {
+    if (count > 0) {
+      badgeEl.textContent = count;
+      badgeEl.classList.remove('d-none');
+    } else {
+      badgeEl.textContent = '0';
+      badgeEl.classList.add('d-none');
+    }
+  }
+}
+
 function displayNotificationsList() {
   const notifs = cachedNotifications;
-  const totalCount = notifs.length;
-  const visibleNotifs = notifs.slice(0, currentNotificationLimit);
+  const unreadCount = notifs.filter(n => !n.is_read).length;
+
+  let filteredNotifs = notifs;
+  if (studentNotifFilter === 'unread') {
+    filteredNotifs = notifs.filter(n => !n.is_read);
+  } else if (studentNotifFilter === 'read') {
+    filteredNotifs = notifs.filter(n => n.is_read);
+  }
+
+  const totalCount = filteredNotifs.length;
+  const visibleNotifs = filteredNotifs.slice(0, currentNotificationLimit);
   
   const notifsHtml = visibleNotifs.map(n => `
-    <div class="p-3 mb-2 rounded-3" style="background:var(--bg-dark);border:1px solid var(--border)">
+    <div class="p-3 mb-2 rounded-3" style="background:${n.is_read ? 'var(--bg-dark)' : 'rgba(60,189,176,0.08)'};border:1px solid ${!n.is_read ? 'rgba(60,189,176,0.3)' : 'var(--border)'}">
       <div class="d-flex align-items-start justify-content-between gap-3">
         <div class="d-flex align-items-start gap-3">
           <div style="width:36px;height:36px;border-radius:10px;background:rgba(60,189,176,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <i class="fas ${n.type==='warning'?'fa-exclamation-triangle text-warning':n.type==='success'?'fa-check-circle text-success':'fa-bell'}" style="color:#3CBDB0"></i>
           </div>
           <div>
-            <div class="fw-semibold text-white small">${n.title}</div>
-            <div class="text-muted small">${n.message}</div>
-            <div class="text-muted" style="font-size:.7rem">${fmtDate(n.created_at)}</div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="fw-semibold text-white small">${escapeHtml(n.title)}</span>
+              ${!n.is_read ? `<span class="badge bg-danger rounded-pill px-2 py-0.5" style="font-size:0.65rem;">NEW</span>` : ''}
+            </div>
+            <div class="text-muted small mb-1">${escapeHtml(n.message)}</div>
+            <div class="text-muted" style="font-size:.7rem"><i class="far fa-clock me-1"></i>${fmtDate(n.created_at)}</div>
           </div>
         </div>
-        <button onclick="deleteNotification('${n.id}')" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" title="Delete Notification" style="font-size: 0.8rem;">
-          <i class="fas fa-trash-alt"></i>
-        </button>
+        
+        <div class="d-flex align-items-center gap-1">
+          ${!n.is_read ? `
+            <button onclick="markStudentNotifRead('${n.id}')" class="btn btn-sm btn-outline-success border-0 px-2 py-1" title="Mark as Read" style="font-size:0.78rem;">
+              <i class="fas fa-check me-1"></i>Mark Read
+            </button>
+          ` : ''}
+          <button onclick="deleteNotification('${n.id}')" class="btn btn-sm btn-outline-danger border-0 px-2 py-1" title="Delete Notification" style="font-size:0.78rem;">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
       </div>
     </div>
   `).join('');
@@ -2315,15 +2365,67 @@ function displayNotificationsList() {
 
   document.getElementById('pageContent').innerHTML = `
     <div class="spx-card">
-      <div class="d-flex align-items-center justify-content-between mb-4">
-        <h6 class="mb-0 fw-bold">Notifications (Total: ${totalCount})</h6>
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+        <div>
+          <h6 class="mb-0 fw-bold">Notifications & Class Alerts</h6>
+          <small class="text-muted">Unread: ${unreadCount}</small>
+        </div>
+        ${unreadCount > 0 ? `
+          <button class="btn btn-sm btn-outline-primary fw-semibold px-3 py-1.5" onclick="markAllStudentNotifsRead()">
+            <i class="fas fa-check-double me-1"></i>Mark All as Read
+          </button>
+        ` : ''}
       </div>
+
+      <!-- Filter Tabs -->
+      <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-sm ${studentNotifFilter === 'all' ? 'btn-primary' : 'btn-outline-secondary'} rounded-pill px-3" onclick="filterStudentNotifsTab('all')">
+          All (${notifs.length})
+        </button>
+        <button class="btn btn-sm ${studentNotifFilter === 'unread' ? 'btn-primary' : 'btn-outline-secondary'} rounded-pill px-3" onclick="filterStudentNotifsTab('unread')">
+          Unread (${unreadCount})
+        </button>
+        <button class="btn btn-sm ${studentNotifFilter === 'read' ? 'btn-primary' : 'btn-outline-secondary'} rounded-pill px-3" onclick="filterStudentNotifsTab('read')">
+          Read (${notifs.length - unreadCount})
+        </button>
+      </div>
+
       <div id="notificationsItemsContainer">
-        ${notifsHtml || '<p class="text-muted text-center py-4">No notifications</p>'}
+        ${notifsHtml || '<p class="text-muted text-center py-4">No notifications in this section.</p>'}
       </div>
       ${viewMoreBtn}
     </div>
   `;
+}
+
+function filterStudentNotifsTab(tab) {
+  studentNotifFilter = tab;
+  displayNotificationsList();
+}
+
+async function markStudentNotifRead(id) {
+  try {
+    await api(`/student/notifications/${id}/read`, { method: 'POST' });
+    const target = cachedNotifications.find(n => n.id === id);
+    if (target) target.is_read = true;
+    const remainingUnread = cachedNotifications.filter(n => !n.is_read).length;
+    updateStudentNotifBadge(remainingUnread);
+    displayNotificationsList();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function markAllStudentNotifsRead() {
+  try {
+    await api('/student/notifications/read-all', { method: 'POST' });
+    cachedNotifications.forEach(n => n.is_read = true);
+    updateStudentNotifBadge(0);
+    showToast('All notifications marked as read');
+    displayNotificationsList();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
 }
 
 function loadMoreNotifications() {
@@ -2337,6 +2439,8 @@ async function deleteNotification(id) {
     await api(`/student/notifications/${id}`, { method: 'DELETE' });
     showToast('Notification deleted successfully');
     cachedNotifications = cachedNotifications.filter(n => n.id !== id);
+    const remainingUnread = cachedNotifications.filter(n => !n.is_read).length;
+    updateStudentNotifBadge(remainingUnread);
     displayNotificationsList();
   } catch(e) {
     showToast(e.message, 'error');

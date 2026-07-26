@@ -216,6 +216,10 @@ router.post('/:classId/end', async (req, res) => {
 
     await logAudit(req.user.id, 'CLASS_ENDED', 'live_class', classId, { durationMins });
 
+    // Generate and email comprehensive Poll Response Report PDF to the teacher asynchronously
+    const { generateAndEmailPollReport } = require('../services/PollReportPDFService');
+    generateAndEmailPollReport(classId).catch(err => console.error('[LiveClass] generateAndEmailPollReport error:', err));
+
     // Broadcast class-ended event to force-quit all students in the room
     const io = req.app.get('io');
     if (io) {

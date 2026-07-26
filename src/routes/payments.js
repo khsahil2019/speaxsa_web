@@ -186,6 +186,15 @@ router.post('/verify', async (req, res) => {
       await db.query('UPDATE batches SET seats_filled = seats_filled + 1 WHERE id = $1', [payment.batch_id]);
     }
 
+    // Trigger Admin Notification
+    const { sendAdminNotification } = require('../services/AdminNotificationService');
+    sendAdminNotification({
+      title: 'Successful Course Payment & Enrollment',
+      message: `Student ${payment.billing_name || req.user.name} paid ₹${payment.amount} for course enrollment.`,
+      type: 'success',
+      sentBy: req.user.id
+    }).catch(e => console.error(e.message));
+
     // Trigger payment receipt email asynchronously to student
     try {
       const bRes = await db.query('SELECT b.batch_name, c.title as course_title, c.fees as original_fees FROM batches b LEFT JOIN courses c ON c.id = b.course_id WHERE b.id = $1', [payment.batch_id]);
