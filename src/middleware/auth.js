@@ -44,23 +44,25 @@ function authenticateToken(req, res, next) {
 
     try {
       const userRes = await db.query(
-        'SELECT id, role, phone_verified, email_verified FROM users WHERE id = $1 OR (email IS NOT NULL AND LOWER(email) = LOWER($2))',
-        [decodedUser.id, decodedUser.email || '']
+        'SELECT id, role, is_disabled, approval_status, phone_verified, email_verified FROM users WHERE id = $1',
+        [decodedUser.id]
       );
+
+      // If user does not exist in database (e.g. deleted by admin)
       if (userRes.rows.length === 0) {
-        req.user = decodedUser;
-        return next();
+        return res.status(401).json({
+          error: 'Your account has been deleted from the system. You have been logged out.',
+          code: 'ACCOUNT_DELETED'
+        });
       }
 
       const dbUser = userRes.rows[0];
-      const isAdmin = dbUser.role === 'admin' || decodedUser.role === 'admin';
-      if (!isAdmin && dbUser.phone_verified === false) {
-        return res.status(403).json({
-          error: 'Mobile number not verified',
-          code: 'VERIFICATION_REQUIRED',
-          step: 'mobile',
-          email: decodedUser.email,
-          phone: decodedUser.phone
+
+      // If account is disabled or suspended by admin
+      if (dbUser.is_disabled === true || dbUser.approval_status === 'suspended' || dbUser.approval_status === 'rejected') {
+        return res.status(401).json({
+          error: 'Your account has been suspended or deactivated by administration. You have been logged out.',
+          code: 'ACCOUNT_SUSPENDED'
         });
       }
 
@@ -68,7 +70,6 @@ function authenticateToken(req, res, next) {
       next();
     } catch (dbErr) {
       console.error('[Auth Middleware] Verification check warning:', dbErr.message);
-      // Graceful fallback to token payload to prevent 500 auth errors
       req.user = decodedUser;
       next();
     }

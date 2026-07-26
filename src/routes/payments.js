@@ -18,11 +18,17 @@ function getCleanEnv(val) {
   return val;
 }
 
-async function getRazorpayInstance() {
+async function getRazorpayDetails() {
   const configService = require('../services/SystemConfigService');
   const keyId = getCleanEnv(process.env.RAZORPAY_KEY_ID) || await configService.getSetting('razorpay_key_id', '');
   const keySecret = getCleanEnv(process.env.RAZORPAY_KEY_SECRET) || await configService.getSetting('razorpay_key_secret', '');
-  return new Razorpay({ key_id: keyId, key_secret: keySecret });
+  const hasValidKeys = !!(keyId && keySecret && keyId.length > 5 && keySecret.length > 5);
+  return {
+    keyId,
+    keySecret,
+    hasValidKeys,
+    instance: hasValidKeys ? new Razorpay({ key_id: keyId, key_secret: keySecret }) : null
+  };
 }
 
 // ── Create Razorpay Order ─────────────────────────────────────
@@ -96,31 +102,43 @@ router.post('/create-order', async (req, res) => {
     const teacherShare = (amount * teacherPct) / 100;
     const platformShare = (amount * platformPct) / 100;
 
-    const razorpay = await getRazorpayInstance();
-    const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // paise
-      currency: 'INR',
-      receipt: `speaxa_${Date.now()}`,
-    });
+    const { keyId, instance: razorpay, hasValidKeys } = await getRazorpayDetails();
+    const paymentId = generateUID('pay');
+
+    let order = null;
+    if (hasValidKeys && razorpay) {
+      try {
+        order = await razorpay.orders.create({
+          amount: Math.round(amount * 100), // paise
+          currency: 'INR',
+          receipt: `speaxa_${Date.now()}`
+        });
+      } catch (rErr) {
+        console.warn('[Razorpay Order Creation API Warning]:', rErr.message);
+      }
+    }
+
+    const orderId = order ? order.id : `order_spx_${Date.now()}`;
 
     // Create pending payment record
-    const paymentId = generateUID('pay');
     await db.query(`
       INSERT INTO payments (id, razorpay_order_id, student_id, batch_id, course_id, teacher_id,
         amount, platform_share, teacher_share, commission_type, coupon_code, discount_amount,
         status, billing_name, billing_email, billing_phone, referral_teacher_id)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending',$13,$14,$15,$16)
-    `, [paymentId, order.id, req.user.id, batchId, b.course_id, b.teacher_id,
+    `, [paymentId, orderId, req.user.id, batchId, b.course_id, b.teacher_id || null,
         amount, platformShare, teacherShare, commissionType, couponCodeUsed, discountAmount,
-        req.user.name, req.user.email, req.user.phone, referralTeacherId]);
+        req.user.name || 'Student', req.user.email || '', req.user.phone || '', referralTeacherId]);
 
     res.json({
-      order_id: order.id,
+      key_id: keyId || '',
+      order_id: orderId,
       amount: Math.round(amount * 100),
       currency: 'INR',
       payment_id: paymentId,
+      is_fallback: !order,
       discount_applied: discountAmount,
-      teacher_share: teacherShare,
+      teacher_share: teacherShare
     });
   } catch (err) {
     console.error('[Payment] Order creation error:', err.message);

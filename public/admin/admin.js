@@ -3229,6 +3229,28 @@ async function renderSettingsGeneral() {
                   <label class="spx-label text-dark">${f.label}</label>
                   <input class="form-control spx-input" type="${f.type}" id="setting_${f.key}" value="${settings[f.key] || ''}">
                 </div>`).join('')}
+
+              <div class="mb-3 p-3 rounded-3" style="background: rgba(13, 148, 136, 0.05); border: 1px solid rgba(13, 148, 136, 0.2);">
+                <div class="fw-bold text-dark mb-2 small"><i class="far fa-clock me-1 text-teal"></i> Global Time System Settings</div>
+                <div class="mb-2">
+                  <label class="spx-label text-dark small">Global Time Zone</label>
+                  <select class="form-select spx-input form-select-sm" id="setting_system_timezone">
+                    <option value="Asia/Kolkata" ${settings.system_timezone === 'Asia/Kolkata' || !settings.system_timezone ? 'selected' : ''}>Asia/Kolkata (IST - India +05:30)</option>
+                    <option value="UTC" ${settings.system_timezone === 'UTC' ? 'selected' : ''}>UTC (Coordinated Universal Time)</option>
+                    <option value="America/New_York" ${settings.system_timezone === 'America/New_York' ? 'selected' : ''}>America/New_York (EST/EDT)</option>
+                    <option value="Europe/London" ${settings.system_timezone === 'Europe/London' ? 'selected' : ''}>Europe/London (GMT/BST)</option>
+                    <option value="Asia/Dubai" ${settings.system_timezone === 'Asia/Dubai' ? 'selected' : ''}>Asia/Dubai (GST +04:00)</option>
+                    <option value="Asia/Singapore" ${settings.system_timezone === 'Asia/Singapore' ? 'selected' : ''}>Asia/Singapore (SGT +08:00)</option>
+                  </select>
+                </div>
+                <div class="mb-1">
+                  <label class="spx-label text-dark small">Time Display Format</label>
+                  <select class="form-select spx-input form-select-sm" id="setting_system_time_format">
+                    <option value="12-hour" selected>12-Hour System (hh:mm AM/PM — Active Default)</option>
+                  </select>
+                </div>
+              </div>
+
               <button type="submit" class="btn btn-spx w-100">Save Platform Settings</button>
             </form>
           </div>
@@ -3729,10 +3751,10 @@ async function loadOtpAuditLogs() {
 
 async function saveSettings(e) {
   e.preventDefault();
-  const keys = ['platform_name', 'logo_text', 'support_email', 'support_phone', 'support_hours', 'announcement', 'otp_expiry_minutes', 'max_batch_capacity'];
+  const keys = ['platform_name', 'logo_text', 'support_email', 'support_phone', 'support_hours', 'announcement', 'otp_expiry_minutes', 'max_batch_capacity', 'system_timezone', 'system_time_format'];
   const body = {};
   keys.forEach(k => { body[k] = document.getElementById(`setting_${k}`)?.value || ''; });
-  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'Settings saved'); }
+  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'Platform & Time Settings saved'); }
   catch (err) { showToast(err.message, 'error'); }
 }
 

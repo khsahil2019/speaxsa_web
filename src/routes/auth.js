@@ -22,53 +22,72 @@ router.post('/register', async (req, res) => {
     }
 
     // Role-based Email and Phone uniqueness validation
-    const cleanPhone = phone.replace(/^\+91/, '').replace(/^91/, '').trim();
-    const formattedPhone = phone.startsWith('+') ? phone : '+91' + cleanPhone;
+    // Role-based Email and Phone uniqueness validation (Primary Email & Primary Phone only)
+    const cleanPhone = phone.replace(/^\+91/, '').replace(/^91/, '').trim().replace(/[^0-9]/g, '');
+    const formattedPhone = '+91' + cleanPhone;
 
     if (role === 'teacher') {
-      const emailCheck = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(alt_email) = LOWER($1)', [email]);
+      const emailCheck = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
       if (emailCheck.rows.length > 0) {
         return res.status(400).json({ error: 'This email address is already registered.' });
       }
-      const phoneCheck = await db.query('SELECT id FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2', [formattedPhone, cleanPhone]);
+      const phoneCheck = await db.query(
+        "SELECT id FROM users WHERE phone = $1 OR phone = $2 OR RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $3",
+        [formattedPhone, cleanPhone, cleanPhone]
+      );
       if (phoneCheck.rows.length > 0) {
         return res.status(400).json({ error: 'This mobile number is already registered.' });
       }
     } else if (role === 'student') {
       // Check if email or phone is linked to a non-student account (teacher or parent)
-      const nonStudentEmail = await db.query("SELECT id, role FROM users WHERE (LOWER(email) = LOWER($1) OR LOWER(alt_email) = LOWER($1)) AND role != 'student'", [email]);
+      const nonStudentEmail = await db.query(
+        "SELECT id, role FROM users WHERE LOWER(email) = LOWER($1) AND role != 'student'",
+        [email.trim()]
+      );
       if (nonStudentEmail.rows.length > 0) {
         return res.status(400).json({ error: `This email belongs to a ${nonStudentEmail.rows[0].role} account and cannot be shared.` });
       }
-      const nonStudentPhone = await db.query("SELECT id, role FROM users WHERE (phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2) AND role != 'student'", [formattedPhone, cleanPhone]);
+      const nonStudentPhone = await db.query(
+        "SELECT id, role FROM users WHERE (phone = $1 OR phone = $2 OR RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $3) AND role != 'student'",
+        [formattedPhone, cleanPhone, cleanPhone]
+      );
       if (nonStudentPhone.rows.length > 0) {
         return res.status(400).json({ error: `This mobile number belongs to a ${nonStudentPhone.rows[0].role} account and cannot be shared.` });
       }
 
-      // Check student limits (max 2 student accounts per email, and max 2 student accounts per phone)
-      const emailCountRes = await db.query("SELECT COUNT(*) as count FROM users WHERE (LOWER(email) = LOWER($1) OR LOWER(alt_email) = LOWER($1)) AND role = 'student'", [email]);
+      // Check student limits (max 2 student accounts per primary email, and max 2 student accounts per primary phone)
+      const emailCountRes = await db.query(
+        "SELECT COUNT(*) as count FROM users WHERE LOWER(email) = LOWER($1) AND role = 'student'",
+        [email.trim()]
+      );
       if (parseInt(emailCountRes.rows[0].count || 0) >= 2) {
         return res.status(400).json({ error: 'This email is already linked to the maximum limit of 2 student accounts.' });
       }
-      const phoneCountRes = await db.query("SELECT COUNT(*) as count FROM users WHERE (phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2) AND role = 'student'", [formattedPhone, cleanPhone]);
+      const phoneCountRes = await db.query(
+        "SELECT COUNT(*) as count FROM users WHERE (phone = $1 OR phone = $2 OR RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $3) AND role = 'student'",
+        [formattedPhone, cleanPhone, cleanPhone]
+      );
       if (parseInt(phoneCountRes.rows[0].count || 0) >= 2) {
         return res.status(400).json({ error: 'This mobile number is already linked to the maximum limit of 2 student accounts.' });
       }
     } else {
       // Default checks for parents or other roles
-      const emailCheck = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(alt_email) = LOWER($1)', [email]);
+      const emailCheck = await db.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
       if (emailCheck.rows.length > 0) {
         return res.status(400).json({ error: 'This email address is already registered.' });
       }
-      const phoneCheck = await db.query('SELECT id FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2', [formattedPhone, cleanPhone]);
+      const phoneCheck = await db.query(
+        "SELECT id FROM users WHERE phone = $1 OR phone = $2 OR RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $3",
+        [formattedPhone, cleanPhone, cleanPhone]
+      );
       if (phoneCheck.rows.length > 0) {
         return res.status(400).json({ error: 'This mobile number is already registered.' });
       }
     }
 
     // Registration OTP Verification (Managed via Admin Settings)
-    const requireOtp = await SystemConfigService.getSetting('require_registration_otp', true);
-    const requireOtpBool = (String(requireOtp) === 'true' || requireOtp === true) && role !== 'student';
+    const requireOtp = await SystemConfigService.getSetting('require_registration_otp', false);
+    const requireOtpBool = (String(requireOtp) === 'true' || requireOtp === true);
 
     let { otp, emailOtp } = req.body;
     const verificationOtp = emailOtp || otp;
@@ -164,7 +183,8 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    const isVerifiedOnInit = requireOtpBool ? true : false;
+    // Newly registered accounts that pass validation (or OTP verification) are marked fully verified
+    const isVerifiedOnInit = true;
 
     // Self-healing schema check for production table
     try {
@@ -174,8 +194,8 @@ router.post('/register', async (req, res) => {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(50);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(100);
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT TRUE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS qualification VARCHAR(255);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INT DEFAULT 0;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS subject_expertise VARCHAR(255);
@@ -201,7 +221,7 @@ router.post('/register', async (req, res) => {
       subject_expertise || null, languages || null, address || null, board || null,
       grade || null, studentCode, referralCode, alt_email || null, mobile_number || null,
       typeof social_links === 'object' ? JSON.stringify(social_links) : (social_links || '{}'),
-      referredById, isVerifiedOnInit, false
+      referredById, true, false
     ]);
 
     // Create teacher SOP entry if teacher
@@ -281,7 +301,7 @@ router.post('/login', async (req, res) => {
       queryText = 'SELECT * FROM users WHERE LOWER(email) = LOWER($1)';
       queryParams = [identifier];
     } else {
-      queryText = 'SELECT * FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2 OR phone = $3 OR mobile_number = $3 OR student_code = $1';
+      queryText = 'SELECT * FROM users WHERE phone = $1 OR phone = $2 OR phone = $3 OR student_code = $1';
       queryParams = [identifier, clean10, formattedPhone];
     }
 
@@ -431,7 +451,7 @@ router.post('/verify-otp', async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'User account not found for verification.' });
     const user = result.rows[0];
 
-    if (purpose === 'verify_mobile' || purpose === 'register_email' || purpose === 'register') {
+    if (purpose === 'verify_mobile' || purpose === 'register_email' || purpose === 'register' || purpose === 'login') {
       await db.query('UPDATE users SET phone_verified = true, updated_at = NOW() WHERE id = $1', [user.id]);
 
       try {
@@ -450,14 +470,14 @@ router.post('/verify-otp', async (req, res) => {
       );
 
       return res.json({
-        message: 'Mobile number verified successfully!',
+        message: 'Mobile number verified successfully! A verification link has been sent to your email.',
         status: 'verified',
         token,
         user: sanitizeUser(updatedUser),
         email: updatedUser.email,
         phone: updatedUser.phone,
         phone_verified: true,
-        email_verified: false
+        email_verified: !!updatedUser.email_verified
       });
     }
 
@@ -1023,7 +1043,7 @@ router.get('/verification-status', async (req, res) => {
       const clean10 = digits.length >= 10 ? digits.slice(-10) : digits;
       const formatted = '+91' + clean10;
       userRes = await db.query(
-        'SELECT id, email, phone, phone_verified, email_verified, name, role FROM users WHERE phone = $1 OR mobile_number = $1 OR phone = $2 OR mobile_number = $2 OR phone = $3 OR mobile_number = $3',
+        'SELECT id, email, phone, phone_verified, email_verified, name, role FROM users WHERE phone = $1 OR phone = $2 OR phone = $3',
         [cleanIdent, clean10, formatted]
       );
     }
@@ -1173,7 +1193,7 @@ router.post('/verify-mobile-otp', async (req, res) => {
     try {
       await client.query('BEGIN');
       await client.query('UPDATE otp_tokens SET used = true WHERE id = $1', [otpToken.id]);
-      await client.query('UPDATE users SET phone_verified = true, updated_at = NOW() WHERE id = $1', [user.id]);
+      await client.query('UPDATE users SET phone_verified = true, email_verified = true, updated_at = NOW() WHERE id = $1', [user.id]);
       await client.query('COMMIT');
     } catch (tErr) {
       await client.query('ROLLBACK').catch(() => { });
@@ -1182,7 +1202,7 @@ router.post('/verify-mobile-otp', async (req, res) => {
       client.release();
     }
 
-    // Automatically send email verification link
+    // Automatically send instant confirmation email
     try {
       await sendEmailVerificationLink(user.id, req);
     } catch (e) {
@@ -1190,10 +1210,12 @@ router.post('/verify-mobile-otp', async (req, res) => {
     }
 
     res.json({
-      message: 'Mobile number verified successfully. A verification link has been sent to your email.',
-      step: 'email',
+      message: 'Account verification completed successfully. Confirmation email sent.',
+      step: 'completed',
       email: user.email,
-      phone: user.phone
+      phone: user.phone,
+      phone_verified: true,
+      email_verified: true
     });
   } catch (err) {
     await db.query('ROLLBACK');
@@ -1217,7 +1239,7 @@ router.post('/send-email-link', async (req, res) => {
     }
     const user = userRes.rows[0];
 
-    // Rate-limit check: No more than 1 link request per 60 seconds
+    // Rate-limit check: No more than 1 link request per 300 seconds (5 minutes)
     const lastTokenRes = await db.query(
       `SELECT created_at FROM email_verification_tokens 
        WHERE user_id = $1 
@@ -1227,9 +1249,12 @@ router.post('/send-email-link', async (req, res) => {
 
     if (lastTokenRes.rows.length > 0) {
       const elapsedSeconds = Math.floor((Date.now() - new Date(lastTokenRes.rows[0].created_at).getTime()) / 1000);
-      if (elapsedSeconds < 60) {
+      if (elapsedSeconds < 300) {
+        const remainingSec = 300 - elapsedSeconds;
+        const mins = Math.floor(remainingSec / 60);
+        const secs = remainingSec % 60;
         return res.status(429).json({
-          error: `Please wait ${60 - elapsedSeconds} seconds before requesting a new verification email.`
+          error: `Please wait ${mins}m ${secs}s before requesting a new verification email.`
         });
       }
     }

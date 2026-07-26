@@ -311,8 +311,28 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: true
   });
+
+  let pdfBuffer = null;
+  try {
+    const { generatePaymentReceiptPDFBuffer } = require('./PaymentReceiptPDFService');
+    pdfBuffer = await generatePaymentReceiptPDFBuffer({
+      studentName,
+      studentEmail,
+      courseTitle,
+      batchName,
+      amountPaid,
+      originalFees,
+      discountAmount,
+      couponCode,
+      paymentId,
+      date
+    });
+  } catch (pdfErr) {
+    console.error('[Payment Receipt PDF Generation Warning]:', pdfErr.message);
+  }
 
   let couponLineHtml = '';
   if (couponCode && discountAmount > 0) {
@@ -325,8 +345,8 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
   }
 
   const html = `
-    <div style="font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 540px; margin: 0 auto; color: #334155;">
-      <h3 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Official Payment Receipt & Enrollment Confirmation</h3>
+    <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; color: #334155;">
+      <h3 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Official Payment Receipt & Course Enrollment</h3>
       <p style="color: #475569; font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
         Hi <strong>${studentName || 'Student'}</strong>,<br>
         Thank you for your purchase! Your payment for <strong>${courseTitle} (${batchName})</strong> has been successfully processed and verified.
@@ -372,10 +392,18 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
       </div>
 
       <div style="background: rgba(13, 122, 109, 0.08); border: 1px solid rgba(13, 122, 109, 0.25); border-radius: 10px; padding: 14px; text-align: center; font-size: 13px; color: #0d7a6d; font-weight: 600;">
-        🎓 Access live classes, study materials, and assignments directly from your <strong>SPEAXA Student Dashboard</strong>!
+        📎 Your official tax invoice & receipt PDF (<strong>SPEAXA_Payment_Receipt.pdf</strong>) is attached to this email!
       </div>
     </div>
   `;
+
+  const attachments = pdfBuffer ? [
+    {
+      filename: `SPEAXA_Payment_Receipt_${(paymentId || 'Slip').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    }
+  ] : undefined;
 
   return sendEmail({
     to: studentEmail,
@@ -383,7 +411,8 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
     html,
     type: 'notification',
     headerTitle: 'Official Payment Receipt',
-    badgeLabel: 'SPEAXA Billing'
+    badgeLabel: 'SPEAXA Billing',
+    attachments
   });
 }
 

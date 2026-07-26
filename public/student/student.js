@@ -49,9 +49,21 @@ function showToast(msg, type = 'success') {
 }
 
 async function parseFetchResponse(res) {
-  if (res.status === 401) { logout(); throw new Error('Session expired'); }
   const contentType = res.headers.get("content-type");
   const isJson = contentType && contentType.indexOf("application/json") !== -1;
+
+  if (res.status === 401 || res.status === 403) {
+    let errMsg = 'Session expired or account deactivated. Logging out...';
+    if (isJson) {
+      try {
+        const errData = await res.clone().json();
+        if (errData.error) errMsg = errData.error;
+      } catch(e) {}
+    }
+    showToast(errMsg, 'error');
+    setTimeout(() => { logout(); }, 1200);
+    throw new Error(errMsg);
+  }
   
   if (!res.ok) {
     if (isJson) {
@@ -1377,26 +1389,30 @@ function showCheckout(courseId, batchId, batchName, fees) {
         </div>
 
         <div class="col-md-7 ps-md-4">
-          <h6 class="fw-bold mb-3" style="color:var(--text-primary);">Billing & Payment Details</h6>
+          <h6 class="fw-bold mb-3" style="color:var(--text-primary);">Billing & Account Details</h6>
           <form onsubmit="processMockEnrollment(event, '${courseId}', '${batchId}', ${fees})">
-            <div class="mb-3">
-              <label class="spx-label">Full Name</label>
-              <input type="text" class="form-control spx-input" id="billName" value="${studentUser.name || ''}" required>
+            
+            <div class="p-3 mb-3 rounded-3" style="background: rgba(13, 122, 109, 0.06); border: 1.5px solid rgba(13, 122, 109, 0.2);">
+              <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-sm" style="width:44px; height:44px; background:linear-gradient(135deg, #0d7a6d, #0f766e); font-size:17px;">
+                  ${escapeHtml((studentUser?.name || 'S').charAt(0).toUpperCase())}
+                </div>
+                <div>
+                  <div class="fw-bold text-dark" style="font-size: 0.95rem;">${escapeHtml(studentUser?.name || 'Student')}</div>
+                  <div class="small text-muted">${escapeHtml(studentUser?.email || '')} ${studentUser?.phone ? '• ' + escapeHtml(studentUser.phone) : ''}</div>
+                  <div class="mt-1"><span class="badge bg-success" style="font-size: 10px; font-weight: 600;"><i class="fas fa-user-check me-1"></i> Verified Student Account</span></div>
+                </div>
+              </div>
             </div>
+
+            <input type="hidden" id="billName" value="${escapeHtml(studentUser?.name || '')}">
+            <input type="hidden" id="billEmail" value="${escapeHtml(studentUser?.email || '')}">
+            <input type="hidden" id="billPhone" value="${escapeHtml(studentUser?.phone || '')}">
+
             <div class="mb-3">
-              <label class="spx-label">Email Address</label>
-              <input type="email" class="form-control spx-input" id="billEmail" value="${studentUser.email || ''}" required>
-            </div>
-            <div class="mb-3">
-              <label class="spx-label">Phone Number</label>
-              <input type="text" class="form-control spx-input" id="billPhone" value="${studentUser.phone || ''}" required>
-            </div>
-            <div class="mb-3">
-              <label class="spx-label">Payment Method</label>
+              <label class="spx-label">Payment Gateway</label>
               <select class="form-select spx-input" id="billMethod" required style="background:#0f172a; color:#fff;">
-                <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
-                <option value="card">Credit / Debit Card</option>
-                <option value="netbanking">Net Banking</option>
+                <option value="upi">Razorpay Gateway (UPI / Cards / NetBanking)</option>
               </select>
             </div>
             
@@ -1475,69 +1491,103 @@ async function processMockEnrollment(event, courseId, batchId, fees) {
   const btn = document.getElementById('btnPay');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Verifying & Processing Payment...`;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Initializing Payment Gateway...`;
   }
 
   try {
-    const paymentId = `pay_spx_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     const couponCode = window._appliedCoupon ? window._appliedCoupon.code : null;
     const billEmail = (document.getElementById('billEmail')?.value || '').trim();
-    
-    const response = await api(`/student/batches/${batchId}/enroll`, {
+    const billName = (document.getElementById('billName')?.value || '').trim();
+    const billPhone = (document.getElementById('billPhone')?.value || '').trim();
+
+    // 1. Create Razorpay order via backend
+    const orderData = await api('/payments/create-order', {
       method: 'POST',
-      body: JSON.stringify({ paymentId, couponCode })
+      body: JSON.stringify({ batchId, coupon_code: couponCode })
     });
 
-    const bodyEl = document.getElementById('courseDetailsBody');
-    if (bodyEl) {
-      bodyEl.innerHTML = `
-        <div class="text-center py-4 px-3">
-          <div class="display-3 text-success mb-3 animate__animated animate__bounceIn">
-            <i class="fas fa-check-circle" style="color: #10b981;"></i>
-          </div>
-          <h4 class="fw-bold mb-2" style="color:var(--text-primary);">Payment Verified & Enrolled! 🎉</h4>
-          <p class="text-muted small mb-3">
-            Congratulations! You have successfully enrolled in this course batch.<br>
-            Transaction Reference: <strong class="text-primary font-monospace">${paymentId}</strong>
-          </p>
-          
-          <div class="alert alert-success border-0 text-start p-3 mb-4 rounded-3" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981 !important;">
-            <div class="d-flex align-items-center gap-2 mb-1">
-              <i class="fas fa-envelope-open-text text-success fs-5"></i>
-              <strong class="text-dark">Official Payment Receipt Sent!</strong>
+    const completeVerification = async (verifyPayload) => {
+      if (btn) btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Verifying & Processing Payment...`;
+      const verifyRes = await api('/payments/verify', {
+        method: 'POST',
+        body: JSON.stringify(verifyPayload)
+      });
+
+      const bodyEl = document.getElementById('courseDetailsBody');
+      if (bodyEl) {
+        bodyEl.innerHTML = `
+          <div class="text-center py-4 px-3">
+            <div class="display-3 text-success mb-3 animate__animated animate__bounceIn">
+              <i class="fas fa-check-circle" style="color: #10b981;"></i>
             </div>
-            <p class="small text-muted mb-0">
-              An official SPEAXA payment receipt & tax invoice has been sent to <strong>${billEmail || 'your email'}</strong> and added to your Payments & Receipts portal.
+            <h4 class="fw-bold mb-2" style="color:var(--text-primary);">Payment Verified & Enrolled! 🎉</h4>
+            <p class="text-muted small mb-3">
+              Congratulations! You have successfully enrolled in this course batch.<br>
+              Transaction Reference: <strong class="text-primary font-monospace">${orderData.payment_id}</strong>
             </p>
+            
+            <div class="alert alert-success border-0 text-start p-3 mb-4 rounded-3" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981 !important;">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="fas fa-envelope-open-text text-success fs-5"></i>
+                <strong class="text-dark">Official Payment Receipt Sent!</strong>
+              </div>
+              <p class="small text-muted mb-0">
+                An official SPEAXA payment receipt & tax invoice has been sent to <strong>${billEmail || 'your email'}</strong> and added to your Payments & Receipts portal.
+              </p>
+            </div>
+
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+              <button class="btn btn-spx px-4 py-2 fw-bold" data-bs-dismiss="modal" onclick="navigateTo('payments')">
+                View Receipt
+              </button>
+              <button class="btn btn-outline-secondary px-4 py-2 fw-bold" data-bs-dismiss="modal" onclick="navigateTo('batches')">
+                Go to My Batches
+              </button>
+            </div>
           </div>
-
-          <div class="d-flex flex-wrap justify-content-center gap-3">
-            <button class="btn btn-spx px-4 py-2 fw-bold" data-bs-dismiss="modal" onclick="navigateTo('payments')">
-              <i class="fas fa-file-invoice me-1.5"></i> View & Print Receipt
-            </button>
-            <button class="btn btn-outline-secondary px-4 py-2 fw-bold" data-bs-dismiss="modal" onclick="navigateTo('mybatches')">
-              <i class="fas fa-layer-group me-1.5"></i> Go to My Batches
-            </button>
-          </div>
-        </div>
-      `;
-    }
-
-    showToast('Payment Verified! Redirecting to Payment Receipts...', 'success');
-    window._appliedCoupon = null;
-
-    // Auto-navigate to payments page after 1.8 seconds
-    setTimeout(() => {
-      const modalEl = document.getElementById('courseModal');
-      if (modalEl) {
-        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-        if (modalInstance) modalInstance.hide();
+        `;
       }
-      navigateTo('payments');
-    }, 1800);
+      showToast('Payment Successful! Course Batch Enrolled', 'success');
+      if (typeof loadStudentBatches === 'function') loadStudentBatches();
+    };
 
-  } catch(e) {
-    showToast(e.message || 'Payment processing failed', 'error');
+    // If Razorpay Checkout SDK is loaded and order has key_id
+    if (window.Razorpay && orderData.key_id && !orderData.is_fallback) {
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency || 'INR',
+        name: 'SPEAXA',
+        description: 'Course Batch Enrollment',
+        order_id: orderData.order_id,
+        handler: async function (response) {
+          try {
+            await completeVerification({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              payment_id: orderData.payment_id
+            });
+          } catch (err) {
+            showToast(`Verification failed: ${err.message}`, 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Retry Payment'; }
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Complete Payment & Enroll'; }
+          }
+        },
+        prefill: { name: billName, email: billEmail, contact: billPhone },
+        theme: { color: "#0d7a6d" }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      await completeVerification({ payment_id: orderData.payment_id });
+    }
+  } catch (err) {
+    showToast(`Payment error: ${err.message}`, 'error');
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = `<i class="fas fa-shield-alt me-1"></i> Pay & Enroll Now`;

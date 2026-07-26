@@ -54,9 +54,21 @@ function showToast(msg, type = 'success') {
 }
 
 async function parseFetchResponse(res) {
-  if (res.status === 401) { logout(); throw new Error('Session expired'); }
   const contentType = res.headers.get("content-type");
   const isJson = contentType && contentType.indexOf("application/json") !== -1;
+
+  if (res.status === 401 || res.status === 403) {
+    let errMsg = 'Session expired or account deactivated. Logging out...';
+    if (isJson) {
+      try {
+        const errData = await res.clone().json();
+        if (errData.error) errMsg = errData.error;
+      } catch(e) {}
+    }
+    showToast(errMsg, 'error');
+    setTimeout(() => { logout(); }, 1200);
+    throw new Error(errMsg);
+  }
 
   if (!res.ok) {
     if (res.status === 413) {
@@ -4514,8 +4526,8 @@ async function renderEarnings() {
                 </thead>
                 <tbody>
                   ${passbookRows.map(r => {
-                    const balVal = r.running_balance !== undefined ? r.running_balance : (r.balance !== undefined ? r.balance : (r.runningBalance !== undefined ? r.runningBalance : 0));
-                    return `
+      const balVal = r.running_balance !== undefined ? r.running_balance : (r.balance !== undefined ? r.balance : (r.runningBalance !== undefined ? r.runningBalance : 0));
+      return `
                     <tr style="background-color: #ffffff;">
                       <td class="text-muted small" style="white-space:nowrap; padding: 12px 16px;">${fmtDate(r.created_at)}</td>
                       <td style="padding: 12px 16px;"><strong class="text-dark">${escapeHtml(r.description || 'Earnings Transaction')}</strong></td>
@@ -4753,7 +4765,8 @@ async function renderLevel() {
                 <!-- Card 3: Revenue Share -->
                 <div class="p-3 bg-white rounded-3 shadow-sm border text-center" style="min-width: 110px; border-color: #cbd5e1 !important;">
                   <div class="small text-muted fw-bold" style="font-size: 0.72rem;">Revenue Share</div>
-                  <strong class="fs-4 text-dark d-block mt-1">50%</strong>
+                  <strong class="fs-4 text-dark d-blo
+                  ck mt-1">50%</strong>
                 </div>
               </div>
 

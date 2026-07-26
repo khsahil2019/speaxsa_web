@@ -987,42 +987,77 @@ async function startPaymentFlow(token) {
   document.getElementById('modalStepPayment').style.display = 'block';
   
   try {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const paymentId = `pay_mock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    const res = await fetch(`/api/student/batches/${activeBatchId}/enroll`, {
+    const createRes = await fetch('/api/payments/create-order', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ paymentId })
+      body: JSON.stringify({ batchId: activeBatchId })
     });
     
-    const enrollData = await res.json();
-    if (!res.ok) {
-      const errMessage = enrollData.error || 'Enrollment failed';
-      if (res.status === 401 || res.status === 403 || errMessage.toLowerCase().includes('token') || errMessage.toLowerCase().includes('unauthorized')) {
-        localStorage.removeItem('student_token');
-        localStorage.removeItem('token');
-        localStorage.removeItem('student_user');
-        localStorage.removeItem('user');
-        
-        document.getElementById('modalStepPayment').style.display = 'none';
-        document.getElementById('modalStepCheckout').style.display = 'block';
-        showWebsiteAlert('Your session has expired. Please enter your details below to complete your course registration.', 'Session Expired');
-        return;
-      }
-      throw new Error(errMessage);
-    }
+    const orderData = await createRes.json();
+    if (!createRes.ok) throw new Error(orderData.error || 'Failed to initialize payment order');
 
     const email = document.getElementById('checkoutEmail')?.value || '';
-    if (document.getElementById('successEmail')) document.getElementById('successEmail').textContent = email || 'your account email';
-    if (document.getElementById('successPassword') && document.getElementById('checkoutPassword')) {
-      document.getElementById('successPassword').textContent = document.getElementById('checkoutPassword').value || 'Speaxa@123';
-    }
+    const name = document.getElementById('checkoutName')?.value || '';
+    const phone = document.getElementById('checkoutPhone')?.value || '';
 
-    showSuccessScreenAndRedirect(email);
+    const finishEnrollment = async (verifyPayload) => {
+      const vRes = await fetch('/api/payments/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(verifyPayload)
+      });
+      const vData = await vRes.json();
+      if (!vRes.ok) throw new Error(vData.error || 'Payment verification failed');
+
+      if (document.getElementById('successEmail')) document.getElementById('successEmail').textContent = email || 'your account email';
+      if (document.getElementById('successPassword') && document.getElementById('checkoutPassword')) {
+        document.getElementById('successPassword').textContent = document.getElementById('checkoutPassword').value || 'Speaxa@123';
+      }
+      showSuccessScreenAndRedirect(email);
+    };
+
+    if (window.Razorpay && orderData.key_id && !orderData.is_fallback) {
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency || 'INR',
+        name: 'SPEAXA Digital Bank & LMS',
+        description: 'Course Batch Enrollment',
+        order_id: orderData.order_id,
+        handler: async function (response) {
+          try {
+            await finishEnrollment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              payment_id: orderData.payment_id
+            });
+          } catch (e) {
+            document.getElementById('modalStepPayment').style.display = 'none';
+            document.getElementById('modalStepCheckout').style.display = 'block';
+            showWebsiteAlert(`Verification Error: ${e.message}`, 'Payment Error');
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            document.getElementById('modalStepPayment').style.display = 'none';
+            document.getElementById('modalStepCheckout').style.display = 'block';
+          }
+        },
+        prefill: { name, email, contact: phone },
+        theme: { color: "#0d7a6d" }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } else {
+      await finishEnrollment({ payment_id: orderData.payment_id });
+    }
     
   } catch (err) {
     document.getElementById('modalStepPayment').style.display = 'none';
