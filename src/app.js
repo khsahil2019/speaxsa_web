@@ -682,6 +682,8 @@ app.use('/utils-autosave.js', (req, res) => res.sendFile(path.join(__dirname, '.
 app.use('/firebase-notifications.js', (req, res) => res.sendFile(path.join(__dirname, '../public/firebase-notifications.js')));
 app.use('/firebase-messaging-sw.js', (req, res) => res.sendFile(path.join(__dirname, '../public/firebase-messaging-sw.js')));
 app.use('/api-center.html', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/api-center.html')));
+app.use('/explanation.html', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/explanation.html')));
+app.use('/explanation', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/explanation.html')));
 app.use(express.static(path.join(__dirname, '../public/landing')));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
