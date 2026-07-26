@@ -11,7 +11,11 @@ node_modules/
 logs/
 
 # Uploads & Temp storage
-uploads/
+uploads/*
+!public/uploads/
+!public/uploads/profiles/
+!public/landing/team/
+!public/images/team/
 scratch/
 .tempmediaStorage/
 

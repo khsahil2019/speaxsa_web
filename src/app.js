@@ -684,6 +684,8 @@ app.use('/firebase-messaging-sw.js', (req, res) => res.sendFile(path.join(__dirn
 app.use('/api-center.html', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/api-center.html')));
 app.use('/explanation.html', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/explanation.html')));
 app.use('/explanation', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/explanation.html')));
+app.use('/landing/team', express.static(path.join(__dirname, '../public/landing/team')));
+app.use('/images/team', express.static(path.join(__dirname, '../public/images/team')));
 app.use(express.static(path.join(__dirname, '../public/landing')));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
