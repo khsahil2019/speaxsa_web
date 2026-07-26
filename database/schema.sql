@@ -5,6 +5,7 @@
 -- ============================================================
 
 -- Drop all tables in reverse dependency order
+DROP TABLE IF EXISTS security_audit_logs CASCADE;
 DROP TABLE IF EXISTS email_campaigns CASCADE;
 DROP TABLE IF EXISTS email_logs CASCADE;
 DROP TABLE IF EXISTS parent_teacher_chats CASCADE;
@@ -960,4 +961,18 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
   sent_by VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ============================================================
+-- 45. SECURITY AUDIT LOGS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS security_audit_logs (
+  id SERIAL PRIMARY KEY,
+  ip_address VARCHAR(100) NOT NULL,
+  endpoint VARCHAR(255) NOT NULL,
+  user_agent TEXT,
+  status VARCHAR(50) DEFAULT 'blocked',
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_sec_audit_ip ON security_audit_logs (ip_address, created_at DESC);
 

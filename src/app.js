@@ -12,6 +12,7 @@ const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+app.disable('x-powered-by');
 
 // ── Database Self-Healing Migrations ──────────────────────────
 const db = require('./db');
@@ -275,7 +276,7 @@ db.query(`
   CREATE INDEX IF NOT EXISTS idx_courses_status ON courses (status, created_by);
   CREATE INDEX IF NOT EXISTS idx_batches_course_status ON batches (course_id, status);
   CREATE INDEX IF NOT EXISTS idx_batch_students_lookup ON batch_students (student_id, batch_id);
-  CREATE INDEX IF NOT EXISTS idx_live_classes_batch ON live_classes (batch_id, start_time);
+  CREATE INDEX IF NOT EXISTS idx_live_classes_batch ON live_classes (batch_id, class_date, started_at);
   CREATE INDEX IF NOT EXISTS idx_assignments_batch ON assignments (batch_id, due_date);
   CREATE INDEX IF NOT EXISTS idx_payments_student ON payments (student_id, status);
   CREATE INDEX IF NOT EXISTS idx_payments_teacher ON payments (teacher_id, status);
@@ -496,6 +497,17 @@ db.query(`
     mime_type VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT NOW()
   );
+
+  CREATE TABLE IF NOT EXISTS security_audit_logs (
+    id SERIAL PRIMARY KEY,
+    ip_address VARCHAR(100) NOT NULL,
+    endpoint VARCHAR(255) NOT NULL,
+    user_agent TEXT,
+    status VARCHAR(50) DEFAULT 'blocked',
+    reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+  CREATE INDEX IF NOT EXISTS idx_sec_audit_ip ON security_audit_logs (ip_address, created_at DESC);
 `).then(async () => {
   console.log("PostgreSQL: Database self-healing migrations verified/created.");
 
@@ -623,6 +635,34 @@ app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
 
 app.use('/api', globalLimiter);
+
+// ── Global Hacker Scanner & Threat Guard Middleware ────────────
+app.use((req, res, next) => {
+  const url = req.originalUrl.toLowerCase();
+  
+  // Known scanner probes & exploit attempt patterns
+  const maliciousPatterns = [
+    '/.env', '/.git', 'wp-admin', 'wp-login', 'phpmyadmin', 'eval(', 
+    'select%20', 'union%20select', '<script', 'etc/passwd', 'cmd.exe',
+    '/shell', '/config.json', '/.aws', '/.ssh', '/actuator'
+  ];
+
+  const isMalicious = maliciousPatterns.some(pattern => url.includes(pattern));
+  
+  if (isMalicious) {
+    console.warn(`[SECURITY THREAT BLOCKED] IP: ${req.ip} -> Probed URL: ${req.originalUrl}`);
+    db.query(`
+      INSERT INTO security_audit_logs (ip_address, endpoint, user_agent, status, reason)
+      VALUES ($1, $2, $3, 'blocked', 'Malicious URL/Scanner Probe Attempt')
+    `, [req.ip || 'unknown', req.originalUrl.substring(0, 250), req.headers['user-agent'] || '']).catch(() => {});
+    
+    return res.status(403).json({ 
+      error: 'Access Denied: Security Violation Triggered', 
+      code: 'SECURITY_VIOLATION' 
+    });
+  }
+  next();
+});
 
 // ── Body Parsing ──────────────────────────────────────────────
 app.use(express.json({ limit: '5000mb' }));
