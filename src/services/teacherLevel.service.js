@@ -90,7 +90,7 @@ function scoreTolevel(score) {
 
 async function updateTeacherLevel(teacherId, changedBy = null) {
   try {
-    // Calculate cumulative revenue from completed payments + teacher_wallet
+    // 1. Calculate cumulative revenue from completed payments + teacher_wallet
     const revRes = await db.query(`
       SELECT COALESCE(SUM(amount), 0) as total_rev
       FROM payments
@@ -108,25 +108,66 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
       parseFloat(walletRes.rows[0]?.wallet_tot || 0)
     );
 
-    // Query performance slabs ordered by target_revenue ASC
+    // 2. Query performance slabs ordered by target_revenue ASC
     const slabsRes = await db.query(
-      "SELECT slab_name, target_revenue FROM performance_slabs_config ORDER BY target_revenue ASC"
+      "SELECT slab_name, target_revenue, reward_amount, reward_item, grooming_group FROM performance_slabs_config ORDER BY target_revenue ASC"
     );
 
-    let newLevel = 'Junior Teacher';
-    if (slabsRes.rows.length > 0) {
-      for (const slab of slabsRes.rows) {
-        if (cumulativeRevenue >= parseFloat(slab.target_revenue)) {
-          newLevel = slab.slab_name;
+    let highestAchievedLevel = 'Trainee Teacher';
+
+    for (const slab of slabsRes.rows) {
+      const targetRev = parseFloat(slab.target_revenue);
+      const rewardAmt = parseFloat(slab.reward_amount);
+      const slabName = slab.slab_name;
+
+      if (cumulativeRevenue >= targetRev) {
+        highestAchievedLevel = slabName;
+
+        // Check if reward record exists for this slab
+        const rewardCheck = await db.query(
+          "SELECT id, status FROM teacher_rewards WHERE teacher_id = $1 AND slab_name = $2",
+          [teacherId, slabName]
+        );
+
+        let shouldCreditWallet = false;
+        let rewardId = null;
+
+        if (rewardCheck.rows.length === 0) {
+          rewardId = `rwd_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+          await db.query(`
+            INSERT INTO teacher_rewards (id, teacher_id, slab_name, target_revenue, reward_amount, reward_item, status, achieved_at, processed_at, processed_by)
+            VALUES ($1, $2, $3, $4, $5, $6, 'approved', NOW(), NOW(), NULL)
+          `, [rewardId, teacherId, slabName, targetRev, rewardAmt, slab.reward_item]);
+          shouldCreditWallet = true;
+        } else if (rewardCheck.rows[0].status !== 'approved') {
+          rewardId = rewardCheck.rows[0].id;
+          await db.query(`
+            UPDATE teacher_rewards
+            SET status = 'approved', processed_at = NOW(), processed_by = NULL
+            WHERE id = $1
+          `, [rewardId]);
+          shouldCreditWallet = true;
+        }
+
+        // Auto-credit reward amount into teacher_wallet if newly approved & reward > 0
+        if (shouldCreditWallet && rewardAmt > 0) {
+          await db.query(`
+            INSERT INTO teacher_wallet (teacher_id, wallet_balance, total_earnings)
+            VALUES ($1, $2, $2)
+            ON CONFLICT (teacher_id) DO UPDATE
+            SET wallet_balance = teacher_wallet.wallet_balance + EXCLUDED.wallet_balance,
+                total_earnings = teacher_wallet.total_earnings + EXCLUDED.total_earnings
+          `, [teacherId, rewardAmt]);
         }
       }
     }
 
-    const currentRes = await db.query('SELECT teacher_level FROM users WHERE id = $1', [teacherId]);
-    const currentLevel = currentRes.rows[0]?.teacher_level || 'Junior Teacher';
+    const currentRes = await db.query('SELECT teacher_level, name, email FROM users WHERE id = $1', [teacherId]);
+    const teacherUser = currentRes.rows[0];
+    const currentLevel = teacherUser?.teacher_level || 'Trainee Teacher';
 
-    if (newLevel !== currentLevel) {
-      await db.query('UPDATE users SET teacher_level = $1 WHERE id = $2', [newLevel, teacherId]);
+    if (highestAchievedLevel !== currentLevel) {
+      await db.query('UPDATE users SET teacher_level = $1 WHERE id = $2', [highestAchievedLevel, teacherId]);
 
       // Log the level change
       await db.query(`
@@ -135,16 +176,16 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
       `, [
         `lvl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         teacherId,
-        newLevel,
+        highestAchievedLevel,
         currentLevel,
-        changedBy,
+        changedBy || 'system_auto',
         `Auto-promoted by Cumulative Revenue Milestones (Total: ₹${cumulativeRevenue.toLocaleString('en-IN')})`
       ]);
 
       // Issue certificate for tier upgrade
       const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      const certTitle = `${newLevel} Designation Milestone Certificate`;
-      const certDesc = `Awarded for unlocking ${newLevel} Level status on SPEAXA with cumulative course sales revenue of ₹${cumulativeRevenue.toLocaleString('en-IN')}.`;
+      const certTitle = `${highestAchievedLevel} Designation Milestone Certificate`;
+      const certDesc = `Awarded for unlocking ${highestAchievedLevel} Level status on SPEAXA with cumulative course sales revenue of ₹${cumulativeRevenue.toLocaleString('en-IN')}.`;
 
       await db.query(`
         INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description)
@@ -154,13 +195,12 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
 
       // Dispatch Email Notification with PDF Certificate Attachment
       try {
-        const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
-        if (uRes.rows.length > 0 && uRes.rows[0].email) {
+        if (teacherUser && teacherUser.email) {
           const { sendEmail } = require('./EmailService');
           const { generateCertificatePDFBuffer } = require('./CertificatePDFService');
 
           const pdfBuffer = await generateCertificatePDFBuffer({
-            recipientName: uRes.rows[0].name || 'Teacher',
+            recipientName: teacherUser.name || 'Teacher',
             title: certTitle,
             description: certDesc,
             certificateId: certId,
@@ -169,26 +209,27 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
           });
 
           await sendEmail({
-            to: uRes.rows[0].email,
-            subject: `🎓 Congratulations! Designation Upgrade: ${newLevel}`,
+            to: teacherUser.email,
+            subject: `🎉 Congratulations! Performance Reward Unlocked: ${highestAchievedLevel}`,
             type: 'notification',
-            headerTitle: 'Performance Certificate Issued',
-            badgeLabel: `${newLevel} Designation Achieved`,
+            headerTitle: 'Performance Reward & Certificate Issued',
+            badgeLabel: `${highestAchievedLevel} Designation Achieved`,
             html: `
               <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
-                <h2 style="color: #0d7a6d; margin-top: 0;">Congratulations ${uRes.rows[0].name || 'Teacher'}!</h2>
-                <p>We are thrilled to announce that your teacher level has been upgraded to <strong style="color: #0d7a6d; font-size: 16px;">${newLevel}</strong>!</p>
+                <h2 style="color: #0d7a6d; margin-top: 0;">Congratulations ${teacherUser.name || 'Teacher'}!</h2>
+                <p>We are thrilled to announce that your teacher level has been upgraded to <strong style="color: #0d7a6d; font-size: 16px;">${highestAchievedLevel}</strong>!</p>
                 <div style="background: #f8fafc; border-left: 4px solid #0d7a6d; padding: 18px; margin: 20px 0; border-radius: 8px;">
                   <h3 style="margin: 0 0 6px 0; color: #0f172a;">🎓 ${certTitle}</h3>
                   <p style="margin: 0; color: #475569; font-size: 14px;">${certDesc}</p>
+                  <p style="margin: 10px 0 0 0; color: #059669; font-weight: bold;">💰 Performance Reward automatically approved & credited to your Wallet!</p>
                   <div style="margin-top: 10px; font-size: 12px; color: #64748b;">Certificate ID: <code>${certId}</code></div>
                 </div>
-                <p>Your official PDF certificate has been generated and attached to this email. You can also view it anytime from your Teacher Portal under <strong>Certificates</strong>.</p>
+                <p>Your official PDF certificate has been generated and attached to this email. You can also view it anytime from your Teacher Portal under <strong>Certificates & Rewards</strong>.</p>
               </div>
             `,
             attachments: [
               {
-                filename: `SPEAXA_Designation_Certificate_${newLevel.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+                filename: `SPEAXA_Designation_Certificate_${highestAchievedLevel.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
                 content: pdfBuffer,
                 contentType: 'application/pdf'
               }
@@ -199,13 +240,13 @@ async function updateTeacherLevel(teacherId, changedBy = null) {
         console.error('[TeacherLevel] Certificate Email Error:', mailErr.message);
       }
 
-      console.log(`[TeacherLevel] Teacher ${teacherId}: ${currentLevel} → ${newLevel}`);
+      console.log(`[TeacherLevel] Teacher ${teacherId}: ${currentLevel} → ${highestAchievedLevel}`);
     }
 
-    return { teacherId, level: newLevel, cumulativeRevenue, changed: newLevel !== currentLevel };
+    return { teacherId, level: highestAchievedLevel, cumulativeRevenue, changed: highestAchievedLevel !== currentLevel };
   } catch (err) {
     console.error('[TeacherLevel] Auto-update error:', err.message);
-    return { teacherId, level: 'Junior Teacher', cumulativeRevenue: 0, changed: false };
+    return { teacherId, level: 'Trainee Teacher', cumulativeRevenue: 0, changed: false };
   }
 }
 

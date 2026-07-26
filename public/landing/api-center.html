@@ -474,8 +474,10 @@
                   <button class="nav-filter-btn" data-filter="teacher">Teacher Portal <span class="badge bg-secondary rounded-pill" id="badgeTeacher">0</span></button>
                   <button class="nav-filter-btn" data-filter="parent">Parent Portal <span class="badge bg-secondary rounded-pill" id="badgeParent">0</span></button>
                   <button class="nav-filter-btn" data-filter="live-classes">Live Classes <span class="badge bg-secondary rounded-pill" id="badgeLive">0</span></button>
+                  <button class="nav-filter-btn" data-filter="payments">Payments & Billing <span class="badge bg-secondary rounded-pill" id="badgePayments">0</span></button>
                   <button class="nav-filter-btn" data-filter="support">Support Tickets <span class="badge bg-secondary rounded-pill" id="badgeSupport">0</span></button>
                   <button class="nav-filter-btn" data-filter="admin">Admin Portal <span class="badge bg-secondary rounded-pill" id="badgeAdmin">0</span></button>
+                  <button class="nav-filter-btn" data-filter="db-admin">Database Admin <span class="badge bg-secondary rounded-pill" id="badgeDbAdmin">0</span></button>
                 </div>
               </div>
 
@@ -967,112 +969,187 @@
         payload: null
       },
       {
-        id: "teacher-analytics",
-        name: "Teacher Dashboard Analytics",
+        id: "teacher-earnings",
+        name: "Teacher Wallet & Earnings Overview",
         method: "GET",
-        path: "/api/teacher/analytics",
+        path: "/api/teacher/earnings",
         category: "teacher",
         auth: true,
-        desc: "Synthesizes monthly earnings, total active student rosters, and upcoming schedules.",
+        desc: "Fetches total earnings, pending escrow, lifetime paid amounts, available balance, and ledger history.",
         payload: null
       },
       {
-        id: "teacher-batches",
-        name: "Teacher Batches List",
+        id: "teacher-rewards",
+        name: "Teacher Performance Rewards & Slabs",
         method: "GET",
-        path: "/api/teacher/batches",
+        path: "/api/teacher/rewards",
         category: "teacher",
         auth: true,
-        desc: "Queries virtual rooms and batches managed by the current teacher session.",
+        desc: "Retrieves milestone slab status, target progress (e.g. Trainee Teacher ₹0-99k, Junior Teacher ₹100k), unlocked gift items, and rewards checklist.",
         payload: null
       },
       {
-        id: "teacher-notes",
-        name: "Teacher Study Material Repository",
+        id: "teacher-payouts",
+        name: "Teacher Payout Requests & History",
         method: "GET",
-        path: "/api/teacher/notes",
+        path: "/api/teacher/payouts",
         category: "teacher",
         auth: true,
-        desc: "Lists documents, slides, and study notes posted for batches.",
+        desc: "Lists withdrawal requests, payout processing status, and Razorpay Payout transaction IDs.",
         payload: null
       },
       {
-        id: "teacher-level",
-        name: "Teacher Gamification Ranks",
-        method: "GET",
-        path: "/api/teacher/level",
-        category: "teacher",
-        auth: true,
-        desc: "Fetches teacher progress level logs (Bronze, Silver, Gold).",
-        payload: null
-      },
-      {
-        id: "parent-children",
-        name: "Parent Linked Children Profiles",
-        method: "GET",
-        path: "/api/parent/children",
-        category: "parent",
-        auth: true,
-        desc: "Retrieves student profiles linked to this parent account.",
-        payload: null
-      },
-      {
-        id: "parent-link-child",
-        name: "Submit Parent Child Link",
+        id: "teacher-payout-request",
+        name: "Submit Teacher Wallet Payout Request",
         method: "POST",
-        path: "/api/parent/link-child",
-        category: "parent",
+        path: "/api/teacher/payouts/request",
+        category: "teacher",
         auth: true,
-        desc: "Requests linking access by submitting child Student ID code.",
+        desc: "Submits a withdrawal request to transfer wallet funds directly to teacher bank account or UPI.",
         payload: {
-          studentCode: "SPX-STU-100001"
+          amount: 5000,
+          payout_method: "UPI",
+          upi_id: "teacher@upi"
         }
       },
       {
-        id: "live-classes-active",
-        name: "Active Classroom List",
+        id: "teacher-referrals",
+        name: "Teacher Referral Network & Incentives",
         method: "GET",
-        path: "/api/live-classes/active",
-        category: "live-classes",
+        path: "/api/teacher/referrals",
+        category: "teacher",
         auth: true,
-        desc: "Lists low-latency classrooms currently active.",
+        desc: "Fetches referral code, list of referred students (5% bonus share), and referred teachers.",
         payload: null
       },
       {
-        id: "support-query-post",
-        name: "Guest Inquiry Ticket Query",
+        id: "teacher-passbook",
+        name: "Teacher Digital Passbook",
+        method: "GET",
+        path: "/api/teacher/passbook",
+        category: "teacher",
+        auth: true,
+        desc: "Queries chronological passbook ledger transactions (course shares, student referral bonuses, performance milestone rewards).",
+        payload: null
+      },
+      {
+        id: "student-batch-details",
+        name: "Student Batch Details & Syllabus",
+        method: "GET",
+        path: "/api/student/batches/batch_1784971671950_xw2vsl/details",
+        category: "student",
+        auth: true,
+        desc: "Fetches comprehensive batch details, chapter-wise syllabus planner, study materials, and scheduled live classes.",
+        payload: null
+      },
+      {
+        id: "parent-chats",
+        name: "Parent-Teacher Direct Messages",
+        method: "GET",
+        path: "/api/parent/chats",
+        category: "parent",
+        auth: true,
+        desc: "Queries real-time messaging logs between parents and assigned educators.",
+        payload: null
+      },
+      {
+        id: "payments-create-order",
+        name: "Create Razorpay Payment Checkout Order",
         method: "POST",
-        path: "/api/support/public-connect",
-        category: "support",
+        path: "/api/payments/create-order",
+        category: "payments",
+        auth: true,
+        desc: "Initializes a Razorpay checkout order for student course batch enrollment.",
+        payload: {
+          batch_id: "batch_1784971671950_xw2vsl",
+          coupon_code: ""
+        }
+      },
+      {
+        id: "payments-verify-payment",
+        name: "Verify Razorpay Payment Signature & Enroll",
+        method: "POST",
+        path: "/api/payments/verify-payment",
+        category: "payments",
+        auth: true,
+        desc: "Validates Razorpay payment signature, confirms student enrollment, credits teacher share (50%), and awards student referral bonuses.",
+        payload: {
+          razorpay_order_id: "order_mock_123",
+          razorpay_payment_id: "pay_mock_123",
+          razorpay_signature: "mock_sig_123"
+        }
+      },
+      {
+        id: "payments-verify-coupon",
+        name: "Validate Discount Coupon Code",
+        method: "POST",
+        path: "/api/payments/verify-coupon",
+        category: "payments",
         auth: false,
-        desc: "Submits a support ticket from public landing query inputs.",
+        desc: "Checks validity and discount percentage of promotional coupon codes.",
         payload: {
-          name: "Guest Visitor",
-          email: "visitor@gmail.com",
-          phone: "9988776655",
-          subject: "Inquiry about billing timetables",
-          message: "Please share batch lists for Class 10 CBSE Math.",
-          role: "student"
+          code: "WELCOME50",
+          amount: 10000
         }
       },
       {
-        id: "admin-analytics",
-        name: "Admin Control Analytics",
+        id: "admin-users",
+        name: "Admin User Management Directory",
         method: "GET",
-        path: "/api/admin/analytics",
+        path: "/api/admin/users",
         category: "admin",
         auth: true,
-        desc: "Aggregates billing stats, active student/teacher counts, and pending SOP applications.",
+        desc: "Fetches user accounts directory filtered by role (students, teachers, parents, admins).",
         payload: null
       },
       {
-        id: "admin-support",
-        name: "Admin Help Tickets Directory",
-        method: "GET",
-        path: "/api/admin/support-queries",
+        id: "admin-user-delete",
+        name: "Admin Delete User Account (Cascading)",
+        method: "DELETE",
+        path: "/api/admin/users/stu_12345",
         category: "admin",
         auth: true,
-        desc: "Queries support log database entries.",
+        desc: "Permanently deletes a user account and safely cleans up foreign keys, enrollments, attendance, and audit logs.",
+        payload: null
+      },
+      {
+        id: "admin-payments-details",
+        name: "Admin Payment Telemetry Audit Details",
+        method: "GET",
+        path: "/api/admin/payments/pay_1785051644577_pok9jy/details",
+        category: "admin",
+        auth: true,
+        desc: "Retrieves complete transaction telemetry, Gateway Order IDs, commissions breakdown, and Brevo receipt delivery logs.",
+        payload: null
+      },
+      {
+        id: "db-admin-tables",
+        name: "Database Admin - List All 51 Tables",
+        method: "GET",
+        path: "/api/db-admin/tables",
+        category: "db-admin",
+        auth: true,
+        desc: "Introspects PostgreSQL schema and returns all 51 database table names with live row counts.",
+        payload: null
+      },
+      {
+        id: "db-admin-table-schema",
+        name: "Database Admin - Table Schema Structure",
+        method: "GET",
+        path: "/api/db-admin/tables/users/schema",
+        category: "db-admin",
+        auth: true,
+        desc: "Retrieves column names, data types, nullable flags, and primary key definitions for a table.",
+        payload: null
+      },
+      {
+        id: "db-admin-table-rows",
+        name: "Database Admin - Query Table Rows",
+        method: "GET",
+        path: "/api/db-admin/tables/users/rows",
+        category: "db-admin",
+        auth: true,
+        desc: "Fetches table data rows with limit capping.",
         payload: null
       }
     ];
@@ -1132,7 +1209,7 @@
       document.getElementById("statTotal").textContent = endpoints.length;
       document.getElementById("badgeAll").textContent = endpoints.length;
       
-      const counts = { public: 0, auth: 0, student: 0, teacher: 0, parent: 0, "live-classes": 0, support: 0, admin: 0 };
+      const counts = { public: 0, auth: 0, student: 0, teacher: 0, parent: 0, "live-classes": 0, payments: 0, support: 0, admin: 0, "db-admin": 0 };
       endpoints.forEach(ep => {
         if (counts[ep.category] !== undefined) {
           counts[ep.category]++;
@@ -1145,8 +1222,10 @@
       document.getElementById("badgeTeacher").textContent = counts["teacher"];
       document.getElementById("badgeParent").textContent = counts["parent"];
       document.getElementById("badgeLive").textContent = counts["live-classes"];
+      if (document.getElementById("badgePayments")) document.getElementById("badgePayments").textContent = counts["payments"];
       document.getElementById("badgeSupport").textContent = counts["support"];
       document.getElementById("badgeAdmin").textContent = counts["admin"];
+      if (document.getElementById("badgeDbAdmin")) document.getElementById("badgeDbAdmin").textContent = counts["db-admin"];
     }
 
     function renderApiList(list = endpoints) {

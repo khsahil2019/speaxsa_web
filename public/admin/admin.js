@@ -335,6 +335,7 @@ function avatar(url, name, size = 36) {
 
 function levelBadge(level) {
   const map = {
+    'Trainee Teacher': 'badge-secondary',
     'Junior Teacher': 'badge-bronze',
     'Assistant Teacher': 'badge-bronze',
     'Senior Teacher': 'badge-silver',
@@ -1175,7 +1176,7 @@ async function viewTeacherStatement(id) {
 
 async function setTeacherLevel(id) {
   const allowed = [
-    'Junior Teacher', 'Assistant Teacher', 'Senior Teacher', 'Executive Teacher',
+    'Trainee Teacher', 'Junior Teacher', 'Assistant Teacher', 'Senior Teacher', 'Executive Teacher',
     'Lecturer', 'Professor', 'Senior Professor', 'HOD', 'Dean'
   ];
   adminPrompt('Set Teacher Level', `Enter level (${allowed.join(' / ')}):`, 'Junior Teacher', async (level) => {
@@ -2607,7 +2608,7 @@ async function renderPayments() {
       <div class="spx-card">
         <h6 class="mb-4">All Payments (${payments.length})</h6>
         ${table(
-      ['Student', 'Course', 'Batch', 'Amount', 'Teacher Share', 'Status', 'Date'],
+      ['Student', 'Course', 'Batch', 'Amount', 'Teacher Share', 'Status', 'Date', 'Actions'],
       payments.map(p => `
             <tr>
               <td class="fw-semibold text-white">${p.student_name || '—'}</td>
@@ -2617,12 +2618,351 @@ async function renderPayments() {
               <td>${fmtCurrency(p.teacher_share)}</td>
               <td>${statusBadge(p.status)}</td>
               <td>${fmtDate(p.created_at)}</td>
+              <td>
+                <button class="btn btn-sm btn-spx" onclick="viewPaymentDetails('${p.id}')">
+                  <i class="fas fa-eye me-1"></i> Details
+                </button>
+              </td>
             </tr>`).join(''),
       true
     )}
       </div>`;
   } catch (err) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+  }
+}
+
+async function viewPaymentDetails(paymentId) {
+  try {
+    const modalEl = document.getElementById('formModal');
+    if (!modalEl) return;
+    const modalDialog = modalEl.querySelector('.modal-dialog');
+    if (modalDialog) {
+      modalDialog.classList.remove('modal-lg');
+      modalDialog.classList.add('modal-xl');
+    }
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    document.getElementById('formModalTitle').innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <div class="p-2 rounded-3 text-teal" style="background:#e6f4f1;">
+          <i class="fas fa-receipt fs-5"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold text-dark mb-0" style="font-family:'Outfit',sans-serif;">Payment Transaction & Workflow Details</h5>
+          <span class="text-muted extra-small">Transaction Ref: ${paymentId}</span>
+        </div>
+      </div>
+    `;
+    document.getElementById('formModalBody').innerHTML = `
+      <div class="text-center py-5">
+        <div class="spinner-border text-teal" role="status"></div>
+        <div class="mt-2 text-muted small">Fetching transaction telemetry & audit history...</div>
+      </div>
+    `;
+    modal.show();
+
+    const data = await apiGet(`/admin/payments/${paymentId}/details`);
+    const p = data.payment;
+    const enrollment = data.enrollment;
+    const commissions = data.commissions;
+    const emails = data.emails;
+    const logs = data.logs;
+
+    let enrollBadge = `<span class="badge px-3 py-1.5 rounded-pill fw-semibold" style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca;"><i class="fas fa-times-circle me-1"></i>Not Enrolled</span>`;
+    if (enrollment) {
+      const activeState = enrollment.status === 'active';
+      enrollBadge = activeState
+        ? `<span class="badge px-3 py-1.5 rounded-pill fw-bold" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;"><i class="fas fa-check-circle me-1 text-success"></i>ENROLLED ACTIVE (${fmtDate(enrollment.enrolled_at)})</span>`
+        : `<span class="badge px-3 py-1.5 rounded-pill fw-bold" style="background:#fffbeb; color:#92400e; border:1px solid #fef08a;"><i class="fas fa-exclamation-triangle me-1"></i>${enrollment.status.toUpperCase()} (${fmtDate(enrollment.enrolled_at)})</span>`;
+    }
+
+    let commissionText = `<span class="small fw-semibold text-danger"><i class="fas fa-times-circle me-1"></i>No Ledger Commissions Credited</span>`;
+    if (commissions && commissions.length > 0) {
+      commissionText = commissions.map(c => `
+        <div class="small mb-2 p-2 rounded-3" style="background:#f0fdf4; border:1px solid #bbf7d0; color:#14532d;">
+          <div class="d-flex align-items-center justify-content-between mb-0.5">
+            <span class="fw-extrabold text-success"><i class="fas fa-check-circle me-1"></i>${fmtCurrency(c.amount)}</span>
+            <span class="badge px-2 py-0.5 rounded text-uppercase" style="background:#dcfce7; color:#15803d; font-size:10px;">${c.type}</span>
+          </div>
+          <div class="extra-small text-dark fw-medium">${c.description}</div>
+        </div>
+      `).join('');
+    }
+
+    let emailText = `<span class="small fw-semibold text-danger"><i class="fas fa-times-circle me-1"></i>No Email Logs Found</span>`;
+    if (emails && emails.length > 0) {
+      emailText = emails.map(e => `
+        <div class="small mb-2 p-2 rounded-3" style="background:${e.status === 'sent' ? '#f0fdf4' : '#fef2f2'}; border:1px solid ${e.status === 'sent' ? '#bbf7d0' : '#fecaca'};">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="fw-bold ${e.status === 'sent' ? 'text-success' : 'text-danger'}">
+              <i class="fas ${e.status === 'sent' ? 'fa-check-circle' : 'fa-times-circle'} me-1"></i>${e.status.toUpperCase()}
+            </span>
+            <span class="extra-small text-muted">${fmtDate(e.created_at)}</span>
+          </div>
+          <div class="extra-small fw-semibold text-dark mt-0.5">${e.subject}</div>
+          ${e.error_message ? `<div class="extra-small text-danger mt-1">Error: ${e.error_message}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    let logText = `<span class="text-muted small">No related audit events logged.</span>`;
+    if (logs && logs.length > 0) {
+      logText = logs.map(l => `
+        <div class="small mb-2 pb-2 border-bottom" style="border-color:#e2e8f0 !important;">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="fw-bold text-dark"><i class="fas fa-terminal me-1.5 text-primary"></i>${l.action}</span>
+            <span class="extra-small text-muted font-monospace">${fmtDate(l.created_at)}</span>
+          </div>
+          <div class="extra-small text-secondary mb-1">Triggered by: <strong class="text-dark">${l.actor_name || 'System Auto-Processor'}</strong></div>
+          ${l.details ? `<pre class="extra-small text-dark p-2.5 rounded-3 mb-0" style="background:#ffffff; border:1px solid #cbd5e1; font-family:'Fira Code',monospace; font-size:11px; max-height:100px; overflow:auto;">${JSON.stringify(l.details, null, 2)}</pre>` : ''}
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('formModalBody').innerHTML = `
+      <div class="text-start p-1" style="font-family:'Inter',sans-serif; color:#0f172a;">
+        
+        <!-- 1. Top Executive Summary Card (Light High-Contrast Palette) -->
+        <div class="card border-0 shadow-sm p-4 rounded-4 mb-4" style="background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); border: 1.5px solid #bbf7d0 !important;">
+          <div class="row g-3 align-items-center">
+            <div class="col-md-6">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge px-3 py-1 rounded-pill fw-bold" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">
+                  <i class="fas fa-credit-card me-1.5"></i>${p.payment_method ? p.payment_method.toUpperCase() : 'ONLINE PAYMENT'}
+                </span>
+                <span class="badge px-3 py-1 rounded-pill fw-extrabold" style="background:#dcfce7; color:#15803d; border:1px solid #86efac;">
+                  <i class="fas fa-check-circle me-1"></i>${p.status ? p.status.toUpperCase() : 'CAPTURED'}
+                </span>
+              </div>
+              
+              <div class="text-muted extra-small text-uppercase fw-bold tracking-wider">Total Billing Amount</div>
+              <h2 class="fw-extrabold mb-1" style="font-family:'Outfit',sans-serif; color:#0d7a6d; font-size: 2.3rem; letter-spacing:-0.5px;">
+                ${fmtCurrency(p.amount)}
+              </h2>
+              <div class="small fw-semibold text-dark">
+                Course: <span class="text-primary fw-bold">${p.course_title || '—'}</span>
+                <span class="text-muted">(${p.batch_name || '—'})</span>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="p-3 rounded-4 bg-white border border-emerald-200 shadow-2xs">
+                <div class="row g-2 text-center">
+                  <div class="col-6 border-end">
+                    <div class="extra-small text-uppercase fw-bold text-muted mb-1">Teacher Share (50%)</div>
+                    <div class="fw-extrabold fs-5 text-warning-emphasis" style="color:#b45309 !important;">${fmtCurrency(p.teacher_share)}</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="extra-small text-uppercase fw-bold text-muted mb-1">Platform Share</div>
+                    <div class="fw-extrabold fs-5 text-primary" style="color:#0369a1 !important;">${fmtCurrency(p.platform_share)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <!-- Left Column: Gateway & User Details -->
+          <div class="col-lg-7">
+            
+            <!-- Gateway Identifiers -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background:#ffffff; border:1px solid #cbd5e1 !important;">
+              <h6 class="fw-bold text-dark mb-3.5 d-flex align-items-center gap-2" style="font-family:'Outfit',sans-serif; font-size:1.05rem;">
+                <i class="fas fa-shield-alt text-teal"></i>Razorpay Gateway Identifiers
+              </h6>
+              
+              <div class="d-flex flex-column gap-2.5">
+                <div class="p-3 rounded-3 bg-light border border-slate-200 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <span class="text-secondary fw-semibold small">Internal Payment ID</span>
+                  <span class="font-monospace fw-bold text-dark bg-white px-3 py-1 rounded border shadow-2xs small">${p.id}</span>
+                </div>
+
+                <div class="p-3 rounded-3 bg-light border border-slate-200 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <span class="text-secondary fw-semibold small">Razorpay Order ID</span>
+                  <span class="font-monospace fw-bold text-dark bg-white px-3 py-1 rounded border shadow-2xs small">${p.razorpay_order_id || '—'}</span>
+                </div>
+
+                <div class="p-3 rounded-3 bg-light border border-slate-200 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <span class="text-secondary fw-semibold small">Razorpay Payment ID</span>
+                  <span class="font-monospace fw-bold text-teal bg-white px-3 py-1 rounded border shadow-2xs small">${p.razorpay_payment_id || '—'}</span>
+                </div>
+
+                <div class="p-3 rounded-3 bg-light border border-slate-200 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <span class="text-secondary fw-semibold small">Transaction Date</span>
+                  <span class="fw-bold text-dark bg-white px-3 py-1 rounded border shadow-2xs small">${fmtDate(p.created_at)}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Customer & Educator Profile -->
+            <div class="card border-0 shadow-sm rounded-4 p-4" style="background:#ffffff; border:1px solid #cbd5e1 !important;">
+              <h6 class="fw-bold text-dark mb-3.5 d-flex align-items-center gap-2" style="font-family:'Outfit',sans-serif; font-size:1.05rem;">
+                <i class="fas fa-users text-primary"></i>Customer & Educator Profiles
+              </h6>
+
+              <div class="row g-3">
+                <div class="col-sm-6">
+                  <div class="p-3 rounded-4 bg-light border border-slate-200 h-100">
+                    <div class="extra-small text-uppercase fw-extrabold text-muted mb-1">Student Account</div>
+                    <div class="fw-extrabold text-dark fs-6 mb-1"><i class="fas fa-user-graduate me-1.5 text-teal"></i>${p.student_name || 'Student'}</div>
+                    <div class="small text-secondary text-truncate mb-1"><i class="far fa-envelope me-1.5 text-primary"></i>${p.billing_email || p.student_email || '—'}</div>
+                    ${(p.billing_phone || p.student_phone) ? `<div class="small text-secondary"><i class="fas fa-phone me-1.5 text-success"></i>${p.billing_phone || p.student_phone}</div>` : ''}
+                  </div>
+                </div>
+
+                <div class="col-sm-6">
+                  <div class="p-3 rounded-4 bg-light border border-slate-200 h-100">
+                    <div class="extra-small text-uppercase fw-extrabold text-muted mb-1">Assigned Teacher</div>
+                    <div class="fw-extrabold text-dark fs-6 mb-1"><i class="fas fa-chalkboard-teacher me-1.5 text-primary"></i>${p.teacher_name || 'Educator'}</div>
+                    <div class="small text-secondary text-truncate mb-1"><i class="fas fa-book me-1.5 text-warning"></i>${p.course_title || 'Course'}</div>
+                    <div class="small text-secondary text-truncate"><i class="fas fa-layer-group me-1.5 text-info"></i>${p.batch_name || 'Batch'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right Column: Workflow Telemetry & Admin Actions -->
+          <div class="col-lg-5">
+            
+            <!-- Automated Workflow Telemetry Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background:#ffffff; border:1px solid #cbd5e1 !important;">
+              <h6 class="fw-bold text-dark mb-3.5 d-flex align-items-center gap-2" style="font-family:'Outfit',sans-serif; font-size:1.05rem;">
+                <i class="fas fa-tasks text-success"></i>Workflow Telemetry
+              </h6>
+
+              <div class="d-flex flex-column gap-3">
+                <!-- Enrollment Status -->
+                <div>
+                  <div class="extra-small text-uppercase fw-bold text-muted mb-1.5">Batch Enrollment Status</div>
+                  <div>${enrollBadge}</div>
+                </div>
+
+                <!-- Commission Status -->
+                <div>
+                  <div class="extra-small text-uppercase fw-bold text-muted mb-1.5">Ledger Commission Status</div>
+                  <div>${commissionText}</div>
+                </div>
+
+                <!-- Email Receipt Delivery -->
+                <div>
+                  <div class="extra-small text-uppercase fw-bold text-muted mb-1.5">Email Receipt Delivery (Brevo)</div>
+                  <div>${emailText}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Admin Controls & Actions Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4" style="background:#ffffff; border:1px solid #cbd5e1 !important;">
+              <h6 class="fw-bold text-dark mb-3.5 d-flex align-items-center gap-2" style="font-family:'Outfit',sans-serif; font-size:1.05rem;">
+                <i class="fas fa-sliders-h text-warning"></i>Admin Controls & Actions
+              </h6>
+
+              <div class="d-flex flex-column gap-2.5">
+                <!-- Status Switcher -->
+                <div class="input-group input-group-sm mb-1">
+                  <select id="manualStatusSelect" class="form-select fw-bold border-teal text-dark" style="font-size:0.85rem; background:#ffffff;">
+                    <option value="pending" ${p.status === 'pending' ? 'selected' : ''}>Pending</option>
+                    <option value="captured" ${p.status === 'captured' ? 'selected' : ''}>Captured (Success)</option>
+                    <option value="failed" ${p.status === 'failed' ? 'selected' : ''}>Failed</option>
+                    <option value="refunded" ${p.status === 'refunded' ? 'selected' : ''}>Refunded</option>
+                  </select>
+                  <button class="btn btn-teal fw-bold px-3" onclick="adminUpdatePaymentStatus('${p.id}')">Update Status</button>
+                </div>
+
+                <button class="btn btn-sm btn-outline-success text-start fw-bold py-2.5 px-3 rounded-3" onclick="adminRunEnrollment('${p.id}')">
+                  <i class="fas fa-user-check me-2 text-success"></i>Force Run Enrollment
+                </button>
+
+                <button class="btn btn-sm btn-outline-warning text-start fw-bold py-2.5 px-3 rounded-3 text-dark" onclick="adminRecalculateCommission('${p.id}')">
+                  <i class="fas fa-calculator me-2 text-warning"></i>Recalculate Teacher Commission
+                </button>
+
+                <button class="btn btn-sm btn-outline-primary text-start fw-bold py-2.5 px-3 rounded-3" onclick="adminResendReceipt('${p.id}')">
+                  <i class="fas fa-paper-plane me-2 text-primary"></i>Resend Tax Invoice Email
+                </button>
+
+                <button class="btn btn-sm btn-outline-danger text-start fw-extrabold py-2.5 px-3 rounded-3 mt-1" onclick="adminRetryPaymentWorkflow('${p.id}')">
+                  <i class="fas fa-sync me-2"></i>Retry Entire Post-Payment Workflow
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Row: System Audit Telemetry Log -->
+          <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 p-4" style="background:#f8fafc; border:1px solid #cbd5e1 !important;">
+              <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2" style="font-family:'Outfit',sans-serif; font-size:1.05rem;">
+                <i class="fas fa-terminal text-primary"></i>Transaction Telemetry & Audit Logs
+              </h6>
+              <div style="max-height:220px; overflow-y:auto; font-family:'Fira Code', monospace; font-size:0.8rem;" class="pe-2">
+                ${logText}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `;
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminUpdatePaymentStatus(paymentId) {
+  const status = document.getElementById('manualStatusSelect').value;
+  try {
+    const res = await apiPost(`/admin/payments/${paymentId}/update-status`, { status });
+    showToast(res.message || 'Status updated successfully', 'success');
+    viewPaymentDetails(paymentId);
+    renderPayments();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminRunEnrollment(paymentId) {
+  try {
+    const res = await apiPost(`/admin/payments/${paymentId}/run-enrollment`);
+    showToast(res.message || 'Enrollment processed', 'success');
+    viewPaymentDetails(paymentId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminRecalculateCommission(paymentId) {
+  try {
+    const res = await apiPost(`/admin/payments/${paymentId}/recalculate-commission`);
+    showToast(res.message || 'Commission updated', 'success');
+    viewPaymentDetails(paymentId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminResendReceipt(paymentId) {
+  try {
+    const res = await apiPost(`/admin/payments/${paymentId}/resend-receipt`);
+    showToast(res.message || 'Receipt resent successfully', 'success');
+    viewPaymentDetails(paymentId);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminRetryPaymentWorkflow(paymentId) {
+  try {
+    const res = await apiPost(`/admin/payments/${paymentId}/retry-workflow`);
+    showToast(res.message || 'Entire workflow successfully retried and captured', 'success');
+    viewPaymentDetails(paymentId);
+    renderPayments();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 

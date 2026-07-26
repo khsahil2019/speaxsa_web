@@ -409,6 +409,7 @@ CREATE TABLE payments (
   id                  VARCHAR(100) PRIMARY KEY,
   razorpay_order_id   VARCHAR(200),
   razorpay_payment_id VARCHAR(200),
+  razorpay_signature   TEXT,
   student_id          VARCHAR(100) REFERENCES users(id),
   batch_id            VARCHAR(100) REFERENCES batches(id),
   course_id           VARCHAR(100) REFERENCES courses(id),
@@ -419,13 +420,18 @@ CREATE TABLE payments (
   commission_type     VARCHAR(30) DEFAULT 'standard', -- standard, referral, elite
   coupon_code         VARCHAR(50),
   discount_amount     DECIMAL(10,2) DEFAULT 0,
-  status              VARCHAR(30) DEFAULT 'pending' CHECK (status IN ('pending','captured','failed','refunded')),
+  status              VARCHAR(30) DEFAULT 'pending',
   payment_method      VARCHAR(50),
   billing_name        VARCHAR(200),
   billing_email       VARCHAR(200),
-  billing_phone       VARCHAR(20),
+  billing_phone       VARCHAR(50),
   referral_teacher_id VARCHAR(100) REFERENCES users(id),
-  created_at          TIMESTAMPTZ DEFAULT NOW()
+  receipt_url         VARCHAR(255),
+  tax_invoice_number  VARCHAR(100),
+  gst_amount          DECIMAL(10,2) DEFAULT 0,
+  net_amount          DECIMAL(10,2) DEFAULT 0,
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================================

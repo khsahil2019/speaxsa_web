@@ -52,7 +52,7 @@ window.fetch = async function(url, options = {}) {
 };
 
 function showAdminLoginOverlay() {
-  document.getElementById('adminLoginOverlay').style.display = 'flex';
+  document.getElementById('loginScreen').style.display = 'flex';
 }
 
 function hideAdminLoginOverlay() {
@@ -112,8 +112,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupAdminLogin() {
-  const form = document.getElementById('adminLoginForm');
-  const errorMsg = document.getElementById('loginErrorMessage');
+  const form = document.getElementById('loginForm');
+  const errorMsg = document.getElementById('loginError');
   
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

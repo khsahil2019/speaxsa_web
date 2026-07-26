@@ -304,41 +304,13 @@ router.post('/verify', async (req, res) => {
       }
 
       // ── Teacher Performance Slabs Check ──────
-      const revRes = await db.query(
-        "SELECT COALESCE(SUM(amount), 0) as total_rev FROM payments WHERE teacher_id = $1 AND status = 'captured'",
-        [payment.teacher_id]
-      );
-      const totalRevenue = parseFloat(revRes.rows[0].total_rev);
-
-      const slabsRes = await db.query("SELECT slab_name as name, target_revenue as target, reward_amount as reward, reward_item as item FROM performance_slabs_config ORDER BY target_revenue ASC");
-      const slabs = slabsRes.rows.map(row => ({
-        name: row.name,
-        target: parseFloat(row.target),
-        reward: parseFloat(row.reward),
-        item: row.item
-      }));
-
-      for (const slab of slabs) {
-        if (totalRevenue >= slab.target) {
-          const rewardCheck = await db.query(
-            "SELECT id FROM teacher_rewards WHERE teacher_id = $1 AND slab_name = $2",
-            [payment.teacher_id, slab.name]
-          );
-          if (rewardCheck.rows.length === 0) {
-            const rewardId = generateUID('rwd');
-            await db.query(`
-              INSERT INTO teacher_rewards (id, teacher_id, slab_name, target_revenue, reward_amount, reward_item, status)
-              VALUES ($1, $2, $3, $4, $5, $6, 'pending_review')
-            `, [rewardId, payment.teacher_id, slab.name, slab.target, slab.reward, slab.item]);
-            
-            await logAudit('system', 'REWARD_SLAB_ACHIEVED', 'user', payment.teacher_id, {
-              slab_name: slab.name,
-              target_revenue: slab.target,
-              reward_amount: slab.reward,
-              reward_item: slab.item
-            });
-          }
+      try {
+        const { updateTeacherLevel } = require('../services/teacherLevel.service');
+        if (payment.teacher_id) {
+          await updateTeacherLevel(payment.teacher_id, 'payment_verified');
         }
+      } catch (slabErr) {
+        console.warn('[Performance Slab Check Warning]:', slabErr.message);
       }
     }
 

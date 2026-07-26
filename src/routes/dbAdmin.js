@@ -262,6 +262,7 @@ const cascadeDeleteUser = async (userId) => {
     await client.query('DELETE FROM audit_logs WHERE actor_id = $1', [userId]);
 
     // 10. Nullify teacher_id on batches / live_classes / courses if any remain
+    await client.query('UPDATE courses SET created_by = NULL WHERE created_by = $1', [userId]);
     await client.query('UPDATE batches SET teacher_id = NULL WHERE teacher_id = $1', [userId]);
     await client.query('DELETE FROM live_classes WHERE teacher_id = $1', [userId]);
 

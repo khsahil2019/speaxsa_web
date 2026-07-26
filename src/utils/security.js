@@ -13,7 +13,7 @@ function verifyPassword(plain, hash) {
   // 1. Try bcrypt if it looks like a bcrypt hash
   if (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$')) {
     try {
-      return bcrypt.compareSync(plain, hash);
+      if (bcrypt.compareSync(plain, hash)) return true;
     } catch (e) {
       // Fall through
     }

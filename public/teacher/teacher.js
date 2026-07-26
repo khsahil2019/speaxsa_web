@@ -63,7 +63,7 @@ async function parseFetchResponse(res) {
       try {
         const errData = await res.clone().json();
         if (errData.error) errMsg = errData.error;
-      } catch(e) {}
+      } catch (e) { }
     }
     showToast(errMsg, 'error');
     setTimeout(() => { logout(); }, 1200);
@@ -690,7 +690,7 @@ function showApp() {
     document.getElementById('avatarSidebar').src = av;
     document.getElementById('avatarHeader').src = av;
     document.getElementById('nameSidebar').textContent = user.name;
-    document.getElementById('levelSidebar').textContent = user.teacher_level || 'Junior Teacher';
+    document.getElementById('levelSidebar').textContent = user.teacher_level || 'Trainee Teacher';
   }
   checkSopStatus();
   loadTeacherNotificationCounts();
@@ -1100,7 +1100,7 @@ async function renderHome() {
             <h6 class="mb-3 fw-bold">Educator Level</h6>
             <div class="text-center p-3 rounded" style="background:rgba(255,255,255,.02)">
               <div class="display-5 text-warning mb-2"><i class="fas fa-medal"></i></div>
-               <h5 class="text-dark fw-bold mb-1">${analytics.level || 'Junior Teacher'}</h5>
+               <h5 class="text-dark fw-bold mb-1">${analytics.level || 'Trainee Teacher'}</h5>
               <p class="text-muted small mb-0">Engagement score based on attendance, student ratings & homework submission feedback.</p>
             </div>
           </div>
@@ -4687,9 +4687,10 @@ async function renderLevel() {
   loading();
   try {
     const data = await api('/teacher/level');
-    const curLevel = data.level || 'Junior Teacher';
+    const curLevel = data.level || 'Trainee Teacher';
 
     const levelColors = {
+      'Trainee Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', border: '#cbd5e1', badgeBg: '#f1f5f9', badgeColor: '#475569', icon: 'fa-user-clock', iconColor: '#64748b', pct: '50% Revenue Share', group: 'Foundation Group' },
       'Junior Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '#a7f3d0', badgeBg: '#d1fae5', badgeColor: '#065f46', icon: 'fa-user-graduate', iconColor: '#059669', pct: '50% Revenue Share', group: 'Foundation Group' },
       'Assistant Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)', border: '#bae6fd', badgeBg: '#e0f2fe', badgeColor: '#0369a1', icon: 'fa-award', iconColor: '#0284c7', pct: '55% Revenue Share', group: 'Foundation Group' },
       'Senior Teacher': { bg: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)', border: '#bbf7d0', badgeBg: '#dcfce7', badgeColor: '#15803d', icon: 'fa-medal', iconColor: '#16a34a', pct: '60% Revenue Share', group: 'Teaching Excellence Group' },
@@ -4947,8 +4948,9 @@ async function renderProfile() {
     const profile = await api('/auth/profile');
 
     // Determine level badge details based on official Performance Slabs Level
-    const currentLevel = profile.teacher_level || 'Junior Teacher';
+    const currentLevel = profile.teacher_level || 'Trainee Teacher';
     const levelColors = {
+      'Trainee Teacher': { bg: '#ffffff', border: '2px solid #64748b', color: '#475569', icon: 'fa-user-clock', iconColor: '#64748b', subBg: '#f1f5f9', subColor: '#334155', pct: '50% Share | Foundation Group', group: 'Foundation Group' },
       'Junior Teacher': { bg: '#ffffff', border: '2px solid #0d7a6d', color: '#0d7a6d', icon: 'fa-user-graduate', iconColor: '#0d7a6d', subBg: '#e6f4f1', subColor: '#08544b', pct: '50% Share | Foundation Group', group: 'Foundation Group' },
       'Assistant Teacher': { bg: '#ffffff', border: '2px solid #0284c7', color: '#0284c7', icon: 'fa-award', iconColor: '#0284c7', subBg: '#e0f2fe', subColor: '#0369a1', pct: '55% Share | Foundation Group', group: 'Foundation Group' },
       'Senior Teacher': { bg: '#ffffff', border: '2px solid #059669', color: '#059669', icon: 'fa-medal', iconColor: '#059669', subBg: '#d1fae5', subColor: '#047857', pct: '60% Share | Teaching Excellence Group (₹5k/mo)', group: 'Teaching Excellence Group' },
@@ -5878,11 +5880,12 @@ async function renderReferrals() {
 
       const allowanceVal = allowanceMap[s.group] !== undefined ? allowanceMap[s.group] : 0.00;
       const allowanceText = allowanceVal > 0 ? `₹${allowanceVal.toLocaleString('en-IN')}/mo` : '₹0';
+      const targetText = s.name === 'Trainee Teacher' ? '₹0 – ₹99,999' : `₹${s.target.toLocaleString('en-IN')}`;
 
       return `
                   <tr style="${cumulativeRevenue >= s.target ? 'background:rgba(60,189,176,0.02);' : ''}">
                     <td><strong>${s.name}</strong></td>
-                    <td>₹${s.target.toLocaleString('en-IN')}</td>
+                    <td><strong>${targetText}</strong></td>
                     <td class="text-dark fw-bold">₹${s.reward.toLocaleString('en-IN')}</td>
                     <td>${s.item}</td>
                     <td><span class="text-muted">${allowanceText}</span></td>
