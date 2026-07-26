@@ -49,7 +49,9 @@ db.query(`
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_email VARCHAR(200);
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_phone VARCHAR(20);
   ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS guest_role VARCHAR(50);
+  ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS id SERIAL;
   ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'pending';
+  ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS last_email_sent_at TIMESTAMPTZ DEFAULT NOW();
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS teacher_checklist JSONB DEFAULT '{}';
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT false;
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMPTZ;
@@ -714,5 +716,13 @@ async function cleanupOldChatAttachments() {
 // Run cleanup on server startup and every 24 hours
 setTimeout(cleanupOldChatAttachments, 5000);
 setInterval(cleanupOldChatAttachments, 24 * 60 * 60 * 1000);
+
+// Start 5-minute periodic reminder job for pending parent access requests
+try {
+  const { startPendingParentLinkReminderJob } = require('./services/notification.service');
+  startPendingParentLinkReminderJob();
+} catch (jobErr) {
+  console.warn('Failed to start parent link reminder job:', jobErr.message);
+}
 
 module.exports = app;

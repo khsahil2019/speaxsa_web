@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { sanitizeUser } = require('../utils/security');
+const { sendEmail } = require('../services/EmailService');
 
 router.use(authenticateToken);
 
@@ -54,19 +55,179 @@ router.post('/link-child', async (req, res) => {
         return res.status(400).json({ error: 'A link request is already pending child approval' });
       } else if (link.status === 'rejected') {
         await db.query(
-          "UPDATE parent_student_links SET status = 'pending', linked_at = NOW() WHERE id = $1",
+          "UPDATE parent_student_links SET status = 'pending', linked_at = NOW(), last_email_sent_at = NOW() WHERE id = $1",
           [link.id]
         );
-        return res.json({ message: `Link request sent again. Pending child "${student.name}" approval.`, student });
+      }
+    } else {
+      await db.query(
+        "INSERT INTO parent_student_links (parent_id, student_id, status, last_email_sent_at) VALUES ($1,$2,'pending', NOW())",
+        [req.user.id, student.id]
+      );
+    }
+
+    // Fetch parent user info for email
+    const parentUserRes = await db.query('SELECT name, email FROM users WHERE id = $1', [req.user.id]);
+    const parentName = parentUserRes.rows[0]?.name || 'Parent';
+    const parentEmail = parentUserRes.rows[0]?.email || '';
+
+    // 1. Send Email Notification to Student
+    if (student.email) {
+      try {
+        let baseUrl = process.env.APP_URL || process.env.PUBLIC_URL || 'https://speaxa.in';
+        if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) baseUrl = 'https://' + baseUrl;
+        baseUrl = baseUrl.replace(/\/+$/, '');
+
+        await sendEmail({
+          to: student.email,
+          subject: `👨‍👩‍👧 Parent Access Link Request from ${parentName}`,
+          type: 'notification',
+          headerTitle: 'Parent Link Request',
+          badgeLabel: 'Parent Portal',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #334155;">
+              <h3 style="color: #0d7a6d; margin-top: 0;">Parent Access Request Received</h3>
+              <p>Hello <strong>${student.name}</strong>,</p>
+              <p>Your parent <strong>${parentName}</strong> (${parentEmail}) has requested to link their account with your <strong>SPEAXA</strong> student profile to monitor your academic progress and class attendance.</p>
+              
+              <div style="background: #f8fafc; border-left: 4px solid #0d7a6d; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px;"><strong>Parent Name:</strong> ${parentName}</p>
+                <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Parent Email:</strong> ${parentEmail}</p>
+                <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Status:</strong> Pending Your Approval</p>
+              </div>
+
+              <p>Please log in to your <strong>Student Dashboard</strong> under Parent Access Requests to review and approve or reject this request.</p>
+              
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${baseUrl}/student/" style="background-color: #0d7a6d; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Open Student Dashboard</a>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+              <p style="font-size: 12px; color: #64748b; text-align: center;">SPEAXA Educational Intelligence System</p>
+            </div>
+          `
+        });
+      } catch (emailErr) {
+        console.error('[ParentLink] Failed to send email to student:', emailErr.message);
       }
     }
 
-    await db.query(
-      "INSERT INTO parent_student_links (parent_id, student_id, status) VALUES ($1,$2,'pending')",
-      [req.user.id, student.id]
-    );
+    // 2. Insert In-App Notification for Student
+    try {
+      await db.query(`
+        INSERT INTO notifications (id, title, message, target_role, target_user, type, sent_by)
+        VALUES ($1, $2, $3, 'student', $4, 'info', $5)
+      `, [
+        'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        `Parent Access Request from ${parentName}`,
+        `Parent ${parentName} (${parentEmail}) requested to link with your student account. Please review and approve/reject in your dashboard.`,
+        student.id,
+        req.user.id
+      ]);
+    } catch (notifErr) {
+      console.error('[ParentLink] Failed to create in-app notification for student:', notifErr.message);
+    }
 
     res.json({ message: `Link request sent successfully. Pending child "${student.name}" approval.`, student });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Resend Parent Link Reminder Email (5 Min Cooldown) ─────────────────
+router.post('/link-child/resend-email', async (req, res) => {
+  const { studentId } = req.body;
+  if (!studentId) return res.status(400).json({ error: 'studentId is required' });
+
+  try {
+    const linkRes = await db.query(
+      `SELECT psl.*, u.name as student_name, u.email as student_email 
+       FROM parent_student_links psl 
+       JOIN users u ON u.id = psl.student_id 
+       WHERE psl.parent_id = $1 AND psl.student_id = $2`,
+      [req.user.id, studentId]
+    );
+
+    if (!linkRes.rows.length) {
+      return res.status(404).json({ error: 'No connection link found for this student.' });
+    }
+
+    const link = linkRes.rows[0];
+    if (link.status !== 'pending') {
+      return res.status(400).json({ error: `Connection request is already '${link.status}'. Cannot resend reminder.` });
+    }
+
+    // 5-Minute Cooldown Check
+    const COOLDOWN_MS = 5 * 60 * 1000;
+    if (link.last_email_sent_at) {
+      const elapsedMs = Date.now() - new Date(link.last_email_sent_at).getTime();
+      if (elapsedMs < COOLDOWN_MS) {
+        const remainingSeconds = Math.ceil((COOLDOWN_MS - elapsedMs) / 1000);
+        const remainingMinutes = Math.floor(remainingSeconds / 60);
+        const secMod = remainingSeconds % 60;
+        const timeStr = remainingMinutes > 0 ? `${remainingMinutes}m ${secMod}s` : `${remainingSeconds}s`;
+        return res.status(429).json({
+          error: `Please wait ${timeStr} before sending another reminder email to the student.`
+        });
+      }
+    }
+
+    const parentUserRes = await db.query('SELECT name, email FROM users WHERE id = $1', [req.user.id]);
+    const parentName = parentUserRes.rows[0]?.name || 'Parent';
+    const parentEmail = parentUserRes.rows[0]?.email || '';
+
+    if (link.student_email) {
+      let baseUrl = process.env.APP_URL || process.env.PUBLIC_URL || 'https://speaxa.in';
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) baseUrl = 'https://' + baseUrl;
+      baseUrl = baseUrl.replace(/\/+$/, '');
+
+      await sendEmail({
+        to: link.student_email,
+        subject: `⏰ Reminder: Parent Access Link Request from ${parentName}`,
+        type: 'notification',
+        headerTitle: 'Parent Link Reminder',
+        badgeLabel: 'Action Required',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #334155;">
+            <h3 style="color: #0d7a6d; margin-top: 0;">Reminder: Parent Access Request Pending</h3>
+            <p>Hello <strong>${link.student_name}</strong>,</p>
+            <p>Your parent <strong>${parentName}</strong> (${parentEmail}) is waiting for your approval to link their account with your <strong>SPEAXA</strong> student profile.</p>
+            
+            <div style="background: #fffbe6; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; font-size: 14px;"><strong>Parent Name:</strong> ${parentName}</p>
+              <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Parent Email:</strong> ${parentEmail}</p>
+              <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Status:</strong> Awaiting Your Approval</p>
+            </div>
+
+            <p>Please log in to your <strong>Student Portal</strong> under Parent Access Requests to review and approve or reject this request.</p>
+            
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${baseUrl}/student/" style="background-color: #0d7a6d; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Open Student Dashboard</a>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+            <p style="font-size: 12px; color: #64748b; text-align: center;">SPEAXA Educational Intelligence System</p>
+          </div>
+        `
+      });
+    }
+
+    await db.query('UPDATE parent_student_links SET last_email_sent_at = NOW() WHERE id = $1', [link.id]);
+
+    try {
+      await db.query(`
+        INSERT INTO notifications (id, title, message, target_role, target_user, type, sent_by)
+        VALUES ($1, $2, $3, 'student', $4, 'info', $5)
+      `, [
+        'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        `Reminder: Parent Access Request from ${parentName}`,
+        `Reminder: Parent ${parentName} is waiting for your approval on parent-student link request.`,
+        studentId,
+        req.user.id
+      ]);
+    } catch (e) {}
+
+    res.json({ message: `Reminder email sent to student ${link.student_name} (${link.student_email || ''})!` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

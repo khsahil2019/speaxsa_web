@@ -1194,17 +1194,19 @@ async function impersonate(userId, role) {
   try {
     const data = await apiPost(`/admin/impersonate/${userId}`);
     if (data.token) {
-      const portal = role === 'teacher' ? '/teacher' : role === 'student' ? '/student' : '/parent';
-      const tokenKey = role === 'parent' ? 'spx_parent_token' : `${role}_token`;
-      const userKey = role === 'parent' ? 'spx_parent_profile' : `${role}_user`;
+      const targetRole = data.user?.role || role || 'parent';
+      const portal = targetRole === 'teacher' ? '/teacher' : targetRole === 'student' ? '/student' : '/parent';
+      const tokenKey = targetRole === 'parent' ? 'spx_parent_token' : `${targetRole}_token`;
+      const userKey = targetRole === 'parent' ? 'spx_parent_profile' : `${targetRole}_user`;
 
       localStorage.setItem(tokenKey, data.token);
       localStorage.setItem(userKey, JSON.stringify(data.user));
       sessionStorage.setItem(tokenKey, data.token);
       sessionStorage.setItem(userKey, JSON.stringify(data.user));
 
-      window.open(`${portal}?impersonate=1`, '_blank');
-      showToast(`Opened as ${data.user?.name}`, 'info');
+      const targetUrl = `${portal}/?token=${encodeURIComponent(data.token)}&impersonate=1`;
+      window.open(targetUrl, '_blank');
+      showToast(`Logged in as ${data.user?.name || 'User'}`, 'info');
     }
   } catch (err) { showToast(err.message, 'error'); }
 }
@@ -1362,7 +1364,6 @@ async function renderParents() {
                   <tr>
                     <th>Connection</th>
                     <th>Status</th>
-                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1381,16 +1382,9 @@ async function renderParents() {
                           </div>
                         </td>
                         <td><span class="badge ${statusBadge} small" style="font-size: 0.65rem;">${l.status.toUpperCase()}</span></td>
-                        <td>
-                          ${l.status === 'approved' ? `
-                            <button class="btn btn-xs btn-outline-danger" onclick="revertParentLink(${l.id})" style="font-size: 0.7rem; padding: 2px 6px;">Revert Access</button>
-                          ` : `
-                            <span class="text-muted small">—</span>
-                          `}
-                        </td>
                       </tr>
                     `;
-    }).join('') || '<tr><td colspan="3" class="text-center text-muted py-3">No connections found.</td></tr>'}
+    }).join('') || '<tr><td colspan="2" class="text-center text-muted py-3">No connections found.</td></tr>'}
                 </tbody>
               </table>
             </div>
@@ -1403,8 +1397,20 @@ async function renderParents() {
   }
 }
 
+async function approveParentLink(linkId) {
+  if (!confirm('Approve this parent connection request directly as Admin?')) return;
+  try {
+    const res = await apiPost(`/admin/parent-links/${linkId}/approve`);
+    showToast(res.message || 'Parent connection approved successfully');
+    await renderParents();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.approveParentLink = approveParentLink;
+
 async function revertParentLink(linkId) {
-  if (!confirm('Are you sure you want to revert/revoke this approved parent connection request? This will block the parent\'s access to the student\'s reports.')) return;
+  if (!confirm('Are you sure you want to revert/revoke this parent connection request? Both parent and student will be notified via email.')) return;
   try {
     const res = await apiPost(`/admin/parent-links/${linkId}/revert`);
     showToast(res.message || 'Parent connection reverted successfully');
@@ -1413,6 +1419,19 @@ async function revertParentLink(linkId) {
     showToast(err.message, 'error');
   }
 }
+window.revertParentLink = revertParentLink;
+
+async function deleteParentLink(linkId) {
+  if (!confirm('Are you sure you want to completely delete this parent connection record?')) return;
+  try {
+    const res = await apiDelete(`/admin/parent-links/${linkId}`);
+    showToast(res.message || 'Parent connection deleted successfully');
+    await renderParents();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.deleteParentLink = deleteParentLink;
 
 // ── Courses ───────────────────────────────────────────────────
 async function renderCourses() {
@@ -3932,9 +3951,10 @@ async function renderSettingsCredentials() {
               <span class="badge bg-success">Brevo & SMTP Ready</span>
             </div>
             <p class="text-muted small mb-3">
-              Configure your external payment, live video calling, and email dispatch provider credentials. Follow the inline hints for Brevo & SMTP configuration.
+              Configure your external payment, live video calling, email dispatch provider, and Firebase Cloud Messaging (FCM) credentials.
             </p>
             <form onsubmit="saveAPICredentials(event)">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mt-2 mb-3"><i class="fas fa-plug text-primary me-2"></i>Payment, Video & Email Gateway Settings</h6>
               ${[
         { key: 'razorpay_key_id', label: 'Razorpay Key ID', hint: 'Razorpay Dashboard > Settings > API Keys' },
         { key: 'razorpay_key_secret', label: 'Razorpay Secret', hint: 'Razorpay Dashboard > Settings > API Keys' },
@@ -3954,7 +3974,27 @@ async function renderSettingsCredentials() {
                   <input class="form-control spx-input form-control-sm" type="${f.hidden ? 'password' : 'text'}" id="cred_${f.key}" value="${settings[f.key] || ''}" placeholder="${f.placeholder || (f.hidden ? '••••••••' : '')}">
                   ${f.hint ? `<div class="form-text text-muted micro-text mt-1"><i class="fas fa-info-circle me-1 text-primary"></i>${f.hint}</div>` : ''}
                 </div>`).join('')}
-              <button type="submit" class="btn btn-spx w-100 mt-3"><i class="fas fa-save me-1"></i>Save Credentials</button>
+
+              <h6 class="fw-bold text-dark border-bottom pb-2 mt-4 mb-3"><i class="fas fa-fire text-danger me-2"></i>Firebase Cloud Messaging (FCM) & Push Notification Setup</h6>
+              <p class="text-muted small mb-3">
+                Configure your Firebase web app parameters to activate browser push notifications for Students, Teachers, and Parents.
+              </p>
+              ${[
+        { key: 'firebase_api_key', label: 'Firebase Web API Key', placeholder: 'AIzaSy...', hint: 'Firebase Console > Project Settings > Web App SDK setup' },
+        { key: 'firebase_auth_domain', label: 'Firebase Auth Domain', placeholder: 'your-app.firebaseapp.com', hint: 'Firebase Console > Project Settings > General' },
+        { key: 'firebase_project_id', label: 'Firebase Project ID', placeholder: 'your-project-id', hint: 'Firebase Console > Project Settings > General' },
+        { key: 'firebase_storage_bucket', label: 'Firebase Storage Bucket', placeholder: 'your-app.appspot.com', hint: 'Firebase Console > Project Settings > General' },
+        { key: 'firebase_messaging_sender_id', label: 'Firebase Messaging Sender ID', placeholder: '1234567890', hint: 'Firebase Console > Project Settings > Cloud Messaging' },
+        { key: 'firebase_app_id', label: 'Firebase App ID', placeholder: '1:1234567890:web:abcdef...', hint: 'Firebase Console > Project Settings > Web App' },
+        { key: 'firebase_measurement_id', label: 'Firebase Measurement ID (Optional)', placeholder: 'G-XXXXXXX', hint: 'Firebase Console > Project Settings > Google Analytics' },
+      ].map(f => `
+                <div class="mb-3">
+                  <label class="spx-label small text-dark fw-bold mb-1">${f.label}</label>
+                  <input class="form-control spx-input form-control-sm" type="text" id="cred_${f.key}" value="${settings[f.key] || ''}" placeholder="${f.placeholder || ''}">
+                  ${f.hint ? `<div class="form-text text-muted micro-text mt-1"><i class="fas fa-info-circle me-1 text-danger"></i>${f.hint}</div>` : ''}
+                </div>`).join('')}
+
+              <button type="submit" class="btn btn-spx w-100 mt-3"><i class="fas fa-save me-1"></i>Save All Credentials</button>
             </form>
           </div>
         </div>
@@ -4164,10 +4204,14 @@ async function saveLevelPayouts(e) {
 
 async function saveAPICredentials(e) {
   e.preventDefault();
-  const keys = ['razorpay_key_id', 'razorpay_key_secret', 'agora_app_id', 'agora_app_certificate', 'agora_customer_id', 'agora_customer_secret', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'brevo_api_key', 'smtp_from_email'];
+  const keys = [
+    'razorpay_key_id', 'razorpay_key_secret', 'agora_app_id', 'agora_app_certificate', 'agora_customer_id', 'agora_customer_secret',
+    'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'brevo_api_key', 'smtp_from_email',
+    'firebase_api_key', 'firebase_auth_domain', 'firebase_project_id', 'firebase_storage_bucket', 'firebase_messaging_sender_id', 'firebase_app_id', 'firebase_measurement_id'
+  ];
   const body = {};
   keys.forEach(k => { const v = document.getElementById(`cred_${k}`)?.value; if (v !== undefined) body[k] = v; });
-  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'API credentials saved'); }
+  try { const d = await apiPost('/admin/settings', body); showToast(d.message || 'API & Firebase credentials saved successfully'); }
   catch (err) { showToast(err.message, 'error'); }
 }
 

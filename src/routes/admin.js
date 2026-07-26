@@ -696,19 +696,168 @@ router.get('/parent-links', async (req, res) => {
   }
 });
 
-// Admin reverts or deletes parent access
+// Helper to build robust parent_student_links WHERE query
+function executeParentLinkOperation(action, linkId) {
+  let isComposite = false;
+  let pId = '', sId = '';
+  const decoded = decodeURIComponent(linkId);
+
+  if (decoded.includes(':::')) {
+    const parts = decoded.split(':::');
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      isComposite = true;
+      pId = parts[0];
+      sId = parts[1];
+    }
+  }
+
+  if (action === 'approve') {
+    if (isComposite) {
+      return {
+        sql: "UPDATE parent_student_links SET status = 'approved' WHERE (parent_id = $1 AND student_id = $2) OR (parent_id = $2 AND student_id = $1) RETURNING *",
+        params: [pId, sId]
+      };
+    }
+    return {
+      sql: "UPDATE parent_student_links SET status = 'approved' WHERE (id::text = $1::text OR parent_id::text = $1::text OR student_id::text = $1::text) RETURNING *",
+      params: [decoded]
+    };
+  } else if (action === 'revert') {
+    if (isComposite) {
+      return {
+        sql: "UPDATE parent_student_links SET status = 'rejected' WHERE (parent_id = $1 AND student_id = $2) OR (parent_id = $2 AND student_id = $1) RETURNING *",
+        params: [pId, sId]
+      };
+    }
+    return {
+      sql: "UPDATE parent_student_links SET status = 'rejected' WHERE (id::text = $1::text OR parent_id::text = $1::text OR student_id::text = $1::text) RETURNING *",
+      params: [decoded]
+    };
+  } else if (action === 'delete') {
+    if (isComposite) {
+      return {
+        sql: "DELETE FROM parent_student_links WHERE (parent_id = $1 AND student_id = $2) OR (parent_id = $2 AND student_id = $1) RETURNING *",
+        params: [pId, sId]
+      };
+    }
+    return {
+      sql: "DELETE FROM parent_student_links WHERE (id::text = $1::text OR parent_id::text = $1::text OR student_id::text = $1::text) RETURNING *",
+      params: [decoded]
+    };
+  }
+}
+
+// Admin force-approves parent connection
+router.post('/parent-links/:linkId/approve', async (req, res) => {
+  const { linkId } = req.params;
+  try {
+    const op = executeParentLinkOperation('approve', linkId);
+    let linkRes = await db.query(op.sql, op.params);
+    if (!linkRes.rows.length && op.fallbackSql) {
+      linkRes = await db.query(op.fallbackSql, op.fallbackParams);
+    }
+    if (!linkRes.rows.length) {
+      return res.status(404).json({ error: 'Connection request not found' });
+    }
+    const link = linkRes.rows[0];
+    await logAudit(req.user.id, 'PARENT_LINK_APPROVED_BY_ADMIN', 'parent_student_links', linkId, { parent_id: link.parent_id, student_id: link.student_id });
+    res.json({ message: 'Parent access connection approved successfully by Admin', link });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin reverts parent access
 router.post('/parent-links/:linkId/revert', async (req, res) => {
   const { linkId } = req.params;
   try {
-    const result = await db.query(
-      "UPDATE parent_student_links SET status = 'rejected' WHERE id = $1 RETURNING *",
-      [linkId]
+    const op = executeParentLinkOperation('revert', linkId);
+    let linkRes = await db.query(op.sql, op.params);
+    if (!linkRes.rows.length && op.fallbackSql) {
+      linkRes = await db.query(op.fallbackSql, op.fallbackParams);
+    }
+    if (!linkRes.rows.length) {
+      return res.status(404).json({ error: 'Connection request not found' });
+    }
+    const link = linkRes.rows[0];
+    await logAudit(req.user.id, 'PARENT_LINK_REVERTED_BY_ADMIN', 'parent_student_links', linkId, { parent_id: link.parent_id, student_id: link.student_id });
+
+    // Fetch parent & student details for email
+    const usersRes = await db.query(
+      "SELECT id, name, email FROM users WHERE id IN ($1, $2)",
+      [link.parent_id, link.student_id]
     );
+    const parent = usersRes.rows.find(u => u.id === link.parent_id);
+    const student = usersRes.rows.find(u => u.id === link.student_id);
+
+    const { sendEmail } = require('../services/EmailService');
+
+    // Send Email to Parent
+    if (parent && parent.email) {
+      try {
+        await sendEmail({
+          to: parent.email,
+          subject: `⚠️ Parent Access Link Reverted by Admin`,
+          type: 'notification',
+          headerTitle: 'Parent Access Reverted',
+          badgeLabel: 'Admin Notice',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #334155;">
+              <h3 style="color: #e11d48; margin-top: 0;">Parent Access Link Reverted</h3>
+              <p>Hello <strong>${parent.name}</strong>,</p>
+              <p>An administrator has reverted/revoked the parent access link between your account and student <strong>${student ? student.name : 'Student'}</strong>.</p>
+              <p>If you believe this was done in error, please contact SPEAXA support.</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+              <p style="font-size: 12px; color: #64748b; text-align: center;">SPEAXA Educational Intelligence System</p>
+            </div>
+          `
+        });
+      } catch (e) {}
+    }
+
+    // Send Email to Student
+    if (student && student.email) {
+      try {
+        await sendEmail({
+          to: student.email,
+          subject: `ℹ️ Parent Connection Reverted by Admin`,
+          type: 'notification',
+          headerTitle: 'Parent Link Update',
+          badgeLabel: 'Admin Notice',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #334155;">
+              <h3 style="color: #0d7a6d; margin-top: 0;">Parent Access Connection Reverted</h3>
+              <p>Hello <strong>${student.name}</strong>,</p>
+              <p>An administrator has reverted the parent link for <strong>${parent ? parent.name : 'Parent'}</strong> on your account.</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+              <p style="font-size: 12px; color: #64748b; text-align: center;">SPEAXA Educational Intelligence System</p>
+            </div>
+          `
+        });
+      } catch (e) {}
+    }
+
+    res.json({ message: 'Parent access request reverted successfully. Notifications sent.', link });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin deletes parent connection record entirely
+router.delete('/parent-links/:linkId', async (req, res) => {
+  const { linkId } = req.params;
+  try {
+    const op = executeParentLinkOperation('delete', linkId);
+    let result = await db.query(op.sql, op.params);
+    if (!result.rows.length && op.fallbackSql) {
+      result = await db.query(op.fallbackSql, op.fallbackParams);
+    }
+
     if (!result.rows.length) {
       return res.status(404).json({ error: 'Connection request not found' });
     }
-    await logAudit(req.user.id, 'PARENT_LINK_REVERTED_BY_ADMIN', 'parent_student_links', linkId, { parent_id: result.rows[0].parent_id, student_id: result.rows[0].student_id });
-    res.json({ message: 'Parent access request reverted successfully', link: result.rows[0] });
+    await logAudit(req.user.id, 'PARENT_LINK_DELETED_BY_ADMIN', 'parent_student_links', linkId, { parent_id: result.rows[0].parent_id, student_id: result.rows[0].student_id });
+    res.json({ message: 'Parent connection record deleted successfully', link: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

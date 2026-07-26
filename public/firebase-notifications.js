@@ -13,7 +13,8 @@
                         sessionStorage.getItem('student_token') ||
                         localStorage.getItem('teacher_token') || 
                         sessionStorage.getItem('teacher_token') ||
-                        localStorage.getItem('spx_parent_token');
+                        localStorage.getItem('spx_parent_token') ||
+                        sessionStorage.getItem('spx_parent_token');
 
     if (!activeToken) {
       console.warn('[FCM Client] User is not authenticated. Postponing registration.');

@@ -90,7 +90,11 @@
                 <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('loginPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
               </div>
             </div>
-            <div class="d-flex justify-content-end mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div class="form-check m-0 p-0 d-flex align-items-center gap-2">
+                <input class="form-check-input m-0" type="checkbox" id="rememberMe" checked style="cursor:pointer; width:16px; height:16px; accent-color: var(--teal, #0d7a6d);">
+                <label class="form-check-label text-muted" for="rememberMe" style="cursor:pointer; user-select:none; font-size:0.82rem;">Remember Me</label>
+              </div>
               <a href="#" onclick="showForgot(event)"
                 style="color:var(--teal); font-weight:500; font-size:0.82rem; text-decoration:none;">Forgot
                 Password?</a>
@@ -563,6 +567,13 @@
             <h2 id="pendingTitle">Access Pending Approval</h2>
             <p id="pendingMsg">Your request to view your child's academic performance has been sent. Ask your child to
               approve this request in their student portal.</p>
+            <div id="resendEmailWrap" style="margin-top: 18px; display: none;">
+              <button id="resendEmailBtn" class="btn-link-child" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; padding: 10px 20px;" onclick="triggerResendReminder()">
+                <i class="fa-solid fa-paper-plane"></i>
+                Resend Reminder Email
+              </button>
+              <p style="font-size: 0.78rem; color: #94a3b8; margin-top: 8px;">Automated email reminders are sent to the student every 5 minutes until approved.</p>
+            </div>
           </div>
         </div>
 
@@ -689,9 +700,6 @@
               <p style="font-size:0.82rem;color:var(--text-3);">Subject grades, performance trends, and behavioral
                 growth metrics</p>
             </div>
-            <button class="btn btn-ghost" onclick="showToast('Report card download coming soon.','warning')">
-              <i class="fa-solid fa-download"></i> Download Report
-            </button>
           </div>
 
           <div class="grid-2 section-gap" style="align-items:start;">
@@ -1547,24 +1555,61 @@
       if (isNaN(n) || n <= 0) return 0;
       return n > 10 ? n / 10 : n;
     }
+    // ── Auth Token & Session Storage Helpers ─────────────────────────────────
+    window.getParentToken = function () {
+      return localStorage.getItem('spx_parent_token') || sessionStorage.getItem('spx_parent_token');
+    };
+
+    window.getParentProfile = function () {
+      const raw = localStorage.getItem('spx_parent_profile') || sessionStorage.getItem('spx_parent_profile');
+      try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+    };
+
+    window.saveParentAuth = function (token, user, remember = true) {
+      if (remember) {
+        localStorage.setItem('spx_parent_token', token);
+        localStorage.setItem('spx_parent_profile', JSON.stringify(user));
+        if (user && (user.email || user.phone)) {
+          localStorage.setItem('spx_parent_remember_email', user.email || user.phone);
+        }
+        sessionStorage.removeItem('spx_parent_token');
+        sessionStorage.removeItem('spx_parent_profile');
+      } else {
+        sessionStorage.setItem('spx_parent_token', token);
+        sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
+        localStorage.removeItem('spx_parent_token');
+        localStorage.removeItem('spx_parent_profile');
+      }
+    };
+
+    window.updateParentProfile = function (user) {
+      if (localStorage.getItem('spx_parent_token')) {
+        localStorage.setItem('spx_parent_profile', JSON.stringify(user));
+      } else if (sessionStorage.getItem('spx_parent_token')) {
+        sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
+      }
+    };
+
     // ── Fetch interceptor (auth token injection + 401 auto-logout) ─────────────
     const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
       ? (window.location.port === '5002' ? '' : 'http://localhost:5002')
       : '';
     const _fetch = window.fetch;
     window.fetch = async (url, opts = {}) => {
-      const token = localStorage.getItem('spx_parent_token');
+      opts = opts || {};
+      opts.headers = opts.headers || {};
+      const token = window.getParentToken();
       let finalUrl = url;
       if (typeof url === 'string' && url.startsWith('/api')) {
         finalUrl = API + url;
       }
       const urlStr = typeof finalUrl === 'string' ? finalUrl : (finalUrl?.url || '');
-      if (token) {
-        opts.headers = opts.headers || {};
+      if (token && !opts.headers['Authorization'] && !opts.headers['authorization']) {
         opts.headers['Authorization'] = `Bearer ${token}`;
       }
       const res = await _fetch(finalUrl, opts);
-      if (!urlStr.includes('/api/auth/login') && (res.status === 401 || (res.status === 404 && urlStr.includes('/api/auth/profile')))) {
+      const isAuthRoute = urlStr.includes('/api/auth/login') || urlStr.includes('/api/auth/register') || urlStr.includes('/api/auth/profile');
+      if (!isAuthRoute && res.status === 401) {
         clearSession(); showLoginOverlay();
       }
       return res;
@@ -1572,7 +1617,10 @@
 
     // ── Session helpers ────────────────────────────────────────────────────────
     window.clearSession = function () {
-      ['spx_parent_token', 'spx_parent_profile', 'spx_parent_children', 'spx_parent_active_id'].forEach(k => localStorage.removeItem(k));
+      ['spx_parent_token', 'spx_parent_profile', 'spx_parent_children', 'spx_parent_active_id'].forEach(k => {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
+      });
     };
     window.showLoginOverlay = function () {
       const overlay = document.getElementById('loginOverlay');
@@ -2129,8 +2177,8 @@
             errEl.style.display = 'block';
             return;
           }
-          localStorage.setItem('spx_parent_token', data.token);
-          localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
+          const remember = document.getElementById('rememberMe')?.checked;
+          window.saveParentAuth(data.token, data.user, remember !== false);
           hideLoginOverlay();
           initDashboard();
           showToast('Welcome back! Signed in successfully.', 'success');
@@ -2344,8 +2392,7 @@
 
           clearAutoSave('autosave_parent_register');
 
-          localStorage.setItem('spx_parent_token', data.token);
-          localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
+          window.saveParentAuth(data.token, data.user, true);
           hideLoginOverlay();
           initDashboard();
           showToast('Registration successful! Welcome to Speaxa Parent Portal.', 'success');
@@ -2646,6 +2693,8 @@
           pendingIcon.className = 'fa-solid fa-circle-xmark';
           pendingIcon.style.color = 'var(--rose)';
           pendingWrap.style.background = 'rgba(244,63,94,0.1)';
+          const resendWrap = document.getElementById('resendEmailWrap');
+          if (resendWrap) resendWrap.style.display = 'none';
         } else {
           pendingTitle.textContent = 'Awaiting Student Approval';
           pendingTitle.style.color = 'var(--gold)';
@@ -2653,9 +2702,36 @@
           pendingIcon.className = 'fa-solid fa-clock-rotate-left';
           pendingIcon.style.color = 'var(--gold)';
           pendingWrap.style.background = 'rgba(245,158,11,0.1)';
+          const resendWrap = document.getElementById('resendEmailWrap');
+          if (resendWrap) resendWrap.style.display = 'block';
         }
         return;
       }
+
+    async function triggerResendReminder() {
+      const activeId = localStorage.getItem('spx_parent_active_id');
+      if (!activeId) return;
+      const btn = document.getElementById('resendEmailBtn');
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/parent/link-child/resend-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId: activeId })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || 'Could not resend email', 'danger');
+        } else {
+          showToast(data.message || 'Reminder email sent to student!', 'success');
+        }
+      } catch (err) {
+        showToast('Failed to connect to server', 'danger');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
 
       // Approved — show current tab
       statePending.style.display = 'none';
@@ -3430,7 +3506,7 @@
       const file = input.files[0];
       if (!file) return;
 
-      const token = localStorage.getItem('spx_parent_token');
+      const token = window.getParentToken();
       const formData = new FormData();
       formData.append('avatar', file);
 
@@ -3445,8 +3521,8 @@
         if (data.error) throw new Error(data.error);
         showToast('Profile photo updated successfully!', 'success');
 
-        // Save updated user to local storage
-        localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
+        // Save updated user profile
+        window.updateParentProfile(data.user);
         // Refresh UI
         initDashboard();
         loadParentProfileData();
@@ -3458,8 +3534,44 @@
     // ── Boot ───────────────────────────────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', async () => {
       setupAutoSave('autosave_parent_register', ['regName', 'regEmail', 'regPhone', 'regPass']);
-      const token = localStorage.getItem('spx_parent_token');
-      const savedProfile = localStorage.getItem('spx_parent_profile');
+
+      // 1. Check for token passed directly via URL query parameter (Admin Impersonation)
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      if (urlToken) {
+        try {
+          const res = await fetch('/api/auth/profile', {
+            headers: { 'Authorization': `Bearer ${urlToken}` }
+          });
+          if (res.ok) {
+            const p = await res.json();
+            if (p.role === 'parent') {
+              window.saveParentAuth(urlToken, p, true);
+              // Clean query parameter from URL bar without reloading
+              const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+              window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+              hideLoginOverlay();
+              initDashboard();
+              showToast(`Logged in via Admin Impersonation as ${p.name}`, 'info');
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('URL token login error:', e);
+        }
+      }
+
+      // 2. Pre-fill remembered login email if stored
+      const rememberedEmail = localStorage.getItem('spx_parent_remember_email');
+      if (rememberedEmail) {
+        const loginInput = document.getElementById('loginEmail');
+        if (loginInput && !loginInput.value) loginInput.value = rememberedEmail;
+        const remCb = document.getElementById('rememberMe');
+        if (remCb) remCb.checked = true;
+      }
+
+      const token = window.getParentToken();
+      const profile = window.getParentProfile();
 
       if (!token) {
         showLoginOverlay();
@@ -3467,16 +3579,9 @@
       }
 
       // Immediately restore session if profile exists to prevent auto-logout on refresh
-      if (savedProfile) {
-        try {
-          const p = JSON.parse(savedProfile);
-          if (p && p.role === 'parent') {
-            hideLoginOverlay();
-            initDashboard();
-          }
-        } catch (e) {
-          console.warn('Saved profile parse error:', e);
-        }
+      if (profile && profile.role === 'parent') {
+        hideLoginOverlay();
+        initDashboard();
       }
 
       // Validate session token with backend profile
@@ -3485,22 +3590,19 @@
         if (res.ok) {
           const p = await res.json();
           if (p.role === 'parent') {
-            localStorage.setItem('spx_parent_profile', JSON.stringify(p));
+            window.updateParentProfile(p);
             hideLoginOverlay();
             initDashboard();
           } else {
             clearSession();
             showLoginOverlay();
           }
-        } else if (res.status === 401) {
+        } else {
           clearSession();
           showLoginOverlay();
         }
-      } catch (err) {
-        console.warn('[Parent Boot] Profile check warning:', err.message);
-        if (!savedProfile) {
-          showLoginOverlay();
-        }
+      } catch (e) {
+        console.warn('Session verification warning:', e);
       }
     });
   </script>

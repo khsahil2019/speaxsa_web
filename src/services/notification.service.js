@@ -599,11 +599,92 @@ async function notifyObservationCreated({ studentId, teacherName, observationSco
   }
 }
 
+/**
+ * Background Job to periodically resend email reminders every 5 minutes
+ * to students who haven't accepted their parent's link request yet.
+ */
+function startPendingParentLinkReminderJob() {
+  const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+  async function checkAndSendReminders() {
+    try {
+      const pendingLinks = await db.query(`
+        SELECT psl.id, psl.parent_id, psl.student_id, psl.last_email_sent_at,
+               p.name as parent_name, p.email as parent_email,
+               s.name as student_name, s.email as student_email
+        FROM parent_student_links psl
+        JOIN users p ON p.id = psl.parent_id
+        JOIN users s ON s.id = psl.student_id
+        WHERE psl.status = 'pending'
+          AND (psl.last_email_sent_at IS NULL OR psl.last_email_sent_at <= NOW() - INTERVAL '5 minutes')
+      `);
+
+      if (!pendingLinks.rows || pendingLinks.rows.length === 0) return;
+
+      console.log(`[ParentLinkReminder] Resending periodic 5-minute email reminders for ${pendingLinks.rows.length} pending request(s)...`);
+      const { sendEmail } = require('./EmailService');
+
+      let baseUrl = process.env.APP_URL || process.env.PUBLIC_URL || 'https://speaxa.in';
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) baseUrl = 'https://' + baseUrl;
+      baseUrl = baseUrl.replace(/\/+$/, '');
+
+      for (const link of pendingLinks.rows) {
+        if (link.student_email) {
+          try {
+            await sendEmail({
+              to: link.student_email,
+              subject: `⏰ Reminder: Parent Access Link Request from ${link.parent_name}`,
+              type: 'notification',
+              headerTitle: 'Parent Link Reminder',
+              badgeLabel: 'Action Required',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #334155;">
+                  <h3 style="color: #0d7a6d; margin-top: 0;">Reminder: Parent Access Request Pending</h3>
+                  <p>Hello <strong>${link.student_name}</strong>,</p>
+                  <p>Your parent <strong>${link.parent_name}</strong> (${link.parent_email}) is waiting for your approval to link their account with your <strong>SPEAXA</strong> student profile.</p>
+                  
+                  <div style="background: #fffbe6; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; font-size: 14px;"><strong>Parent Name:</strong> ${link.parent_name}</p>
+                    <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Parent Email:</strong> ${link.parent_email}</p>
+                    <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Status:</strong> Awaiting Student Approval</p>
+                  </div>
+
+                  <p>Please log in to your <strong>Student Portal</strong> under Parent Access Requests to review and approve or reject this request.</p>
+                  
+                  <div style="text-align: center; margin: 25px 0;">
+                    <a href="${baseUrl}/student/" style="background-color: #0d7a6d; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Open Student Dashboard</a>
+                  </div>
+                  
+                  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+                  <p style="font-size: 12px; color: #64748b; text-align: center;">SPEAXA Educational Intelligence System</p>
+                </div>
+              `
+            });
+            console.log(`[ParentLinkReminder] Successfully sent 5-minute reminder email to student ${link.student_email}`);
+          } catch (e) {
+            console.error(`[ParentLinkReminder] Failed sending email to ${link.student_email}:`, e.message);
+          }
+        }
+
+        // Update last_email_sent_at
+        await db.query('UPDATE parent_student_links SET last_email_sent_at = NOW() WHERE id = $1', [link.id]);
+      }
+    } catch (err) {
+      console.error('[ParentLinkReminder] Error in periodic reminder job:', err.message);
+    }
+  }
+
+  // Initial check after 15 seconds, then repeat every 5 minutes
+  setTimeout(checkAndSendReminders, 15000);
+  setInterval(checkAndSendReminders, FIVE_MINUTES_MS);
+}
+
 module.exports = {
   notifyClassScheduled,
   notifyNewAssignment,
   notifyAssignmentSubmitted,
   notifyAssignmentGraded,
   notifyAttendanceReport,
-  notifyObservationCreated
+  notifyObservationCreated,
+  startPendingParentLinkReminderJob
 };
