@@ -1,3 +1,63 @@
+window.GLOBAL_TIMEZONE = 'Asia/Kolkata';
+window.GLOBAL_TIME_FORMAT = '12-hour';
+
+/**
+ * Universal Global 12-Hour Time Formatter (hh:mm AM/PM)
+ */
+window.fmtTime = function(dateInput) {
+  if (!dateInput) return '—';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: window.GLOBAL_TIMEZONE });
+  } catch (e) {
+    return '—';
+  }
+};
+
+/**
+ * Universal Global Date Formatter
+ */
+window.fmtDate = function(dateInput) {
+  if (!dateInput) return '—';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: window.GLOBAL_TIMEZONE });
+  } catch (e) {
+    return '—';
+  }
+};
+
+/**
+ * Universal Global Date + 12-Hour Time Formatter
+ */
+window.fmtDateTime = function(dateInput) {
+  if (!dateInput) return '—';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '—';
+    const datePart = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: window.GLOBAL_TIMEZONE });
+    const timePart = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: window.GLOBAL_TIMEZONE });
+    return `${datePart}, ${timePart}`;
+  } catch (e) {
+    return '—';
+  }
+};
+
+(function initGlobalTimeSettings() {
+  try {
+    fetch('/api/public/system-settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.system_timezone) {
+          window.GLOBAL_TIMEZONE = data.system_timezone;
+        }
+      })
+      .catch(() => {});
+  } catch (e) {}
+})();
+
 window.removeStrayModalBackdrops = function() {
   try {
     document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());

@@ -25,11 +25,11 @@ const makeStorage = (subdir) => multer.diskStorage({
   },
 });
 
-const sopUpload = multer({ storage: makeStorage('sop'), limits: { fileSize: 200 * 1024 * 1024 } });
-const docUpload = multer({ storage: makeStorage('documents'), limits: { fileSize: 20 * 1024 * 1024 } });
-const assignUpload = multer({ storage: makeStorage('assignments'), limits: { fileSize: 50 * 1024 * 1024 } });
-const notesUpload = multer({ storage: makeStorage('notes'), limits: { fileSize: 50 * 1024 * 1024 } });
-const plannerUpload = multer({ storage: makeStorage('planners'), limits: { fileSize: 20 * 1024 * 1024 } });
+const sopUpload = multer({ storage: makeStorage('sop') });
+const docUpload = multer({ storage: makeStorage('documents') });
+const assignUpload = multer({ storage: makeStorage('assignments') });
+const notesUpload = multer({ storage: makeStorage('notes') });
+const plannerUpload = multer({ storage: makeStorage('planners') });
 
 const batchStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -42,7 +42,7 @@ const batchStorage = multer.diskStorage({
     cb(null, `${req.user.id}_${Date.now()}${path.extname(file.originalname)}`);
   }
 });
-const batchUpload = multer({ storage: batchStorage, limits: { fileSize: 500 * 1024 * 1024 } });
+const batchUpload = multer({ storage: batchStorage });
 
 
 // All teacher routes require authentication
@@ -121,6 +121,40 @@ sopFields.forEach(({ name, col }) => {
       if (!link || !link.trim()) return res.status(400).json({ error: 'Link is required' });
       await db.query(`UPDATE teacher_sop SET ${col} = $1, updated_at = NOW() WHERE teacher_id = $2`, [link.trim(), req.user.id]);
       res.json({ message: `${name} link saved`, fileUrl: link.trim() });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.delete(`/sop/remove/${name}`, async (req, res) => {
+    try {
+      const existing = await db.query(`SELECT ${col} FROM teacher_sop WHERE teacher_id = $1`, [req.user.id]);
+      const currentUrl = existing.rows[0]?.[col];
+      if (currentUrl && currentUrl.startsWith('/uploads/sop/')) {
+        const localPath = path.join(__dirname, '../../public', currentUrl);
+        if (fs.existsSync(localPath)) {
+          try { fs.unlinkSync(localPath); } catch (e) {}
+        }
+      }
+      await db.query(`UPDATE teacher_sop SET ${col} = NULL, updated_at = NOW() WHERE teacher_id = $2`, [req.user.id]);
+      res.json({ message: `${name} evidence removed successfully`, field: name });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.post(`/sop/remove/${name}`, async (req, res) => {
+    try {
+      const existing = await db.query(`SELECT ${col} FROM teacher_sop WHERE teacher_id = $1`, [req.user.id]);
+      const currentUrl = existing.rows[0]?.[col];
+      if (currentUrl && currentUrl.startsWith('/uploads/sop/')) {
+        const localPath = path.join(__dirname, '../../public', currentUrl);
+        if (fs.existsSync(localPath)) {
+          try { fs.unlinkSync(localPath); } catch (e) {}
+        }
+      }
+      await db.query(`UPDATE teacher_sop SET ${col} = NULL, updated_at = NOW() WHERE teacher_id = $2`, [req.user.id]);
+      res.json({ message: `${name} evidence removed successfully`, field: name });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -1677,7 +1711,7 @@ const courseThumbnailStorage = multer.diskStorage({
     cb(null, `course_${Date.now()}${path.extname(file.originalname)}`);
   },
 });
-const courseThumbnailUpload = multer({ storage: courseThumbnailStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+const courseThumbnailUpload = multer({ storage: courseThumbnailStorage });
 
 router.post('/courses/upload-thumbnail', courseThumbnailUpload.single('thumbnail'), async (req, res) => {
   try {
@@ -2167,15 +2201,7 @@ const chatStorage = multer.diskStorage({
 });
 
 const chatUpload = multer({
-  storage: chatStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files (PNG, JPG, WEBP) up to 5 MB are allowed.'));
-    }
-  }
+  storage: chatStorage
 });
 
 // ── Send Teacher Connect Message ──────────────────────────────

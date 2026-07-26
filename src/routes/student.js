@@ -23,7 +23,7 @@ const submissionStorage = multer.diskStorage({
     cb(null, `sub_${req.user.id}_${Date.now()}${path.extname(file.originalname)}`);
   },
 });
-const submissionUpload = multer({ storage: submissionStorage, limits: { fileSize: 50 * 1024 * 1024 } });
+const submissionUpload = multer({ storage: submissionStorage });
 
 // ── Browse Courses ────────────────────────────────────────────
 router.get('/courses', async (req, res) => {

@@ -935,7 +935,7 @@ const courseThumbnailStorage = multer.diskStorage({
     cb(null, `course_${Date.now()}${path.extname(file.originalname)}`);
   },
 });
-const courseThumbnailUpload = multer({ storage: courseThumbnailStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+const courseThumbnailUpload = multer({ storage: courseThumbnailStorage });
 
 router.post('/courses/upload-thumbnail', courseThumbnailUpload.single('thumbnail'), async (req, res) => {
   try {
@@ -2341,7 +2341,7 @@ const galleryStorage = multer.diskStorage({
     cb(null, `${Date.now()}_${cleanName}`);
   },
 });
-const galleryUpload = multer({ storage: galleryStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+const galleryUpload = multer({ storage: galleryStorage });
 
 router.get('/gallery', async (req, res) => {
   try {

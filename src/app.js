@@ -623,8 +623,8 @@ app.use('/api/auth/reset-password', authLimiter);
 app.use('/api', globalLimiter);
 
 // ── Body Parsing ──────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '5000mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5000mb' }));
 app.use(compression());
 
 // ── Logging ───────────────────────────────────────────────────

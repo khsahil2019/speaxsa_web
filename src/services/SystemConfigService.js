@@ -14,6 +14,10 @@ async function getConfig() {
 
   // 1. Default environment fallbacks from process.env
   const envDefaults = {
+    // Global System Time & Formatting (Managed by Admin)
+    system_timezone: process.env.SYSTEM_TIMEZONE || 'Asia/Kolkata',
+    system_time_format: '12-hour',
+
     // SMTP & Email
     smtp_host: process.env.SMTP_HOST || 'smtp.sendgrid.net',
     smtp_port: process.env.SMTP_PORT || '587',

@@ -1699,7 +1699,16 @@ async function renderSop() {
                       </div>
                     </div>
                   `}
-                  ${hasSop ? `<a href="${slot.url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-play"></i> View Evidence</a>` : ''}
+                  ${hasSop ? `
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                      <a href="${slot.url}" target="_blank" class="btn btn-xs btn-outline-primary" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-play me-1"></i> View Evidence</a>
+                      ${isSubmitted ? '' : `
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="removeSopEvidence('${slot.id}')" style="font-size:0.7rem; padding: 2px 6px;">
+                          <i class="fas fa-trash-alt me-1"></i> Remove File
+                        </button>
+                      `}
+                    </div>
+                  ` : ''}
                 </div>
               `;
       }).join('')}
@@ -1965,14 +1974,6 @@ async function autoUploadDoc(input, docType) {
   const file = input.files[0];
   if (!file) return;
 
-  // Max 20MB client-side check
-  const maxDocSize = 20 * 1024 * 1024;
-  if (file.size > maxDocSize) {
-    showToast(`File "${file.name}" is too large. Maximum size allowed for KYC documents is 20MB.`, 'error');
-    input.value = '';
-    return;
-  }
-
   const spinner = document.getElementById(`spinner_kyc_${docType}`);
   if (spinner) spinner.classList.remove('d-none');
 
@@ -2026,14 +2027,6 @@ async function autoUploadSopVideo(input, fieldId) {
   const file = input.files[0];
   if (!file) return;
 
-  // Max 200MB client-side check
-  const maxVideoSize = 200 * 1024 * 1024;
-  if (file.size > maxVideoSize) {
-    showToast(`File "${file.name}" is too large. Maximum size allowed for video evidence is 200MB.`, 'error');
-    input.value = '';
-    return;
-  }
-
   const spinner = document.getElementById(`spinner_sop_${fieldId}`);
   if (spinner) spinner.classList.remove('d-none');
 
@@ -2085,6 +2078,30 @@ async function saveSopLink(fieldId) {
       localStorage.setItem(key, JSON.stringify(saved));
     } catch { }
 
+    renderSop();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function removeSopEvidence(fieldId) {
+  const confirmed = await spxConfirm({
+    title: 'Remove SOP Evidence?',
+    message: `Are you sure you want to remove the uploaded evidence for ${fieldId.replace('_', ' ')}? You will be able to upload a fresh file or paste a link.`,
+    confirmText: 'Remove File',
+    isDanger: true
+  });
+  if (!confirmed) return;
+
+  try {
+    showToast(`Removing evidence for ${fieldId.replace('_', ' ')}...`, 'info');
+    const res = await fetch(`${API}/teacher/sop/remove/${fieldId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast('SOP evidence file removed successfully!');
     renderSop();
   } catch (e) {
     showToast(e.message, 'error');

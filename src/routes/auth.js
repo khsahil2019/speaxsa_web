@@ -761,7 +761,7 @@ const avatarStorage = multer.diskStorage({
     cb(null, `avatar_${req.user.id}_${Date.now()}${path.extname(file.originalname)}`);
   },
 });
-const avatarUpload = multer({ storage: avatarStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+const avatarUpload = multer({ storage: avatarStorage });
 
 router.post('/upload-avatar', authenticateToken, avatarUpload.single('avatar'), async (req, res) => {
   try {

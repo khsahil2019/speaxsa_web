@@ -47,6 +47,21 @@ router.get('/public/teachers', async (req, res) => {
   }
 });
 
+// Public System Settings (Timezone & 12-Hour System)
+router.get('/public/system-settings', async (req, res) => {
+  try {
+    const configService = require('../services/SystemConfigService');
+    const settings = await configService.getConfig();
+    res.json({
+      system_timezone: settings.system_timezone || 'Asia/Kolkata',
+      system_time_format: '12-hour',
+      hour12: true
+    });
+  } catch (err) {
+    res.json({ system_timezone: 'Asia/Kolkata', system_time_format: '12-hour', hour12: true });
+  }
+});
+
 // Public stats — Exact Dynamic Database Counts
 router.get('/public/stats', async (req, res) => {
   try {
