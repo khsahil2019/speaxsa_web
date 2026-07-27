@@ -136,7 +136,7 @@ sopFields.forEach(({ name, col }) => {
           try { fs.unlinkSync(localPath); } catch (e) {}
         }
       }
-      await db.query(`UPDATE teacher_sop SET ${col} = NULL, updated_at = NOW() WHERE teacher_id = $2`, [req.user.id]);
+      await db.query(`UPDATE teacher_sop SET ${col} = NULL, updated_at = NOW() WHERE teacher_id = $1`, [req.user.id]);
       res.json({ message: `${name} evidence removed successfully`, field: name });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -153,7 +153,7 @@ sopFields.forEach(({ name, col }) => {
           try { fs.unlinkSync(localPath); } catch (e) {}
         }
       }
-      await db.query(`UPDATE teacher_sop SET ${col} = NULL, updated_at = NOW() WHERE teacher_id = $2`, [req.user.id]);
+      await db.query(`UPDATE teacher_sop SET ${col} = NULL, updated_at = NOW() WHERE teacher_id = $1`, [req.user.id]);
       res.json({ message: `${name} evidence removed successfully`, field: name });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -361,6 +361,16 @@ router.get('/documents', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM teacher_documents WHERE teacher_id = $1 ORDER BY uploaded_at DESC', [req.user.id]);
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/documents/remove/:docType', async (req, res) => {
+  const { docType } = req.params;
+  try {
+    await db.query('DELETE FROM teacher_documents WHERE teacher_id = $1 AND doc_type = $2', [req.user.id, docType]);
+    res.json({ message: 'Document removed successfully', doc_type: docType });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

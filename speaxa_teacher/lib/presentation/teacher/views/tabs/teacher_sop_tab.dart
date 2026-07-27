@@ -87,11 +87,59 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
   Widget _buildCheckTile(String title, String subtitle, bool isCompleted) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: isCompleted ? const Color(0xFFF0FDF4) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: isCompleted ? const Color(0xFF86EFAC) : Colors.grey.shade300, width: 1),
+      ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Icon(isCompleted ? Icons.check_circle : Icons.radio_button_unchecked, color: isCompleted ? AppColors.success : Colors.grey),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+        trailing: isCompleted
+            ? Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.success,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_outline, size: 12, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text("Uploaded", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.access_time, size: 12, color: Colors.amber.shade900),
+                        const SizedBox(width: 4),
+                        Text("Pending Review", style: TextStyle(color: Colors.amber.shade900, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.redAccent, size: 18),
+                    tooltip: "Remove Document (UI)",
+                    onPressed: () {},
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }

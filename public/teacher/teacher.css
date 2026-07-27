@@ -1235,9 +1235,10 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-md);
 }
 .sop-upload-slot.uploaded {
-  border-style: solid;
-  border-color: rgba(16, 185, 129, 0.25);
-  background: rgba(16, 185, 129, 0.01);
+  border-style: solid !important;
+  border-color: #86efac !important;
+  background: #f0fdf4 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08) !important;
 }
 
 .legal-affidavit {

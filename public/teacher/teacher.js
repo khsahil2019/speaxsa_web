@@ -1298,7 +1298,111 @@ async function renderTeacherNotificationsPage() {
 }
 
 // ── SOP Setup ─────────────────────────────────────────────────
-async function renderSop() {
+function renderAttachmentPreview(url, originalName, docType, removeFnName, isSubmitted) {
+  if (!url) return '';
+  const cleanUrl = url.toLowerCase().split('?')[0];
+  const isImg = cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') || cleanUrl.endsWith('.webp') || cleanUrl.endsWith('.gif') || cleanUrl.endsWith('.svg') || cleanUrl.startsWith('data:image/');
+  const isPdf = cleanUrl.endsWith('.pdf') || (!isImg && url.startsWith('/uploads/'));
+
+  if (isImg) {
+    return `
+      <div class="p-3 rounded-3 mt-2 shadow-sm border border-success-subtle text-center" style="background: #f0fdf4 !important; border: 1.5px solid #86efac !important;">
+        <div class="d-flex flex-column align-items-center gap-3">
+          <a href="${url}" target="_blank" class="d-block w-100 position-relative">
+            <img src="${url}" alt="Uploaded Document Preview" class="img-fluid rounded-3 shadow-sm border bg-white" style="max-height: 180px; width: auto; object-fit: contain; border-color: #86efac !important;">
+          </a>
+          <div class="d-flex align-items-center justify-content-center gap-2 w-100">
+            <a href="${url}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-3" style="font-size:0.75rem;"><i class="fas fa-external-link-alt me-1"></i>View Full Image</a>
+            ${isSubmitted ? '' : `
+              <button type="button" class="btn btn-sm btn-outline-danger py-1 px-3" style="font-size:0.75rem;" onclick="${removeFnName}('${docType}')" title="Remove Document">
+                <i class="fas fa-trash-alt me-1"></i>Remove
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (isPdf) {
+    return `
+      <div class="p-3 rounded-3 mt-2 shadow-sm border border-success-subtle" style="background: #f0fdf4 !important; border: 1.5px solid #86efac !important;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-3" style="min-width: 0;">
+            <div class="rounded-3 bg-white p-2 border shadow-sm d-flex align-items-center justify-content-center text-danger" style="width: 52px; height: 52px; flex-shrink: 0; border-color: #fca5a5 !important;">
+              <i class="fas fa-file-pdf fs-2 text-danger"></i>
+            </div>
+            <div style="min-width: 0;">
+              <div class="fw-bold text-dark small mb-0 text-truncate" style="max-width: 260px;">
+                <i class="fas fa-check-circle text-success me-1"></i>PDF Document Attached
+              </div>
+              <div class="text-muted small text-truncate" style="font-size:0.75rem; max-width: 260px;">
+                ${originalName && originalName !== 'Uploaded File' ? originalName : 'PDF File Document'}
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 ms-auto">
+            <a href="${url}" target="_blank" class="btn btn-sm btn-outline-danger py-1 px-3" style="font-size:0.75rem;"><i class="fas fa-file-pdf me-1"></i>View PDF</a>
+            ${isSubmitted ? '' : `
+              <button type="button" class="btn btn-sm btn-outline-danger py-1 px-3" style="font-size:0.75rem;" onclick="${removeFnName}('${docType}')" title="Remove PDF">
+                <i class="fas fa-trash-alt me-1"></i>Remove
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="p-3 rounded-3 mt-2 shadow-sm border border-success-subtle" style="background: #f0fdf4 !important; border: 1.5px solid #86efac !important;">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3" style="min-width: 0;">
+          <div class="rounded-3 bg-white p-2 border shadow-sm d-flex align-items-center justify-content-center text-primary" style="width: 48px; height: 48px; flex-shrink: 0; border-color: #86efac !important;">
+            <i class="fas fa-link fs-4"></i>
+          </div>
+          <div style="min-width: 0;">
+            <div class="fw-bold text-dark small mb-0 text-truncate" style="max-width: 260px;">
+              Attached External Link
+            </div>
+            <a href="${url}" target="_blank" class="text-primary text-decoration-underline small text-truncate d-block" style="font-size:0.73rem; max-width: 260px;">
+              ${url}
+            </a>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <a href="${url}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-3" style="font-size:0.75rem;"><i class="fas fa-external-link-alt me-1"></i>View Link</a>
+          ${isSubmitted ? '' : `
+            <button type="button" class="btn btn-sm btn-outline-danger py-1 px-3" style="font-size:0.75rem;" onclick="${removeFnName}('${docType}')" title="Remove Link">
+              <i class="fas fa-trash-alt me-1"></i>Remove
+            </button>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function handleChecklistToggle(checkbox) {
+  const key = checkbox.dataset.key;
+  if (!key) return;
+
+  window._sopChecklistState = window._sopChecklistState || {};
+  window._sopChecklistState[key] = checkbox.checked;
+
+  try {
+    const saved = JSON.parse(localStorage.getItem('teacher_sop_checklist_state') || '{}');
+    saved[key] = checkbox.checked;
+    localStorage.setItem('teacher_sop_checklist_state', JSON.stringify(saved));
+  } catch (e) {}
+
+  toggleSopSubmitBtn();
+}
+
+async function renderSop(targetSlotId) {
+  const currentScrollY = window.scrollY || document.documentElement.scrollTop;
   loading();
   try {
     const sop = await api('/teacher/sop');
@@ -1360,21 +1464,27 @@ async function renderSop() {
     const getGranularStatusHtml = (key, hasItem) => {
       if (!hasItem) return '<span class="badge bg-secondary-subtle text-secondary py-1 px-2" style="font-size:0.72rem"><i class="fas fa-exclamation-circle me-1"></i>Missing</span>';
       const app = approvals[key];
-      if (!app) return '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.72rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
-      if (app.status === 'approved') return '<span class="badge bg-success-subtle text-success py-1 px-2" style="font-size:0.72rem"><i class="fas fa-check-circle me-1"></i>Approved</span>';
+      const uploadedTag = '<span class="badge bg-success text-white py-1 px-2 me-1" style="font-size:0.72rem; background-color: #10b981 !important; color: #ffffff !important;"><i class="fas fa-check-circle me-1" style="color: #ffffff !important;"></i>Uploaded</span>';
+
+      if (!app) return uploadedTag + '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.72rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
+      if (app.status === 'approved') return uploadedTag + '<span class="badge bg-success-subtle text-success py-1 px-2" style="font-size:0.72rem"><i class="fas fa-check-circle me-1"></i>Approved</span>';
       if (app.status === 'rejected') {
         return `
           <div class="d-flex flex-column align-items-end">
-            <span class="badge bg-danger-subtle text-danger py-1 px-2" style="font-size:0.72rem"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+            <div class="d-flex align-items-center mb-1">
+              ${uploadedTag}
+              <span class="badge bg-danger-subtle text-danger py-1 px-2" style="font-size:0.72rem"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+            </div>
             ${app.notes ? `<span class="text-danger mt-1 text-end" style="font-size:0.68rem; font-weight:500; display:block; max-width:200px; white-space:normal; line-height:1.2;">Note: ${app.notes}</span>` : ''}
           </div>
         `;
       }
-      return '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.72rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
+      return uploadedTag + '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.72rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
     };
 
     const isSubmitted = sop && (sop.status === 'sop_pending' || sop.status === 'approved' || sop.status === 'suspended');
-    const tc = sop?.teacher_checklist || {};
+    const savedLocalChecklist = JSON.parse(localStorage.getItem('teacher_sop_checklist_state') || '{}');
+    const tc = Object.assign({}, sop?.teacher_checklist || {}, savedLocalChecklist, window._sopChecklistState || {});
     const chk = (key) => tc[key] ? 'checked' : '';
     const dis = isSubmitted ? 'disabled' : '';
 
@@ -1450,8 +1560,8 @@ async function renderSop() {
             ${kycSlots.map(slot => {
         const hasDoc = !!slot.doc;
         return `
-                <div class="col-md-6">
-                  <div class="sop-upload-slot ${hasDoc ? 'uploaded' : ''} h-100 d-flex flex-column justify-content-between">
+                <div class="col-md-6" id="kyc_slot_${slot.id}">
+                  <div class="sop-upload-slot ${hasDoc ? 'uploaded' : ''} h-100 d-flex flex-column justify-content-between" style="${hasDoc ? 'background: #f0fdf4 !important; border: 1.5px solid #86efac !important;' : ''}">
                     <div>
                       <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="fw-bold mb-0 text-dark" style="font-size:0.875rem">${slot.label}</h6>
@@ -1459,8 +1569,8 @@ async function renderSop() {
                       </div>
                       <p class="text-muted small mb-3" style="font-size:0.75rem">${slot.desc}</p>
                     </div>
-                    <div class="d-flex align-items-center gap-2 mt-auto pt-2 flex-wrap border-top border-light mt-3">
-                      ${isSubmitted ? '' : `
+                    ${hasDoc ? renderAttachmentPreview(slot.doc.file_url, slot.doc.original_name, slot.id, 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
+                      <div class="d-flex align-items-center gap-2 mt-auto pt-2 flex-wrap border-top border-light mt-3">
                         <div class="w-100 d-flex flex-column gap-2 mb-2">
                           <div class="d-flex align-items-center gap-1">
                             <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">File Upload:</label>
@@ -1469,13 +1579,12 @@ async function renderSop() {
                           </div>
                           <div class="d-flex align-items-center gap-1">
                             <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">Or Paste Link:</label>
-                            <input type="text" class="form-control form-control-sm spx-input" id="link_doc_${slot.id}" placeholder="e.g. Google Drive Link" value="${hasDoc && !slot.doc.file_url.startsWith('/uploads/') ? slot.doc.file_url : ''}" style="max-width:150px">
-                            <button class="btn btn-sm btn-spx py-1" onclick="saveDocLink('${slot.id}')" style="font-size: 0.7rem;">Save</button>
+                            <input type="text" class="form-control form-control-sm spx-input" id="link_doc_${slot.id}" placeholder="e.g. Google Drive Link" style="max-width:150px">
+                            <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('${slot.id}')" style="font-size: 0.7rem;">Save</button>
                           </div>
                         </div>
-                      `}
-                      ${hasDoc ? `<a href="${slot.doc.file_url}" target="_blank" class="btn btn-sm btn-outline-primary ms-auto" style="font-size:0.75rem; padding: 4px 8px;"><i class="fas fa-eye"></i> View</a>` : ''}
-                    </div>
+                      </div>
+                    `)}
                   </div>
                 </div>
               `;
@@ -1505,14 +1614,14 @@ async function renderSop() {
                 <input class="form-control spx-input" id="onboardSubjects" value="${profile.subject_expertise || ''}" placeholder="e.g. Physics, Chemistry, Maths" required ${isSubmitted ? 'disabled' : ''}>
                 <div class="text-muted small mt-1" style="font-size:0.7rem">Enter subjects you specialize in, separated by commas.</div>
               </div>
-              <div class="col-md-6">
-                <div class="sop-upload-slot ${docExpertise ? 'uploaded' : ''} p-3 rounded" style="background: rgba(15,23,42,0.01); border: 1px dashed var(--border);">
+              <div class="col-md-6" id="slot_expertise_proof">
+                <div class="sop-upload-slot ${docExpertise ? 'uploaded' : ''} p-3 rounded" style="${docExpertise ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="small fw-bold text-dark"><i class="fas fa-file-invoice text-primary me-1"></i>Subject Expertise Proof *</span>
                     ${getGranularStatusHtml('expertise_proof', !!docExpertise)}
                   </div>
                   <div class="text-muted mb-2" style="font-size:0.7rem">Upload syllabus, credentials, or certifications validating your expertise.</div>
-                  ${isSubmitted ? '' : `
+                  ${docExpertise ? renderAttachmentPreview(docExpertise.file_url, docExpertise.original_name, 'expertise_proof', 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
                     <div class="d-flex flex-column gap-2">
                       <div class="d-flex align-items-center gap-1">
                         <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
@@ -1521,12 +1630,11 @@ async function renderSop() {
                       </div>
                       <div class="d-flex align-items-center gap-1">
                         <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_expertise_proof" placeholder="e.g. Cert Link" value="${docExpertise && !docExpertise.file_url.startsWith('/uploads/') ? docExpertise.file_url : ''}" style="max-width:130px">
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_expertise_proof" placeholder="e.g. Cert Link" style="max-width:130px">
                         <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('expertise_proof')" style="font-size: 0.68rem;">Save</button>
                       </div>
                     </div>
-                  `}
-                  ${docExpertise ? `<a href="${docExpertise.file_url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-eye"></i> View Proof</a>` : ''}
+                  `)}
                 </div>
               </div>
 
@@ -1539,14 +1647,14 @@ async function renderSop() {
                 <input class="form-control spx-input" id="onboardLanguages" value="${profile.languages || ''}" placeholder="e.g. English, Hindi" required ${isSubmitted ? 'disabled' : ''}>
                 <div class="text-muted small mt-1" style="font-size:0.7rem">Specify languages in which you can teach.</div>
               </div>
-              <div class="col-md-6">
-                <div class="sop-upload-slot ${docLanguage ? 'uploaded' : ''} p-3 rounded" style="background: rgba(15,23,42,0.01); border: 1px dashed var(--border);">
+              <div class="col-md-6" id="slot_language_proof">
+                <div class="sop-upload-slot ${docLanguage ? 'uploaded' : ''} p-3 rounded" style="${docLanguage ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="small fw-bold text-dark"><i class="fas fa-microphone text-primary me-1"></i>Language Preferred Proof *</span>
                     ${getGranularStatusHtml('language_proof', !!docLanguage)}
                   </div>
                   <div class="text-muted mb-2" style="font-size:0.7rem">Upload language certificates or a short video/audio clip speaking in this language.</div>
-                  ${isSubmitted ? '' : `
+                  ${docLanguage ? renderAttachmentPreview(docLanguage.file_url, docLanguage.original_name, 'language_proof', 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
                     <div class="d-flex flex-column gap-2">
                       <div class="d-flex align-items-center gap-1">
                         <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
@@ -1555,12 +1663,11 @@ async function renderSop() {
                       </div>
                       <div class="d-flex align-items-center gap-1">
                         <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_language_proof" placeholder="e.g. Clip Link" value="${docLanguage && !docLanguage.file_url.startsWith('/uploads/') ? docLanguage.file_url : ''}" style="max-width:130px">
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_language_proof" placeholder="e.g. Clip Link" style="max-width:130px">
                         <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('language_proof')" style="font-size: 0.68rem;">Save</button>
                       </div>
                     </div>
-                  `}
-                  ${docLanguage ? `<a href="${docLanguage.file_url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-eye"></i> View Proof</a>` : ''}
+                  `)}
                 </div>
               </div>
 
@@ -1573,14 +1680,14 @@ async function renderSop() {
                 <input type="number" class="form-control spx-input" id="onboardExp" value="${profile.experience_years || 0}" required ${isSubmitted ? 'disabled' : ''}>
                 <div class="text-muted small mt-1" style="font-size:0.7rem">Enter your total years of teaching experience.</div>
               </div>
-              <div class="col-md-6">
-                <div class="sop-upload-slot ${docExperience ? 'uploaded' : ''} p-3 rounded" style="background: rgba(15,23,42,0.01); border: 1px dashed var(--border);">
+              <div class="col-md-6" id="slot_experience_proof">
+                <div class="sop-upload-slot ${docExperience ? 'uploaded' : ''} p-3 rounded" style="${docExperience ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="small fw-bold text-dark"><i class="fas fa-briefcase text-primary me-1"></i>Experience Letter Proof *</span>
                     ${getGranularStatusHtml('experience_proof', !!docExperience)}
                   </div>
                   <div class="text-muted mb-2" style="font-size:0.7rem">Upload experience letters or proofs of previous online/offline teaching.</div>
-                  ${isSubmitted ? '' : `
+                  ${docExperience ? renderAttachmentPreview(docExperience.file_url, docExperience.original_name, 'experience_proof', 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
                     <div class="d-flex flex-column gap-2">
                       <div class="d-flex align-items-center gap-1">
                         <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
@@ -1589,12 +1696,11 @@ async function renderSop() {
                       </div>
                       <div class="d-flex align-items-center gap-1">
                         <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_experience_proof" placeholder="e.g. Doc Link" value="${docExperience && !docExperience.file_url.startsWith('/uploads/') ? docExperience.file_url : ''}" style="max-width:130px">
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_experience_proof" placeholder="e.g. Doc Link" style="max-width:130px">
                         <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('experience_proof')" style="font-size: 0.68rem;">Save</button>
                       </div>
                     </div>
-                  `}
-                  ${docExperience ? `<a href="${docExperience.file_url}" target="_blank" class="btn btn-xs btn-outline-primary mt-2" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-eye"></i> View Proof</a>` : ''}
+                  `)}
                 </div>
               </div>
 
@@ -1795,7 +1901,7 @@ async function renderSop() {
             ${sopSlots.map(slot => {
         const hasSop = !!slot.url;
         return `
-                <div class="sop-upload-slot mb-3 ${hasSop ? 'uploaded' : ''}">
+                <div id="slot_${slot.id}" class="sop-upload-slot mb-3 ${hasSop ? 'uploaded' : ''}" style="${hasSop ? 'background: #f0fdf4 !important; border: 1.5px solid #86efac !important;' : ''}">
                   <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
                     <div>
                       <div class="fw-semibold text-dark small">${slot.label}</div>
@@ -1806,7 +1912,7 @@ async function renderSop() {
                     </div>
                     ${getGranularStatusHtml(slot.id, hasSop)}
                   </div>
-                  ${isSubmitted ? '' : `
+                  ${hasSop ? renderAttachmentPreview(slot.url, slot.label, slot.id, 'removeSopEvidence', isSubmitted) : (isSubmitted ? '' : `
                     <div class="row g-2 mt-2 align-items-center border-top pt-2">
                       <div class="col-md-6 d-flex align-items-center gap-1 border-end border-light">
                         <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">File Upload:</label>
@@ -1815,21 +1921,11 @@ async function renderSop() {
                       </div>
                       <div class="col-md-6 d-flex align-items-center gap-1">
                         <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">Or Paste Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_${slot.id}" placeholder="e.g. YouTube / Drive URL" value="${hasSop && !slot.url.startsWith('/uploads/') ? slot.url : ''}">
-                        <button class="btn btn-sm btn-spx py-1" onclick="saveSopLink('${slot.id}')">Save Link</button>
+                        <input type="text" class="form-control form-control-sm spx-input" id="link_${slot.id}" placeholder="e.g. YouTube / Drive URL">
+                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveSopLink('${slot.id}')">Save Link</button>
                       </div>
                     </div>
-                  `}
-                  ${hasSop ? `
-                    <div class="d-flex align-items-center gap-2 mt-2">
-                      <a href="${slot.url}" target="_blank" class="btn btn-xs btn-outline-primary" style="font-size:0.7rem; padding: 2px 6px;"><i class="fas fa-play me-1"></i> View Evidence</a>
-                      ${isSubmitted ? '' : `
-                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="removeSopEvidence('${slot.id}')" style="font-size:0.7rem; padding: 2px 6px;">
-                          <i class="fas fa-trash-alt me-1"></i> Remove File
-                        </button>
-                      `}
-                    </div>
-                  ` : ''}
+                  `)}
                 </div>
               `;
       }).join('')}
@@ -1841,55 +1937,55 @@ async function renderSop() {
             
             <div class="sop-checklist-container mb-3" style="max-height: 250px; overflow-y: auto; background: rgba(15,23,42,0.02); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_stable" data-key="camera_stable" ${chk('camera_stable')} ${camDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_stable" data-key="camera_stable" ${chk('camera_stable')} ${camDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_camera_stable">I use a stable eye-level camera tripod (absolutely no shaky/hand-held feed). ${!sop?.camera_sop_url ? '<span class="text-danger small ms-1">(Upload Camera Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_1080p" data-key="camera_1080p" ${chk('camera_1080p')} ${camDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_camera_1080p" data-key="camera_1080p" ${chk('camera_1080p')} ${camDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_camera_1080p">My camera supports minimum 1080p resolution and shows my face, upper body, and hands clearly. ${!sop?.camera_sop_url ? '<span class="text-danger small ms-1">(Upload Camera Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_soft" data-key="lighting_soft" ${chk('lighting_soft')} ${lightDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_soft" data-key="lighting_soft" ${chk('lighting_soft')} ${lightDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_lighting_soft">I use a front soft/ring light falling on my face, with no backlight or glare behind me. ${!sop?.lighting_sop_url ? '<span class="text-danger small ms-1">(Upload Lighting Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_bg" data-key="lighting_bg" ${chk('lighting_bg')} ${lightDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_lighting_bg" data-key="lighting_bg" ${chk('lighting_bg')} ${lightDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_lighting_bg">I have a white or clean neutral background with no messy details visible. ${!sop?.lighting_sop_url ? '<span class="text-danger small ms-1">(Upload Lighting Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_mic" data-key="audio_mic" ${chk('audio_mic')} ${audioDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_mic" data-key="audio_mic" ${chk('audio_mic')} ${audioDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_audio_mic">I use a collar mic / external mic (built-in webcam mic is not permitted). ${!sop?.audio_sop_url ? '<span class="text-danger small ms-1">(Upload Audio Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_noise" data-key="audio_noise" ${chk('audio_noise')} ${audioDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_audio_noise" data-key="audio_noise" ${chk('audio_noise')} ${audioDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_audio_noise">My teaching environment is free of echo, fan noise, or background chatter. ${!sop?.audio_sop_url ? '<span class="text-danger small ms-1">(Upload Audio Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_internet_speed" data-key="internet_speed" ${chk('internet_speed')} ${internetDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_internet_speed" data-key="internet_speed" ${chk('internet_speed')} ${internetDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_internet_speed">My upload speed is above 20 Mbps, and I have mobile hotspot backup ready. ${!sop?.internet_proof_url ? '<span class="text-danger small ms-1">(Upload Internet Speed Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_presentation_style" data-key="presentation_style" ${chk('presentation_style')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_presentation_style" data-key="presentation_style" ${chk('presentation_style')} ${teachDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_presentation_style">I will maintain an energetic tone, direct eye contact with the camera, and use gestures naturally. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_dress_code" data-key="dress_code" ${chk('dress_code')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_dress_code" data-key="dress_code" ${chk('dress_code')} ${teachDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_dress_code">I will wear solid colored shirts/tops and maintain a clean professional appearance. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_class_flow" data-key="class_flow" ${chk('class_flow')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_class_flow" data-key="class_flow" ${chk('class_flow')} ${teachDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_class_flow">I will join sessions 10–15 mins early, test media, greet students by name, and run engagement polls/quizzes every 3–5 mins. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_board_materials" data-key="board_materials" ${chk('board_materials')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_board_materials" data-key="board_materials" ${chk('board_materials')} ${teachDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_board_materials">I will write in large legible characters with structured spacing and use annotations / highlighting. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_content_delivery" data-key="content_delivery" ${chk('content_delivery')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_content_delivery" data-key="content_delivery" ${chk('content_delivery')} ${teachDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_content_delivery">I will follow modular delivery: Concept -> Examples -> Practice -> Recap -> Doubt section. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
               </div>
               <div class="form-check mb-2">
-                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_discipline_rules" data-key="discipline_rules" ${chk('discipline_rules')} ${teachDis} onchange="toggleSopSubmitBtn()">
+                <input class="form-check-input sop-checklist-item-checkbox" type="checkbox" id="check_discipline_rules" data-key="discipline_rules" ${chk('discipline_rules')} ${teachDis} onchange="handleChecklistToggle(this)">
                 <label class="form-check-label text-secondary small" for="check_discipline_rules">I will not solicit students privately, promote external coaching, or use unprofessional language. ${!sop?.demo_teaching_url ? '<span class="text-danger small ms-1">(Upload Demo Lecture Evidence First)</span>' : ''}</label>
               </div>
             </div>
@@ -2080,6 +2176,20 @@ async function renderSop() {
         'link_camera_sop', 'link_lighting_sop', 'link_audio_sop', 'link_internet_proof', 'link_demo_teaching'
       ]);
     }
+
+    // Restore scroll position or target slot position
+    setTimeout(() => {
+      if (targetSlotId) {
+        const el = document.getElementById(`slot_${targetSlotId}`) || document.getElementById(`kyc_slot_${targetSlotId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+      if (currentScrollY > 0) {
+        window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+      }
+    }, 50);
   } catch (e) {
     document.getElementById('pageContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
   }
@@ -2112,7 +2222,7 @@ async function autoUploadDoc(input, docType) {
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast(`${docType.toUpperCase()} uploaded successfully!`);
-    renderSop();
+    renderSop(docType);
   } catch (e) {
     showToast(e.message, 'error');
   } finally {
@@ -2138,7 +2248,7 @@ async function saveDocLink(docType) {
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast(`${docType.toUpperCase()} link saved successfully!`);
-    renderSop();
+    renderSop(docType);
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -2164,7 +2274,7 @@ async function autoUploadSopVideo(input, fieldId) {
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
     showToast(`${fieldId.replace('_', ' ')} uploaded successfully!`);
-    renderSop();
+    renderSop(fieldId);
   } catch (e) {
     showToast(e.message, 'error');
   } finally {
@@ -2199,7 +2309,31 @@ async function saveSopLink(fieldId) {
       localStorage.setItem(key, JSON.stringify(saved));
     } catch { }
 
-    renderSop();
+    renderSop(fieldId);
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function removeDoc(docType) {
+  const confirmed = await spxConfirm({
+    title: 'Remove Document?',
+    message: `Are you sure you want to remove the uploaded document for ${docType.replace('_', ' ')}? You will be able to upload a fresh file or paste a new link.`,
+    confirmText: 'Remove Document',
+    isDanger: true
+  });
+  if (!confirmed) return;
+
+  try {
+    showToast(`Removing document...`, 'info');
+    const res = await fetch(`${API}/teacher/documents/remove/${docType}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await parseFetchResponse(res);
+    if (data.error) throw new Error(data.error);
+    showToast('Document removed successfully!');
+    renderSop(docType);
   } catch (e) {
     showToast(e.message, 'error');
   }
@@ -2223,7 +2357,7 @@ async function removeSopEvidence(fieldId) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     showToast('SOP evidence file removed successfully!');
-    renderSop();
+    renderSop(fieldId);
   } catch (e) {
     showToast(e.message, 'error');
   }
