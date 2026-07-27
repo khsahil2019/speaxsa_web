@@ -10,6 +10,8 @@ class RegisterView extends GetView<AuthController> {
 
   @override
   Widget build(BuildContext context) {
+    final RxBool isAgreed = true.obs;
+
     return Scaffold(
       backgroundColor: AppColors.lightBg,
       appBar: AppBar(
@@ -23,7 +25,7 @@ class RegisterView extends GetView<AuthController> {
             }
           },
         ),
-        title: Obx(() => Text("Step ${controller.currentRegStep.value} of 3")),
+        title: Obx(() => Text("Step ${controller.currentRegStep.value} of 3", style: const TextStyle(fontWeight: FontWeight.bold))),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -37,26 +39,26 @@ class RegisterView extends GetView<AuthController> {
               // Logo Header
               Center(
                 child: Container(
-                  width: 80,
-                  height: 80,
+                  width: 76,
+                  height: 76,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: AppColors.primary.withOpacity(0.08),
                     shape: BoxShape.circle,
                   ),
                   padding: const EdgeInsets.all(12),
                   child: Image.asset(
                     'assets/images/logo.png',
-                    errorBuilder: (c, e, s) => const Icon(Icons.school, size: 40, color: AppColors.primary),
+                    errorBuilder: (c, e, s) => const Icon(Icons.school, size: 38, color: AppColors.primary),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               Center(
                 child: Text(
-                  "Join Speaxsa",
+                  "Join SPEAXA as Educator",
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        fontSize: 28,
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: AppColors.lightTextPrimary,
                       ),
@@ -65,13 +67,18 @@ class RegisterView extends GetView<AuthController> {
               const SizedBox(height: 4),
               const Center(
                 child: Text(
-                  "Create your Teacher profile",
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  "Complete all 3 steps to submit your Teacher application",
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                  textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Step Content Wrapper
+              // Step Progress Indicator Bar
+              Obx(() => _buildStepProgressIndicator(controller.currentRegStep.value)),
+              const SizedBox(height: 24),
+
+              // Step Content Switcher
               Obx(() {
                 switch (controller.currentRegStep.value) {
                   case 1:
@@ -79,20 +86,21 @@ class RegisterView extends GetView<AuthController> {
                   case 2:
                     return _buildStep2(context);
                   case 3:
-                    return _buildStep3(context);
+                    return _buildStep3(context, isAgreed);
                   default:
                     return _buildStep1(context);
                 }
               }),
+
               const SizedBox(height: 24),
 
-              // Bottom Toggle link (Only visible on Step 1)
+              // Bottom Sign In Switcher (Only visible on Step 1)
               Obx(() {
                 if (controller.currentRegStep.value == 1) {
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Already have an account? ", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                      const Text("Already have a Teacher account? ", style: TextStyle(fontSize: 14, color: Colors.grey)),
                       GestureDetector(
                         onTap: () => Get.toNamed('/login'),
                         child: const Text(
@@ -105,6 +113,7 @@ class RegisterView extends GetView<AuthController> {
                 }
                 return const SizedBox.shrink();
               }),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -112,30 +121,45 @@ class RegisterView extends GetView<AuthController> {
     );
   }
 
+  // Step 1: Personal Details & Security (One field per row)
   Widget _buildStep1(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("1. Personal Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
+        const Text("Step 1: Personal & Account Details", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
         const SizedBox(height: 16),
         CustomTextField(
           label: 'Full Name *',
-          hint: 'enter full name',
+          hint: 'e.g. Dr. Rajesh Sharma',
           controller: controller.regNameController,
           prefixIcon: Icons.person_outline,
         ),
         CustomTextField(
-          label: 'Email Address *',
-          hint: 'enter email address',
+          label: 'Primary Email Address *',
+          hint: 'name@domain.com',
           controller: controller.regEmailController,
           prefixIcon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
         ),
         CustomTextField(
-          label: 'Phone Number *',
-          hint: 'enter mobile number',
+          label: 'Alternative Email (Optional)',
+          hint: 'alt.email@domain.com',
+          controller: controller.regAltEmailController,
+          prefixIcon: Icons.mark_email_read_outlined,
+          keyboardType: TextInputType.emailAddress,
+        ),
+        CustomTextField(
+          label: 'Contact Phone *',
+          hint: '9876543210',
           controller: controller.regPhoneController,
           prefixIcon: Icons.phone_outlined,
+          keyboardType: TextInputType.phone,
+        ),
+        CustomTextField(
+          label: 'WhatsApp / Secondary Mobile (Optional)',
+          hint: '9876543210',
+          controller: controller.regMobileNumberController,
+          prefixIcon: Icons.phone_android_outlined,
           keyboardType: TextInputType.phone,
         ),
         Obx(() => CustomTextField(
@@ -151,13 +175,13 @@ class RegisterView extends GetView<AuthController> {
         )),
         const SizedBox(height: 20),
         CustomButton(
-          text: 'Next: Professional Info',
+          text: 'Next',
           onPressed: () {
             if (controller.regNameController.text.trim().isEmpty ||
                 controller.regEmailController.text.trim().isEmpty ||
                 controller.regPhoneController.text.trim().isEmpty ||
                 controller.regPasswordController.text.isEmpty) {
-              Get.snackbar('Error', 'Please fill in all required fields', backgroundColor: Colors.red, colorText: Colors.white);
+              Get.snackbar('Missing Information', 'Please fill in all required fields (Name, Email, Phone, Password)', backgroundColor: Colors.red, colorText: Colors.white);
               return;
             }
             controller.currentRegStep.value = 2;
@@ -167,34 +191,35 @@ class RegisterView extends GetView<AuthController> {
     );
   }
 
+  // Step 2: Professional Qualifications & Expertise (One field per row)
   Widget _buildStep2(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("2. Professional Info", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
+        const Text("Step 2: Qualifications & Experience", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
         const SizedBox(height: 16),
         CustomTextField(
-          label: 'Qualification *',
+          label: 'Highest Qualification (e.g. M.Sc Physics) *',
           hint: 'e.g. M.Sc. in Physics, B.Ed.',
           controller: controller.regQualificationController,
           prefixIcon: Icons.school_outlined,
         ),
         CustomTextField(
-          label: 'Experience (Years) *',
+          label: 'Subjects Expertise (e.g. Physics, Chemistry) *',
+          hint: 'e.g. Physics, Mathematics',
+          controller: controller.regSubjectExpertiseController,
+          prefixIcon: Icons.menu_book_outlined,
+        ),
+        CustomTextField(
+          label: 'Experience (years) *',
           hint: 'e.g. 5',
           controller: controller.regExperienceYearsController,
           keyboardType: TextInputType.number,
           prefixIcon: Icons.timelapse_outlined,
         ),
         CustomTextField(
-          label: 'Subject Expertise *',
-          hint: 'e.g. Physics, Mathematics',
-          controller: controller.regSubjectExpertiseController,
-          prefixIcon: Icons.menu_book_outlined,
-        ),
-        CustomTextField(
-          label: 'Languages Spoken *',
-          hint: 'e.g. English, Hindi',
+          label: 'Teaching Languages (e.g. English, Hindi) *',
+          hint: 'e.g. English, Hindi, Hinglish',
           controller: controller.regLanguagesController,
           prefixIcon: Icons.translate_outlined,
         ),
@@ -214,13 +239,13 @@ class RegisterView extends GetView<AuthController> {
             const SizedBox(width: 12),
             Expanded(
               child: CustomButton(
-                text: 'Next: Location',
+                text: 'Next',
                 onPressed: () {
                   if (controller.regQualificationController.text.trim().isEmpty ||
                       controller.regExperienceYearsController.text.trim().isEmpty ||
                       controller.regSubjectExpertiseController.text.trim().isEmpty ||
                       controller.regLanguagesController.text.trim().isEmpty) {
-                    Get.snackbar('Error', 'Please fill in all required fields', backgroundColor: Colors.red, colorText: Colors.white);
+                    Get.snackbar('Missing Information', 'Please fill in all required professional fields', backgroundColor: Colors.red, colorText: Colors.white);
                     return;
                   }
                   controller.currentRegStep.value = 3;
@@ -233,18 +258,24 @@ class RegisterView extends GetView<AuthController> {
     );
   }
 
-  Widget _buildStep3(BuildContext context) {
+  // Step 3: Social Profiles & Agreements (One field per row)
+  Widget _buildStep3(BuildContext context, RxBool isAgreed) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("3. Location & Referrals", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
+        const Text("Step 3: Socials & Agreement", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
         const SizedBox(height: 16),
         CustomTextField(
-          label: 'Permanent Address *',
-          hint: 'enter your location address',
-          controller: controller.regAddressController,
-          prefixIcon: Icons.location_on_outlined,
-          maxLines: 2,
+          label: 'LinkedIn Profile Link (Optional)',
+          hint: 'https://linkedin.com/in/username',
+          controller: controller.regLinkedInController,
+          prefixIcon: Icons.link_outlined,
+        ),
+        CustomTextField(
+          label: 'Twitter / YouTube Link (Optional)',
+          hint: 'https://youtube.com/@username',
+          controller: controller.regTwitterController,
+          prefixIcon: Icons.public_outlined,
         ),
         CustomTextField(
           label: 'Referral Code (Optional)',
@@ -253,30 +284,45 @@ class RegisterView extends GetView<AuthController> {
           prefixIcon: Icons.card_giftcard_outlined,
         ),
         const SizedBox(height: 12),
+
         Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: true,
-              onChanged: (val) {},
+            Obx(() => Checkbox(
+              value: isAgreed.value,
+              onChanged: (val) => isAgreed.value = val ?? false,
               activeColor: AppColors.primary,
-            ),
-            const Expanded(
-              child: Text.rich(
-                TextSpan(
-                  text: "I agree to the ",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                  children: [
-                    TextSpan(
-                      text: "Terms & Conditions",
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(text: " and "),
-                    TextSpan(
-                      text: "Privacy Policy",
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+            )),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text.rich(
+                  TextSpan(
+                    text: "I agree to SPEAXA's ",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    children: [
+                      TextSpan(
+                        text: "Terms of Service",
+                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ", "),
+                      TextSpan(
+                        text: "Privacy Policy",
+                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ", "),
+                      TextSpan(
+                        text: "Teacher Partnership Agreement",
+                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: " & "),
+                      TextSpan(
+                        text: "Teacher Standards & QA Policy",
+                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: "."),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -298,11 +344,12 @@ class RegisterView extends GetView<AuthController> {
             const SizedBox(width: 12),
             Expanded(
               child: Obx(() => CustomButton(
-                text: 'Register Account',
+                text: 'Register',
+                icon: Icons.person_add_alt_1_outlined,
                 isLoading: controller.isLoading.value,
                 onPressed: () {
-                  if (controller.regAddressController.text.trim().isEmpty) {
-                    Get.snackbar('Error', 'Please enter your permanent address', backgroundColor: Colors.red, colorText: Colors.white);
+                  if (!isAgreed.value) {
+                    Get.snackbar('Agreement Required', 'Please accept the SPEAXA Teacher Agreements & QA Policy', backgroundColor: Colors.orange, colorText: Colors.white);
                     return;
                   }
                   controller.register();
@@ -311,6 +358,33 @@ class RegisterView extends GetView<AuthController> {
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  // Progress Bar Helper
+  Widget _buildStepProgressIndicator(int currentStep) {
+    return Row(
+      children: [
+        _buildStepBadge(1, "Personal", currentStep >= 1),
+        Expanded(child: Container(height: 2, color: currentStep >= 2 ? AppColors.primary : Colors.grey.shade300)),
+        _buildStepBadge(2, "Skills", currentStep >= 2),
+        Expanded(child: Container(height: 2, color: currentStep >= 3 ? AppColors.primary : Colors.grey.shade300)),
+        _buildStepBadge(3, "Agreement", currentStep >= 3),
+      ],
+    );
+  }
+
+  Widget _buildStepBadge(int stepNum, String label, bool isActive) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: isActive ? AppColors.primary : Colors.grey.shade300,
+          child: Text("$stepNum", style: TextStyle(color: isActive ? Colors.white : Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 10, fontWeight: isActive ? FontWeight.bold : FontWeight.normal, color: isActive ? AppColors.primary : Colors.grey)),
       ],
     );
   }

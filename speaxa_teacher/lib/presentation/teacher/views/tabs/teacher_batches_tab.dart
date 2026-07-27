@@ -61,10 +61,14 @@ class TeacherBatchesTab extends GetView<TeacherDashboardController> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            "Enrolled: ${b.seatsFilled} / ${b.capacity} Students",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                          Expanded(
+                            child: Text(
+                              "Enrolled: ${b.seatsFilled} / ${b.capacity} Students",
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           TextButton.icon(
                             icon: const Icon(Icons.people_outline, size: 16),
                             label: const Text("Students"),

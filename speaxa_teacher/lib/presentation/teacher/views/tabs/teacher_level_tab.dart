@@ -40,7 +40,13 @@ class TeacherLevelTab extends GetView<TeacherDashboardController> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(currentLevel, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppColors.primary)),
+                            Expanded(
+                              child: Text(
+                                currentLevel,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 19, color: AppColors.primary),
+                              ),
+                            ),
                             const Icon(Icons.shield, color: Colors.amber, size: 28),
                           ],
                         ),
@@ -60,8 +66,21 @@ class TeacherLevelTab extends GetView<TeacherDashboardController> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("${(progress * 100).toStringAsFixed(0)}% Completed", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
-                            Text("Upgrade to $nextLevel", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            Expanded(
+                              child: Text(
+                                "${(progress * 100).toStringAsFixed(0)}% Completed",
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                "Upgrade to $nextLevel",
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                              ),
+                            ),
                           ],
                         ),
                       ],

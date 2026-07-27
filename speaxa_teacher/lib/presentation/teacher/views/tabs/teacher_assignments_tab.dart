@@ -141,7 +141,14 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(sub['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                          Expanded(
+                                            child: Text(
+                                              sub['student_name'] ?? 'Student',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
                                           StatusChip(status: submissionStatus),
                                         ],
                                       ),

@@ -19,13 +19,17 @@ class AuthController extends GetxController {
   // Register Controllers
   final regNameController = TextEditingController();
   final regEmailController = TextEditingController();
+  final regAltEmailController = TextEditingController();
   final regPhoneController = TextEditingController();
+  final regMobileNumberController = TextEditingController();
   final regPasswordController = TextEditingController();
   final regQualificationController = TextEditingController();
   final regExperienceYearsController = TextEditingController();
   final regSubjectExpertiseController = TextEditingController();
   final regLanguagesController = TextEditingController();
   final regAddressController = TextEditingController();
+  final regLinkedInController = TextEditingController();
+  final regTwitterController = TextEditingController();
   final regBoardController = TextEditingController();
   final regGradeController = TextEditingController();
   final regReferralCodeController = TextEditingController();
@@ -103,43 +107,69 @@ class AuthController extends GetxController {
   Future<void> register() async {
     final name = regNameController.text.trim();
     final email = regEmailController.text.trim();
-    final phone = regPhoneController.text.trim();
+    final altEmail = regAltEmailController.text.trim();
+    var phone = regPhoneController.text.trim();
+    if (phone.isNotEmpty && !phone.startsWith('+')) {
+      final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+      phone = '+91$cleanDigits';
+    }
+    var mobileNumber = regMobileNumberController.text.trim();
+    if (mobileNumber.isNotEmpty && !mobileNumber.startsWith('+')) {
+      final cleanDigitsMobile = mobileNumber.replaceAll(RegExp(r'[^0-9]'), '');
+      mobileNumber = '+91$cleanDigitsMobile';
+    }
     final password = regPasswordController.text;
     final qualification = regQualificationController.text.trim();
     final experienceYears = int.tryParse(regExperienceYearsController.text.trim()) ?? 0;
     final subjectExpertise = regSubjectExpertiseController.text.trim();
     final languages = regLanguagesController.text.trim();
     final address = regAddressController.text.trim();
+    final linkedIn = regLinkedInController.text.trim();
+    final twitter = regTwitterController.text.trim();
     final referralCode = regReferralCodeController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      Get.snackbar('Error', 'Please fill in all required fields', backgroundColor: Colors.red, colorText: Colors.white);
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
+      Get.snackbar('Error', 'Please fill in all required fields (Name, Email, Mobile, Password)', backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
+
+    final enteredOtp = regEmailOtpController.text.trim().isNotEmpty 
+        ? regEmailOtpController.text.trim() 
+        : regOtpController.text.trim();
+
+    final socialLinks = {
+      if (linkedIn.isNotEmpty) 'linkedin': linkedIn,
+      if (twitter.isNotEmpty) 'twitter': twitter,
+    };
 
     try {
       isLoading.value = true;
       final result = await _authRepository.register({
         'name': name,
         'email': email,
+        'phone': phone,
         'password': password,
         'role': 'teacher',
-        if (phone.isNotEmpty) 'phone': phone,
+        if (altEmail.isNotEmpty) 'alt_email': altEmail,
+        if (mobileNumber.isNotEmpty) 'mobile_number': mobileNumber,
+        if (socialLinks.isNotEmpty) 'social_links': socialLinks,
         if (qualification.isNotEmpty) 'qualification': qualification,
         'experience_years': experienceYears,
         if (subjectExpertise.isNotEmpty) 'subject_expertise': subjectExpertise,
         if (languages.isNotEmpty) 'languages': languages,
         if (address.isNotEmpty) 'address': address,
-        if (referralCode.isNotEmpty) 'referral_code': referralCode,
-        if (regEmailOtpController.text.isNotEmpty) 'emailOtp': regEmailOtpController.text.trim(),
+        if (referralCode.isNotEmpty) 'referred_by_code': referralCode,
+        if (enteredOtp.isNotEmpty) 'otp': enteredOtp,
+        if (enteredOtp.isNotEmpty) 'emailOtp': enteredOtp,
       });
 
       if (result['status'] == 'otp_sent') {
-        Get.snackbar('Verification Required', result['message'] ?? 'Please verify your email OTP', backgroundColor: Colors.blue, colorText: Colors.white);
+        Get.snackbar('Verification Required', result['message'] ?? 'Please verify 6-digit OTP code sent to your phone/email', backgroundColor: Colors.blue, colorText: Colors.white);
         Get.toNamed('/otp-verify', arguments: {
           'purpose': 'register',
           'email': email,
-          'otp_email': result['otp_email'],
+          'phone': phone,
+          'otp_val': result['otp'],
         });
         return;
       }

@@ -28,24 +28,27 @@ class OtpVerificationView extends GetView<AuthController> {
             const SizedBox(height: 24),
 
             if (purpose == 'register') ...[
-              if (args['otp_email'] != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+              if (args['otp_val'] != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.blue.shade200)),
                   child: Text(
-                    "Dev OTP -> Email: ${args['otp_email'] ?? ''}",
-                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                    "Dev OTP: ${args['otp_val']}",
+                    style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
               CustomTextField(
-                label: 'Email OTP Code',
+                label: 'Enter 6-Digit OTP Code',
                 hint: '123456',
                 controller: controller.regEmailOtpController,
-                prefixIcon: Icons.email_outlined,
+                prefixIcon: Icons.pin_outlined,
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 20),
               Obx(() => CustomButton(
-                text: 'Complete Registration',
+                text: 'Verify & Complete Registration',
                 onPressed: controller.register,
                 isLoading: controller.isLoading.value,
               )),

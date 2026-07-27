@@ -33,20 +33,27 @@ class CustomButton extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
         ),
         onPressed: isLoading ? null : onPressed,
         child: isLoading
             ? const SpinKitThreeBounce(color: Colors.white, size: 20)
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 20),
-                    const SizedBox(width: 8),
+                    Icon(icon, size: 18),
+                    const SizedBox(width: 6),
                   ],
-                  Text(
-                    text,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Flexible(
+                    child: Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),

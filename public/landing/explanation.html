@@ -8,7 +8,9 @@
   <link rel="icon" type="image/png" href="/logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
@@ -112,12 +114,41 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
-    .circle-icon.admin { background: #fef3c7; color: #b45309; border: 2px solid #fde68a; }
-    .circle-icon.teacher { background: #dbeafe; color: #1d4ed8; border: 2px solid #bfdbfe; }
-    .circle-icon.student { background: #d1fae5; color: #047857; border: 2px solid #a7f3d0; }
-    .circle-icon.parent { background: #f3e8ff; color: #6b21a8; border: 2px solid #e9d5ff; }
-    .circle-icon.live { background: #ffe4e6; color: #be123c; border: 2px solid #fecdd3; }
-    .circle-icon.security { background: #ccfbf1; color: #0f766e; border: 2px solid #99f6e4; }
+    .circle-icon.admin {
+      background: #fef3c7;
+      color: #b45309;
+      border: 2px solid #fde68a;
+    }
+
+    .circle-icon.teacher {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border: 2px solid #bfdbfe;
+    }
+
+    .circle-icon.student {
+      background: #d1fae5;
+      color: #047857;
+      border: 2px solid #a7f3d0;
+    }
+
+    .circle-icon.parent {
+      background: #f3e8ff;
+      color: #6b21a8;
+      border: 2px solid #e9d5ff;
+    }
+
+    .circle-icon.live {
+      background: #ffe4e6;
+      color: #be123c;
+      border: 2px solid #fecdd3;
+    }
+
+    .circle-icon.security {
+      background: #ccfbf1;
+      color: #0f766e;
+      border: 2px solid #99f6e4;
+    }
 
     .nav-link-custom {
       color: #334155;
@@ -159,7 +190,8 @@
       transition: all 0.2s ease;
     }
 
-    .toc-item:hover, .toc-item.active {
+    .toc-item:hover,
+    .toc-item.active {
       background: rgba(13, 122, 109, 0.12);
       color: var(--spx-teal);
     }
@@ -233,15 +265,22 @@
 
     /* PDF Print Formatting */
     @media print {
-      .glass-nav, .sticky-toc, #pdfDownloadContainer, footer {
+
+      .glass-nav,
+      .sticky-toc,
+      #pdfDownloadContainer,
+      footer {
         display: none !important;
       }
+
       body {
         background: #ffffff !important;
         color: #000000 !important;
         padding: 0 !important;
       }
-      .spx-card, .dev-profile-card {
+
+      .spx-card,
+      .dev-profile-card {
         border: 1px solid #94a3b8 !important;
         box-shadow: none !important;
         page-break-inside: avoid !important;
@@ -259,7 +298,8 @@
     <div class="container-fluid px-4">
       <a class="navbar-brand d-flex align-items-center gap-2" href="#overview">
         <img src="/logo.png" alt="SPEAXA Logo" height="38">
-        <span class="fw-extrabold fs-4 text-dark">SPEAXA <span class="badge bg-success text-white fs-6 ms-2">Platform Manual</span></span>
+        <span class="fw-extrabold fs-4 text-dark">SPEAXA <span class="badge bg-success text-white fs-6 ms-2">Platform
+            Manual</span></span>
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
         <i class="fas fa-bars"></i>
@@ -274,7 +314,8 @@
           <a class="nav-link-custom" href="#parent-story"><i class="fas fa-users me-1"></i>Parent</a>
           <a class="nav-link-custom" href="#admin-story"><i class="fas fa-user-shield me-1"></i>Admin</a>
           <a class="nav-link-custom" href="#core-team"><i class="fas fa-users-gear me-1"></i>Core Team</a>
-          <button id="downloadPdfBtn" onclick="downloadSystemExplanationPDF()" class="btn btn-sm btn-success rounded-pill px-3 ms-2 fw-bold shadow-sm">
+          <button id="downloadPdfBtn" onclick="downloadSystemExplanationPDF()"
+            class="btn btn-sm btn-success rounded-pill px-3 ms-2 fw-bold shadow-sm">
             <i class="fas fa-file-pdf me-1"></i>Download PDF Manual
           </button>
         </div>
@@ -285,17 +326,20 @@
   <!-- Hero Header Banner -->
   <header class="hero-banner text-center">
     <div class="container">
-      <div class="section-badge mb-3"><i class="fas fa-book-open me-1"></i>Complete Technical Specification & Tools Manual</div>
+      <div class="section-badge mb-3"><i class="fas fa-book-open me-1"></i>Complete Technical Specification & Tools
+        Manual</div>
       <h1 class="display-5 fw-extrabold text-white mb-3">SPEAXA EdTech System Architecture</h1>
       <p class="lead max-w-2xl mx-auto mb-4" style="color: #ccfbf1; max-width: 850px; font-weight: 400;">
-        Comprehensive breakdown of 2Factor OTP, AI development tools, external APIs, cloud services, dynamic engines, user portals, WebRTC live classrooms, and security defense.
+        Comprehensive breakdown of 2Factor OTP, AI development tools, external APIs, cloud services, dynamic engines,
+        user portals, WebRTC live classrooms, and security defense.
       </p>
       <div class="d-flex flex-wrap align-items-center justify-content-center gap-2" id="pdfDownloadContainer">
         <span class="tech-pill"><i class="fab fa-node-js me-1 text-success"></i>Node.js Express v2.0</span>
         <span class="tech-pill"><i class="fas fa-database me-1 text-primary"></i>PostgreSQL (52 Tables)</span>
         <span class="tech-pill"><i class="fas fa-mobile-alt me-1 text-info"></i>2Factor.in OTP API</span>
         <span class="tech-pill"><i class="fas fa-robot me-1 text-warning"></i>Google Antigravity AI</span>
-        <button onclick="downloadSystemExplanationPDF()" class="btn btn-warning btn-sm rounded-pill px-4 fw-extrabold shadow ms-2">
+        <button onclick="downloadSystemExplanationPDF()"
+          class="btn btn-warning btn-sm rounded-pill px-4 fw-extrabold shadow ms-2">
           <i class="fas fa-download me-1"></i>Export PDF System Report
         </button>
       </div>
@@ -309,15 +353,19 @@
       <!-- Table of Contents Sidebar -->
       <div class="col-lg-3 d-none d-lg-block">
         <div class="sticky-toc">
-          <h6 class="fw-bold text-dark mb-3 text-uppercase fs-7" style="letter-spacing: 1px;"><i class="fas fa-list-ol me-2 text-success"></i>Manual Index</h6>
+          <h6 class="fw-bold text-dark mb-3 text-uppercase fs-7" style="letter-spacing: 1px;"><i
+              class="fas fa-list-ol me-2 text-success"></i>Manual Index</h6>
           <nav class="d-flex flex-column gap-1">
             <a href="#developer" class="toc-item active"><i class="fas fa-user-code"></i>1. Architect & Developer</a>
             <a href="#tools-services" class="toc-item"><i class="fas fa-cubes"></i>2. Tools & Paid Cloud Services</a>
-            <a href="#otp-2factor" class="toc-item"><i class="fas fa-mobile-alt"></i>3. 2Factor.in SMS OTP Authentication</a>
+            <a href="#otp-2factor" class="toc-item"><i class="fas fa-mobile-alt"></i>3. 2Factor.in SMS OTP
+              Authentication</a>
             <a href="#dynamic-features" class="toc-item"><i class="fas fa-bolt"></i>4. Dynamic System Engines</a>
             <a href="#overview" class="toc-item"><i class="fas fa-compass"></i>5. Platform Overview</a>
-            <a href="#student-story" class="toc-item"><i class="fas fa-user-graduate"></i>6. Student Journey & Modules</a>
-            <a href="#teacher-story" class="toc-item"><i class="fas fa-chalkboard-teacher"></i>7. Teacher Journey & Modules</a>
+            <a href="#student-story" class="toc-item"><i class="fas fa-user-graduate"></i>6. Student Journey &
+              Modules</a>
+            <a href="#teacher-story" class="toc-item"><i class="fas fa-chalkboard-teacher"></i>7. Teacher Journey &
+              Modules</a>
             <a href="#parent-story" class="toc-item"><i class="fas fa-users"></i>8. Parent Journey & Telemetry</a>
             <a href="#admin-story" class="toc-item"><i class="fas fa-user-shield"></i>9. Admin Operations Panel</a>
             <a href="#classroom" class="toc-item"><i class="fas fa-video"></i>10. Live WebRTC Room Hub</a>
@@ -338,26 +386,41 @@
             <div class="row align-items-center g-4">
               <div class="col-md-3 text-center">
                 <div class="position-relative d-inline-block">
-                  <img src="/landing/team/developer_sahil.jpg" onError="this.src='/uploads/profiles/developer_sahil.jpg'" alt="Sahil Khan Developer" class="full-visible-img rounded-circle border border-3 border-teal shadow-sm" style="width: 140px; height: 140px; object-fit: cover; object-position: top center;">
-                  <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-2" title="Active Lead Architect"></span>
+                  <img src="/landing/team/developer_sahil.jpg"
+                    onError="this.src='/uploads/profiles/developer_sahil.jpg'" alt="Sahil Khan Developer"
+                    class="full-visible-img rounded-circle border border-3 border-teal shadow-sm"
+                    style="width: 140px; height: 140px; object-fit: cover; object-position: top center;">
+                  <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle p-2"
+                    title="Active Lead Architect"></span>
                 </div>
               </div>
               <div class="col-md-9">
-                <div class="badge bg-teal text-white px-3 py-1 mb-2 rounded-pill fs-7 fw-bold" style="background: var(--spx-teal);"><i class="fas fa-code-branch me-1"></i>LEAD SYSTEM ARCHITECT & SOLE DEVELOPER</div>
+                <div class="badge bg-teal text-white px-3 py-1 mb-2 rounded-pill fs-7 fw-bold"
+                  style="background: var(--spx-teal);"><i class="fas fa-code-branch me-1"></i>LEAD SYSTEM ARCHITECT &
+                  SOLE DEVELOPER</div>
                 <h3 class="fw-extrabold text-dark mb-1">Sahil Khan</h3>
-                <p class="text-teal mb-2 font-monospace fw-bold" style="color: var(--spx-teal); font-size: 0.95rem;">Software Engineer & Full-Stack EdTech Systems Developer</p>
+                <p class="text-teal mb-2 font-monospace fw-bold" style="color: var(--spx-teal); font-size: 0.95rem;">
+                  Software Engineer & Full-Stack EdTech Systems Developer</p>
                 <p class="text-secondary small mb-3">
-                  Individually engineered, designed, and developed the entire <strong>SPEAXA EdTech Platform</strong> end-to-end. Built the Node.js Express architecture, 52 PostgreSQL tables, Agora WebRTC video streaming hub, Razorpay payments, 2Factor.in SMS OTPs, Brevo email services, automated PDF generators, and production threat security systems.
+                  Individually engineered, designed, and developed the entire <strong>SPEAXA EdTech Platform</strong>
+                  end-to-end. Built the Node.js Express architecture, 52 PostgreSQL tables, Agora WebRTC video streaming
+                  hub, Razorpay payments, 2Factor.in SMS OTPs, Brevo email services, automated PDF generators, and
+                  production threat security systems.
                 </p>
                 <div class="d-flex flex-wrap align-items-center gap-2">
                   <a href="https://sahilkhan-flutter-developer.vercel.app/" target="_blank" class="portfolio-btn">
                     <i class="fas fa-globe me-2"></i>Visit Developer Portfolio ↗
                   </a>
-                  <span class="badge bg-primary text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i class="fab fa-flutter me-1 text-white"></i>Flutter</span>
-                  <span class="badge bg-success text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i class="fab fa-node-js me-1 text-white"></i>Node.js</span>
-                  <span class="badge bg-dark text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i class="fas fa-database me-1 text-warning"></i>PostgreSQL</span>
-                  <span class="badge bg-danger text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i class="fas fa-video me-1 text-white"></i>Agora WebRTC</span>
-                  <span class="badge bg-info text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i class="fas fa-mobile-alt me-1 text-white"></i>2Factor.in SMS</span>
+                  <span class="badge bg-primary text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i
+                      class="fab fa-flutter me-1 text-white"></i>Flutter</span>
+                  <span class="badge bg-success text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i
+                      class="fab fa-node-js me-1 text-white"></i>Node.js</span>
+                  <span class="badge bg-dark text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i
+                      class="fas fa-database me-1 text-warning"></i>PostgreSQL</span>
+                  <span class="badge bg-danger text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i
+                      class="fas fa-video me-1 text-white"></i>Agora WebRTC</span>
+                  <span class="badge bg-info text-white px-3 py-2 rounded-pill fs-7 shadow-sm fw-bold"><i
+                      class="fas fa-mobile-alt me-1 text-white"></i>2Factor.in SMS</span>
                 </div>
               </div>
             </div>
@@ -371,18 +434,22 @@
               <div class="circle-icon security"><i class="fas fa-cubes"></i></div>
               <div>
                 <h3 class="fw-extrabold text-dark mb-1">2. Tools & Paid Cloud Services Matrix</h3>
-                <p class="text-muted small mb-0">Development Environment, AI Assistants, Orchestration & Third-Party APIs</p>
+                <p class="text-muted small mb-0">Development Environment, AI Assistants, Orchestration & Third-Party
+                  APIs</p>
               </div>
             </div>
 
-            <p class="text-secondary mb-4">Every developer tool, AI assistant, shell environment, and paid cloud API service utilized in building <strong>SPEAXA</strong>:</p>
+            <p class="text-secondary mb-4">Every developer tool, AI assistant, shell environment, and paid cloud API
+              service utilized in building <strong>SPEAXA</strong>:</p>
 
             <div class="row g-3">
               <div class="col-md-6">
                 <div class="rect-box">
-                  <h6 class="text-warning"><i class="fas fa-robot me-2"></i>1. Google DeepMind Antigravity AI Engine</h6>
+                  <h6 class="text-warning"><i class="fas fa-robot me-2"></i>1. Google DeepMind Antigravity AI Engine
+                  </h6>
                   <div class="bullet-point"><strong>Tool Type:</strong> Advanced Agentic AI Pair Programmer.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Autonomous code generation, PostgreSQL schema self-healing migrations, OWASP Threat Guard hardening, and real-time refactoring.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Autonomous code generation, PostgreSQL schema
+                    self-healing migrations, OWASP Threat Guard hardening, and real-time refactoring.</div>
                 </div>
               </div>
 
@@ -390,15 +457,18 @@
                 <div class="rect-box">
                   <h6 class="text-dark"><i class="fas fa-terminal me-2"></i>2. Zsh Terminal Shell & Node CLI (CMD)</h6>
                   <div class="bullet-point"><strong>Tool Type:</strong> Command Line Process Orchestration.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Background process lifecycle management, automated database migrations, `node -c` syntax verification, and server runtime monitoring.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Background process lifecycle management, automated
+                    database migrations, `node -c` syntax verification, and server runtime monitoring.</div>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
-                  <h6 class="text-info"><i class="fas fa-mobile-alt me-2"></i>3. 2Factor.in SMS Gateway API (Paid Service)</h6>
+                  <h6 class="text-info"><i class="fas fa-mobile-alt me-2"></i>3. 2Factor.in SMS Gateway API (Paid
+                    Service)</h6>
                   <div class="bullet-point"><strong>Service Provider:</strong> 2Factor.in Telecommunication Cloud.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Delivers 6-digit 2FA OTP codes via high-priority SMS for user registration, login, and password resets.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Delivers 6-digit 2FA OTP codes via high-priority SMS
+                    for user registration, login, and password resets.</div>
                 </div>
               </div>
 
@@ -406,39 +476,49 @@
                 <div class="rect-box">
                   <h6 class="text-danger"><i class="fas fa-video me-2"></i>4. Agora RTC & RTM Cloud (Paid Service)</h6>
                   <div class="bullet-point"><strong>Service Provider:</strong> Agora WebRTC Infrastructure.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Powers multi-party low-latency live video classrooms, dynamic token authentication, whiteboard synchronization, and doubt hand raise queues.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Powers multi-party low-latency live video classrooms,
+                    dynamic token authentication, whiteboard synchronization, and doubt hand raise queues.</div>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
-                  <h6 class="text-primary"><i class="fas fa-credit-card me-2"></i>5. Razorpay Gateway & Payouts Merchant API</h6>
+                  <h6 class="text-primary"><i class="fas fa-credit-card me-2"></i>5. Razorpay Gateway & Payouts Merchant
+                    API</h6>
                   <div class="bullet-point"><strong>Service Provider:</strong> Razorpay Financial Services.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Secure student course checkouts, coupon discount redemptions, automatic PDF receipt generation, and Razorpay Fund Account payouts to teacher bank/UPI.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Secure student course checkouts, coupon discount
+                    redemptions, automatic PDF receipt generation, and Razorpay Fund Account payouts to teacher
+                    bank/UPI.</div>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
-                  <h6 class="text-success"><i class="fas fa-paper-plane me-2"></i>6. Brevo (Sendinblue) Transactional Mail Cloud</h6>
+                  <h6 class="text-success"><i class="fas fa-paper-plane me-2"></i>6. Brevo (Sendinblue) Transactional
+                    Mail Cloud</h6>
                   <div class="bullet-point"><strong>Service Provider:</strong> Brevo Cloud Email Infrastructure.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Transactional emails for PDF payment receipts, monthly student report cards, welcome notifications, and executive admin credential dispatch.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Transactional emails for PDF payment receipts,
+                    monthly student report cards, welcome notifications, and executive admin credential dispatch.</div>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
-                  <h6 class="text-purple" style="color: #6b21a8;"><i class="fas fa-bell me-2"></i>7. Firebase Cloud Messaging & Firestore</h6>
+                  <h6 class="text-purple" style="color: #6b21a8;"><i class="fas fa-bell me-2"></i>7. Firebase Cloud
+                    Messaging & Firestore</h6>
                   <div class="bullet-point"><strong>Service Provider:</strong> Google Cloud Platform.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Cross-platform push notifications for live class alerts, assignment due reminders, and parent monitoring updates.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Cross-platform push notifications for live class
+                    alerts, assignment due reminders, and parent monitoring updates.</div>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
-                  <h6 class="text-teal" style="color: var(--spx-teal);"><i class="fas fa-database me-2"></i>8. PostgreSQL Managed Database Cloud</h6>
+                  <h6 class="text-teal" style="color: var(--spx-teal);"><i class="fas fa-database me-2"></i>8.
+                    PostgreSQL Managed Database Cloud</h6>
                   <div class="bullet-point"><strong>Service Provider:</strong> PostgreSQL 14+ Relational Engine.</div>
-                  <div class="bullet-point"><strong>Role:</strong> Houses 52 production tables, self-healing migration triggers, B-tree indexes, and security audit logs.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Houses 52 production tables, self-healing migration
+                    triggers, B-tree indexes, and security audit logs.</div>
                 </div>
               </div>
             </div>
@@ -457,10 +537,17 @@
             </div>
 
             <div class="rect-box" style="border-left: 5px solid #0284c7;">
-              <h6 class="fw-extrabold text-dark mb-2"><i class="fas fa-shield-alt text-info me-2"></i>How 2Factor.in OTP Operates in SPEAXA:</h6>
-              <div class="bullet-point"><strong>OTP Generation & Dispatch:</strong> When a student or teacher enters their mobile number, SPEAXA calls <code>2Factor.in API</code> (`https://2factor.in/API/V1/{API_KEY}/SMS/{MOBILE}/AUTOGEN`) to dispatch a high-priority 6-digit SMS OTP code.</div>
-              <div class="bullet-point"><strong>Session Binding:</strong> The 2Factor transaction ID is bound to PostgreSQL `otp_tokens` with a strict 10-minute expiration window.</div>
-              <div class="bullet-point"><strong>Real-time Verification:</strong> On OTP entry, the backend verifies the code directly with 2Factor servers (`AUTOVERIFY`). Upon success, a secure JWT session token is returned.</div>
+              <h6 class="fw-extrabold text-dark mb-2"><i class="fas fa-shield-alt text-info me-2"></i>How 2Factor.in OTP
+                Operates in SPEAXA:</h6>
+              <div class="bullet-point"><strong>OTP Generation & Dispatch:</strong> When a student or teacher enters
+                their mobile number, SPEAXA calls <code>2Factor.in API</code>
+                (`https://2factor.in/API/V1/{API_KEY}/SMS/{MOBILE}/AUTOGEN`) to dispatch a high-priority 6-digit SMS OTP
+                code.</div>
+              <div class="bullet-point"><strong>Session Binding:</strong> The 2Factor transaction ID is bound to
+                PostgreSQL `otp_tokens` with a strict 10-minute expiration window.</div>
+              <div class="bullet-point"><strong>Real-time Verification:</strong> On OTP entry, the backend verifies the
+                code directly with 2Factor servers (`AUTOVERIFY`). Upon success, a secure JWT session token is returned.
+              </div>
             </div>
           </div>
         </section>
@@ -480,28 +567,32 @@
               <div class="col-md-6">
                 <div class="rect-box">
                   <h6 class="text-success"><i class="fas fa-sliders me-2"></i>Dynamic Module Lock Engine</h6>
-                  <p class="small text-muted mb-0">Allows developers and admins to toggle tab-level access locks across Admin, Teacher, Student, and Parent portals in real time using Socket.io broadcasts.</p>
+                  <p class="small text-muted mb-0">Allows developers and admins to toggle tab-level access locks across
+                    Admin, Teacher, Student, and Parent portals in real time using Socket.io broadcasts.</p>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
                   <h6 class="text-danger"><i class="fas fa-key me-2"></i>Agora Dynamic JWT Token Generator</h6>
-                  <p class="small text-muted mb-0">Generates dynamic crypto-signed RTC tokens on the fly when users launch live classroom sessions to prevent unauthorized stream entry.</p>
+                  <p class="small text-muted mb-0">Generates dynamic crypto-signed RTC tokens on the fly when users
+                    launch live classroom sessions to prevent unauthorized stream entry.</p>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
                   <h6 class="text-warning"><i class="fas fa-radar me-2"></i>Dynamic 7-Point Behavior Radar</h6>
-                  <p class="small text-muted mb-0">Calculates real-time average developmental scores for each student across Curiosity, Concept Clarity, Reasoning, Homework, and Participation.</p>
+                  <p class="small text-muted mb-0">Calculates real-time average developmental scores for each student
+                    across Curiosity, Concept Clarity, Reasoning, Homework, and Participation.</p>
                 </div>
               </div>
 
               <div class="col-md-6">
                 <div class="rect-box">
                   <h6 class="text-primary"><i class="fas fa-wallet me-2"></i>Dynamic Wallet & Commission Ledger</h6>
-                  <p class="small text-muted mb-0">Automatically calculates teacher commissions post-class, credits Teacher Wallet ledgers, and checks performance slab threshold bonuses.</p>
+                  <p class="small text-muted mb-0">Automatically calculates teacher commissions post-class, credits
+                    Teacher Wallet ledgers, and checks performance slab threshold bonuses.</p>
                 </div>
               </div>
             </div>
@@ -519,9 +610,10 @@
               </div>
             </div>
             <p class="text-secondary mb-4">
-              <strong>SPEAXA EdTech Platform</strong> connects <strong>Students</strong>, <strong>Teachers</strong>, <strong>Parents</strong>, and <strong>Platform Administrators</strong> in real time.
+              <strong>SPEAXA EdTech Platform</strong> connects <strong>Students</strong>, <strong>Teachers</strong>,
+              <strong>Parents</strong>, and <strong>Platform Administrators</strong> in real time.
             </p>
-            
+
             <div class="row g-3">
               <div class="col-md-6 col-lg-3">
                 <div class="rect-box text-center">
@@ -557,25 +649,37 @@
             <div class="d-flex align-items-center gap-3 mb-3">
               <div class="circle-icon student"><i class="fas fa-user-graduate"></i></div>
               <div>
-                <h3 class="fw-extrabold text-dark mb-1">6. Student Journey & Detailed Functionality ("Rahul's Journey")</h3>
-                <p class="text-muted small mb-0">From Sign-Up & Course Enrollment to Live Room Access, Homework & PDF Invoices</p>
+                <h3 class="fw-extrabold text-dark mb-1">6. Student Journey & Detailed Functionality ("Rahul's Journey")
+                </h3>
+                <p class="text-muted small mb-0">From Sign-Up & Course Enrollment to Live Room Access, Homework & PDF
+                  Invoices</p>
               </div>
             </div>
 
             <div class="row g-4 mb-4">
               <div class="col-md-4">
-                <img src="/uploads/profiles/student_rahul.png" onError="this.src='/uploads/blog/blog_revision.png'" class="full-visible-img" alt="Student Rahul">
+                <img src="/uploads/profiles/student_rahul.png" onError="this.src='/uploads/blog/blog_revision.png'"
+                  class="full-visible-img" alt="Student Rahul">
                 <div class="small text-center text-muted fw-bold mt-2">Student Profile & Dashboard</div>
               </div>
               <div class="col-md-8">
                 <div class="rect-box" style="border-left: 5px solid #047857;">
-                  <h6 class="fw-extrabold text-dark mb-2"><i class="fas fa-play-circle text-success me-2"></i>Step-by-Step Student User Flow:</h6>
-                  <div class="bullet-point"><strong>1. Registration & Profile Setup:</strong> Rahul registers via 2Factor OTP verification, selects his Board (CBSE/ICSE) and Grade (Class 10th).</div>
-                  <div class="bullet-point"><strong>2. Course Store & Checkout:</strong> Browses featured courses, applies coupon codes (e.g. <code>SPEAXA10</code>), and completes payment via Razorpay.</div>
-                  <div class="bullet-point"><strong>3. Instant PDF Invoice Dispatch <span class="pdf-badge ms-1"><i class="fas fa-file-pdf"></i>Auto PDF Receipt</span>:</strong> Automatically receives an official PDF payment receipt sent directly to his email.</div>
-                  <div class="bullet-point"><strong>4. Unique Student Code Generation (`SPX-STU-XXXXXX`):</strong> Obtains a unique student code on his dashboard to share with parents.</div>
-                  <div class="bullet-point"><strong>5. Attending Live WebRTC Classes:</strong> Clicks <strong>"Join Live Class"</strong> to launch the browser video room. Interacts via mic/video, whiteboard, doubt hand raise, and voting in live quiz polls.</div>
-                  <div class="bullet-point"><strong>6. Homework & Learning Streaks:</strong> Downloads PDF study materials, submits homework assignments, and tracks daily learning streak points.</div>
+                  <h6 class="fw-extrabold text-dark mb-2"><i
+                      class="fas fa-play-circle text-success me-2"></i>Step-by-Step Student User Flow:</h6>
+                  <div class="bullet-point"><strong>1. Registration & Profile Setup:</strong> Rahul registers via
+                    2Factor OTP verification, selects his Board (CBSE/ICSE) and Grade (Class 10th).</div>
+                  <div class="bullet-point"><strong>2. Course Store & Checkout:</strong> Browses featured courses,
+                    applies coupon codes (e.g. <code>SPEAXA10</code>), and completes payment via Razorpay.</div>
+                  <div class="bullet-point"><strong>3. Instant PDF Invoice Dispatch <span class="pdf-badge ms-1"><i
+                          class="fas fa-file-pdf"></i>Auto PDF Receipt</span>:</strong> Automatically receives an
+                    official PDF payment receipt sent directly to his email.</div>
+                  <div class="bullet-point"><strong>4. Unique Student Code Generation (`SPX-STU-XXXXXX`):</strong>
+                    Obtains a unique student code on his dashboard to share with parents.</div>
+                  <div class="bullet-point"><strong>5. Attending Live WebRTC Classes:</strong> Clicks <strong>"Join Live
+                      Class"</strong> to launch the browser video room. Interacts via mic/video, whiteboard, doubt hand
+                    raise, and voting in live quiz polls.</div>
+                  <div class="bullet-point"><strong>6. Homework & Learning Streaks:</strong> Downloads PDF study
+                    materials, submits homework assignments, and tracks daily learning streak points.</div>
                 </div>
               </div>
             </div>
@@ -609,25 +713,39 @@
             <div class="d-flex align-items-center gap-3 mb-3">
               <div class="circle-icon teacher"><i class="fas fa-chalkboard-teacher"></i></div>
               <div>
-                <h3 class="fw-extrabold text-dark mb-1">7. Teacher Journey & Detailed Functionality ("Priya Ma'am's Experience")</h3>
-                <p class="text-muted small mb-0">SOP Compliance Audit, Course Authoring, Student Evaluation & Wallet Payouts</p>
+                <h3 class="fw-extrabold text-dark mb-1">7. Teacher Journey & Detailed Functionality ("Priya Ma'am's
+                  Experience")</h3>
+                <p class="text-muted small mb-0">SOP Compliance Audit, Course Authoring, Student Evaluation & Wallet
+                  Payouts</p>
               </div>
             </div>
 
             <div class="row g-4 mb-4">
               <div class="col-md-4">
-                <img src="/uploads/profiles/teacher_priya.png" onError="this.src='/uploads/blog/blog_chemistry.png'" class="full-visible-img" alt="Teacher Priya">
+                <img src="/uploads/profiles/teacher_priya.png" onError="this.src='/uploads/blog/blog_chemistry.png'"
+                  class="full-visible-img" alt="Teacher Priya">
                 <div class="small text-center text-muted fw-bold mt-2">Verified Educator & SOP Badge</div>
               </div>
               <div class="col-md-8">
                 <div class="rect-box" style="border-left: 5px solid #1d4ed8;">
-                  <h6 class="fw-extrabold text-dark mb-2"><i class="fas fa-briefcase text-primary me-2"></i>Step-by-Step Teacher Operational Workflow:</h6>
-                  <div class="bullet-point"><strong>1. Teacher Registration:</strong> Priya signs up as an educator, entering qualifications, experience years, and bank account/UPI payout details.</div>
-                  <div class="bullet-point"><strong>2. 5-Video SOP Verification <span class="pdf-badge ms-1"><i class="fas fa-award"></i>Digital Certificate</span>:</strong> Uploads 5 mandatory Standard Operating Procedure (SOP) training videos. Admin reviews & approves -> Priya receives an official <strong>Verified Teacher Certificate</strong>.</div>
-                  <div class="bullet-point"><strong>3. Course & Batch Creation:</strong> Authoring courses, setting module objectives, configuring batch dates, class start times, and max student capacity.</div>
-                  <div class="bullet-point"><strong>4. Live Class Hosting:</strong> Launches live room with 1-click, manages student camera/mic feeds, shares screen, and conducts live polls.</div>
-                  <div class="bullet-point"><strong>5. 7-Dimension Student Telemetry Evaluation:</strong> Evaluates students post-class across 7 developmental metrics (Curiosity, Communication, Concept Clarity, Reasoning, Homework, Participation, Growth).</div>
-                  <div class="bullet-point"><strong>6. Wallet Earnings & Bank Payouts:</strong> Earnings automatically credit to her <strong>Teacher Wallet</strong>. She tracks ledgers, unlocks performance slab bonuses, and dispatches Razorpay payout requests.</div>
+                  <h6 class="fw-extrabold text-dark mb-2"><i class="fas fa-briefcase text-primary me-2"></i>Step-by-Step
+                    Teacher Operational Workflow:</h6>
+                  <div class="bullet-point"><strong>1. Teacher Registration:</strong> Priya signs up as an educator,
+                    entering qualifications, experience years, and bank account/UPI payout details.</div>
+                  <div class="bullet-point"><strong>2. 5-Video SOP Verification <span class="pdf-badge ms-1"><i
+                          class="fas fa-award"></i>Digital Certificate</span>:</strong> Uploads 5 mandatory Standard
+                    Operating Procedure (SOP) training videos. Admin reviews & approves -> Priya receives an official
+                    <strong>Verified Teacher Certificate</strong>.</div>
+                  <div class="bullet-point"><strong>3. Course & Batch Creation:</strong> Authoring courses, setting
+                    module objectives, configuring batch dates, class start times, and max student capacity.</div>
+                  <div class="bullet-point"><strong>4. Live Class Hosting:</strong> Launches live room with 1-click,
+                    manages student camera/mic feeds, shares screen, and conducts live polls.</div>
+                  <div class="bullet-point"><strong>5. 7-Dimension Student Telemetry Evaluation:</strong> Evaluates
+                    students post-class across 7 developmental metrics (Curiosity, Communication, Concept Clarity,
+                    Reasoning, Homework, Participation, Growth).</div>
+                  <div class="bullet-point"><strong>6. Wallet Earnings & Bank Payouts:</strong> Earnings automatically
+                    credit to her <strong>Teacher Wallet</strong>. She tracks ledgers, unlocks performance slab bonuses,
+                    and dispatches Razorpay payout requests.</div>
                 </div>
               </div>
             </div>
@@ -640,23 +758,33 @@
             <div class="d-flex align-items-center gap-3 mb-3">
               <div class="circle-icon parent"><i class="fas fa-users"></i></div>
               <div>
-                <h3 class="fw-extrabold text-dark mb-1">8. Parent Journey & Telemetry Monitoring ("Suresh Ji's Oversight")</h3>
-                <p class="text-muted small mb-0">Student Linking, Attendance Heatmaps, Monthly PDF Report Cards & Teacher Chat</p>
+                <h3 class="fw-extrabold text-dark mb-1">8. Parent Journey & Telemetry Monitoring ("Suresh Ji's
+                  Oversight")</h3>
+                <p class="text-muted small mb-0">Student Linking, Attendance Heatmaps, Monthly PDF Report Cards &
+                  Teacher Chat</p>
               </div>
             </div>
 
             <div class="row g-4 mb-4">
               <div class="col-md-4">
-                <img src="/uploads/blog/blog_parenting.png" onError="this.src='/uploads/profiles/parent_suresh.png'" class="full-visible-img" alt="Parent Dashboard">
+                <img src="/uploads/blog/blog_parenting.png" onError="this.src='/uploads/profiles/parent_suresh.png'"
+                  class="full-visible-img" alt="Parent Dashboard">
                 <div class="small text-center text-muted fw-bold mt-2">Parent Telemetry & Chat</div>
               </div>
               <div class="col-md-8">
                 <div class="rect-box" style="border-left: 5px solid #6b21a8;">
-                  <h6 class="fw-extrabold text-dark mb-2"><i class="fas fa-heart text-purple me-2"></i>Step-by-Step Parent Tracking Capabilities:</h6>
-                  <div class="bullet-point"><strong>1. Student Account Linking:</strong> Links Suresh Ji's account to his child using Rahul's Student Code (<code>SPX-STU-882914</code>).</div>
-                  <div class="bullet-point"><strong>2. Real-Time Attendance Heatmap:</strong> Color-coded calendar showing Present, Late, Half-Day, and Absent statuses with instant alerts for missed classes.</div>
-                  <div class="bullet-point"><strong>3. 7-Point Behavior Radar & Monthly PDF Report Cards <span class="pdf-badge ms-1"><i class="fas fa-file-pdf"></i>Report Card PDF</span>:</strong> Downloads comprehensive monthly <strong>PDF Progress Report Cards</strong> summarizing attendance, quiz scores, and teacher observation feedback.</div>
-                  <div class="bullet-point"><strong>4. Direct 1-on-1 Parent-Teacher Chat:</strong> Real-time messaging with subject teachers supporting photo attachments of notebook work.</div>
+                  <h6 class="fw-extrabold text-dark mb-2"><i class="fas fa-heart text-purple me-2"></i>Step-by-Step
+                    Parent Tracking Capabilities:</h6>
+                  <div class="bullet-point"><strong>1. Student Account Linking:</strong> Links Suresh Ji's account to
+                    his child using Rahul's Student Code (<code>SPX-STU-882914</code>).</div>
+                  <div class="bullet-point"><strong>2. Real-Time Attendance Heatmap:</strong> Color-coded calendar
+                    showing Present, Late, Half-Day, and Absent statuses with instant alerts for missed classes.</div>
+                  <div class="bullet-point"><strong>3. 7-Point Behavior Radar & Monthly PDF Report Cards <span
+                        class="pdf-badge ms-1"><i class="fas fa-file-pdf"></i>Report Card PDF</span>:</strong> Downloads
+                    comprehensive monthly <strong>PDF Progress Report Cards</strong> summarizing attendance, quiz
+                    scores, and teacher observation feedback.</div>
+                  <div class="bullet-point"><strong>4. Direct 1-on-1 Parent-Teacher Chat:</strong> Real-time messaging
+                    with subject teachers supporting photo attachments of notebook work.</div>
                 </div>
               </div>
             </div>
@@ -722,7 +850,9 @@
               </div>
             </div>
             <p class="text-secondary">
-              The live classroom uses <strong>Agora WebRTC Video Streaming</strong> and <strong>Socket.io</strong> to provide ultra-low latency interactive sessions with shared whiteboard drawing, hand-raise queues, and instant class polling.
+              The live classroom uses <strong>Agora WebRTC Video Streaming</strong> and <strong>Socket.io</strong> to
+              provide ultra-low latency interactive sessions with shared whiteboard drawing, hand-raise queues, and
+              instant class polling.
             </p>
           </div>
         </section>
@@ -738,7 +868,8 @@
               </div>
             </div>
             <p class="text-secondary">
-              Protects against malicious URL probes (`/.env`, `/.git`, `wp-admin`, SQL injections). Logs violations in `security_audit_logs` in PostgreSQL and enforces rate limits.
+              Protects against malicious URL probes (`/.env`, `/.git`, `wp-admin`, SQL injections). Logs violations in
+              `security_audit_logs` in PostgreSQL and enforces rate limits.
             </p>
           </div>
         </section>
@@ -754,7 +885,8 @@
               </div>
             </div>
             <p class="text-secondary">
-              Provides real-time master admin entry locking, module-level sidebar tab locking, and instant admin credential updates with high-authority HTML email dispatchers.
+              Provides real-time master admin entry locking, module-level sidebar tab locking, and instant admin
+              credential updates with high-authority HTML email dispatchers.
             </p>
           </div>
         </section>
@@ -782,22 +914,26 @@
                 <tbody>
                   <tr>
                     <td class="fw-bold text-warning">User & Auth</td>
-                    <td><code>users</code>, <code>otp_tokens</code>, <code>fcm_tokens</code>, <code>refresh_tokens</code></td>
+                    <td><code>users</code>, <code>otp_tokens</code>, <code>fcm_tokens</code>,
+                      <code>refresh_tokens</code></td>
                     <td>BCrypt password hashing, 2Factor OTP, FCM push tokens</td>
                   </tr>
                   <tr>
                     <td class="fw-bold text-primary">Academia</td>
-                    <td><code>courses</code>, <code>batches</code>, <code>batch_students</code>, <code>assignments</code></td>
+                    <td><code>courses</code>, <code>batches</code>, <code>batch_students</code>,
+                      <code>assignments</code></td>
                     <td>Course modules, batch schedules, assignment gradebooks</td>
                   </tr>
                   <tr>
                     <td class="fw-bold text-success">Live Class</td>
-                    <td><code>live_classes</code>, <code>class_polls</code>, <code>recordings</code>, <code>attendance</code></td>
+                    <td><code>live_classes</code>, <code>class_polls</code>, <code>recordings</code>,
+                      <code>attendance</code></td>
                     <td>Agora channels, poll voting, attendance heatmaps</td>
                   </tr>
                   <tr>
                     <td class="fw-bold text-danger">Finance</td>
-                    <td><code>payments</code>, <code>teacher_wallet</code>, <code>teacher_payouts</code>, <code>refunds</code></td>
+                    <td><code>payments</code>, <code>teacher_wallet</code>, <code>teacher_payouts</code>,
+                      <code>refunds</code></td>
                     <td>Razorpay gateway, wallet ledgers, payout releases</td>
                   </tr>
                   <tr>
@@ -818,7 +954,8 @@
               <div class="circle-icon security"><i class="fas fa-users-gear"></i></div>
               <div>
                 <h3 class="fw-extrabold text-dark mb-1">14. Core Team & Key Contributors</h3>
-                <p class="text-muted small mb-0">Leadership, System Architecture, Engineering, QA Testing & Product Advisory</p>
+                <p class="text-muted small mb-0">Leadership, System Architecture, Engineering, QA Testing & Product
+                  Advisory</p>
               </div>
             </div>
 
@@ -827,14 +964,19 @@
               <div class="col-md-6">
                 <div class="rect-box" style="border-top: 4px solid var(--spx-teal);">
                   <div class="d-flex align-items-center gap-3 mb-3">
-                    <img src="/landing/team/developer_sahil.jpg" onError="this.src='/uploads/profiles/developer_sahil.jpg'" alt="Sahil Khan" class="rounded-circle border border-2 border-teal shadow-sm" style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
+                    <img src="/landing/team/developer_sahil.jpg"
+                      onError="this.src='/uploads/profiles/developer_sahil.jpg'" alt="Sahil Khan"
+                      class="rounded-circle border border-2 border-teal shadow-sm"
+                      style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
                     <div>
                       <h5 class="fw-extrabold text-dark mb-0">Sahil Khan</h5>
                       <span class="badge bg-success text-white fs-7">Lead Software Developer & Architect</span>
                     </div>
                   </div>
                   <div class="bullet-point"><strong>Role:</strong> Lead System Engineer & Full-Stack Architect.</div>
-                  <div class="bullet-point"><strong>Contributions:</strong> Designed, engineered, and developed the entire SPEAXA EdTech system end-to-end (Node.js backend, 52 PostgreSQL tables, Agora WebRTC live rooms, Razorpay payments, Brevo emails, 2Factor.in SMS OTPs, Threat Guard security).</div>
+                  <div class="bullet-point"><strong>Contributions:</strong> Designed, engineered, and developed the
+                    entire SPEAXA EdTech system end-to-end (Node.js backend, 52 PostgreSQL tables, Agora WebRTC live
+                    rooms, Razorpay payments, Brevo emails, 2Factor.in SMS OTPs, Threat Guard security).</div>
                 </div>
               </div>
 
@@ -842,14 +984,19 @@
               <div class="col-md-6">
                 <div class="rect-box" style="border-top: 4px solid #0284c7;">
                   <div class="d-flex align-items-center gap-3 mb-3">
-                    <img src="/landing/team/team_nadiya.jpg" onError="this.src='/uploads/profiles/team_nadiya.jpg'" alt="Nadiya Fareed Khan" class="rounded-circle border border-2 border-primary shadow-sm" style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
+                    <img src="/landing/team/team_nadiya.jpg" onError="this.src='/uploads/profiles/team_nadiya.jpg'"
+                      alt="Nadiya Fareed Khan" class="rounded-circle border border-2 border-primary shadow-sm"
+                      style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
                     <div>
                       <h5 class="fw-extrabold text-dark mb-0">Nadiya Fareed Khan</h5>
                       <span class="badge bg-primary text-white fs-7">Server Management & Backend Ops</span>
                     </div>
                   </div>
-                  <div class="bullet-point"><strong>Role:</strong> Cloud Deployment & Backend Operations Specialist.</div>
-                  <div class="bullet-point"><strong>Contributions:</strong> Server management, deployment pipelines, backend API helper, and procurement of third-party integration platforms (Agora RTC, Brevo, 2Factor.in, Razorpay merchant accounts).</div>
+                  <div class="bullet-point"><strong>Role:</strong> Cloud Deployment & Backend Operations Specialist.
+                  </div>
+                  <div class="bullet-point"><strong>Contributions:</strong> Server management, deployment pipelines,
+                    backend API helper, and procurement of third-party integration platforms (Agora RTC, Brevo,
+                    2Factor.in, Razorpay merchant accounts).</div>
                 </div>
               </div>
 
@@ -857,14 +1004,18 @@
               <div class="col-md-6">
                 <div class="rect-box" style="border-top: 4px solid #e11d48;">
                   <div class="d-flex align-items-center gap-3 mb-3">
-                    <img src="/landing/team/team_sakshi.jpg" onError="this.src='/uploads/profiles/team_sakshi.jpg'" alt="Sakshi Shukla" class="rounded-circle border border-2 border-danger shadow-sm" style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
+                    <img src="/landing/team/team_sakshi.jpg" onError="this.src='/uploads/profiles/team_sakshi.jpg'"
+                      alt="Sakshi Shukla" class="rounded-circle border border-2 border-danger shadow-sm"
+                      style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
                     <div>
                       <h5 class="fw-extrabold text-dark mb-0">Sakshi Shukla</h5>
                       <span class="badge bg-danger text-white fs-7">Quality Assurance (QA) & System Testing Lead</span>
                     </div>
                   </div>
                   <div class="bullet-point"><strong>Role:</strong> QA Lead & End-to-End System Tester.</div>
-                  <div class="bullet-point"><strong>Contributions:</strong> Rigorous testing across every single portal, module, live WebRTC video room stream, payment checkout flow, parent telemetry report, and edge-case scenario validation.</div>
+                  <div class="bullet-point"><strong>Contributions:</strong> Rigorous testing across every single portal,
+                    module, live WebRTC video room stream, payment checkout flow, parent telemetry report, and edge-case
+                    scenario validation.</div>
                 </div>
               </div>
 
@@ -872,14 +1023,20 @@
               <div class="col-md-6">
                 <div class="rect-box" style="border-top: 4px solid #d97706;">
                   <div class="d-flex align-items-center gap-3 mb-3">
-                    <img src="/landing/team/team_nripen.jpg" onError="this.src='/uploads/profiles/team_nripen.jpg'" alt="Nripen Charvak" class="rounded-circle border border-2 border-warning shadow-sm" style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
+                    <img src="/landing/team/team_nripen.jpg" onError="this.src='/uploads/profiles/team_nripen.jpg'"
+                      alt="Nripen Charvak" class="rounded-circle border border-2 border-warning shadow-sm"
+                      style="width: 76px; height: 76px; object-fit: cover; object-position: top center;">
                     <div>
                       <h5 class="fw-extrabold text-dark mb-0">Nripen Charvak</h5>
                       <span class="badge bg-warning text-dark fs-7">Product Consultant & Marketing Head</span>
                     </div>
                   </div>
-                  <div class="bullet-point"><strong>Role:</strong> Founder of ICIS & Director of Web Edunext | Strategic Growth Lead.</div>
-                  <div class="bullet-point"><strong>Contributions:</strong> Indian entrepreneur based in Lucknow, founder of ICIS (Institutional Credibility & Intelligence System) and director of Web Edunext. Spearheaded functional specifications, product roadmap design, user story conceptualization, market positioning, and growth strategies.</div>
+                  <div class="bullet-point"><strong>Role:</strong> Founder of ICIS & Director of Web Edunext | Strategic
+                    Growth Lead.</div>
+                  <div class="bullet-point"><strong>Contributions:</strong> Indian entrepreneur based in Lucknow,
+                    founder of ICIS (Institutional Credibility & Intelligence System) and director of Web Edunext.
+                    Spearheaded functional specifications, product roadmap design, user story conceptualization, market
+                    positioning, and growth strategies.</div>
                 </div>
               </div>
             </div>

@@ -42,12 +42,15 @@ class StatusChip extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      constraints: const BoxConstraints(maxWidth: 120),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         status.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );

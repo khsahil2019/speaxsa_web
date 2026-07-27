@@ -79,18 +79,25 @@ class TeacherCoursesTab extends GetView<TeacherDashboardController> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text("Batches: ${c.batchCount} • Students: ${c.enrolledStudents}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              Expanded(
+                                child: Text(
+                                  "Batches: ${c.batchCount} • Students: ${c.enrolledStudents}",
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               if (c.status == 'draft')
                                 ElevatedButton.icon(
-                                  icon: const Icon(Icons.send_and_archive, size: 16),
-                                  label: const Text("Request Approval", style: TextStyle(fontSize: 12)),
-                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.teacherRole, foregroundColor: Colors.white, elevation: 0),
+                                  icon: const Icon(Icons.send_and_archive, size: 14),
+                                  label: const Text("Request Approval", style: TextStyle(fontSize: 11)),
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.teacherRole, foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
                                   onPressed: () => controller.requestCourseApproval(c.id),
                                 )
                               else if (c.status == 'pending')
-                                const Text("Awaiting Admin Review", style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold))
+                                const Text("Awaiting Review", style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold))
                               else
-                                const Text("Active & Approved", style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                                const Text("Active & Approved", style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ],
