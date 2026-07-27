@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Allow: /
+
+Sitemap: https://speaxa.in/sitemap.xml
+Sitemap: https://speaxa.in/sitemap_index.xml
+

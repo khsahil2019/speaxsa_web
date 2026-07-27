@@ -375,9 +375,22 @@ async function loadSettings() {
       if (el && val) el.textContent = val;
     };
 
+    // Helper to format title with gradient highlight cleanly without raw HTML tags for non-technical admins
+    const setFormattedTitle = (id, rawVal) => {
+      const el = document.getElementById(id);
+      if (!el || !rawVal) return;
+      let clean = rawVal.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (clean.toLowerCase().includes('expert teachers')) {
+        const parts = clean.split(/expert teachers/i);
+        el.innerHTML = `${parts[0].trim()}<br><span class="gradient-text">Expert Teachers</span><br>${parts[1] ? parts[1].trim() : ''}`;
+      } else {
+        el.innerHTML = clean.replace(/\n/g, '<br>');
+      }
+    };
+
     // Hero Section Bindings
     setText('heroBadge', settings.home_hero_badge);
-    setHtml('heroTitle', settings.home_hero_title);
+    setFormattedTitle('heroTitle', settings.home_hero_title);
     setText('heroDesc', settings.home_hero_desc);
 
     const heroCtaPrimary = document.getElementById('heroCtaPrimary');

@@ -329,7 +329,7 @@ db.query(`
 
   INSERT INTO platform_settings (key, value) VALUES
     ('home_hero_badge', 'Speaxa is Launching Soon – Stay Tuned!'),
-    ('home_hero_title', 'Learn From<br><span class="gradient-text">Expert Teachers</span><br>In Real-Time'),
+    ('home_hero_title', 'Learn From Expert Teachers In Real-Time'),
     ('home_hero_desc', 'Join live interactive classes, get personalized attention, and track your child''s growth with SPEAXA''s AI-powered learning management system.'),
     ('home_hero_cta_primary', 'Browse Courses'),
     ('home_hero_cta_secondary', 'How It Works'),
@@ -404,6 +404,8 @@ db.query(`
 
   INSERT INTO platform_settings (key, value) VALUES ('msg91_auth_key', '553058AYf7gbSf7ue6a60dfb6P1')
   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value WHERE platform_settings.value = '' OR platform_settings.value IS NULL;
+
+  UPDATE platform_settings SET value = 'Learn From Expert Teachers In Real-Time' WHERE key = 'home_hero_title' AND (value LIKE '%<span%' OR value LIKE '%<br%');
 
   ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
@@ -696,6 +698,10 @@ app.use('/live', express.static(path.join(__dirname, '../public/live')));
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 app.get('/verify-certificate', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/verify-certificate.html')));
+
+// ── Sitemap & Robots Router ──────────────────────────────────────
+const sitemapRouter = require('./routes/sitemap');
+app.use('/', sitemapRouter);
 
 // ── Health Check ──────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {

@@ -3770,9 +3770,9 @@ async function renderSettingsGeneral() {
                 <div class="mb-2">
                   <label class="spx-label small text-dark">${f.label}</label>
                   ${f.type === 'textarea' ? `
-                    <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${settings[f.key] || ''}</textarea>
+                    <textarea class="form-control spx-input form-control-sm" id="setting_${f.key}" rows="2">${(settings[f.key] || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</textarea>
                   ` : `
-                    <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${settings[f.key] || ''}">
+                    <input class="form-control spx-input form-control-sm" type="text" id="setting_${f.key}" value="${(settings[f.key] || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}">
                   `}
                 </div>`).join('')}
               <button type="submit" class="btn btn-spx btn-sm w-100 mt-2">Save Homepage CMS</button>
