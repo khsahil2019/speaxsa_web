@@ -198,9 +198,9 @@ async function loadTeachers() {
     `).join('');
   } catch {
     const demos = [
-      { name: 'Dr. Priya Sharma', subject: 'Physics', level: 'Gold', rating: 4.9, exp: 8, photo: '/uploads/profiles/teacher_priya.png' },
-      { name: 'Sahil Khan', subject: 'Mathematics', level: 'Elite', rating: 5.0, exp: 12, photo: '/uploads/profiles/teacher_sahil.png' },
-      { name: 'Rahul Joshi', subject: 'Chemistry', level: 'Silver', rating: 4.7, exp: 5, photo: '/uploads/profiles/teacher_sahil.png' },
+      { name: 'Dr. Priya Sharma', subject: 'Physics', level: 'Executive Teacher', rating: 4.9, exp: 8, photo: '/uploads/profiles/teacher_priya.png' },
+      { name: 'Sahil Khan', subject: 'Mathematics', level: 'Senior Teacher', rating: 5.0, exp: 12, photo: '/uploads/profiles/teacher_sahil.png' },
+      { name: 'Rahul Joshi', subject: 'Chemistry', level: 'Trainee Teacher', rating: 4.8, exp: 3, photo: '/uploads/profiles/teacher_sahil.png' },
     ];
     if (meetBtn) {
       meetBtn.style.display = demos.length >= 4 ? 'block' : 'none';
