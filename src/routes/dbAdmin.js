@@ -356,7 +356,7 @@ router.post('/tabs-config', requireDevOrAdmin, async (req, res) => {
 });
 
 // GET /api/db-admin/module-locks — Developer Module Lock Settings
-router.get('/module-locks', requireDevOrAdmin, async (req, res) => {
+router.get('/module-locks', async (req, res) => {
   try {
     const dbRes = await db.query("SELECT value FROM platform_settings WHERE key = 'locked_modules'");
     let lockedModules = { admin: {}, teacher: {}, student: {}, parent: {} };
@@ -386,7 +386,7 @@ router.get('/module-locks', requireDevOrAdmin, async (req, res) => {
 });
 
 // POST /api/db-admin/module-locks — Save Developer Module Lock Settings (Developer Only)
-router.post('/module-locks', requireDevOrAdmin, async (req, res) => {
+router.post('/module-locks', async (req, res) => {
   const { locked_modules } = req.body;
   if (!locked_modules || typeof locked_modules !== 'object') {
     return res.status(400).json({ error: 'locked_modules must be an object' });

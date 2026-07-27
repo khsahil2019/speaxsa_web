@@ -2491,7 +2491,7 @@
         clearTimeout(_lockDebounceTimer);
         _lockDebounceTimer = setTimeout(() => {
           autoSaveModuleLockSettings();
-        }, 500);
+        }, 100);
       }
 
       async function autoSaveModuleLockSettings() {
@@ -2513,11 +2513,19 @@
                 badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2';
                 badge.innerHTML = '<i class="fas fa-bolt me-1"></i>Real-time Auto Sync Active';
               }
-            }, 2000);
+            }, 1800);
+          } else if (badge) {
+            const errTxt = await res.text();
+            console.error('Auto-save lock server error:', errTxt);
+            badge.className = 'badge bg-danger text-white px-3 py-2';
+            badge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Save Failed';
           }
         } catch (err) {
           console.error('Auto-save lock error:', err);
-          if (badge) badge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Auto Save Failed';
+          if (badge) {
+            badge.className = 'badge bg-danger text-white px-3 py-2';
+            badge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Auto Save Failed';
+          }
         }
       }
 
