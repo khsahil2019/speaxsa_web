@@ -195,7 +195,7 @@ class _TeacherProfileTabState extends State<TeacherProfileTab> {
                       const Icon(Icons.verified_user_outlined, size: 14, color: AppColors.primary),
                       const SizedBox(width: 4),
                       Text(
-                        user?.teacherLevel ?? "Verified Mentor",
+                        user?.teacherLevel ?? "Trainee Teacher",
                         style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                     ],

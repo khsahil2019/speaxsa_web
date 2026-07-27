@@ -405,7 +405,7 @@ router.post('/batches/:batchId/enroll', async (req, res) => {
     if (teacherId) {
       // Calculate dynamic payout share based on teacher level (50% to 90%)
       const teacherUser = await db.query('SELECT teacher_level FROM users WHERE id = $1', [teacherId]);
-      const level = teacherUser.rows[0]?.teacher_level || 'Junior Teacher';
+      const level = teacherUser.rows[0]?.teacher_level || 'Trainee Teacher';
       const levelKey = `payout_pct_${level.replace(/\s+/g, '_')}`;
       const payoutPct = parseFloat(await SystemConfigService.getSetting(levelKey, 50.0));
       const teacherShare = (amountPaid * payoutPct) / 100;

@@ -85,9 +85,9 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Registration OTP Verification (Managed via Admin Settings)
-    const requireOtp = await SystemConfigService.getSetting('require_registration_otp', false);
-    const requireOtpBool = (String(requireOtp) === 'true' || requireOtp === true);
+    // Registration OTP Verification (Mandatory for security, can be configured in SystemConfig)
+    const requireOtp = await SystemConfigService.getSetting('require_registration_otp', 'true');
+    const requireOtpBool = (String(requireOtp) !== 'false');
 
     let { otp, emailOtp } = req.body;
     const verificationOtp = emailOtp || otp;
@@ -102,12 +102,18 @@ router.post('/register', async (req, res) => {
           console.error('[Auth] Failed to send registration SMS OTP:', smsErr.message);
         }
 
+        try {
+          await sendOTPEmail(email, smsOtpVal, 'verify_email', smsTokenId);
+        } catch (emailErr) {
+          console.error('[Auth] Failed to send registration Email OTP:', emailErr.message);
+        }
+
         const devOtpSetting = await SystemConfigService.getSetting('dev_otp_in_response', 'false');
         const showDevOtp = String(devOtpSetting) === 'true';
 
         return res.status(200).json({
           status: 'otp_sent',
-          message: `Verification OTP sent to mobile number (${phone}). Please enter the 6 digits below.`,
+          message: `Verification OTP sent to mobile number (${phone}) and email (${email}). Please enter the 6 digits below.`,
           phone: phone,
           email: email,
           ...(showDevOtp && { otp: smsOtpVal })
@@ -116,7 +122,7 @@ router.post('/register', async (req, res) => {
         // Verify mobile SMS OTP
         const mobileVerification = await verifyOTP(phone, verificationOtp, 'verify_mobile');
         if (!mobileVerification.valid) {
-          return res.status(400).json({ error: 'Invalid or expired mobile OTP code. Please enter the 6 digits sent to your phone.' });
+          return res.status(400).json({ error: 'Invalid or expired OTP code. Please enter the 6 digits sent to your phone and email.' });
         }
       }
     }
@@ -132,7 +138,7 @@ router.post('/register', async (req, res) => {
 
     if (role === 'teacher') {
       approvalStatus = 'pending';
-      teacherLevel = null;
+      teacherLevel = 'Trainee Teacher';
       referralCode = generateTeacherReferralCode(name);
     }
 

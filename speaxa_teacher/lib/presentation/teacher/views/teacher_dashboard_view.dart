@@ -154,7 +154,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
           UserAccountsDrawerHeader(
             decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
             accountName: Text(user?.name ?? 'Teacher', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            accountEmail: Text("Level: ${user?.teacherLevel ?? 'Junior Mentor'} • Rating: ${user?.rating ?? 5.0}★"),
+            accountEmail: Text("Level: ${user?.teacherLevel ?? 'Trainee Teacher'} • Rating: ${user?.rating ?? 5.0}★"),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
               backgroundImage: user?.photoUrl != null && user!.photoUrl!.isNotEmpty

@@ -1595,7 +1595,7 @@ router.get('/level', async (req, res) => {
     const activeStudents = parseInt(batchStats.rows[0]?.active_students || 0);
     const sessionsCount = parseInt(batchStats.rows[0]?.sessions_count || 0);
 
-    const curLevel = user.rows[0]?.teacher_level || 'Junior Teacher';
+    const curLevel = user.rows[0]?.teacher_level || 'Trainee Teacher';
     const slabInfoRes = await db.query('SELECT * FROM performance_slabs_config WHERE slab_name = $1', [curLevel]);
     const currentSlab = slabInfoRes.rows[0] || {};
 

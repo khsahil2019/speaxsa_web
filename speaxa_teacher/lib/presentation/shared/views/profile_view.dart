@@ -79,7 +79,7 @@ class ProfileView extends StatelessWidget {
                       ListTile(
                         leading: const Icon(Icons.verified_user_outlined),
                         title: const Text("Teacher Level"),
-                        subtitle: Text(user?.teacherLevel ?? 'Verified Mentor'),
+                        subtitle: Text(user?.teacherLevel ?? 'Trainee Teacher'),
                       ),
                       const Divider(height: 1),
                       ListTile(
