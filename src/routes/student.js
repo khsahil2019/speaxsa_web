@@ -733,7 +733,70 @@ router.post('/parent-requests/:linkId/approve', async (req, res) => {
     if (!result.rows.length) {
       return res.status(404).json({ error: 'Connection request not found' });
     }
-    await logAudit(req.user.id, 'PARENT_LINK_APPROVED', 'parent_student_links', linkId, { parent_id: result.rows[0].parent_id });
+
+    const link = result.rows[0];
+    await logAudit(req.user.id, 'PARENT_LINK_APPROVED', 'parent_student_links', linkId, { parent_id: link.parent_id });
+
+    // Send Email & In-App Notification to Parent
+    const parentUserRes = await db.query('SELECT name, email FROM users WHERE id = $1', [link.parent_id]);
+    const studentUserRes = await db.query('SELECT name, email FROM users WHERE id = $1', [req.user.id]);
+    const parentUser = parentUserRes.rows[0];
+    const studentUser = studentUserRes.rows[0];
+
+    if (parentUser && parentUser.email) {
+      try {
+        let baseUrl = process.env.APP_URL || process.env.PUBLIC_URL || 'https://speaxa.in';
+        if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) baseUrl = 'https://' + baseUrl;
+        baseUrl = baseUrl.replace(/\/+$/, '');
+
+        await sendEmail({
+          to: parentUser.email,
+          subject: `🎉 Parent Access Approved by ${studentUser?.name || 'Student'}`,
+          type: 'notification',
+          headerTitle: 'Parent Link Approved',
+          badgeLabel: 'Parent Portal',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #334155;">
+              <h3 style="color: #0d7a6d; margin-top: 0;">Connection Approved!</h3>
+              <p>Hello <strong>${parentUser.name}</strong>,</p>
+              <p>Your child <strong>${studentUser?.name}</strong> (${studentUser?.email}) has <strong>approved</strong> your connection request!</p>
+              
+              <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px;"><strong>Student Name:</strong> ${studentUser?.name}</p>
+                <p style="margin: 6px 0 0 0; font-size: 14px;"><strong>Status:</strong> Approved & Linked</p>
+              </div>
+
+              <p>You can now log in to your <strong>Parent Dashboard</strong> to view attendance records, course progress, and academic analytics.</p>
+              
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${baseUrl}/parent/" style="background-color: #0d7a6d; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Open Parent Dashboard</a>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 25px 0;" />
+              <p style="font-size: 12px; color: #64748b; text-align: center;">SPEAXA Educational Intelligence System</p>
+            </div>
+          `
+        });
+      } catch (emailErr) {
+        console.error('[ParentLinkApprove] Failed to send approval email to parent:', emailErr.message);
+      }
+
+      try {
+        await db.query(`
+          INSERT INTO notifications (id, title, message, user_id, role_target, type, metadata)
+          VALUES ($1, $2, $3, $4, 'parent', 'info', $5)
+        `, [
+          'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          `Parent Access Approved by ${studentUser?.name || 'Student'}`,
+          `${studentUser?.name} (${studentUser?.email}) has approved your connection request.`,
+          link.parent_id,
+          JSON.stringify({ student_id: req.user.id, student_name: studentUser?.name })
+        ]);
+      } catch (notifErr) {
+        console.error('[ParentLinkApprove] Failed to create in-app notification for parent:', notifErr.message);
+      }
+    }
+
     res.json({ message: 'Parent access request approved successfully', link: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
