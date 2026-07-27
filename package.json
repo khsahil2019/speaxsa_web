@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "migrate": "node database/migrator.js",
     "seed": "node scratch/seed_mock_data.js",
     "test": "jest --runInBand"
   },

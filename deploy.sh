@@ -13,8 +13,11 @@ echo "⬇️ Pulling latest code from GitHub..."
 git fetch origin main
 git pull origin main
 
-echo "📦 Installing node dependencies (including pdfkit)..."
+echo "📦 Installing node dependencies..."
 npm install
+
+echo "🗄️ Running production-safe database migrations..."
+npm run migrate
 
 echo "🔄 Restarting PM2 process..."
 pm2 restart speaxa || pm2 start server.js --name speaxa

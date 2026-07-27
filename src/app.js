@@ -511,6 +511,12 @@ db.query(`
   );
   CREATE INDEX IF NOT EXISTS idx_sec_audit_ip ON security_audit_logs (ip_address, created_at DESC);
 `).then(async () => {
+  try {
+    const runMigrations = require('../database/migrator');
+    await runMigrations();
+  } catch (migErr) {
+    console.error("Migration warning:", migErr.message);
+  }
   console.log("PostgreSQL: Database self-healing migrations verified/created.");
 
   // Seed blogs if empty

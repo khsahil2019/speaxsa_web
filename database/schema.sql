@@ -4,58 +4,17 @@
 -- Run: psql -U postgres -d speaxa -f schema.sql
 -- ============================================================
 
--- Drop all tables in reverse dependency order
-DROP TABLE IF EXISTS security_audit_logs CASCADE;
-DROP TABLE IF EXISTS email_campaigns CASCADE;
-DROP TABLE IF EXISTS email_logs CASCADE;
-DROP TABLE IF EXISTS parent_teacher_chats CASCADE;
-DROP TABLE IF EXISTS email_verification_tokens CASCADE;
-DROP TABLE IF EXISTS recycle_bin CASCADE;
-DROP TABLE IF EXISTS teacher_wallet_ledger CASCADE;
-DROP TABLE IF EXISTS teacher_rewards CASCADE;
-DROP TABLE IF EXISTS teacher_allowances CASCADE;
-DROP TABLE IF EXISTS teacher_certificates CASCADE;
-DROP TABLE IF EXISTS performance_slabs_config CASCADE;
-DROP TABLE IF EXISTS grooming_allowances_config CASCADE;
-DROP TABLE IF EXISTS audit_logs CASCADE;
-DROP TABLE IF EXISTS monthly_reports CASCADE;
-DROP TABLE IF EXISTS student_observations CASCADE;
-DROP TABLE IF EXISTS assignment_submissions CASCADE;
-DROP TABLE IF EXISTS assignments CASCADE;
-DROP TABLE IF EXISTS class_poll_responses CASCADE;
-DROP TABLE IF EXISTS class_polls CASCADE;
-DROP TABLE IF EXISTS class_participants CASCADE;
-DROP TABLE IF EXISTS recordings CASCADE;
-DROP TABLE IF EXISTS attendance CASCADE;
-DROP TABLE IF EXISTS live_classes CASCADE;
-DROP TABLE IF EXISTS batch_students CASCADE;
-DROP TABLE IF EXISTS batches CASCADE;
-DROP TABLE IF EXISTS courses CASCADE;
-DROP TABLE IF EXISTS teacher_payouts CASCADE;
-DROP TABLE IF EXISTS teacher_wallet CASCADE;
-DROP TABLE IF EXISTS refunds CASCADE;
-DROP TABLE IF EXISTS payments CASCADE;
-DROP TABLE IF EXISTS teacher_sop CASCADE;
-DROP TABLE IF EXISTS teacher_documents CASCADE;
-DROP TABLE IF EXISTS teacher_levels CASCADE;
-DROP TABLE IF EXISTS parent_student_links CASCADE;
-DROP TABLE IF EXISTS otp_tokens CASCADE;
-DROP TABLE IF EXISTS refresh_tokens CASCADE;
-DROP TABLE IF EXISTS fcm_tokens CASCADE;
-DROP TABLE IF EXISTS notifications CASCADE;
-DROP TABLE IF EXISTS commission_config CASCADE;
-DROP TABLE IF EXISTS platform_settings CASCADE;
-DROP TABLE IF EXISTS coupons CASCADE;
-DROP TABLE IF EXISTS support_replies CASCADE;
-DROP TABLE IF EXISTS support_tickets CASCADE;
-DROP TABLE IF EXISTS study_materials CASCADE;
-DROP TABLE IF EXISTS course_modules CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
+-- ============================================================
+-- NOTE FOR PRODUCTION SAFETY:
+-- Table DROPs have been removed to prevent accidental data loss.
+-- To apply schema changes safely without losing data, run:
+--   npm run migrate   OR   ./migrate.sh
+-- ============================================================
 
 -- ============================================================
 -- 1. USERS TABLE (All roles: admin, teacher, student, parent)
 -- ============================================================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id                VARCHAR(100) PRIMARY KEY,
   email             VARCHAR(200) UNIQUE NOT NULL,
   phone             VARCHAR(20) NOT NULL,
@@ -99,7 +58,7 @@ CREATE TABLE users (
 -- ============================================================
 -- 2. TEACHER DOCUMENTS
 -- ============================================================
-CREATE TABLE teacher_documents (
+CREATE TABLE IF NOT EXISTS teacher_documents (
   id              VARCHAR(100) PRIMARY KEY,
   teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   doc_type        VARCHAR(50) NOT NULL, -- aadhaar, pan, resume, qualification, profile_photo
@@ -112,7 +71,7 @@ CREATE TABLE teacher_documents (
 -- 3. TEACHER SOP GOVERNANCE
 -- Status: pending, sop_pending, approved, rejected, suspended, draft
 -- ============================================================
-CREATE TABLE teacher_sop (
+CREATE TABLE IF NOT EXISTS teacher_sop (
   id                    VARCHAR(100) PRIMARY KEY,
   teacher_id            VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   -- Video uploads
@@ -146,7 +105,7 @@ CREATE TABLE teacher_sop (
 -- ============================================================
 -- 4. TEACHER LEVEL HISTORY
 -- ============================================================
-CREATE TABLE teacher_levels (
+CREATE TABLE IF NOT EXISTS teacher_levels (
   id              VARCHAR(100) PRIMARY KEY,
   teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   level           VARCHAR(50) NOT NULL, -- Bronze, Silver, Gold, Elite Mentor
@@ -159,7 +118,7 @@ CREATE TABLE teacher_levels (
 -- ============================================================
 -- 5. COURSES (Admin-only creation)
 -- ============================================================
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
   id              VARCHAR(100) PRIMARY KEY,
   title           VARCHAR(200) NOT NULL,
   subject         VARCHAR(100),
@@ -187,7 +146,7 @@ CREATE TABLE courses (
 -- ============================================================
 -- 6. BATCHES (Teacher-created, max 30 students)
 -- ============================================================
-CREATE TABLE batches (
+CREATE TABLE IF NOT EXISTS batches (
   id              VARCHAR(100) PRIMARY KEY,
   course_id       VARCHAR(100) REFERENCES courses(id) ON DELETE SET NULL,
   teacher_id      VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
@@ -218,7 +177,7 @@ CREATE TABLE batches (
 -- ============================================================
 -- 7. BATCH STUDENTS (Enrollment junction)
 -- ============================================================
-CREATE TABLE batch_students (
+CREATE TABLE IF NOT EXISTS batch_students (
   id              SERIAL PRIMARY KEY,
   batch_id        VARCHAR(100) NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
   student_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -231,7 +190,7 @@ CREATE TABLE batch_students (
 -- ============================================================
 -- 8. LIVE CLASSES
 -- ============================================================
-CREATE TABLE live_classes (
+CREATE TABLE IF NOT EXISTS live_classes (
   id              VARCHAR(100) PRIMARY KEY,
   batch_id        VARCHAR(100) REFERENCES batches(id) ON DELETE CASCADE,
   teacher_id      VARCHAR(100) REFERENCES users(id),
@@ -255,7 +214,7 @@ CREATE TABLE live_classes (
 -- ============================================================
 -- 9. CLASS PARTICIPANTS (Auto-attendance tracking)
 -- ============================================================
-CREATE TABLE class_participants (
+CREATE TABLE IF NOT EXISTS class_participants (
   id                  SERIAL PRIMARY KEY,
   class_id            VARCHAR(100) NOT NULL REFERENCES live_classes(id) ON DELETE CASCADE,
   batch_id            VARCHAR(100) REFERENCES batches(id),
@@ -270,7 +229,7 @@ CREATE TABLE class_participants (
 -- ============================================================
 -- 10. ATTENDANCE (Auto-computed per class)
 -- ============================================================
-CREATE TABLE attendance (
+CREATE TABLE IF NOT EXISTS attendance (
   id                  VARCHAR(100) PRIMARY KEY,
   class_id            VARCHAR(100) REFERENCES live_classes(id) ON DELETE CASCADE,
   batch_id            VARCHAR(100) REFERENCES batches(id),
@@ -288,7 +247,7 @@ CREATE TABLE attendance (
 -- ============================================================
 -- 11. RECORDINGS
 -- ============================================================
-CREATE TABLE recordings (
+CREATE TABLE IF NOT EXISTS recordings (
   id              VARCHAR(100) PRIMARY KEY,
   class_id        VARCHAR(100) REFERENCES live_classes(id) ON DELETE CASCADE,
   batch_id        VARCHAR(100) REFERENCES batches(id),
@@ -304,7 +263,7 @@ CREATE TABLE recordings (
 -- ============================================================
 -- 12. CLASS POLLS
 -- ============================================================
-CREATE TABLE class_polls (
+CREATE TABLE IF NOT EXISTS class_polls (
   id              VARCHAR(100) PRIMARY KEY,
   class_id        VARCHAR(100) REFERENCES live_classes(id) ON DELETE CASCADE,
   teacher_id      VARCHAR(100) REFERENCES users(id),
@@ -315,7 +274,7 @@ CREATE TABLE class_polls (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE class_poll_responses (
+CREATE TABLE IF NOT EXISTS class_poll_responses (
   id              SERIAL PRIMARY KEY,
   poll_id         VARCHAR(100) REFERENCES class_polls(id) ON DELETE CASCADE,
   student_id      VARCHAR(100) REFERENCES users(id),
@@ -327,7 +286,7 @@ CREATE TABLE class_poll_responses (
 -- ============================================================
 -- 13. ASSIGNMENTS
 -- ============================================================
-CREATE TABLE assignments (
+CREATE TABLE IF NOT EXISTS assignments (
   id              VARCHAR(100) PRIMARY KEY,
   batch_id        VARCHAR(100) REFERENCES batches(id) ON DELETE CASCADE,
   teacher_id      VARCHAR(100) REFERENCES users(id),
@@ -342,7 +301,7 @@ CREATE TABLE assignments (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE assignment_submissions (
+CREATE TABLE IF NOT EXISTS assignment_submissions (
   id              VARCHAR(100) PRIMARY KEY,
   assignment_id   VARCHAR(100) REFERENCES assignments(id) ON DELETE CASCADE,
   student_id      VARCHAR(100) REFERENCES users(id),
@@ -360,7 +319,7 @@ CREATE TABLE assignment_submissions (
 -- ============================================================
 -- 14. STUDENT OBSERVATIONS (7-metric analytics)
 -- ============================================================
-CREATE TABLE student_observations (
+CREATE TABLE IF NOT EXISTS student_observations (
   id              VARCHAR(100) PRIMARY KEY,
   student_id      VARCHAR(100) REFERENCES users(id),
   teacher_id      VARCHAR(100) REFERENCES users(id),
@@ -381,7 +340,7 @@ CREATE TABLE student_observations (
 -- ============================================================
 -- 15. MONTHLY PERFORMANCE REPORTS
 -- ============================================================
-CREATE TABLE monthly_reports (
+CREATE TABLE IF NOT EXISTS monthly_reports (
   id                    VARCHAR(100) PRIMARY KEY,
   student_id            VARCHAR(100) REFERENCES users(id),
   batch_id              VARCHAR(100) REFERENCES batches(id),
@@ -406,7 +365,7 @@ CREATE TABLE monthly_reports (
 -- ============================================================
 -- 16. PAYMENTS (Razorpay)
 -- ============================================================
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id                  VARCHAR(100) PRIMARY KEY,
   razorpay_order_id   VARCHAR(200),
   razorpay_payment_id VARCHAR(200),
@@ -438,7 +397,7 @@ CREATE TABLE payments (
 -- ============================================================
 -- 17. REFUNDS
 -- ============================================================
-CREATE TABLE refunds (
+CREATE TABLE IF NOT EXISTS refunds (
   id                  VARCHAR(100) PRIMARY KEY,
   payment_id          VARCHAR(100) REFERENCES payments(id),
   student_id          VARCHAR(100) REFERENCES users(id),
@@ -454,7 +413,7 @@ CREATE TABLE refunds (
 -- ============================================================
 -- 18. TEACHER WALLET
 -- ============================================================
-CREATE TABLE teacher_wallet (
+CREATE TABLE IF NOT EXISTS teacher_wallet (
   id              SERIAL PRIMARY KEY,
   teacher_id      VARCHAR(100) NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   total_earnings  DECIMAL(10,2) DEFAULT 0,
@@ -467,7 +426,7 @@ CREATE TABLE teacher_wallet (
 -- ============================================================
 -- 18a. PERFORMANCE SLABS CONFIG
 -- ============================================================
-CREATE TABLE performance_slabs_config (
+CREATE TABLE IF NOT EXISTS performance_slabs_config (
   id              VARCHAR(100) PRIMARY KEY,
   slab_name       VARCHAR(100) NOT NULL UNIQUE,
   target_revenue  DECIMAL(10,2) NOT NULL,
@@ -481,7 +440,7 @@ CREATE TABLE performance_slabs_config (
 -- ============================================================
 -- 18b. GROOMING ALLOWANCES CONFIG
 -- ============================================================
-CREATE TABLE grooming_allowances_config (
+CREATE TABLE IF NOT EXISTS grooming_allowances_config (
   group_name      VARCHAR(100) PRIMARY KEY,
   allowance_amount DECIMAL(10,2) NOT NULL,
   description     TEXT,
@@ -492,7 +451,7 @@ CREATE TABLE grooming_allowances_config (
 -- ============================================================
 -- 18c. TEACHER WALLET LEDGER
 -- ============================================================
-CREATE TABLE teacher_wallet_ledger (
+CREATE TABLE IF NOT EXISTS teacher_wallet_ledger (
   id              VARCHAR(100) PRIMARY KEY,
   teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   amount          DECIMAL(10,2) NOT NULL,
@@ -506,7 +465,7 @@ CREATE TABLE teacher_wallet_ledger (
 -- ============================================================
 -- 18d. TEACHER REWARDS
 -- ============================================================
-CREATE TABLE teacher_rewards (
+CREATE TABLE IF NOT EXISTS teacher_rewards (
   id              VARCHAR(100) PRIMARY KEY,
   teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   slab_name       VARCHAR(100) NOT NULL,
@@ -523,7 +482,7 @@ CREATE TABLE teacher_rewards (
 -- ============================================================
 -- 18e. TEACHER ALLOWANCES
 -- ============================================================
-CREATE TABLE teacher_allowances (
+CREATE TABLE IF NOT EXISTS teacher_allowances (
   id              VARCHAR(100) PRIMARY KEY,
   teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   group_name      VARCHAR(100) NOT NULL,
@@ -536,7 +495,7 @@ CREATE TABLE teacher_allowances (
 -- ============================================================
 -- 18f. TEACHER CERTIFICATES
 -- ============================================================
-CREATE TABLE teacher_certificates (
+CREATE TABLE IF NOT EXISTS teacher_certificates (
   id              VARCHAR(100) PRIMARY KEY,
   teacher_id      VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,
   certificate_type VARCHAR(100) NOT NULL,
@@ -549,7 +508,7 @@ CREATE TABLE teacher_certificates (
 -- ============================================================
 -- 19. TEACHER PAYOUTS
 -- ============================================================
-CREATE TABLE teacher_payouts (
+CREATE TABLE IF NOT EXISTS teacher_payouts (
   id              VARCHAR(100) PRIMARY KEY,
   teacher_id      VARCHAR(100) NOT NULL REFERENCES users(id),
   amount          DECIMAL(10,2) NOT NULL,
@@ -570,7 +529,7 @@ CREATE TABLE teacher_payouts (
 -- ============================================================
 -- 20. PARENT-STUDENT LINKS
 -- ============================================================
-CREATE TABLE parent_student_links (
+CREATE TABLE IF NOT EXISTS parent_student_links (
   id          SERIAL PRIMARY KEY,
   parent_id   VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   student_id  VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -582,7 +541,7 @@ CREATE TABLE parent_student_links (
 -- ============================================================
 -- 21. NOTIFICATIONS (FCM + in-app)
 -- ============================================================
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id          VARCHAR(100) PRIMARY KEY,
   title       VARCHAR(255) NOT NULL,
   message     TEXT NOT NULL,
@@ -598,7 +557,7 @@ CREATE TABLE notifications (
 -- ============================================================
 -- 22. FCM DEVICE TOKENS
 -- ============================================================
-CREATE TABLE fcm_tokens (
+CREATE TABLE IF NOT EXISTS fcm_tokens (
   id          SERIAL PRIMARY KEY,
   user_id     VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token       TEXT NOT NULL,
@@ -610,7 +569,7 @@ CREATE TABLE fcm_tokens (
 -- ============================================================
 -- 23. OTP TOKENS (With TTL)
 -- ============================================================
-CREATE TABLE otp_tokens (
+CREATE TABLE IF NOT EXISTS otp_tokens (
   id              SERIAL PRIMARY KEY,
   identifier      VARCHAR(200) NOT NULL, -- email or phone
   otp             VARCHAR(10) NOT NULL,
@@ -627,7 +586,7 @@ CREATE TABLE otp_tokens (
 -- ============================================================
 -- 24. REFRESH TOKENS
 -- ============================================================
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
   id          SERIAL PRIMARY KEY,
   user_id     VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token       TEXT NOT NULL UNIQUE,
@@ -638,7 +597,7 @@ CREATE TABLE refresh_tokens (
 -- ============================================================
 -- 25. COMMISSION CONFIG (Admin-configurable)
 -- ============================================================
-CREATE TABLE commission_config (
+CREATE TABLE IF NOT EXISTS commission_config (
   id              SERIAL PRIMARY KEY,
   commission_type VARCHAR(50) NOT NULL UNIQUE, -- standard, referral, elite
   teacher_pct     DECIMAL(5,2) NOT NULL DEFAULT 50.00,
@@ -650,7 +609,7 @@ CREATE TABLE commission_config (
 -- ============================================================
 -- 26. PLATFORM SETTINGS
 -- ============================================================
-CREATE TABLE platform_settings (
+CREATE TABLE IF NOT EXISTS platform_settings (
   key         VARCHAR(100) PRIMARY KEY,
   value       TEXT NOT NULL,
   updated_at  TIMESTAMPTZ DEFAULT NOW()
@@ -659,7 +618,7 @@ CREATE TABLE platform_settings (
 -- ============================================================
 -- 27. COUPONS
 -- ============================================================
-CREATE TABLE coupons (
+CREATE TABLE IF NOT EXISTS coupons (
   code              VARCHAR(50) PRIMARY KEY,
   discount_percent  DECIMAL(5,2) NOT NULL,
   max_uses          INT DEFAULT 100,
@@ -672,7 +631,7 @@ CREATE TABLE coupons (
 -- ============================================================
 -- 28. STUDY MATERIALS
 -- ============================================================
-CREATE TABLE study_materials (
+CREATE TABLE IF NOT EXISTS study_materials (
   id          VARCHAR(100) PRIMARY KEY,
   title       VARCHAR(255),
   description TEXT,
@@ -689,7 +648,7 @@ CREATE TABLE study_materials (
 -- ============================================================
 -- 28b. COURSE MODULES / SECTIONS
 -- ============================================================
-CREATE TABLE course_modules (
+CREATE TABLE IF NOT EXISTS course_modules (
   id          VARCHAR(100) PRIMARY KEY,
   course_id   VARCHAR(100) REFERENCES courses(id) ON DELETE CASCADE,
   title       VARCHAR(255) NOT NULL,
@@ -699,7 +658,7 @@ CREATE TABLE course_modules (
 -- ============================================================
 -- 29. SUPPORT TICKETS
 -- ============================================================
-CREATE TABLE support_tickets (
+CREATE TABLE IF NOT EXISTS support_tickets (
   id          VARCHAR(100) PRIMARY KEY,
   user_id     VARCHAR(100) REFERENCES users(id),
   subject     VARCHAR(255),
@@ -713,7 +672,7 @@ CREATE TABLE support_tickets (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE support_replies (
+CREATE TABLE IF NOT EXISTS support_replies (
   id          SERIAL PRIMARY KEY,
   ticket_id   VARCHAR(100) REFERENCES support_tickets(id) ON DELETE CASCADE,
   user_id     VARCHAR(100) REFERENCES users(id),
