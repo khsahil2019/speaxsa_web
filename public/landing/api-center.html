@@ -434,99 +434,185 @@
 
     .guide-comment {
       color: #64748B;
-      font-style: italic;
     }
 
     .guide-command {
       color: #A7F3D0;
     }
 
-    /* Password Protection Screen Styles */
+    /* ⚡ SPEAXA Cyberpunk Hacker Terminal Lock Screen */
     #apiPassOverlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(circle at 50% 30%, #0f172a 0%, #020617 100%);
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #020617;
+      background-image: 
+        radial-gradient(ellipse at 50% 20%, rgba(16, 185, 129, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 80%, rgba(60, 189, 176, 0.08) 0%, transparent 50%),
+        linear-gradient(rgba(15, 23, 42, 0.9) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.9) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
       z-index: 999999;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
     }
 
-    .pass-card {
-      background: #FFFFFF;
-      border: 2px solid var(--primary);
-      border-radius: 24px;
-      padding: 36px 32px;
-      max-width: 420px;
+    .hacker-card {
+      background: rgba(10, 15, 30, 0.95);
+      border: 1px solid #10b981;
+      border-radius: 16px;
+      padding: 0;
+      max-width: 480px;
       width: 100%;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      text-align: center;
+      box-shadow: 0 0 50px rgba(16, 185, 129, 0.25), inset 0 0 20px rgba(16, 185, 129, 0.05);
+      overflow: hidden;
+      position: relative;
     }
 
-    .pass-icon-ring {
-      width: 64px;
-      height: 64px;
-      background: rgba(60, 189, 176, 0.12);
-      border: 2px solid var(--primary);
-      border-radius: 50%;
+    .hacker-window-bar {
+      background: #090d16;
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(16, 185, 129, 0.3);
       display: flex;
       align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px auto;
-      color: var(--primary-dark);
-      font-size: 1.6rem;
+      justify-content: space-between;
     }
 
+    .hacker-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .hacker-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .hacker-title {
+      font-size: 0.72rem;
+      color: #10b981;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .hacker-body {
+      padding: 32px 28px;
+    }
+
+    .hacker-icon {
+      font-size: 2.5rem;
+      color: #10b981;
+      text-shadow: 0 0 15px #10b981;
+      margin-bottom: 15px;
+    }
+
+    .hacker-term-text {
+      color: #38bdf8;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 3px solid #10b981;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .hacker-input {
+      background: #030712 !important;
+      border: 1px solid #10b981 !important;
+      color: #10b981 !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      letter-spacing: 4px;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.15) !important;
+    }
+
+    .hacker-input:focus {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.4) !important;
+      border-color: #34d399 !important;
+    }
+
+    .hacker-btn {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+      border: 1px solid #34d399 !important;
+      color: #ffffff !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-weight: 700 !important;
+      letter-spacing: 1px !important;
+      text-transform: uppercase !important;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
+      transition: all 0.2s ease;
+    }
+
+    .hacker-btn:hover {
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.7) !important;
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 
 <body>
 
-  <!-- High Security Password Lock Overlay -->
+  <!-- High Security Cyberpunk Hacker Terminal Lock Overlay -->
   <div id="apiPassOverlay">
-    <div class="pass-card">
-      <div class="pass-icon-ring">
-        <i class="fas fa-lock"></i>
+    <div class="hacker-card">
+      <div class="hacker-window-bar">
+        <div class="hacker-dots">
+          <div class="hacker-dot dot-red"></div>
+          <div class="hacker-dot dot-yellow"></div>
+          <div class="hacker-dot dot-green"></div>
+        </div>
+        <div class="hacker-title"><i class="fas fa-terminal me-2"></i>SPEAXA_MAINFRAME_V2.0 :: RESTRICTED</div>
+        <div style="width: 30px;"></div>
       </div>
-      <h3 class="mb-2" style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #0f172a;">Developer Center
-        Locked</h3>
-      <p class="text-muted small mb-4">Please enter the security access pin code to access API Documentation & VPS
-        Deployment Guides.</p>
 
-      <form id="apiPassForm" onsubmit="event.preventDefault(); verifyApiCenterPass();">
-        <div class="mb-3">
-          <div class="input-group">
-            <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
-            <input type="password" id="apiPassInput"
-              class="form-control bg-light border-start-0 text-center fw-bold fs-5" placeholder="Enter Password"
-              required autocomplete="off">
+      <div class="hacker-body text-center">
+        <div class="hacker-icon">
+          <i class="fas fa-user-secret"></i>
+        </div>
+        <h4 class="fw-bold text-white mb-1" style="letter-spacing: 1px;">DEVELOPER MAINFRAME LOCKED</h4>
+        <p class="text-secondary small mb-3">Unauthorized Access Prohibited. AES-256 Encrypted Protocol.</p>
+
+        <div class="hacker-term-text mb-4">
+          <div><span class="text-success">&gt; ROOT@SPEAXA-PROD-SERVER:~$</span> SYSTEM_LOCK_ENGAGED</div>
+          <div><span class="text-warning">&gt; [SEC_LEVEL]:</span> ADMIN_RESTRICTED</div>
+          <div><span class="text-info">&gt; [STATUS]:</span> ENTER 8-DIGIT SECURITY DECRYPTION PIN...</div>
+        </div>
+
+        <form id="apiPassForm" onsubmit="event.preventDefault(); verifyApiCenterPass();">
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text border-end-0" style="background:#030712; border-color:#10b981; color:#10b981;">
+                <i class="fas fa-key"></i>
+              </span>
+              <input type="password" id="apiPassInput"
+                class="form-control hacker-input text-center fw-bold fs-4 py-2" placeholder="ENTER ACCESS PIN"
+                required autocomplete="off">
+            </div>
           </div>
+
+          <div id="apiPassError" class="alert py-2 small mb-3 border font-monospace text-start" style="display: none; background: rgba(239, 68, 68, 0.15); border-color: #ef4444 !important; color: #fca5a5;">
+            <i class="fas fa-skull-crossbones me-2 text-danger"></i><strong>[ACCESS DENIED]</strong> Invalid Decryption PIN Code.
+          </div>
+
+          <button type="submit" class="btn hacker-btn w-100 py-3 rounded-3 shadow-lg">
+            <i class="fas fa-bolt me-2"></i>DECRYPT & ACCESS MAINFRAME
+          </button>
+        </form>
+
+        <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center text-xs text-muted">
+          <span><i class="fas fa-shield-alt text-success me-1"></i> ENCRYPTED</span>
+          <span>HOST: 127.0.0.1</span>
+          <span>BUILD: v2.0.4</span>
         </div>
-
-        <div id="apiPassError" class="alert alert-danger py-2 small mb-3" style="display: none;">
-          <i class="fas fa-exclamation-triangle me-1"></i> Incorrect Security Password! Access Denied.
-        </div>
-
-        <button type="submit" class="btn btn-spx w-100 py-2.5 fw-bold rounded-pill shadow-sm mb-3">
-          <i class="fas fa-unlock me-2"></i>Unlock Developer Center
-        </button>
-
-        <div class="d-flex align-items-center my-3 text-muted">
-          <hr class="flex-grow-1 my-0"><span class="px-2 text-xs text-uppercase fw-bold" style="font-size:0.7rem; color: #94a3b8;">OR HARDWARE BIOMETRICS</span><hr class="flex-grow-1 my-0">
-        </div>
-
-        <button type="button" class="btn btn-outline-success w-100 py-2.5 fw-bold rounded-pill shadow-sm" onclick="authenticateWithWebAuthn()">
-          <i class="fas fa-fingerprint me-2 text-success"></i>Unlock with Touch ID / Fingerprint (WebAuthn)
-        </button>
-      </form>
-
-      <div class="mt-4 pt-3 border-top">
-        <small class="text-muted"><i class="fas fa-shield-alt me-1 text-teal"></i> SPEAXA Security Layer
-          Protected</small>
       </div>
     </div>
   </div>
@@ -2931,88 +3017,6 @@
     function lockApiCenter() {
       sessionStorage.removeItem('speaxa_api_center_pass_ok');
       checkApiPassAuth();
-    }
-
-    // ── WebAuthn Hardware Touch ID / Fingerprint Biometrics ──
-    async function authenticateWithWebAuthn() {
-      const errDiv = document.getElementById('apiPassError');
-      
-      if (!window.PublicKeyCredential) {
-        alert('WebAuthn hardware biometrics is not supported on this browser or origin (requires HTTPS or localhost).');
-        return;
-      }
-
-      try {
-        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        if (!available) {
-          alert('No hardware biometric sensor (Touch ID / Face ID / Windows Hello) was detected on this device.');
-          return;
-        }
-
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-
-        const storedCredId = localStorage.getItem('speaxa_webauthn_cred_id');
-
-        if (storedCredId) {
-          // Verify existing biometric registration
-          const credIdBytes = Uint8Array.from(atob(storedCredId), c => c.charCodeAt(0));
-          const options = {
-            publicKey: {
-              challenge: challenge,
-              timeout: 60000,
-              allowCredentials: [{
-                id: credIdBytes,
-                type: 'public-key'
-              }],
-              userVerification: 'required'
-            }
-          };
-
-          const credential = await navigator.credentials.get(options);
-          if (credential) {
-            sessionStorage.setItem('speaxa_api_center_pass_ok', 'true');
-            if (errDiv) errDiv.style.display = 'none';
-            checkApiPassAuth();
-          }
-        } else {
-          // Register device biometric for the first time
-          const userId = new Uint8Array(16);
-          window.crypto.getRandomValues(userId);
-
-          const options = {
-            publicKey: {
-              challenge: challenge,
-              rp: { name: 'SPEAXA Developer Center' },
-              user: {
-                id: userId,
-                name: 'admin@speaxa.com',
-                displayName: 'SPEAXA Admin'
-              },
-              pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
-              authenticatorSelection: {
-                authenticatorAttachment: 'platform',
-                userVerification: 'required'
-              },
-              timeout: 60000
-            }
-          };
-
-          const credential = await navigator.credentials.create(options);
-          if (credential) {
-            const rawId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-            localStorage.setItem('speaxa_webauthn_cred_id', rawId);
-            sessionStorage.setItem('speaxa_api_center_pass_ok', 'true');
-            if (errDiv) errDiv.style.display = 'none';
-            checkApiPassAuth();
-          }
-        }
-      } catch (err) {
-        console.warn('WebAuthn Biometric verification error:', err);
-        if (err.name !== 'NotAllowedError') {
-          alert('Biometric Authentication Error: ' + err.message);
-        }
-      }
     }
 
     document.addEventListener('DOMContentLoaded', checkApiPassAuth);
