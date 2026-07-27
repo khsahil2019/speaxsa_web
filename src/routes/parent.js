@@ -34,7 +34,7 @@ router.post('/link-child', async (req, res) => {
     if (!rawInput) return res.status(400).json({ error: 'Student email or student code is required' });
 
     const studentRes = await db.query(
-      "SELECT id, name, email FROM users WHERE (LOWER(email) = LOWER($1) OR UPPER(student_code) = UPPER($1) OR id = $1) AND role = 'student'",
+      "SELECT id, name, email FROM users WHERE (LOWER(TRIM(email)) = LOWER(TRIM($1)) OR UPPER(TRIM(student_code)) = UPPER(TRIM($1)) OR TRIM(phone) = TRIM($1) OR id = TRIM($1)) AND LOWER(role) = 'student'",
       [rawInput]
     );
     if (!studentRes.rows.length) {
@@ -217,14 +217,14 @@ router.post('/link-child/resend-email', async (req, res) => {
 
     try {
       await db.query(`
-        INSERT INTO notifications (id, title, message, target_role, target_user, type, sent_by)
-        VALUES ($1, $2, $3, 'student', $4, 'info', $5)
+        INSERT INTO notifications (id, title, message, user_id, role_target, type, metadata)
+        VALUES ($1, $2, $3, $4, 'student', 'info', $5)
       `, [
         'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         `Reminder: Parent Access Request from ${parentName}`,
         `Reminder: Parent ${parentName} is waiting for your approval on parent-student link request.`,
         studentId,
-        req.user.id
+        JSON.stringify({ parent_id: req.user.id, parent_name: parentName })
       ]);
     } catch (e) {}
 
