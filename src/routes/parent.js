@@ -30,12 +30,13 @@ const verifyChildLink = async (req, res, next) => {
 router.post('/link-child', async (req, res) => {
   const { student_code, student_identifier } = req.body;
   const rawInput = (student_code || student_identifier || '').trim();
+  const cleanDigits = rawInput.replace(/\D/g, '');
   try {
-    if (!rawInput) return res.status(400).json({ error: 'Student email or student code is required' });
+    if (!rawInput) return res.status(400).json({ error: 'Student email, student code, or phone number is required' });
 
     const studentRes = await db.query(
-      "SELECT id, name, email FROM users WHERE (LOWER(TRIM(email)) = LOWER(TRIM($1)) OR UPPER(TRIM(student_code)) = UPPER(TRIM($1)) OR TRIM(phone) = TRIM($1) OR id = TRIM($1)) AND LOWER(role) = 'student'",
-      [rawInput]
+      "SELECT id, name, email FROM users WHERE (LOWER(TRIM(email)) = LOWER(TRIM($1)) OR UPPER(TRIM(student_code)) = UPPER(TRIM($1)) OR TRIM(phone) = TRIM($1) OR ($2 != '' AND (TRIM(phone) = $2 OR TRIM(phone) = '91' || $2 OR RIGHT(TRIM(phone), 10) = RIGHT($2, 10))) OR id = TRIM($1)) AND LOWER(role) = 'student'",
+      [rawInput, cleanDigits]
     );
     if (!studentRes.rows.length) {
       return res.status(404).json({ error: 'No student found matching this Email or Student Code. Please check and try again.' });

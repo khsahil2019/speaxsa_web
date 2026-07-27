@@ -434,7 +434,7 @@
       </div>
 
       <div class="sidebar-user-card">
-        <img class="user-avatar" id="sidebarAvatar" src="" style="object-fit: cover;" alt="Parent Avatar">
+        <img class="user-avatar" id="sidebarAvatar" src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true" style="object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';" alt="Parent Avatar">
         <div>
           <div class="user-info-name" id="sidebarName">Parent</div>
           <div class="user-info-role"><i class="fa-solid fa-shield-halved" style="font-size:0.65rem;"></i> Guardian
@@ -497,8 +497,7 @@
           <button class="btn-link-child" onclick="openModal('linkModal')">
             <i class="fa-solid fa-plus"></i> Link Child
           </button>
-          <img class="header-avatar" id="headerAvatar" src="" style="object-fit: cover; cursor: pointer;" title="Go to Profile" onclick="switchPage('profile')"
-            alt="Parent Avatar">
+          <img class="header-avatar" id="headerAvatar" src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true" style="object-fit: cover; cursor: pointer;" title="Go to Profile" onclick="switchPage('profile')" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';" alt="Parent Avatar">
         </div>
       </header>
 
@@ -590,7 +589,7 @@
         </div>
 
         <!-- ── Overview Tab ───────────────────────────── -->
-        <div id="tab-overview" class="tab-section active">
+        <div id="tab-overview" class="tab-section">
 
           <!-- Hero Banner -->
           <div class="hero-banner">
@@ -1302,8 +1301,8 @@
             <div class="profile-hero-avatar-container">
               <div class="profile-avatar-wrapper" onclick="document.getElementById('parentAvatarInput').click()">
                 <img id="parentProfileAvatar"
-                  src="data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 24 24&quot; fill=&quot;%23cbd5e1&quot;><path d=&quot;M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z&quot;/></svg>"
-                  class="profile-hero-avatar" alt="Parent Avatar">
+                  src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true"
+                  class="profile-hero-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';" alt="Parent Avatar">
                 <div class="profile-avatar-overlay">
                   <i class="fas fa-camera"></i>
                 </div>
@@ -1359,7 +1358,7 @@
                   <p class="text-muted mb-4" style="font-size: 0.8rem;">Review or modify the contact name and primary
                     details associated with your student management accounts.</p>
 
-                  <form id="parentProfileForm" onsubmit="updateParentProfile(event)">
+                  <form id="parentProfileForm" onsubmit="handleParentProfileFormSubmit(event)">
                     <div class="row g-3">
                       <div class="col-md-6 profile-form-group">
                         <label class="profile-label">Full Name</label>
@@ -1528,6 +1527,20 @@
   <script>
     const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
 
+    function getAvatarUrl(url, name = 'Parent') {
+      if (url && typeof url === 'string' && url.trim() !== '') {
+        const trimmed = url.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+          return trimmed;
+        }
+        if (trimmed.startsWith('/')) {
+          return trimmed;
+        }
+        return '/' + trimmed;
+      }
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Parent')}&background=0d7a6d&color=fff&bold=true`;
+    }
+
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       const mainContent = document.querySelector('.main-content');
@@ -1567,29 +1580,42 @@
       if (isNaN(n) || n <= 0) return 0;
       return n > 10 ? n / 10 : n;
     }
-    // ── Auth Token & Session Storage Helpers ─────────────────────────────────
+    // ── Auth Token & Session Storage Helpers (Matching student_token / teacher_token) ──
     window.getParentToken = function () {
-      return localStorage.getItem('spx_parent_token') || sessionStorage.getItem('spx_parent_token');
+      return localStorage.getItem('parent_token') || sessionStorage.getItem('parent_token') || localStorage.getItem('spx_parent_token') || sessionStorage.getItem('spx_parent_token') || '';
     };
 
     window.getParentProfile = function () {
-      const raw = localStorage.getItem('spx_parent_profile') || sessionStorage.getItem('spx_parent_profile');
+      const raw = localStorage.getItem('parent_user') || sessionStorage.getItem('parent_user') || localStorage.getItem('spx_parent_profile') || sessionStorage.getItem('spx_parent_profile');
       try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
     };
 
     window.saveParentAuth = function (token, user, remember = true) {
-      localStorage.setItem('spx_parent_token', token);
-      localStorage.setItem('spx_parent_profile', JSON.stringify(user));
-      sessionStorage.setItem('spx_parent_token', token);
-      sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
-      if (user && (user.email || user.phone)) {
-        localStorage.setItem('spx_parent_remember_email', user.email || user.phone);
+      if (token) {
+        localStorage.setItem('parent_token', token);
+        sessionStorage.setItem('parent_token', token);
+        localStorage.setItem('spx_parent_token', token);
+        sessionStorage.setItem('spx_parent_token', token);
+      }
+      if (user) {
+        localStorage.setItem('parent_user', JSON.stringify(user));
+        sessionStorage.setItem('parent_user', JSON.stringify(user));
+        localStorage.setItem('spx_parent_profile', JSON.stringify(user));
+        sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
+        if (user.email || user.phone) {
+          localStorage.setItem('spx_parent_remember_email', user.email || user.phone);
+          localStorage.setItem('parent_remember_email', user.email || user.phone);
+        }
       }
     };
 
     window.updateParentProfile = function (user) {
-      localStorage.setItem('spx_parent_profile', JSON.stringify(user));
-      sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
+      if (user) {
+        localStorage.setItem('parent_user', JSON.stringify(user));
+        sessionStorage.setItem('parent_user', JSON.stringify(user));
+        localStorage.setItem('spx_parent_profile', JSON.stringify(user));
+        sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
+      }
     };
 
     // ── Fetch interceptor (auth token injection + 401 auto-logout) ─────────────
@@ -1638,10 +1664,25 @@
       if (overlay) overlay.style.setProperty('display', 'none', 'important');
     };
 
-    window.doLogout = function () {
-      if (confirm('Sign out of Parent Portal?')) {
-        window.clearSession();
-        window.showLoginOverlay();
+    window.doLogout = function (opts) {
+      const skip = (typeof opts === 'boolean') ? opts : false;
+      if (skip || confirm('Sign out of Parent Portal?')) {
+        ['spx_parent_token', 'spx_parent_profile', 'spx_parent_children', 'spx_parent_active_id', 'speaxa_parent_token', 'parent_token', 'parent_user', 'spx_parent_remember_email'].forEach(k => {
+          try { localStorage.removeItem(k); } catch(e) {}
+          try { sessionStorage.removeItem(k); } catch(e) {}
+        });
+        
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        const styleOverride = document.getElementById('parentAuthStyleOverride');
+        if (styleOverride) styleOverride.remove();
+
+        const overlay = document.getElementById('loginOverlay');
+        if (overlay) overlay.style.setProperty('display', 'flex', 'important');
+
+        window.location.href = '/parent/';
       }
     };
 
@@ -1751,8 +1792,13 @@
       document.getElementById('parentInputAltEmail').value = profile.alt_email || '';
       setupAutoSave('autosave_parent_profile', ['parentInputName', 'parentInputPhone', 'parentInputAltMobile', 'parentInputAltEmail']);
 
-      const avatarUrl = profile.photo_url || defaultAvatar;
-      document.getElementById('parentProfileAvatar').src = avatarUrl;
+      const pName = profile.name || 'Parent';
+      const avatarUrl = getAvatarUrl(profile.photo_url, pName);
+      const profAv = document.getElementById('parentProfileAvatar');
+      if (profAv) {
+        profAv.src = avatarUrl;
+        profAv.onerror = function() { this.onerror=null; this.src=`https://ui-avatars.com/api/?name=${encodeURIComponent(pName)}&background=0d7a6d&color=fff&bold=true`; };
+      }
 
       renderProfileChildren();
     }
@@ -1826,7 +1872,7 @@
       }).join('');
     }
 
-    async function updateParentProfile(e) {
+    async function handleParentProfileFormSubmit(e) {
       e.preventDefault();
       const name = document.getElementById('parentInputName').value.trim();
       const phone = document.getElementById('parentInputPhone').value.trim();
@@ -1847,7 +1893,7 @@
         if (res.ok) {
           const data = await res.json();
           clearAutoSave('autosave_parent_profile');
-          localStorage.setItem('spx_parent_profile', JSON.stringify(data.user));
+          window.updateParentProfile(data.user);
           showToast('Profile updated successfully!', 'success');
           initDashboard();
           loadParentProfileData();
@@ -2710,30 +2756,34 @@
       const dropdown = document.getElementById('studentSelectDropdown');
       const stateNoChild = document.getElementById('stateNoChild');
       const statePending = document.getElementById('statePending');
-      const tabs = document.getElementById('pageContent');
 
-      // Hide all tabs-as-display
-      document.querySelectorAll('.tab-section').forEach(t => t.style.display = 'none');
+      // Hide all tabs-as-display by removing active class and forcing display: none
+      document.querySelectorAll('.tab-section').forEach(t => {
+        t.classList.remove('active');
+        t.style.display = 'none';
+      });
 
-      if (children.length === 0) {
-        dropdown.innerHTML = '<option value="" disabled selected>No child linked</option>';
-        stateNoChild.style.display = 'block';
-        statePending.style.display = 'none';
+      if (!children || children.length === 0) {
+        if (dropdown) dropdown.innerHTML = '<option value="" disabled selected>No child linked</option>';
+        if (stateNoChild) stateNoChild.style.display = 'block';
+        if (statePending) statePending.style.display = 'none';
         return;
       }
 
-      stateNoChild.style.display = 'none';
-      dropdown.innerHTML = children.map(c => {
-        const suffix = c.status !== 'approved' ? ` (${c.status.toUpperCase()})` : '';
-        return `<option value="${c.id}">${c.name}${suffix}</option>`;
-      }).join('');
+      if (stateNoChild) stateNoChild.style.display = 'none';
+      if (dropdown) {
+        dropdown.innerHTML = children.map(c => {
+          const suffix = c.status !== 'approved' ? ` (${c.status.toUpperCase()})` : '';
+          return `<option value="${c.id}">${c.name}${suffix}</option>`;
+        }).join('');
+      }
 
       let activeId = localStorage.getItem('spx_parent_active_id');
       if (!activeId || !children.find(c => c.id === activeId)) {
         activeId = children[0].id;
         localStorage.setItem('spx_parent_active_id', activeId);
       }
-      dropdown.value = activeId;
+      if (dropdown) dropdown.value = activeId;
       loadStudentData(activeId);
     }
 
@@ -2748,11 +2798,11 @@
       const child = children.find(c => c.id === studentId);
       if (!child) return;
 
+      const stateNoChild = document.getElementById('stateNoChild');
       const statePending = document.getElementById('statePending');
 
       if (child.status !== 'approved') {
         // Hide all tab sections, show pending state
-        document.querySelectorAll('.tab-section').forEach(t => t.style.display = 'none');
         statePending.style.display = 'block';
 
         const pendingTitle = document.getElementById('pendingTitle');
@@ -3223,16 +3273,16 @@
           </div>
         `;
       }
-    }
 
-    // Store ratings & assignments globally for re-rendering on tab switch
-    window._lastActiveRating = activeRating;
-    window._lastActiveAssignments = activeAssignments;
-    setTimeout(() => {
-      if (typeof renderCharts === 'function') {
-        renderCharts(activeRating, activeAssignments);
-      }
-    }, 100);
+      // Store ratings & assignments globally for re-rendering on tab switch
+      window._lastActiveRating = activeRating;
+      window._lastActiveAssignments = activeAssignments;
+      setTimeout(() => {
+        if (typeof renderCharts === 'function') {
+          renderCharts(activeRating, activeAssignments);
+        }
+      }, 100);
+    }
 
     // ── Graphical Chart Instances & Rendering Logic ─────────────────────────────
     let subjectMarksChartInstance = null;
@@ -3496,11 +3546,24 @@
 
     // ── Dashboard init ─────────────────────────────────────────────────────────
     async function initDashboard() {
-      const profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
+      const profile = window.getParentProfile() || {};
       const name = profile.name || 'Parent';
-      const avatarUrl = profile.photo_url || defaultAvatar;
-      document.getElementById('sidebarAvatar').src = avatarUrl;
-      document.getElementById('headerAvatar').src = avatarUrl;
+      const avatarUrl = getAvatarUrl(profile.photo_url, name);
+      
+      const sideAv = document.getElementById('sidebarAvatar');
+      const headAv = document.getElementById('headerAvatar');
+      const profAv = document.getElementById('parentProfileAvatar');
+
+      [sideAv, headAv, profAv].forEach(img => {
+        if (img) {
+          img.src = avatarUrl;
+          img.onerror = function() {
+            this.onerror = null;
+            this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0d7a6d&color=fff&bold=true`;
+          };
+        }
+      });
+
       document.getElementById('sidebarName').textContent = name;
 
       await reloadChildren();
