@@ -1567,28 +1567,18 @@
     };
 
     window.saveParentAuth = function (token, user, remember = true) {
-      if (remember) {
-        localStorage.setItem('spx_parent_token', token);
-        localStorage.setItem('spx_parent_profile', JSON.stringify(user));
-        if (user && (user.email || user.phone)) {
-          localStorage.setItem('spx_parent_remember_email', user.email || user.phone);
-        }
-        sessionStorage.removeItem('spx_parent_token');
-        sessionStorage.removeItem('spx_parent_profile');
-      } else {
-        sessionStorage.setItem('spx_parent_token', token);
-        sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
-        localStorage.removeItem('spx_parent_token');
-        localStorage.removeItem('spx_parent_profile');
+      localStorage.setItem('spx_parent_token', token);
+      localStorage.setItem('spx_parent_profile', JSON.stringify(user));
+      sessionStorage.setItem('spx_parent_token', token);
+      sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
+      if (user && (user.email || user.phone)) {
+        localStorage.setItem('spx_parent_remember_email', user.email || user.phone);
       }
     };
 
     window.updateParentProfile = function (user) {
-      if (localStorage.getItem('spx_parent_token')) {
-        localStorage.setItem('spx_parent_profile', JSON.stringify(user));
-      } else if (sessionStorage.getItem('spx_parent_token')) {
-        sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
-      }
+      localStorage.setItem('spx_parent_profile', JSON.stringify(user));
+      sessionStorage.setItem('spx_parent_profile', JSON.stringify(user));
     };
 
     // ── Fetch interceptor (auth token injection + 401 auto-logout) ─────────────
@@ -2634,22 +2624,38 @@
 
     // ── Link child ─────────────────────────────────────────────────────────────
     async function linkChild(code) {
+      if (!code) {
+        showToast('Please enter a Student Code or Student Email.', 'warning');
+        return;
+      }
+      const token = window.getParentToken();
+      if (!token) {
+        showToast('Session expired. Please sign in again.', 'danger');
+        showLoginOverlay();
+        return;
+      }
       try {
         const res = await fetch('/api/parent/link-child', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ student_code: code })
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ student_code: code, student_identifier: code })
         });
         const data = await res.json();
-        if (!res.ok) { showToast(data.error || 'Failed to link student.', 'danger'); return; }
-        showToast(data.message || 'Link request sent!', 'success');
+        if (!res.ok) { 
+          showToast(data.error || 'Failed to send link request.', 'danger'); 
+          return; 
+        }
+        showToast(data.message || 'Link request sent to student successfully!', 'success');
         await reloadChildren();
         if (data.student) {
           localStorage.setItem('spx_parent_active_id', data.student.id);
         }
         renderChildDropdown();
-      } catch {
-        showToast('Server error while sending request.', 'danger');
+      } catch (err) {
+        showToast('Server connection error while sending link request.', 'danger');
       }
     }
     function handleInlineLink(e) {
