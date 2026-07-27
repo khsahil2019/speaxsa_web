@@ -28,16 +28,17 @@ const verifyChildLink = async (req, res, next) => {
 };
 
 router.post('/link-child', async (req, res) => {
-  const { student_code } = req.body;
+  const { student_code, student_identifier } = req.body;
+  const rawInput = (student_code || student_identifier || '').trim();
   try {
-    if (!student_code) return res.status(400).json({ error: 'student_code is required' });
+    if (!rawInput) return res.status(400).json({ error: 'Student email or student code is required' });
 
     const studentRes = await db.query(
-      "SELECT id, name, email FROM users WHERE (UPPER(student_code) = $1 OR UPPER(email) = $1 OR id = $2) AND role = 'student'",
-      [student_code.toUpperCase(), student_code]
+      "SELECT id, name, email FROM users WHERE (LOWER(email) = LOWER($1) OR UPPER(student_code) = UPPER($1) OR id = $1) AND role = 'student'",
+      [rawInput]
     );
     if (!studentRes.rows.length) {
-      return res.status(404).json({ error: 'No student found with this code. Please check and try again.' });
+      return res.status(404).json({ error: 'No student found matching this Email or Student Code. Please check and try again.' });
     }
 
     const student = studentRes.rows[0];
@@ -61,7 +62,7 @@ router.post('/link-child', async (req, res) => {
       }
     } else {
       await db.query(
-        "INSERT INTO parent_student_links (parent_id, student_id, status, last_email_sent_at) VALUES ($1,$2,'pending', NOW())",
+        "INSERT INTO parent_student_links (parent_id, student_id, status, linked_at, last_email_sent_at) VALUES ($1,$2,'pending', NOW(), NOW())",
         [req.user.id, student.id]
       );
     }
@@ -115,14 +116,14 @@ router.post('/link-child', async (req, res) => {
     // 2. Insert In-App Notification for Student
     try {
       await db.query(`
-        INSERT INTO notifications (id, title, message, target_role, target_user, type, sent_by)
-        VALUES ($1, $2, $3, 'student', $4, 'info', $5)
+        INSERT INTO notifications (id, title, message, user_id, role_target, type, metadata)
+        VALUES ($1, $2, $3, $4, 'student', 'info', $5)
       `, [
         'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         `Parent Access Request from ${parentName}`,
         `Parent ${parentName} (${parentEmail}) requested to link with your student account. Please review and approve/reject in your dashboard.`,
         student.id,
-        req.user.id
+        JSON.stringify({ parent_id: req.user.id, parent_name: parentName, parent_email: parentEmail })
       ]);
     } catch (notifErr) {
       console.error('[ParentLink] Failed to create in-app notification for student:', notifErr.message);
