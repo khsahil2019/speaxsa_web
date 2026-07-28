@@ -23,12 +23,12 @@ class AppThemes {
         bodyLarge: GoogleFonts.plusJakartaSans(color: AppColors.lightTextPrimary),
         bodyMedium: GoogleFonts.plusJakartaSans(color: AppColors.lightTextSecondary),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        iconTheme: IconThemeData(color: AppColors.lightTextPrimary),
-        titleTextStyle: TextStyle(color: AppColors.lightTextPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+        iconTheme: const IconThemeData(color: AppColors.lightTextPrimary),
+        titleTextStyle: GoogleFonts.outfit(color: AppColors.lightTextPrimary, fontSize: 18, fontWeight: FontWeight.bold),
       ),
       cardTheme: CardThemeData(
         color: AppColors.lightCard,
@@ -43,7 +43,7 @@ class AppThemes {
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -78,12 +78,12 @@ class AppThemes {
         bodyLarge: GoogleFonts.plusJakartaSans(color: AppColors.darkTextPrimary),
         bodyMedium: GoogleFonts.plusJakartaSans(color: AppColors.darkTextSecondary),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        iconTheme: IconThemeData(color: AppColors.darkTextPrimary),
-        titleTextStyle: TextStyle(color: AppColors.darkTextPrimary, fontSize: 20, fontWeight: FontWeight.bold),
+        iconTheme: const IconThemeData(color: AppColors.darkTextPrimary),
+        titleTextStyle: GoogleFonts.outfit(color: AppColors.darkTextPrimary, fontSize: 18, fontWeight: FontWeight.bold),
       ),
       cardTheme: CardThemeData(
         color: AppColors.darkCard,
@@ -98,7 +98,7 @@ class AppThemes {
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

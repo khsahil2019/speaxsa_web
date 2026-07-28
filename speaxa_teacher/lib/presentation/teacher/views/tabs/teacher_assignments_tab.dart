@@ -33,65 +33,20 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
             itemCount: list.length,
             itemBuilder: (context, i) {
               final a = list[i];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(child: Text(a.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-                          StatusChip(status: a.status),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text("Batch: ${a.batchName ?? 'Live Batch'} • Max Marks: ${a.maxMarks}", style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(height: 4),
-                      Text("Due Date: ${a.dueDate ?? 'N/A'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      if (a.description != null && a.description!.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Text(a.description!, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-                      ],
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          if (a.fileUrl != null && a.fileUrl!.isNotEmpty)
-                            TextButton.icon(
-                              icon: const Icon(Icons.download, size: 16),
-                              label: const Text("Download Sheet", style: TextStyle(fontSize: 12)),
-                              onPressed: () {
-                                Get.snackbar('Download', 'File url: ${a.fileUrl}');
-                              },
-                            )
-                          else
-                            const SizedBox.shrink(),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.grading, size: 16),
-                            label: const Text("Grade Submissions", style: TextStyle(fontSize: 12)),
-                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.teacherRole, foregroundColor: Colors.white, elevation: 0),
-                            onPressed: () => _showSubmissionsSheet(context, a.id, a.title),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              return _AssignmentCard(
+                assignment: a,
+                onGradePressed: () => _showSubmissionsSheet(context, a.id, a.title),
               );
             },
           ),
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: () => _showCreateAssignmentDialog(context),
-        label: const Text("Create Assignment"),
-        icon: const Icon(Icons.add),
         backgroundColor: AppColors.teacherRole,
         foregroundColor: Colors.white,
+        tooltip: "Create Homework Assignment",
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -107,17 +62,33 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
       builder: (context) {
         return DraggableScrollableSheet(
           initialChildSize: 0.8,
-          maxChildSize: 0.9,
+          maxChildSize: 0.95,
           minChildSize: 0.5,
           expand: false,
           builder: (context, scrollController) {
             return Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Submissions: $title", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Submissions: $title",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: submissions.isEmpty
                         ? const Center(child: Text("No student submissions yet", style: TextStyle(color: Colors.grey)))
@@ -139,7 +110,6 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Expanded(
                                             child: Text(
@@ -148,34 +118,50 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
                                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 6),
                                           StatusChip(status: submissionStatus),
                                         ],
                                       ),
                                       const SizedBox(height: 6),
                                       Text("Submitted: ${sub['submitted_at'] ?? 'N/A'}", style: const TextStyle(color: Colors.grey, fontSize: 11)),
                                       if (marksObtained != null)
-                                        Text("Score: $marksObtained • Feedback: $feedback", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green))
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Text("Score: $marksObtained • $feedback", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
+                                        )
                                       else
-                                        const Text("Not Graded Yet", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
+                                        const Padding(
+                                          padding: EdgeInsets.only(top: 4),
+                                          child: Text("Not Graded Yet", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
+                                        ),
                                       const SizedBox(height: 10),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           if (sub['file_url'] != null)
-                                            TextButton.icon(
-                                              icon: const Icon(Icons.attachment, size: 14),
-                                              label: const Text("View Work", style: TextStyle(fontSize: 11)),
-                                              onPressed: () {
-                                                Get.snackbar('Student Submission', 'File: ${sub['file_url']}');
-                                              },
+                                            Flexible(
+                                              child: TextButton.icon(
+                                                icon: const Icon(Icons.attachment, size: 14),
+                                                label: const Text("View Work", style: TextStyle(fontSize: 11)),
+                                                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                                                onPressed: () {
+                                                  Get.snackbar('Student Submission', 'File: ${sub['file_url']}');
+                                                },
+                                              ),
                                             )
                                           else
                                             const SizedBox.shrink(),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4), elevation: 0),
+                                          ElevatedButton.icon(
+                                            icon: const Icon(Icons.edit_note, size: 16),
+                                            label: Text(marksObtained != null ? "Re-Grade" : "Grade Submission"),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.primary,
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
                                             onPressed: () => _showGradingDialog(context, sub['id'].toString(), assignmentId),
-                                            child: Text(marksObtained != null ? "Re-Grade" : "Grade"),
                                           ),
                                         ],
                                       ),
@@ -223,8 +209,8 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
                   return;
                 }
                 controller.gradeSubmission(submissionId, marks, feedCtrl.text.trim(), assignmentId);
-                Navigator.pop(context); // close dialog
-                Navigator.pop(context); // close submissions sheet
+                Navigator.pop(context);
+                Navigator.pop(context);
               },
               child: const Text("Submit Grade"),
             ),
@@ -370,6 +356,106 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
           ),
         );
       },
+    );
+  }
+}
+
+class _AssignmentCard extends StatefulWidget {
+  final dynamic assignment;
+  final VoidCallback onGradePressed;
+
+  const _AssignmentCard({
+    required this.assignment,
+    required this.onGradePressed,
+  });
+
+  @override
+  State<_AssignmentCard> createState() => _AssignmentCardState();
+}
+
+class _AssignmentCardState extends State<_AssignmentCard> {
+  bool isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.assignment;
+    final desc = a.description ?? '';
+    final hasLongDesc = desc.length > 80;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: Text(a.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                const SizedBox(width: 8),
+                StatusChip(status: a.status),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text("Batch: ${a.batchName ?? 'Live Batch'} • Max Marks: ${a.maxMarks}", style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(height: 4),
+            Text("Due Date: ${a.dueDate ?? 'N/A'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            if (desc.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                desc,
+                maxLines: isExpanded ? 100 : 2,
+                overflow: isExpanded ? TextOverflow.clip : TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.grey.shade800, fontSize: 13, height: 1.4),
+              ),
+              if (hasLongDesc)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: () => setState(() => isExpanded = !isExpanded),
+                    child: Text(
+                      isExpanded ? "See Less ▲" : "See More ▼",
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (a.fileUrl != null && a.fileUrl!.isNotEmpty)
+                  Flexible(
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.download, size: 16),
+                      label: const Text("Download Sheet", style: TextStyle(fontSize: 11)),
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: () {
+                        Get.snackbar('Download', 'File url: ${a.fileUrl}');
+                      },
+                    ),
+                  )
+                else
+                  const SizedBox.shrink(),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.grading, size: 16),
+                  label: const Text("Grade Submissions", style: TextStyle(fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teacherRole,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: widget.onGradePressed,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

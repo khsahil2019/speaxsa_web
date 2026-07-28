@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../controllers/teacher_dashboard_controller.dart';
-import '../../../shared/widgets/custom_button.dart';
-import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/empty_state_widget.dart';
+import '../payout_history_view.dart';
 import '../../../shared/widgets/status_chip.dart';
 
 class TeacherEarningsTab extends GetView<TeacherDashboardController> {
@@ -29,43 +27,93 @@ class TeacherEarningsTab extends GetView<TeacherDashboardController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Earnings Card
+                // Earnings Wallet Card
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     gradient: AppColors.primaryGradient,
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Available Wallet Balance", style: TextStyle(color: Colors.white70, fontSize: 13)),
-                      const SizedBox(height: 4),
-                      Text("₹${w?.walletBalance.toStringAsFixed(2) ?? '0.00'}", style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildBalanceSub("Total Earnings", "₹${w?.totalEarnings.toStringAsFixed(2) ?? '0.00'}"),
-                          _buildBalanceSub("Paid Out", "₹${w?.paidEarnings.toStringAsFixed(2) ?? '0.00'}"),
-                          _buildBalanceSub("Pending", "₹${w?.pendingEarnings.toStringAsFixed(2) ?? '0.00'}"),
+                          const Text("Available Wallet Balance", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.verified, color: Colors.white, size: 12),
+                                SizedBox(width: 4),
+                                Text("Live Ledger", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.payment, size: 16),
-                          label: const Text("Request Payout"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppColors.primary,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: () => _showRequestPayoutDialog(context, w?.walletBalance ?? 0.0),
+                      const SizedBox(height: 6),
+                      Text("₹${w?.walletBalance.toStringAsFixed(2) ?? '0.00'}", style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildBalanceSub("Total Earnings", "₹${w?.totalEarnings.toStringAsFixed(2) ?? '0.00'}"),
+                            _buildBalanceSub("Paid Out", "₹${w?.paidEarnings.toStringAsFixed(2) ?? '0.00'}"),
+                            _buildBalanceSub("Pending", "₹${w?.pendingEarnings.toStringAsFixed(2) ?? '0.00'}"),
+                          ],
                         ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Standardized Equal-Sized Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 38,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.account_balance_wallet_outlined, size: 15),
+                                label: const Text("Request Payout", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.primary,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => Get.to(() => const TeacherPayoutHistoryView()),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 38,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.picture_as_pdf_outlined, size: 15),
+                                label: const Text("Email Passbook PDF", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.teal.shade700,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => controller.emailPassbookStatement(),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -73,13 +121,22 @@ class TeacherEarningsTab extends GetView<TeacherDashboardController> {
                 const SizedBox(height: 24),
 
                 // Statement list
-                const Text("Wallet Transaction Ledger", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Wallet Transaction Ledger", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      onPressed: () => controller.loadWalletStatement(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 if (statements.isEmpty)
                   const Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Text("No transactions recorded yet.", style: TextStyle(color: Colors.grey)),
+                      padding: EdgeInsets.all(32.0),
+                      child: Text("No wallet transactions recorded yet.", style: TextStyle(color: Colors.grey)),
                     ),
                   )
                 else
@@ -89,43 +146,7 @@ class TeacherEarningsTab extends GetView<TeacherDashboardController> {
                     itemCount: statements.length,
                     itemBuilder: (context, i) {
                       final stmt = statements[i] as Map<String, dynamic>;
-                      final isCredit = stmt['type']?.toString().toLowerCase() == 'credit';
-                      final amt = stmt['amount'] ?? 0.0;
-                      final desc = stmt['description'] ?? 'Transaction';
-                      final dateStr = stmt['created_at'] ?? '';
-                      final status = stmt['status'] ?? 'completed';
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isCredit ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                            child: Icon(
-                              isCredit ? Icons.arrow_downward : Icons.arrow_upward,
-                              color: isCredit ? Colors.green : Colors.red,
-                            ),
-                          ),
-                          title: Text(desc, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          subtitle: Text(dateStr.split('T')[0], style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                "${isCredit ? '+' : '-'} ₹${amt.toString()}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: isCredit ? Colors.green : Colors.red,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              StatusChip(status: status),
-                            ],
-                          ),
-                        ),
-                      );
+                      return _WalletTransactionCard(stmt: stmt);
                     },
                   ),
               ],
@@ -141,57 +162,115 @@ class TeacherEarningsTab extends GetView<TeacherDashboardController> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-        Text(val, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 2),
+        Text(val, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
   }
+}
 
-  void _showRequestPayoutDialog(BuildContext context, double balance) {
-    final amtCtrl = TextEditingController();
+class _WalletTransactionCard extends StatefulWidget {
+  final Map<String, dynamic> stmt;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Request Payout"),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Available Balance: ₹${balance.toStringAsFixed(2)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Payout Amount (₹)',
-                hint: 'e.g. 5000',
-                controller: amtCtrl,
-                keyboardType: TextInputType.number,
-                prefixIcon: Icons.currency_rupee,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-              onPressed: () {
-                final amt = double.tryParse(amtCtrl.text.trim());
-                if (amt == null || amt <= 0) {
-                  Get.snackbar('Error', 'Please enter a valid payout amount');
-                  return;
-                }
-                if (amt > balance) {
-                  Get.snackbar('Error', 'Insufficient wallet balance');
-                  return;
-                }
-                controller.requestPayout(amt);
-                Navigator.pop(context);
-              },
-              child: const Text("Submit Request"),
+  const _WalletTransactionCard({required this.stmt});
+
+  @override
+  State<_WalletTransactionCard> createState() => _WalletTransactionCardState();
+}
+
+class _WalletTransactionCardState extends State<_WalletTransactionCard> {
+  bool isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final stmt = widget.stmt;
+    final typeStr = stmt['type']?.toString().toLowerCase() ?? '';
+    final amtVal = double.tryParse(stmt['amount']?.toString() ?? '0') ?? 0.0;
+    final isCredit = typeStr == 'credit' || typeStr == 'earnings' || typeStr == 'bonus' || typeStr == 'referral' || (amtVal >= 0 && typeStr != 'debit' && typeStr != 'payout');
+    final desc = stmt['description']?.toString() ?? 'Transaction';
+    final dateStr = stmt['created_at']?.toString() ?? '';
+    final status = stmt['status']?.toString() ?? 'completed';
+
+    final isLongDesc = desc.length > 40;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: isCredit ? Colors.green.withOpacity(0.12) : Colors.red.withOpacity(0.12),
+                  child: Icon(
+                    isCredit ? Icons.add_circle_outline_rounded : Icons.arrow_upward_rounded,
+                    color: isCredit ? Colors.green.shade700 : Colors.red.shade700,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        desc,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        maxLines: isExpanded ? null : 2,
+                        overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        dateStr.contains('T') ? dateStr.split('T')[0] : dateStr,
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "${isCredit ? '+' : '-'} ₹${amtVal.abs().toStringAsFixed(2)}",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isCredit ? Colors.green.shade700 : Colors.red.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    StatusChip(status: status),
+                  ],
+                ),
+              ],
             ),
+            if (isLongDesc)
+              Align(
+                alignment: Alignment.centerRight,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      isExpanded = !isExpanded;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      isExpanded ? "View Less ▲" : "View More ▼",
+                      style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 }

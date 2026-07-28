@@ -31,11 +31,11 @@ class AuthRepository {
   }
 
   Future<void> sendOtp(String identifier, {String purpose = 'login'}) async {
-    await _apiClient.post(ApiEndpoints.sendOtp, data: {'identifier': identifier, 'purpose': purpose});
+    await _apiClient.post(ApiEndpoints.sendMobileOtp, data: {'identifier': identifier, 'purpose': purpose});
   }
 
   Future<Map<String, dynamic>> verifyOtp(String identifier, String otp, {String purpose = 'login'}) async {
-    final response = await _apiClient.post(ApiEndpoints.verifyOtp, data: {'identifier': identifier, 'otp': otp, 'purpose': purpose});
+    final response = await _apiClient.post(ApiEndpoints.verifyMobileOtp, data: {'identifier': identifier, 'otp': otp, 'purpose': purpose});
     return {
       'token': response['token'],
       'user': UserModel.fromJson(response['user']),

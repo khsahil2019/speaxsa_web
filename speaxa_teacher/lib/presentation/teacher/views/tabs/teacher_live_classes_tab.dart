@@ -59,32 +59,23 @@ class TeacherLiveClassesTab extends GetView<TeacherDashboardController> {
                       if (lc.status == 'scheduled' || lc.status == 'live')
                         SizedBox(
                           width: double.infinity,
+                          height: 42,
                           child: ElevatedButton.icon(
-                            icon: const Icon(Icons.rocket_launch, size: 18),
-                            label: Text(lc.status == 'live' ? "Join Class Room" : "Launch Class Room"),
+                            icon: const Icon(Icons.rocket_launch_rounded, size: 16),
+                            label: Text(
+                              lc.status == 'live' ? "🎥 Join In-App Live Room" : "🎥 Launch In-App Live Room",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
                             ),
-                            onPressed: () async {
-                              try {
-                                final token = await StorageService.to.getToken();
-                                final currentUser = AuthService.to.currentUser.value;
-                                final userStr = currentUser != null ? jsonEncode(currentUser.toJson()) : '{}';
-                                final encodedUser = Uri.encodeComponent(userStr);
-                                final url = 'https://speaxa.in/live/room.html?classId=${lc.id}&role=teacher&token=$token&user=$encodedUser';
-                                final uri = Uri.parse(url);
-                                await launchUrl(
-                                  uri,
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              } catch (e) {
-                                Get.snackbar('Error', 'Could not launch class room: $e');
-                              }
-                            },
+                            onPressed: () => controller.launchInAppLiveClassRoom(lc.id),
                           ),
                         ),
                     ],
@@ -95,12 +86,12 @@ class TeacherLiveClassesTab extends GetView<TeacherDashboardController> {
           ),
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: () => _showScheduleClassDialog(context),
-        label: const Text("Schedule Class"),
-        icon: const Icon(Icons.add),
         backgroundColor: AppColors.teacherRole,
         foregroundColor: Colors.white,
+        tooltip: "Schedule Live Class",
+        child: const Icon(Icons.add),
       ),
     );
   }

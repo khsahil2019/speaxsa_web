@@ -53,6 +53,14 @@ class UserModel {
     this.referredBy,
   });
 
+  String? get fullPhotoUrl {
+    if (photoUrl == null || photoUrl!.isEmpty) return null;
+    if (photoUrl!.startsWith('http://') || photoUrl!.startsWith('https://')) {
+      return photoUrl;
+    }
+    return 'https://staging.speaxa.in${photoUrl!.startsWith('/') ? '' : '/'}$photoUrl';
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id']?.toString() ?? '',

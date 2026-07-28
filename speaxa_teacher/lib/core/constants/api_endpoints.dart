@@ -1,28 +1,30 @@
 import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
-  // Base Production URL for Speaxa domain
+  // Staging Development Base URL
+  static const String stagingBaseUrl = 'https://staging.speaxa.in/api';
   static const String localAndroidBaseUrl = 'http://10.0.2.2:5002/api';
   static const String localIosBaseUrl = 'http://localhost:5002/api';
   static const String productionBaseUrl = 'https://speaxa.in/api';
 
   static String get baseUrl {
-    return productionBaseUrl;
+    return stagingBaseUrl;
   }
 
+  static const String stagingSocketUrl = 'https://staging.speaxa.in';
   static const String localAndroidSocketUrl = 'http://10.0.2.2:5002';
   static const String localIosSocketUrl = 'http://localhost:5002';
   static const String productionSocketUrl = 'https://speaxa.in';
 
   static String get socketUrl {
-    return productionSocketUrl;
+    return stagingSocketUrl;
   }
 
   // Auth Endpoints
   static const String login = '/auth/login';
   static const String register = '/auth/register';
-  static const String sendOtp = '/auth/send-otp';
-  static const String verifyOtp = '/auth/verify-otp';
+  static const String sendMobileOtp = '/auth/send-mobile-otp';
+  static const String verifyMobileOtp = '/auth/verify-mobile-otp';
   static const String forgotPassword = '/auth/forgot-password';
   static const String resetPassword = '/auth/reset-password';
   static const String changePassword = '/auth/change-password';
@@ -31,11 +33,43 @@ class ApiEndpoints {
   static const String fcmToken = '/auth/fcm-token';
   static const String logout = '/auth/logout';
 
-  // Public Endpoints (Configured from Admin Panel)
-  static const String publicCourses = '/public/courses';
-  static const String publicTeachers = '/public/teachers';
-  static const String publicStats = '/public/stats';
-  static const String publicAdminSettings = '/admin/settings/public';
+  // Teacher Core Endpoints
+  static const String teacherDashboard = '/teacher/dashboard';
+  static const String teacherAnalytics = '/teacher/analytics';
+  static const String teacherBatches = '/teacher/batches';
+  static String teacherBatchDetails(String batchId) => '/teacher/batches/$batchId';
+  static const String teacherStudents = '/teacher/students';
+  static const String teacherLiveClasses = '/teacher/live-classes';
+  static String teacherLiveClassDetails(String classId) => '/teacher/live-classes/$classId';
+  static String endLiveClass(String classId) => '/live-classes/$classId/end';
+  static String startLiveClass(String classId) => '/live-classes/$classId/start';
+  static String createLivePoll(String classId) => '/live-classes/$classId/polls';
+  static String pollResults(String pollId) => '/live-classes/polls/$pollId/results';
+
+  // Attendance & Observations
+  static const String teacherAttendance = '/teacher/attendance';
+  static const String saveAttendance = '/attendance';
+  static const String saveObservations = '/teacher/observations';
+
+  // Assignments & Homework
+  static const String teacherAssignments = '/teacher/assignments';
+  static String assignmentSubmissions(String assignmentId) => '/teacher/assignments/$assignmentId/submissions';
+  static const String gradeAssignment = '/teacher/assignments/grade';
+
+  // Passbook, Wallet & Payouts
+  static const String teacherWallet = '/teacher/wallet';
+  static const String requestPayout = '/teacher/wallet/payout-request';
+  static const String emailPassbookStatement = '/teacher/email-passbook-statement';
+
+  // SOPs & Governance
+  static const String teacherSop = '/teacher/sop';
+  static const String updateSop = '/teacher/update-sop';
+  static const String acceptSopAgreement = '/teacher/sop/accept';
+  static const String teacherDocuments = '/teacher/documents';
+
+  // Connect Messaging
+  static const String teacherConnectThreads = '/teacher/connect/threads';
+  static const String teacherConnectMessages = '/teacher/connect/messages';
 
   // Student Endpoints
   static const String studentCourses = '/student/courses';
@@ -49,19 +83,6 @@ class ApiEndpoints {
   static const String studentNotifications = '/student/notifications';
   static const String parentRequests = '/student/parent-requests';
   static const String respondParentRequest = '/student/respond-parent-request';
-  
-  // Teacher Endpoints
-  static const String teacherDashboard = '/teacher/dashboard';
-  static const String teacherAnalytics = '/teacher/analytics';
-  static const String teacherSop = '/teacher/sop';
-  static const String updateSop = '/teacher/update-sop';
-  static const String signAgreement = '/teacher/sign-agreement';
-  static const String teacherBatches = '/teacher/batches';
-  static const String createBatch = '/teacher/create-batch';
-  static const String teacherWallet = '/teacher/wallet';
-  static const String requestPayout = '/teacher/request-payout';
-  static const String teacherDocuments = '/teacher/documents';
-  static const String uploadKycDocument = '/teacher/upload-kyc';
 
   // Parent Endpoints
   static const String parentDashboard = '/parent/dashboard';
@@ -74,10 +95,4 @@ class ApiEndpoints {
   static String childReports(String studentId) => '/parent/children/$studentId/reports';
   static const String parentMessages = '/parent/messages';
   static const String sendMessageToTeacher = '/parent/send-message';
-
-  // Live Classes & Payments
-  static const String activeLiveClasses = '/live-classes/active';
-  static String joinLiveClass(String classId) => '/live-classes/$classId/join';
-  static const String createPaymentOrder = '/payments/create-order';
-  static const String verifyPayment = '/payments/verify';
 }

@@ -83,39 +83,35 @@ class TeacherBatchesTab extends GetView<TeacherDashboardController> {
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
+                        height: 42,
                         child: ElevatedButton.icon(
-                          icon: const Icon(Icons.videocam, size: 18),
-                          label: const Text("Launch Agora Live Class"),
+                          icon: const Icon(Icons.videocam_rounded, size: 18),
+                          label: const Text(
+                            "🎥 Launch Agora Live Class",
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
-                          onPressed: () async {
+                          onPressed: () {
                             final activeClass = controller.liveClasses.firstWhereOrNull(
                               (c) => c.batchId == b.id && (c.status == 'live' || c.status == 'scheduled')
                             );
                             if (activeClass != null) {
-                              try {
-                                final token = await StorageService.to.getToken();
-                                final currentUser = AuthService.to.currentUser.value;
-                                final userStr = currentUser != null ? jsonEncode(currentUser.toJson()) : '{}';
-                                final encodedUser = Uri.encodeComponent(userStr);
-                                final url = 'https://speaxa.in/live/room.html?classId=${activeClass.id}&role=teacher&token=$token&user=$encodedUser';
-                                final uri = Uri.parse(url);
-                                await launchUrl(
-                                  uri,
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              } catch (e) {
-                                Get.snackbar('Error', 'Could not launch class room: $e');
-                              }
+                              controller.launchInAppLiveClassRoom(activeClass.id);
                             } else {
-                              Get.snackbar('Info', 'No active or scheduled live class found for this batch. Please schedule one first!',
-                                backgroundColor: AppColors.warning, colorText: Colors.white);
-                              controller.selectedIndex.value = 4; // Switch to Live Classes Tab
+                              Get.snackbar(
+                                'No Scheduled Room',
+                                'Please schedule a live class session for this batch first.',
+                                backgroundColor: AppColors.primary,
+                                colorText: Colors.white,
+                              );
                             }
                           },
                         ),
@@ -128,12 +124,12 @@ class TeacherBatchesTab extends GetView<TeacherDashboardController> {
           ),
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: () => _showCreateBatchDialog(context),
-        label: const Text("Create Batch"),
-        icon: const Icon(Icons.add),
         backgroundColor: AppColors.teacherRole,
         foregroundColor: Colors.white,
+        tooltip: "Create Study Batch",
+        child: const Icon(Icons.add),
       ),
     );
   }

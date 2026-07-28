@@ -1,5 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/services/storage_service.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../data/models/batch_model.dart';
 import '../../../data/models/sop_model.dart';
 import '../../../data/models/wallet_model.dart';
@@ -163,6 +168,33 @@ class TeacherDashboardController extends GetxController {
   }
 
   // Live Classes
+  Future<void> launchInAppLiveClassRoom(String classId, {String role = 'teacher'}) async {
+    try {
+      final token = await StorageService.to.getToken();
+      final currentUser = AuthService.to.currentUser.value;
+      final userStr = currentUser != null ? jsonEncode(currentUser.toJson()) : '{}';
+      final encodedUser = Uri.encodeComponent(userStr);
+      final url = 'https://speaxa.in/live/room.html?classId=$classId&role=$role&token=$token&user=$encodedUser';
+      final uri = Uri.parse(url);
+
+      // Launch in-app webview mode for seamless in-app live classroom experience
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.inAppWebView,
+        webViewConfiguration: const WebViewConfiguration(
+          enableJavaScript: true,
+          enableDomStorage: true,
+        ),
+      );
+
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      Get.snackbar('Launch Error', 'Could not launch live class room: $e', backgroundColor: AppColors.error, colorText: Colors.white);
+    }
+  }
+
   Future<void> loadLiveClasses() async {
     try {
       final list = await _teacherRepository.getLiveClasses();
@@ -348,6 +380,56 @@ class TeacherDashboardController extends GetxController {
     }
   }
 
+  final RxMap bankDetails = {}.obs;
+  final RxList<dynamic> payoutRequestsList = <dynamic>[].obs;
+
+  // Wallet & Bank Account System
+  Future<Map<String, dynamic>?> fetchIfscDetails(String ifsc) async {
+    try {
+      final cleanIfsc = ifsc.trim().toUpperCase();
+      if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(cleanIfsc)) return null;
+      final dioClient = Dio();
+      final response = await dioClient.get('https://ifsc.razorpay.com/$cleanIfsc');
+      if (response.statusCode == 200 && response.data is Map) {
+        return Map<String, dynamic>.from(response.data);
+      }
+    } catch (e) {
+      print("IFSC lookup error: $e");
+    }
+    return null;
+  }
+
+  Future<void> loadBankDetails() async {
+    try {
+      final data = await _teacherRepository.getBankDetails();
+      bankDetails.value = data;
+    } catch (e) {
+      print("Error loading bank details: $e");
+    }
+  }
+
+  Future<void> saveBankDetails(Map<String, dynamic> data) async {
+    try {
+      isLoading.value = true;
+      await _teacherRepository.saveBankDetails(data);
+      bankDetails.value = data;
+      Get.snackbar('Success', 'Bank account & UPI details saved successfully ✓', backgroundColor: AppColors.success, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loadPayoutRequests() async {
+    try {
+      final list = await _teacherRepository.getPayoutRequests();
+      payoutRequestsList.assignAll(list);
+    } catch (e) {
+      print("Error loading payout requests: $e");
+    }
+  }
+
   // Wallet statements
   Future<void> loadWalletStatement() async {
     try {
@@ -358,12 +440,25 @@ class TeacherDashboardController extends GetxController {
     }
   }
 
-  Future<void> requestPayout(double amount) async {
+  Future<void> requestPayout(double amount, {Map<String, dynamic>? bankInfo}) async {
     try {
       isLoading.value = true;
-      await _teacherRepository.requestPayout(amount);
-      Get.snackbar('Success', 'Payout request submitted successfully!');
+      await _teacherRepository.requestPayout(amount, bankDetails: bankInfo ?? Map<String, dynamic>.from(bankDetails));
+      Get.snackbar('Success', 'Payout request of ₹$amount submitted successfully ✓', backgroundColor: AppColors.success, colorText: Colors.white);
       loadTeacherData();
+      loadPayoutRequests();
+    } catch (e) {
+      Get.snackbar('Error', e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> emailPassbookStatement() async {
+    try {
+      isLoading.value = true;
+      final res = await _teacherRepository.emailPassbookStatement();
+      Get.snackbar('Passbook Statement Sent', res['message'] ?? 'SPEAXA Digital Bank Passbook PDF dispatched to your registered email ✓', backgroundColor: AppColors.success, colorText: Colors.white);
     } catch (e) {
       Get.snackbar('Error', e.toString());
     } finally {
