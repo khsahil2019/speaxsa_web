@@ -53,7 +53,7 @@ class TeacherHomeTab extends GetView<TeacherDashboardController> {
                               Text(_getTimeBasedGreeting(), style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 2),
                               Text(
-                                "$userName 👨‍🏫",
+                                "$userName 👋",
                                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                                 softWrap: true,
                               ),
@@ -337,7 +337,7 @@ class TeacherHomeTab extends GetView<TeacherDashboardController> {
     } else if (hour >= 12 && hour < 17) {
       return "Good Afternoon 🌤️";
     } else if (hour >= 17 && hour < 22) {
-      return "Good Evening <ctrl42>";
+      return "Good Evening 🌆";
     } else {
       return "Good Night 🌙";
     }
