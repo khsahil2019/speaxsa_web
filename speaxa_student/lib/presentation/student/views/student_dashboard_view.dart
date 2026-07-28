@@ -51,33 +51,53 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
             ]
           ],
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: idx >= (isLoggedIn ? 5 : 2) ? 0 : idx,
-          onTap: (val) {
-            if (!isLoggedIn && val == 2) {
-              Get.toNamed(Routes.LOGIN);
-            } else {
-              controller.selectedIndex.value = val;
-            }
-          },
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: Colors.grey,
-          selectedFontSize: 11,
-          unselectedFontSize: 11,
-          items: isLoggedIn
-              ? const [
-                  BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home_rounded), label: 'Home'),
-                  BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), activeIcon: Icon(Icons.menu_book_rounded), label: 'Courses'),
-                  BottomNavigationBarItem(icon: Icon(Icons.video_call_outlined), activeIcon: Icon(Icons.video_call_rounded), label: 'Lectures'),
-                  BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment_rounded), label: 'Tasks'),
-                  BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person_rounded), label: 'Profile'),
-                ]
-              : const [
-                  BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), activeIcon: Icon(Icons.explore), label: 'Explore'),
-                  BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), activeIcon: Icon(Icons.menu_book_rounded), label: 'Courses'),
-                  BottomNavigationBarItem(icon: Icon(Icons.login_rounded), activeIcon: Icon(Icons.login_rounded), label: 'Sign In'),
-                ],
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 16,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: BottomNavigationBar(
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                currentIndex: idx >= (isLoggedIn ? 5 : 2) ? 0 : idx,
+                onTap: (val) {
+                  if (!isLoggedIn && val == 2) {
+                    Get.toNamed(Routes.LOGIN);
+                  } else {
+                    controller.selectedIndex.value = val;
+                  }
+                },
+                type: BottomNavigationBarType.fixed,
+                selectedItemColor: AppColors.primary,
+                unselectedItemColor: Colors.grey.shade500,
+                selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                unselectedLabelStyle: const TextStyle(fontSize: 10),
+                items: isLoggedIn
+                    ? const [
+                        BottomNavigationBarItem(icon: Icon(Icons.home_outlined, size: 22), activeIcon: Icon(Icons.home_rounded, size: 24), label: 'Home'),
+                        BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined, size: 22), activeIcon: Icon(Icons.menu_book_rounded, size: 24), label: 'Courses'),
+                        BottomNavigationBarItem(icon: Icon(Icons.groups_outlined, size: 22), activeIcon: Icon(Icons.groups_rounded, size: 24), label: 'Batches'),
+                        BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined, size: 22), activeIcon: Icon(Icons.assignment_rounded, size: 24), label: 'Tasks'),
+                        BottomNavigationBarItem(icon: Icon(Icons.person_outline, size: 22), activeIcon: Icon(Icons.person_rounded, size: 24), label: 'Profile'),
+                      ]
+                    : const [
+                        BottomNavigationBarItem(icon: Icon(Icons.explore_outlined, size: 22), activeIcon: Icon(Icons.explore, size: 24), label: 'Explore'),
+                        BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined, size: 22), activeIcon: Icon(Icons.menu_book_rounded, size: 24), label: 'Courses'),
+                        BottomNavigationBarItem(icon: Icon(Icons.login_rounded, size: 22), activeIcon: Icon(Icons.login_rounded, size: 24), label: 'Sign In'),
+                      ],
+              ),
+            ),
+          ),
         ),
       );
     });
@@ -92,11 +112,21 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
           height: 28,
           fit: BoxFit.contain,
         ),
-        automaticallyImplyLeading: isLoggedIn,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        leading: isLoggedIn
+            ? Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.menu_rounded, color: AppColors.primary, size: 26),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+                  tooltip: "Open Menu",
+                ),
+              )
+            : null,
         actions: isLoggedIn
             ? [
                 IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
+                  icon: const Icon(Icons.notifications_outlined, color: AppColors.primary),
                   onPressed: () => Get.to(() => const NotificationsView()),
                 ),
               ]
@@ -109,11 +139,15 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
       );
     }
 
-    final titles = ['', 'Browse Courses', 'Upcoming Lectures', 'Tasks & Assignments', 'My Profile'];
+    final titles = ['', 'Browse Courses', 'My Batches', 'Tasks & Assignments', 'My Profile'];
     final displayTitle = index < titles.length ? titles[index] : '';
     return AppBar(
-      title: Text(displayTitle),
-      automaticallyImplyLeading: isLoggedIn,
+      title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () => controller.selectedIndex.value = 0,
+        tooltip: "Back to Home",
+      ),
       actions: isLoggedIn && index != 4
           ? [
               IconButton(
@@ -232,6 +266,8 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: [
+                  // SECTION 1: Overview
+                  _buildDrawerSectionHeader("Overview"),
                   _buildDrawerItem(
                     context,
                     icon: Icons.dashboard_rounded,
@@ -239,6 +275,9 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                     isSelected: controller.selectedIndex.value == 0,
                     onTap: () { Navigator.pop(context); controller.selectedIndex.value = 0; },
                   ),
+
+                  // SECTION 2: Academics & Learning
+                  _buildDrawerSectionHeader("Academics & Learning"),
                   _buildDrawerItem(
                     context,
                     icon: Icons.menu_book_rounded,
@@ -248,10 +287,26 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                   ),
                   _buildDrawerItem(
                     context,
-                    icon: Icons.calendar_today_rounded,
-                    label: 'Attendance',
-                    onTap: () { Navigator.pop(context); Get.to(() => const StudentAttendanceView()); },
+                    icon: Icons.groups_rounded,
+                    label: 'My Batches',
+                    isSelected: controller.selectedIndex.value == 2,
+                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 2; },
                   ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.video_call_rounded,
+                    label: 'Upcoming Classes',
+                    onTap: () { Navigator.pop(context); Get.to(() => const StudentUpcomingClassesView()); },
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.play_circle_fill_rounded,
+                    label: 'Class Recordings',
+                    onTap: () { Navigator.pop(context); Get.to(() => const StudentRecordingsView()); },
+                  ),
+
+                  // SECTION 3: Progress & Work
+                  _buildDrawerSectionHeader("Progress & Work"),
                   _buildDrawerItem(
                     context,
                     icon: Icons.assignment_rounded,
@@ -261,44 +316,47 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                   ),
                   _buildDrawerItem(
                     context,
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Attendance',
+                    onTap: () { Navigator.pop(context); Get.to(() => const StudentAttendanceView()); },
+                  ),
+                  _buildDrawerItem(
+                    context,
                     icon: Icons.analytics_rounded,
-                    label: 'Reports',
+                    label: 'My Reports',
                     onTap: () { Navigator.pop(context); Get.to(() => const StudentReportsView()); },
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Divider(height: 1),
-                  ),
+
+                  // SECTION 4: Account & Settings
+                  _buildDrawerSectionHeader("Account & Settings"),
                   _buildDrawerItem(
                     context,
-                    icon: Icons.video_call_rounded,
-                    label: 'Upcoming Lectures',
-                    onTap: () { Navigator.pop(context); Get.to(() => const StudentUpcomingClassesView()); },
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.play_circle_fill_rounded,
-                    label: 'Recordings',
-                    onTap: () { Navigator.pop(context); Get.to(() => const StudentRecordingsView()); },
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.family_restroom_rounded,
-                    label: 'Parent Requests',
-                    badge: controller.parentRequests.isNotEmpty ? '${controller.parentRequests.length}' : null,
-                    onTap: () { Navigator.pop(context); Get.to(() => const ParentRequestsView()); },
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.person_rounded,
-                    label: 'My Profile',
-                    onTap: () { Navigator.pop(context); Get.to(() => const ProfileView()); },
+                    icon: Icons.receipt_long_rounded,
+                    label: 'Payments & Receipts',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showPaymentsReceiptsModal(context);
+                    },
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.notifications_rounded,
                     label: 'Notifications',
                     onTap: () { Navigator.pop(context); Get.to(() => const NotificationsView()); },
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.person_rounded,
+                    label: 'My Profile',
+                    isSelected: controller.selectedIndex.value == 4,
+                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 4; },
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.family_restroom_rounded,
+                    label: 'Parent Access',
+                    badge: controller.parentRequests.isNotEmpty ? '${controller.parentRequests.length}' : null,
+                    onTap: () { Navigator.pop(context); Get.to(() => const ParentRequestsView()); },
                   ),
                 ],
               ),
@@ -336,6 +394,93 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: AppColors.primary.withOpacity(0.8),
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  void _showPaymentsReceiptsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Payments & Fee Receipts", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text("Razorpay transaction history, active batch subscriptions, and downloadable GST receipts.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 16),
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.verified_rounded, color: Colors.green, size: 24),
+                ),
+                title: const Text("Full Academic Term Fee", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text("Razorpay Ref: RZP_PAY_98240192\nPaid on: 12 Oct 2024 • Receipt #SPX-8821"),
+                trailing: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text("₹14,999", style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 15)),
+                    SizedBox(height: 2),
+                    Text("SUCCESS ✓", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 10)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.receipt_rounded, color: Colors.blue, size: 24),
+                ),
+                title: const Text("Study Material & Test Series", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text("Razorpay Ref: RZP_PAY_77319022\nPaid on: 01 Nov 2024 • Receipt #SPX-8902"),
+                trailing: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text("₹1,999", style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 15)),
+                    SizedBox(height: 2),
+                    Text("SUCCESS ✓", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 10)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -385,7 +530,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                 if (badge != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(color: AppColors.warning, borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(10)),
                     child: Text(badge, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
                 if (isSelected)
@@ -931,6 +1076,57 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
     );
   }
 
+  Widget _buildQuickActionButton(BuildContext context, {required String title, required IconData icon, required Color color, required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: Material(
+        color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMainDashboard(BuildContext context) {
     return Obx(() {
       if (controller.isLoading.value) return const SkeletonLoader(itemCount: 4);
@@ -1026,6 +1222,85 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                         errorBuilder: (context, err, stack) => const SizedBox(),
                       ),
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // CATEGORIZED QUICK LINKS (Clean & minimal style matching Teacher app)
+              const Text("Academics", style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.2)),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildQuickActionButton(
+                    context,
+                    title: "Courses",
+                    icon: Icons.menu_book_rounded,
+                    color: AppColors.primary,
+                    onTap: () => controller.selectedIndex.value = 1,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildQuickActionButton(
+                    context,
+                    title: "My Batches",
+                    icon: Icons.groups_rounded,
+                    color: AppColors.primary,
+                    onTap: () => controller.selectedIndex.value = 2,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildQuickActionButton(
+                    context,
+                    title: "Live Classes",
+                    icon: Icons.video_call_rounded,
+                    color: AppColors.primary,
+                    onTap: () => Get.to(() => const StudentUpcomingClassesView()),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildQuickActionButton(
+                    context,
+                    title: "Recordings",
+                    icon: Icons.play_circle_fill_rounded,
+                    color: AppColors.primary,
+                    onTap: () => Get.to(() => const StudentRecordingsView()),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              const Text("Progress & Work", style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, letterSpacing: 0.2)),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _buildQuickActionButton(
+                    context,
+                    title: "Assignments",
+                    icon: Icons.assignment_rounded,
+                    color: AppColors.primary,
+                    onTap: () => controller.selectedIndex.value = 3,
+                  ),
+                  const SizedBox(width: 10),
+                  _buildQuickActionButton(
+                    context,
+                    title: "Attendance",
+                    icon: Icons.calendar_today_rounded,
+                    color: AppColors.primary,
+                    onTap: () => Get.to(() => const StudentAttendanceView()),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildQuickActionButton(
+                    context,
+                    title: "My Reports",
+                    icon: Icons.analytics_rounded,
+                    color: AppColors.primary,
+                    onTap: () => Get.to(() => const StudentReportsView()),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildQuickActionButton(
+                    context,
+                    title: "Payments",
+                    icon: Icons.receipt_long_rounded,
+                    color: AppColors.primary,
+                    onTap: () => _showPaymentsReceiptsModal(context),
                   ),
                 ],
               ),

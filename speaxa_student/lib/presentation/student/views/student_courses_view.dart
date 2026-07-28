@@ -67,126 +67,129 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                 const SizedBox(height: 10),
 
                 // 2. Horizontal Filter Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: ['All', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'English'].map((subject) {
-                      final isSelected = controller.courseSelectedSubject.value == subject;
-                      final chipEmoji = _subjectEmojis[subject] ?? '📖';
-                      final labelText = subject == 'All' ? 'All Subjects' : '$chipEmoji $subject';
+        // 2. Horizontal Filter Chips (Dynamically populated from Database)
+        Obx(() {
+          final Set<String> availableSubjects = {'All', ...controller.courses.map((c) => c.subject ?? 'General').where((s) => s.isNotEmpty)};
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: availableSubjects.map((subject) {
+                final isSelected = controller.courseSelectedSubject.value == subject;
+                final chipEmoji = _subjectEmojis[subject] ?? '📖';
+                final labelText = subject == 'All' ? 'All Subjects' : '$chipEmoji $subject';
 
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(
-                            labelText,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: AppColors.primary,
-                          backgroundColor: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
-                          onSelected: (selected) {
-                            if (selected) {
-                              controller.courseSelectedSubject.value = subject;
-                            }
-                          },
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : (isDark ? Colors.white10 : Colors.grey.shade200),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(
+                      labelText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: AppColors.primary,
+                    backgroundColor: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
+                    onSelected: (selected) {
+                      if (selected) {
+                        controller.courseSelectedSubject.value = subject;
+                      }
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSelected
+                            ? AppColors.primary
+                            : (isDark ? Colors.white10 : Colors.grey.shade200),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        }),
+      ],
+    ),
+  ),
+  const Divider(height: 1),
+
+  // Course List
+  Expanded(
+    child: RefreshIndicator(
+      onRefresh: controller.loadDashboardData,
+      color: AppColors.primary,
+      child: coursesList.isEmpty
+          ? Center(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "No Matching Courses",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "Try searching for a different keyword or changing the subject filter.",
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
+              ),
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              itemCount: coursesList.length,
+              itemBuilder: (context, index) {
+                final course = coursesList[index];
+                final courseBatches = controller.availableBatches
+                    .where((b) => b.courseId == course.id)
+                    .toList();
 
-          // Course List
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: controller.loadDashboardData,
-              color: AppColors.primary,
-              child: coursesList.isEmpty
-                  ? Center(
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
-                              const SizedBox(height: 16),
-                              const Text(
-                                "No Matching Courses",
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "Try searching for a different keyword or changing the subject filter.",
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+                final rawThumbnail = course.thumbnailUrl;
+                final fullThumbnailUrl = rawThumbnail != null && rawThumbnail.isNotEmpty
+                    ? (rawThumbnail.startsWith('http')
+                        ? rawThumbnail
+                        : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$rawThumbnail')
+                    : null;
+
+                final subjectEmoji = _subjectEmojis[course.subject] ?? '📖';
+
+                final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B);
+                final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
+                final cardBorderColor = isDark ? Colors.white10 : Colors.grey.shade200;
+
+                return Card(
+                  elevation: 0,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  clipBehavior: Clip.antiAlias,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: cardBorderColor),
+                  ),
+                  child: InkWell(
+                    onTap: () => showCourseDetailsBottomSheet(context, course, courseBatches, controller),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Compact Image Banner
+                        Container(
+                          height: 120,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.06),
                           ),
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      itemCount: coursesList.length,
-                      itemBuilder: (context, index) {
-                        final course = coursesList[index];
-                        final courseBatches = controller.availableBatches
-                            .where((b) => b.courseId == course.id)
-                            .toList();
-
-                        // Construct full thumbnail URL if relative
-                        final rawThumbnail = course.thumbnailUrl;
-                        final fullThumbnailUrl = rawThumbnail != null && rawThumbnail.isNotEmpty
-                            ? (rawThumbnail.startsWith('http')
-                                ? rawThumbnail
-                                : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$rawThumbnail')
-                            : null;
-
-                        final subjectEmoji = _subjectEmojis[course.subject] ?? '📖';
-
-                        final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B);
-                        final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
-                        final cardBorderColor = isDark ? Colors.white10 : Colors.grey.shade200;
-
-                        return Card(
-                          elevation: 0,
-                          margin: const EdgeInsets.only(bottom: 20),
-                          clipBehavior: Clip.antiAlias,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: cardBorderColor),
-                          ),
-                          child: InkWell(
-                            onTap: () => showCourseDetailsBottomSheet(context, course, courseBatches, controller),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Course Image (Banner style, identical to website)
-                                Container(
-                                  height: 150,
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.06),
-                                  ),
                                   child: fullThumbnailUrl != null
                                       ? Image.network(
                                           fullThumbnailUrl,
