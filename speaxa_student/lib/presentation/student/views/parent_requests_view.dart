@@ -24,16 +24,16 @@ class ParentRequestsView extends GetView<StudentDashboardController> {
           padding: const EdgeInsets.all(16),
           itemCount: requests.length,
           itemBuilder: (context, i) {
-            final req = requests[i] as Map<String, dynamic>;
-            final linkId = req['link_id']?.toString() ?? '';
-            final status = req['status']?.toString() ?? 'pending';
+            final req = requests[i];
+            final linkId = req.id;
+            final status = req.status;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.person_pin)),
-                title: Text(req['parent_name']?.toString() ?? 'Parent', style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(req['parent_email']?.toString() ?? ''),
+                title: Text(req.parentName ?? 'Parent', style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(req.parentEmail ?? ''),
                 trailing: status == 'pending'
                     ? Row(
                         mainAxisSize: MainAxisSize.min,

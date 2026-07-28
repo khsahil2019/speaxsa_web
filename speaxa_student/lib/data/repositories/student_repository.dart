@@ -9,6 +9,10 @@ import '../models/assignment_model.dart';
 import '../models/report_model.dart';
 import '../models/live_class_model.dart';
 import '../models/recording_model.dart';
+import '../models/notification_model.dart';
+import '../models/parent_request_model.dart';
+import '../models/batch_note_model.dart';
+import '../models/course_module_model.dart';
 
 class StudentRepository {
   final ApiClient _apiClient = Get.find<ApiClient>();
@@ -80,14 +84,14 @@ class StudentRepository {
     return (response as List).map((e) => MonthlyReportModel.fromJson(e)).toList();
   }
 
-  Future<List<dynamic>> getNotifications() async {
+  Future<List<NotificationModel>> getNotifications() async {
     final response = await _apiClient.get(ApiEndpoints.studentNotifications);
-    return response as List;
+    return (response as List).map((e) => NotificationModel.fromJson(e)).toList();
   }
 
-  Future<List<dynamic>> getParentRequests() async {
+  Future<List<ParentRequestModel>> getParentRequests() async {
     final response = await _apiClient.get(ApiEndpoints.parentRequests);
-    return response as List;
+    return (response as List).map((e) => ParentRequestModel.fromJson(e)).toList();
   }
 
   Future<void> approveParentRequest(String linkId) async {
@@ -108,13 +112,13 @@ class StudentRepository {
     return (response as List).map((e) => RecordingModel.fromJson(e)).toList();
   }
 
-  Future<List<dynamic>> getBatchNotes(String batchId) async {
+  Future<List<BatchNoteModel>> getBatchNotes(String batchId) async {
     final response = await _apiClient.get(ApiEndpoints.studentBatchNotes(batchId));
-    return response as List;
+    return (response as List).map((e) => BatchNoteModel.fromJson(e)).toList();
   }
 
-  Future<List<dynamic>> getCourseModules(String courseId) async {
+  Future<List<CourseModuleModel>> getCourseModules(String courseId) async {
     final response = await _apiClient.get(ApiEndpoints.courseModules(courseId));
-    return response as List;
+    return (response as List).map((e) => CourseModuleModel.fromJson(e)).toList();
   }
 }

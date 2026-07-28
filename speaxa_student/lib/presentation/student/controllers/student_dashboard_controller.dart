@@ -10,6 +10,7 @@ import '../../../data/models/assignment_model.dart';
 import '../../../data/models/report_model.dart';
 import '../../../data/models/live_class_model.dart';
 import '../../../data/models/recording_model.dart';
+import '../../../data/models/parent_request_model.dart';
 import '../../../data/repositories/student_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../core/network/api_client.dart';
@@ -46,7 +47,7 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
   final Rx<AttendanceData?> attendanceData = Rx<AttendanceData?>(null);
   final RxList<AssignmentModel> assignments = <AssignmentModel>[].obs;
   final RxList<MonthlyReportModel> reports = <MonthlyReportModel>[].obs;
-  final RxList<dynamic> parentRequests = <dynamic>[].obs;
+  final RxList<ParentRequestModel> parentRequests = <ParentRequestModel>[].obs;
   final RxList<LiveClassModel> upcomingClasses = <LiveClassModel>[].obs;
   final RxList<RecordingModel> recordings = <RecordingModel>[].obs;
 
@@ -125,7 +126,7 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
       // Fetch each endpoint individually with try-catch to be fully resilient to hotspot concurrent connection drops
       try {
         final res = await _studentRepository.getMyBatches();
-        myBatches.value = res;
+        myBatches.assignAll(res);
       } catch (e) {
         debugPrint('[Dashboard] Error loading myBatches: $e');
       }
@@ -139,42 +140,42 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
 
       try {
         final res = await _studentRepository.getAssignments();
-        assignments.value = res;
+        assignments.assignAll(res);
       } catch (e) {
         debugPrint('[Dashboard] Error loading assignments: $e');
       }
 
       try {
         final res = await _studentRepository.getReports();
-        reports.value = res;
+        reports.assignAll(res);
       } catch (e) {
         debugPrint('[Dashboard] Error loading reports: $e');
       }
 
       try {
         final res = await _studentRepository.getParentRequests();
-        parentRequests.value = res.where((element) => element['status'] == 'pending').toList();
+        parentRequests.assignAll(res.where((element) => element.status == 'pending'));
       } catch (e) {
         debugPrint('[Dashboard] Error loading parentRequests: $e');
       }
 
       try {
         final res = await _studentRepository.getBatches();
-        availableBatches.value = res;
+        availableBatches.assignAll(res);
       } catch (e) {
         debugPrint('[Dashboard] Error loading availableBatches: $e');
       }
 
       try {
         final res = await _studentRepository.getRecordings();
-        recordings.value = res;
+        recordings.assignAll(res);
       } catch (e) {
         debugPrint('[Dashboard] Error loading recordings: $e');
       }
 
       try {
         final res = await _studentRepository.getCourses();
-        courses.value = res;
+        courses.assignAll(res);
       } catch (e) {
         debugPrint('[Dashboard] Error loading courses: $e');
       }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -29,141 +30,353 @@ import '../../shared/widgets/status_chip.dart';
 class StudentDashboardView extends GetView<StudentDashboardController> {
   const StudentDashboardView({super.key});
 
+  static DateTime? _lastBackPressTime;
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final idx = controller.selectedIndex.value;
       final isLoggedIn = AuthService.to.isLoggedIn.value;
-      return Scaffold(
-        appBar: _buildAppBar(context, idx),
-        drawer: isLoggedIn ? _buildDrawer(context) : null,
-        body: IndexedStack(
-          index: idx >= (isLoggedIn ? 5 : 2) ? 0 : idx,
-          children: [
-            _buildMainDashboard(context),
-            const StudentCoursesView(),
-            if (isLoggedIn) ...[
-              const StudentUpcomingClassesView(isEmbedded: true),
-              const StudentAssignmentsView(),
-              const ProfileView(isEmbedded: true),
-            ] else ...[
-              const SizedBox.shrink(),
-            ]
-          ],
-        ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              ),
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+
+          final currentIdx = controller.selectedIndex.value;
+          if (currentIdx != 0) {
+            // Return to Home Tab first
+            controller.selectedIndex.value = 0;
+            return;
+          }
+
+          // Double back press to exit
+          final now = DateTime.now();
+          if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+            _lastBackPressTime = now;
+            Get.snackbar(
+              "Exit Speaxa Student",
+              "Press back again to exit application",
+              backgroundColor: Colors.black87,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 2),
+              snackPosition: SnackPosition.BOTTOM,
+              margin: const EdgeInsets.all(16),
+            );
+            return;
+          }
+
+          SystemNavigator.pop();
+        },
+        child: Scaffold(
+          appBar: _buildAppBar(context, idx),
+          drawer: isLoggedIn ? _buildDrawer(context) : null,
+          drawerEnableOpenDragGesture: isLoggedIn && idx == 0,
+          body: IndexedStack(
+            index: idx >= (isLoggedIn ? 5 : 2) ? 0 : idx,
+            children: [
+              _buildMainDashboard(context),
+              const StudentCoursesView(),
+              if (isLoggedIn) ...[
+                const StudentUpcomingClassesView(isEmbedded: true),
+                const StudentAssignmentsView(),
+                const ProfileView(isEmbedded: true),
+              ] else ...[
+                const SizedBox.shrink(),
+              ]
             ],
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: BottomNavigationBar(
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                currentIndex: idx >= (isLoggedIn ? 5 : 2) ? 0 : idx,
-                onTap: (val) {
-                  if (!isLoggedIn && val == 2) {
-                    Get.toNamed(Routes.LOGIN);
-                  } else {
-                    controller.selectedIndex.value = val;
-                  }
-                },
-                type: BottomNavigationBarType.fixed,
-                selectedItemColor: AppColors.primary,
-                unselectedItemColor: Colors.grey.shade500,
-                selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                unselectedLabelStyle: const TextStyle(fontSize: 10),
-                items: isLoggedIn
-                    ? const [
-                        BottomNavigationBarItem(icon: Icon(Icons.home_outlined, size: 22), activeIcon: Icon(Icons.home_rounded, size: 24), label: 'Home'),
-                        BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined, size: 22), activeIcon: Icon(Icons.menu_book_rounded, size: 24), label: 'Courses'),
-                        BottomNavigationBarItem(icon: Icon(Icons.groups_outlined, size: 22), activeIcon: Icon(Icons.groups_rounded, size: 24), label: 'Batches'),
-                        BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined, size: 22), activeIcon: Icon(Icons.assignment_rounded, size: 24), label: 'Tasks'),
-                        BottomNavigationBarItem(icon: Icon(Icons.person_outline, size: 22), activeIcon: Icon(Icons.person_rounded, size: 24), label: 'Profile'),
-                      ]
-                    : const [
-                        BottomNavigationBarItem(icon: Icon(Icons.explore_outlined, size: 22), activeIcon: Icon(Icons.explore, size: 24), label: 'Explore'),
-                        BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined, size: 22), activeIcon: Icon(Icons.menu_book_rounded, size: 24), label: 'Courses'),
-                        BottomNavigationBarItem(icon: Icon(Icons.login_rounded, size: 22), activeIcon: Icon(Icons.login_rounded, size: 24), label: 'Sign In'),
-                      ],
-              ),
-            ),
-          ),
+          bottomNavigationBar: _buildModernBottomNavigationBar(context, idx, isLoggedIn, isDark),
         ),
       );
     });
   }
 
+  Widget _buildModernBottomNavigationBar(BuildContext context, int currentIdx, bool isLoggedIn, bool isDark) {
+    final navItems = isLoggedIn
+        ? [
+            _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
+            _NavItemData(icon: Icons.auto_stories_outlined, activeIcon: Icons.auto_stories_rounded, label: 'Courses'),
+            _NavItemData(icon: Icons.groups_outlined, activeIcon: Icons.groups_rounded, label: 'Batches'),
+            _NavItemData(icon: Icons.assignment_outlined, activeIcon: Icons.assignment_rounded, label: 'Tasks'),
+            _NavItemData(
+              icon: Icons.person_outline_rounded,
+              activeIcon: Icons.person_rounded,
+              label: 'Profile',
+              badgeCount: controller.parentRequests.length,
+            ),
+          ]
+        : [
+            _NavItemData(icon: Icons.explore_outlined, activeIcon: Icons.explore_rounded, label: 'Explore'),
+            _NavItemData(icon: Icons.auto_stories_outlined, activeIcon: Icons.auto_stories_rounded, label: 'Courses'),
+            _NavItemData(icon: Icons.login_rounded, activeIcon: Icons.login_rounded, label: 'Sign In'),
+          ];
+
+    final activeIndex = currentIdx >= navItems.length ? 0 : currentIdx;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withOpacity(0.4) : AppColors.primary.withOpacity(0.12),
+            blurRadius: 20,
+            spreadRadius: 1,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(navItems.length, (i) {
+              final item = navItems[i];
+              final isSelected = activeIndex == i;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    if (!isLoggedIn && i == 2) {
+                      Get.toNamed(Routes.LOGIN);
+                    } else {
+                      controller.selectedIndex.value = i;
+                    }
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary.withOpacity(isDark ? 0.22 : 0.12)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Icon(
+                              isSelected ? item.activeIcon : item.icon,
+                              size: isSelected ? 23 : 21,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                            ),
+                            if (item.badgeCount > 0)
+                              Positioned(
+                                right: -6,
+                                top: -4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                  child: Center(
+                                    child: Text(
+                                      '${item.badgeCount}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: isSelected ? 11 : 10.5,
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                            color: isSelected
+                                ? AppColors.primary
+                                : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                          ),
+                          child: Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
   AppBar _buildAppBar(BuildContext context, int index) {
     final isLoggedIn = AuthService.to.isLoggedIn.value;
-    if (index == 0) {
-      return AppBar(
-        title: Image.asset(
-          "assets/images/logo.png",
-          height: 28,
-          fit: BoxFit.contain,
+    final user = AuthService.to.currentUser.value;
+    final isHome = index == 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Widget buildHeaderButton({required Widget child, required VoidCallback onTap, required String tooltip}) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: child,
+            tooltip: tooltip,
+            onPressed: onTap,
+          ),
         ),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        leading: isLoggedIn
-            ? Builder(
-                builder: (ctx) => IconButton(
-                  icon: const Icon(Icons.menu_rounded, color: AppColors.primary, size: 26),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                  tooltip: "Open Menu",
-                ),
-              )
-            : null,
-        actions: isLoggedIn
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined, color: AppColors.primary),
-                  onPressed: () => Get.to(() => const NotificationsView()),
-                ),
-              ]
-            : [
-                TextButton(
-                  onPressed: () => Get.toNamed(Routes.LOGIN),
-                  child: const Text("Sign In", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                ),
-              ],
       );
     }
 
-    final titles = ['', 'Browse Courses', 'My Batches', 'Tasks & Assignments', 'My Profile'];
-    final displayTitle = index < titles.length ? titles[index] : '';
+    final photoUrl = user?.fullPhotoUrl;
+
     return AppBar(
-      title: Text(displayTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded),
-        onPressed: () => controller.selectedIndex.value = 0,
-        tooltip: "Back to Home",
-      ),
-      actions: isLoggedIn && index != 4
+      elevation: 0,
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      leading: isHome
+          ? (isLoggedIn
+              ? Builder(
+                  builder: (ctx) => buildHeaderButton(
+                    child: const Icon(Icons.segment_rounded, color: AppColors.primary, size: 22),
+                    onTap: () => Scaffold.of(ctx).openDrawer(),
+                    tooltip: "Open Navigation Menu",
+                  ),
+                )
+              : null)
+          : buildHeaderButton(
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
+              onTap: () => controller.selectedIndex.value = 0,
+              tooltip: "Back to Home Dashboard",
+            ),
+      title: isHome
+          ? Image.asset(
+              "assets/images/logo.png",
+              height: 28,
+              fit: BoxFit.contain,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _getTitle(index),
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+                  ),
+                ),
+                if (isLoggedIn && user != null)
+                  Text(
+                    "Welcome, ${user.name}",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade600,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+              ],
+            ),
+      centerTitle: isHome,
+      actions: isLoggedIn
           ? [
               IconButton(
-                icon: const Icon(Icons.person_outline),
-                onPressed: () => controller.selectedIndex.value = 4,
+                icon: Icon(
+                  Icons.notifications_outlined,
+                  size: 24,
+                  color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+                ),
+                onPressed: () => Get.to(() => const NotificationsView()),
+              ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => controller.selectedIndex.value = 4, // Profile tab
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.studentRole, width: 2),
+                    ),
+                    child: CircleAvatar(
+                      radius: 15,
+                      backgroundColor: AppColors.studentRole.withOpacity(0.1),
+                      backgroundImage: photoUrl != null ? NetworkImage(photoUrl) as ImageProvider : null,
+                      child: photoUrl == null
+                          ? Text(
+                              user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'S',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.studentRole,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
               ),
             ]
-          : null,
+          : [
+              TextButton(
+                onPressed: () => Get.toNamed(Routes.LOGIN),
+                child: const Text("Sign In", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              ),
+            ],
     );
+  }
+
+  String _getTitle(int index) {
+    switch (index) {
+      case 0: return 'Student Workspace';
+      case 1: return 'Browse Courses';
+      case 2: return 'My Batches';
+      case 3: return 'Tasks & Assignments';
+      case 4: return 'My Profile';
+      default: return 'Student Workspace';
+    }
   }
 
   Widget _buildDrawer(BuildContext context) {
     final user = AuthService.to.currentUser.value;
-    final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api', '');
-    final hasPhoto = user?.photoUrl != null && user!.photoUrl!.isNotEmpty && user.photoUrl != 'null';
-
+    final photoUrl = user?.fullPhotoUrl;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Drawer(
@@ -193,10 +406,10 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                   CircleAvatar(
                     radius: 38,
                     backgroundColor: Colors.white.withOpacity(0.2),
-                    backgroundImage: hasPhoto ? NetworkImage('$baseUrl${user!.photoUrl}') : null,
-                    child: !hasPhoto
+                    backgroundImage: photoUrl != null ? NetworkImage(photoUrl) as ImageProvider : null,
+                    child: photoUrl == null
                         ? Text(
-                            user?.name.substring(0, 1).toUpperCase() ?? 'S',
+                            user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'S',
                             style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
                           )
                         : null,
@@ -1174,16 +1387,56 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                       children: [
                         Row(
                           children: [
+                            GestureDetector(
+                              onTap: () => controller.selectedIndex.value = 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: Colors.white24,
+                                  backgroundImage: user?.fullPhotoUrl != null
+                                      ? NetworkImage(user!.fullPhotoUrl!) as ImageProvider
+                                      : null,
+                                  child: user?.fullPhotoUrl == null
+                                      ? Text(
+                                          user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'S',
+                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                        )
+                                      : null,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                "Welcome back, ${user?.name?.trim() ?? 'Student'}! 👋",
-                                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Welcome back 👋",
+                                    style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12, fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    user?.name?.trim() ?? 'Student',
+                                    style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(20),
@@ -1202,10 +1455,17 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Grade: ${user?.grade ?? 'Class 10'}  •  Board: ${user?.board ?? 'CBSE'}",
-                          style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            "Grade: ${user?.grade ?? 'Class 10'}  •  Board: ${user?.board ?? 'CBSE'}",
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
                         ),
                       ],
                     ),
@@ -1312,8 +1572,8 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                 }
                 
                 final req = controller.parentRequests.first;
-                final parentName = req['parent_name'] ?? 'A parent';
-                final parentEmail = req['parent_email'] ?? '';
+                final parentName = req.parentName ?? 'A parent';
+                final parentEmail = req.parentEmail ?? '';
                 final isDark = Theme.of(context).brightness == Brightness.dark;
                 
                 return Card(
@@ -1359,7 +1619,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton(
-                              onPressed: () => controller.rejectParentRequest(req['id'].toString()),
+                              onPressed: () => controller.rejectParentRequest(req.id),
                               child: const Text("Reject", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                             ),
                             const SizedBox(width: 8),
@@ -1371,7 +1631,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               ),
-                              onPressed: () => controller.approveParentRequest(req['id'].toString()),
+                              onPressed: () => controller.approveParentRequest(req.id),
                               child: const Text("Approve Link", style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ],
@@ -2139,4 +2399,19 @@ class _BatchDetailsBottomSheetState extends State<BatchDetailsBottomSheet> {
     );
   }
 }
+
+class _NavItemData {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final int badgeCount;
+
+  const _NavItemData({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    this.badgeCount = 0,
+  });
+}
+
 

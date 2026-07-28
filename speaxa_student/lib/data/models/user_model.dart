@@ -1,3 +1,5 @@
+import '../../core/constants/api_endpoints.dart';
+
 class UserModel {
   final String id;
   final String email;
@@ -24,6 +26,13 @@ class UserModel {
   final String? mobileNumber;
   final Map<String, dynamic>? socialLinks;
   final String? referredBy;
+
+  String? get fullPhotoUrl {
+    if (photoUrl == null || photoUrl!.isEmpty || photoUrl == 'null') return null;
+    if (photoUrl!.startsWith('http://') || photoUrl!.startsWith('https://')) return photoUrl;
+    final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api', '');
+    return '$baseUrl$photoUrl';
+  }
 
   UserModel({
     required this.id,
