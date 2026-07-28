@@ -19,14 +19,14 @@
   <link rel="stylesheet" href="parent.css?v=2.0.6">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script>
-    (function() {
+    (function () {
       try {
         var t = localStorage.getItem('spx_parent_token') || sessionStorage.getItem('spx_parent_token');
         var p = localStorage.getItem('spx_parent_profile') || sessionStorage.getItem('spx_parent_profile');
         if (t && p) {
           document.write('<style id="parentAuthStyleOverride">#loginOverlay { display: none !important; }</style>');
         }
-      } catch(e) {}
+      } catch (e) { }
     })();
   </script>
 </head>
@@ -99,13 +99,17 @@
               <div class="input-group">
                 <span class="spx-input-prefix"><i class="fa-solid fa-lock"></i></span>
                 <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
-                <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('loginPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+                <button type="button" class="btn btn-outline-secondary px-3"
+                  onclick="togglePasswordVisibility('loginPass', this)"
+                  style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
               </div>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-3">
               <div class="form-check m-0 p-0 d-flex align-items-center gap-2">
-                <input class="form-check-input m-0" type="checkbox" id="rememberMe" checked style="cursor:pointer; width:16px; height:16px; accent-color: var(--teal, #0d7a6d);">
-                <label class="form-check-label text-muted" for="rememberMe" style="cursor:pointer; user-select:none; font-size:0.82rem;">Remember Me</label>
+                <input class="form-check-input m-0" type="checkbox" id="rememberMe" checked
+                  style="cursor:pointer; width:16px; height:16px; accent-color: var(--teal, #0d7a6d);">
+                <label class="form-check-label text-muted" for="rememberMe"
+                  style="cursor:pointer; user-select:none; font-size:0.82rem;">Remember Me</label>
               </div>
               <a href="#" onclick="showForgot(event)"
                 style="color:var(--teal); font-weight:500; font-size:0.82rem; text-decoration:none;">Forgot
@@ -148,7 +152,9 @@
                 <div class="input-group">
                   <span class="spx-input-prefix"><i class="fa-solid fa-lock"></i></span>
                   <input type="password" id="regPass" class="form-control" placeholder="••••••••" required>
-                  <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('regPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+                  <button type="button" class="btn btn-outline-secondary px-3"
+                    onclick="togglePasswordVisibility('regPass', this)"
+                    style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
                 </div>
               </div>
             </div>
@@ -206,8 +212,15 @@
 
             <div class="form-check mt-3 text-start">
               <input class="form-check-input" type="checkbox" id="parentPolicyConsent" required style="cursor:pointer;">
-              <label class="form-check-label text-muted" for="parentPolicyConsent" style="font-size:0.75rem; cursor:pointer;">
-                I agree to SPEAXA's <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Terms of Use</a>, <a href="/policies/privacy-policy.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Privacy Policy</a>, <a href="/policies/children-s-privacy-parent-consent-safe-learning-policy.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Parent Consent Policy</a> & <a href="/policies/refund-cancellation-payment-policy.html" target="_blank" style="color:#0d7a6d; font-weight:600;">Refund Terms</a>.
+              <label class="form-check-label text-muted" for="parentPolicyConsent"
+                style="font-size:0.75rem; cursor:pointer;">
+                I agree to SPEAXA's <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank"
+                  style="color:#0d7a6d; font-weight:600;">Terms of Use</a>, <a href="/policies/privacy-policy.html"
+                  target="_blank" style="color:#0d7a6d; font-weight:600;">Privacy Policy</a>, <a
+                  href="/policies/children-s-privacy-parent-consent-safe-learning-policy.html" target="_blank"
+                  style="color:#0d7a6d; font-weight:600;">Parent Consent Policy</a> & <a
+                  href="/policies/refund-cancellation-payment-policy.html" target="_blank"
+                  style="color:#0d7a6d; font-weight:600;">Refund Terms</a>.
               </label>
             </div>
 
@@ -279,6 +292,32 @@
     </div>
   </div>
 
+  <!-- ── Parent Sign Out Confirmation Modal ────────────────────────────── -->
+  <div class="modal" id="logoutModal">
+    <div class="modal-box" style="max-width: 420px; border-radius: 16px; padding: 24px; text-align: center;">
+      <div
+        style="width: 56px; height: 56px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+      </div>
+      <h3 style="font-weight: 700; color: #0f172a; margin-bottom: 8px; font-size: 1.25rem;">Sign Out of Parent Portal?
+      </h3>
+      <p style="font-size: 0.88rem; color: #64748b; margin-bottom: 24px; line-height: 1.5;">
+        Are you sure you want to log out? You will need to sign in again to view your child's attendance and academic
+        reports.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('logoutModal')"
+          style="flex: 1; padding: 10px 18px; font-weight: 600; border-radius: 10px;">
+          Cancel
+        </button>
+        <button type="button" class="btn" onclick="confirmParentLogout()"
+          style="flex: 1; padding: 10px 18px; font-weight: 700; background: #ef4444; color: #ffffff; border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);">
+          <i class="fa-solid fa-arrow-right-from-bracket me-1.5"></i> Yes, Sign Out
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Teacher Rating Modal ────────────────────────────────────── -->
   <div class="modal" id="ratingModal">
     <div class="modal-box" style="max-width: 450px;">
@@ -346,18 +385,23 @@
               style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; color: white;">
               Teacher Name</h5>
             <div class="d-flex align-items-center gap-2">
-              <span class="badge bg-white text-dark py-0 px-2" style="font-size:0.68rem; font-weight:600;">Subject Educator</span>
-              <span id="chatStudentSubtitle" class="text-white-50" style="font-size: 0.72rem;">Re: Student Progress</span>
+              <span class="badge bg-white text-dark py-0 px-2" style="font-size:0.68rem; font-weight:600;">Subject
+                Educator</span>
+              <span id="chatStudentSubtitle" class="text-white-50" style="font-size: 0.72rem;">Re: Student
+                Progress</span>
             </div>
           </div>
         </div>
-        <button type="button" class="btn text-white p-1" style="font-size:1.2rem; opacity:0.85;" onclick="closeModal('connectChatModal')"><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" class="btn text-white p-1" style="font-size:1.2rem; opacity:0.85;"
+          onclick="closeModal('connectChatModal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <!-- Notice Banner for 10-Day Auto-Deletion -->
       <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between"
         style="background:rgba(245,158,11,0.12); color:#92400E; font-size:0.75rem; flex-shrink:0;">
-        <span><i class="fas fa-shield-halved me-1 text-warning"></i><strong>Privacy & 10-Day Storage Policy:</strong> Contact info exchange is prohibited. Images (max 5 MB) auto-delete after 10 days. Download important files locally.</span>
+        <span><i class="fas fa-shield-halved me-1 text-warning"></i><strong>Privacy & 10-Day Storage Policy:</strong>
+          Contact info exchange is prohibited. Images (max 5 MB) auto-delete after 10 days. Download important files
+          locally.</span>
       </div>
 
       <!-- Messages Body -->
@@ -370,14 +414,16 @@
       <div id="chatImagePreviewBar" class="px-3 py-2 border-top bg-light align-items-center justify-content-between"
         style="display:none; flex-shrink:0;">
         <div class="d-flex align-items-center gap-2">
-          <img id="chatImagePreviewImg" src="" style="width:40px; height:40px; object-fit:cover; border-radius:8px; border:1px solid #cbd5e1;">
+          <img id="chatImagePreviewImg" src=""
+            style="width:40px; height:40px; object-fit:cover; border-radius:8px; border:1px solid #cbd5e1;">
           <div>
             <div id="chatImagePreviewName" class="small fw-semibold text-dark text-truncate"
               style="max-width:200px; font-size:0.78rem;">image.png</div>
             <div id="chatImagePreviewSize" class="text-muted" style="font-size:0.68rem;">1.2 MB</div>
           </div>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" style="font-size:0.72rem; border-radius:6px;"
+        <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2"
+          style="font-size:0.72rem; border-radius:6px;"
           onclick="clearSelectedChatImage('chatImagePreviewBar', 'chatImageInput')"><i
             class="fas fa-times me-1"></i>Remove</button>
       </div>
@@ -385,17 +431,28 @@
       <!-- Quick Emoji Bar -->
       <div class="emoji-toolbar px-3 py-2 border-top d-flex align-items-center gap-2 overflow-auto"
         style="background:#ffffff; flex-shrink:0;">
-        <span class="small text-muted fw-semibold me-1" style="font-size:0.72rem; white-space:nowrap;">Quick Emojis:</span>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '😀')">😀</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '👍')">👍</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '👏')">👏</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '⭐')">⭐</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '📚')">📚</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '🎯')">🎯</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '🎓')">🎓</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '✍️')">✍️</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '💪')">💪</button>
-        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2" style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '🙏')">🙏</button>
+        <span class="small text-muted fw-semibold me-1" style="font-size:0.72rem; white-space:nowrap;">Quick
+          Emojis:</span>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '😀')">😀</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '👍')">👍</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '👏')">👏</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '⭐')">⭐</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '📚')">📚</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '🎯')">🎯</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '🎓')">🎓</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '✍️')">✍️</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '💪')">💪</button>
+        <button type="button" class="btn btn-sm btn-light border p-1 rounded-circle px-2"
+          style="font-size:1.1rem; line-height:1;" onclick="insertEmoji('chatMessageInput', '🙏')">🙏</button>
       </div>
 
       <!-- Input Bar -->
@@ -434,7 +491,10 @@
       </div>
 
       <div class="sidebar-user-card">
-        <img class="user-avatar" id="sidebarAvatar" src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true" style="object-fit: cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';" alt="Parent Avatar">
+        <img class="user-avatar" id="sidebarAvatar"
+          src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true" style="object-fit: cover;"
+          onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';"
+          alt="Parent Avatar">
         <div>
           <div class="user-info-name" id="sidebarName">Parent</div>
           <div class="user-info-role"><i class="fa-solid fa-shield-halved" style="font-size:0.65rem;"></i> Guardian
@@ -483,7 +543,9 @@
       <!-- Top Header -->
       <header class="top-header">
         <div class="header-left d-flex align-items-center gap-2">
-          <button class="btn btn-icon sidebar-toggle-btn me-2" id="sidebarToggleBtn" onclick="toggleSidebar()" style="background:transparent; border:none; color:var(--text-muted); font-size:1.1rem; padding:4px 8px; cursor:pointer;" title="Toggle Sidebar"><i class="fas fa-bars"></i></button>
+          <button class="btn btn-icon sidebar-toggle-btn me-2" id="sidebarToggleBtn" onclick="toggleSidebar()"
+            style="background:transparent; border:none; color:var(--text-muted); font-size:1.1rem; padding:4px 8px; cursor:pointer;"
+            title="Toggle Sidebar"><i class="fas fa-bars"></i></button>
           <span class="header-page-title" id="headerTitle">Overview</span>
         </div>
         <div class="header-right">
@@ -497,7 +559,11 @@
           <button class="btn-link-child" onclick="openModal('linkModal')">
             <i class="fa-solid fa-plus"></i> Link Child
           </button>
-          <img class="header-avatar" id="headerAvatar" src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true" style="object-fit: cover; cursor: pointer;" title="Go to Profile" onclick="switchPage('profile')" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';" alt="Parent Avatar">
+          <img class="header-avatar" id="headerAvatar"
+            src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true"
+            style="object-fit: cover; cursor: pointer;" title="Go to Profile" onclick="switchPage('profile')"
+            onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';"
+            alt="Parent Avatar">
         </div>
       </header>
 
@@ -579,11 +645,14 @@
             <p id="pendingMsg">Your request to view your child's academic performance has been sent. Ask your child to
               approve this request in their student portal.</p>
             <div id="resendEmailWrap" style="margin-top: 18px; display: none;">
-              <button id="resendEmailBtn" class="btn-link-child" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; padding: 10px 20px;" onclick="triggerResendReminder()">
+              <button id="resendEmailBtn" class="btn-link-child"
+                style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; padding: 10px 20px;"
+                onclick="triggerResendReminder()">
                 <i class="fa-solid fa-paper-plane"></i>
                 Resend Reminder Email
               </button>
-              <p style="font-size: 0.78rem; color: #94a3b8; margin-top: 8px;">Automated email reminders are sent to the student every 5 minutes until approved.</p>
+              <p style="font-size: 0.78rem; color: #94a3b8; margin-top: 8px;">Automated email reminders are sent to the
+                student every 5 minutes until approved.</p>
             </div>
           </div>
         </div>
@@ -810,7 +879,8 @@
                       <span class="metric-val" id="metConsistency">—</span>
                     </div>
                     <div class="progress-wrap">
-                      <div class="progress-fill" id="barConsistency" style="width:0%;background:linear-gradient(90deg,#0D9488,#0F766E);"></div>
+                      <div class="progress-fill" id="barConsistency"
+                        style="width:0%;background:linear-gradient(90deg,#0D9488,#0F766E);"></div>
                     </div>
                   </div>
                   <div class="metric-row">
@@ -1302,7 +1372,9 @@
               <div class="profile-avatar-wrapper" onclick="document.getElementById('parentAvatarInput').click()">
                 <img id="parentProfileAvatar"
                   src="https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true"
-                  class="profile-hero-avatar" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';" alt="Parent Avatar">
+                  class="profile-hero-avatar"
+                  onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Parent&background=0d7a6d&color=fff&bold=true';"
+                  alt="Parent Avatar">
                 <div class="profile-avatar-overlay">
                   <i class="fas fa-camera"></i>
                 </div>
@@ -1446,22 +1518,31 @@
           <div class="col-md-4 profile-form-group">
             <label class="profile-label">Current Password *</label>
             <div class="input-group">
-              <input type="password" class="form-control profile-input" id="parentCurrPass" placeholder="••••••••" required>
-              <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('parentCurrPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+              <input type="password" class="form-control profile-input" id="parentCurrPass" placeholder="••••••••"
+                required>
+              <button type="button" class="btn btn-outline-secondary px-3"
+                onclick="togglePasswordVisibility('parentCurrPass', this)"
+                style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
             </div>
           </div>
           <div class="col-md-4 profile-form-group">
             <label class="profile-label">New Password *</label>
             <div class="input-group">
-              <input type="password" class="form-control profile-input" id="parentNewPass" placeholder="••••••••" required minlength="6">
-              <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('parentNewPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+              <input type="password" class="form-control profile-input" id="parentNewPass" placeholder="••••••••"
+                required minlength="6">
+              <button type="button" class="btn btn-outline-secondary px-3"
+                onclick="togglePasswordVisibility('parentNewPass', this)"
+                style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
             </div>
           </div>
           <div class="col-md-4 profile-form-group">
             <label class="profile-label">Confirm New Password *</label>
             <div class="input-group">
-              <input type="password" class="form-control profile-input" id="parentConfirmPass" placeholder="••••••••" required minlength="6">
-              <button type="button" class="btn btn-outline-secondary px-3" onclick="togglePasswordVisibility('parentConfirmPass', this)" style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
+              <input type="password" class="form-control profile-input" id="parentConfirmPass" placeholder="••••••••"
+                required minlength="6">
+              <button type="button" class="btn btn-outline-secondary px-3"
+                onclick="togglePasswordVisibility('parentConfirmPass', this)"
+                style="border-color: #cbd5e1; background: #fff; color: #64748b;"><i class="far fa-eye"></i></button>
             </div>
           </div>
           <div class="col-12 mt-2 text-end">
@@ -1477,38 +1558,53 @@
   <!-- Sub Tab: Parent Safeguards & Terms -->
   <div id="profile-tab-parent-policies" class="profile-tab-pane">
     <div class="profile-card">
-      <h5 class="fw-bold mb-3" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i class="fa-solid fa-shield-halved text-primary me-2"></i>Parent Governance & Safeguard Terms</h5>
-      <p class="text-muted mb-4" style="font-size: 0.8rem;">Official Speaxa legal policies, parent consent guidelines, refund terms, and child data protection rights.</p>
+      <h5 class="fw-bold mb-3" style="font-family:'Outfit',sans-serif;font-size:1.15rem;color:var(--text-primary);"><i
+          class="fa-solid fa-shield-halved text-primary me-2"></i>Parent Governance & Safeguard Terms</h5>
+      <p class="text-muted mb-4" style="font-size: 0.8rem;">Official Speaxa legal policies, parent consent guidelines,
+        refund terms, and child data protection rights.</p>
 
       <div class="list-group gap-2">
-        <a href="/policies/children-s-privacy-parent-consent-safe-learning-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+        <a href="/policies/children-s-privacy-parent-consent-safe-learning-policy.html" target="_blank"
+          class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
           <div>
-            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-child-reaching text-teal me-2"></i>Children's Privacy, Parent Consent & Safe Learning Policy</div>
-            <div class="small text-muted" style="font-size:0.75rem;">Parental rights, digital consent, student safety & LMS interaction rules</div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i
+                class="fas fa-child-reaching text-teal me-2"></i>Children's Privacy, Parent Consent & Safe Learning
+              Policy</div>
+            <div class="small text-muted" style="font-size:0.75rem;">Parental rights, digital consent, student safety &
+              LMS interaction rules</div>
           </div>
           <i class="fas fa-external-link-alt text-muted"></i>
         </a>
 
-        <a href="/policies/refund-cancellation-payment-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+        <a href="/policies/refund-cancellation-payment-policy.html" target="_blank"
+          class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
           <div>
-            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-receipt text-warning me-2"></i>Refund, Cancellation & Payment Policy</div>
-            <div class="small text-muted" style="font-size:0.75rem;">Fee payments, subscription cancellation, refund eligibility & billing terms</div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i
+                class="fas fa-receipt text-warning me-2"></i>Refund, Cancellation & Payment Policy</div>
+            <div class="small text-muted" style="font-size:0.75rem;">Fee payments, subscription cancellation, refund
+              eligibility & billing terms</div>
           </div>
           <i class="fas fa-external-link-alt text-muted"></i>
         </a>
 
-        <a href="/policies/data-collection-usage-data-protection-policy.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+        <a href="/policies/data-collection-usage-data-protection-policy.html" target="_blank"
+          class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
           <div>
-            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-user-lock text-primary me-2"></i>Data Collection, Usage & Data Protection Policy</div>
-            <div class="small text-muted" style="font-size:0.75rem;">Encryption, profile privacy, data retention & telemetry protection</div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i
+                class="fas fa-user-lock text-primary me-2"></i>Data Collection, Usage & Data Protection Policy</div>
+            <div class="small text-muted" style="font-size:0.75rem;">Encryption, profile privacy, data retention &
+              telemetry protection</div>
           </div>
           <i class="fas fa-external-link-alt text-muted"></i>
         </a>
 
-        <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
+        <a href="/policies/terms-of-use-terms-and-conditions.html" target="_blank"
+          class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded-3 border">
           <div>
-            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i class="fas fa-file-contract text-secondary me-2"></i>Terms of Use & Terms and Conditions</div>
-            <div class="small text-muted" style="font-size:0.75rem;">General platform usage terms for parent and student accounts</div>
+            <div class="fw-bold text-dark" style="font-size:0.9rem;"><i
+                class="fas fa-file-contract text-secondary me-2"></i>Terms of Use & Terms and Conditions</div>
+            <div class="small text-muted" style="font-size:0.75rem;">General platform usage terms for parent and student
+              accounts</div>
           </div>
           <i class="fas fa-external-link-alt text-muted"></i>
         </a>
@@ -1666,24 +1762,31 @@
 
     window.doLogout = function (opts) {
       const skip = (typeof opts === 'boolean') ? opts : false;
-      if (skip || confirm('Sign out of Parent Portal?')) {
-        ['spx_parent_token', 'spx_parent_profile', 'spx_parent_children', 'spx_parent_active_id', 'speaxa_parent_token', 'parent_token', 'parent_user', 'spx_parent_remember_email'].forEach(k => {
-          try { localStorage.removeItem(k); } catch(e) {}
-          try { sessionStorage.removeItem(k); } catch(e) {}
-        });
-        
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-        
-        const styleOverride = document.getElementById('parentAuthStyleOverride');
-        if (styleOverride) styleOverride.remove();
-
-        const overlay = document.getElementById('loginOverlay');
-        if (overlay) overlay.style.setProperty('display', 'flex', 'important');
-
-        window.location.href = '/parent/';
+      if (skip) {
+        window.confirmParentLogout();
+      } else {
+        openModal('logoutModal');
       }
+    };
+
+    window.confirmParentLogout = function () {
+      closeModal('logoutModal');
+      ['spx_parent_token', 'spx_parent_profile', 'spx_parent_children', 'spx_parent_active_id', 'speaxa_parent_token', 'parent_token', 'parent_user', 'spx_parent_remember_email', 'token', 'user', 'spx_token', 'spx_user'].forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) { }
+        try { sessionStorage.removeItem(k); } catch (e) { }
+      });
+
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      const styleOverride = document.getElementById('parentAuthStyleOverride');
+      if (styleOverride) styleOverride.remove();
+
+      const overlay = document.getElementById('loginOverlay');
+      if (overlay) overlay.style.setProperty('display', 'flex', 'important');
+
+      window.location.href = '/parent/';
     };
 
     // ── Toast ──────────────────────────────────────────────────────────────────
@@ -1740,8 +1843,8 @@
       }
     }
     window.syncParentModuleLocks = syncParentModuleLocks;
-    document.addEventListener('DOMContentLoaded', () => { 
-      syncParentModuleLocks(); 
+    document.addEventListener('DOMContentLoaded', () => {
+      syncParentModuleLocks();
       setInterval(syncParentModuleLocks, 3000);
       window.addEventListener('focus', syncParentModuleLocks);
     });
@@ -1797,7 +1900,7 @@
       const profAv = document.getElementById('parentProfileAvatar');
       if (profAv) {
         profAv.src = avatarUrl;
-        profAv.onerror = function() { this.onerror=null; this.src=`https://ui-avatars.com/api/?name=${encodeURIComponent(pName)}&background=0d7a6d&color=fff&bold=true`; };
+        profAv.onerror = function () { this.onerror = null; this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(pName)}&background=0d7a6d&color=fff&bold=true`; };
       }
 
       renderProfileChildren();
@@ -1906,7 +2009,7 @@
       }
     }
 
-    window.togglePasswordVisibility = function(inputId, triggerEl) {
+    window.togglePasswordVisibility = function (inputId, triggerEl) {
       const input = typeof inputId === 'string' ? document.getElementById(inputId) : inputId;
       if (!input) return;
       const isPassword = input.type === 'password';
@@ -2116,13 +2219,15 @@
               </div>
             ` : '';
 
+            const formattedMsg = m.message ? m.message.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color: #3b82f6; text-decoration: underline; word-break: break-all;">$1</a>') : '';
+
             return `
               <div class="chat-bubble ${bubbleClass}" style="${alignStyle}">
                 <div style="font-weight: 700; font-size: 0.7rem; opacity: 0.85; margin-bottom: 4px;">
                   ${isMe ? parentName : m.sender_name}
                 </div>
                 ${imageHtml}
-                <div>${m.message}</div>
+                <div>${formattedMsg}</div>
                 <div style="font-size: 0.6rem; opacity: 0.7; text-align: right; margin-top: 4px;">
                   ${timeStr}
                 </div>
@@ -2183,6 +2288,9 @@
 
     function checkProhibitedContact(text) {
       if (!text) return false;
+      // Allow educational attachment and document URLs (Drive, Dropbox, Speaxa uploads, PDF, DOC, Images)
+      const isAllowedAttachmentUrl = /(?:drive\.google\.com|dropbox\.com|docs\.google\.com|onedrive|speaxa\.in|\.pdf|\.doc|\.docx|\.png|\.jpg|\.jpeg|\.zip|uploads\/)[^\s]*/i.test(text);
+
       const digitsOnly = text.replace(/\D/g, '');
       if (digitsOnly.length >= 10) return true;
       const phonePattern = /(?:\+?\d{1,4}[-.\s]*)?\(?\d{2,5}\)?[-.\s]*\d{3,5}[-.\s]*\d{3,5}/;
@@ -2191,8 +2299,10 @@
       if (emailPattern.test(text)) return true;
       const socialPattern = /(?:whatsapp|insta|instagram|facebook|fb|telegram|tg|snapchat|linkedin|twitter|x\.com|wa\.me|t\.me|connect on|add me|call me|message me|ping me|reach me|handle is|my id|my number|contact no|mobile no)[\s:]*@?[\w.-]+/i;
       if (socialPattern.test(text)) return true;
+
+      // If it's a general URL and NOT an allowed attachment URL, block it
       const urlPattern = /(?:https?:\/\/|www\.)[^\s]+/i;
-      if (urlPattern.test(text)) return true;
+      if (!isAllowedAttachmentUrl && urlPattern.test(text)) return true;
       return false;
     }
 
@@ -2513,6 +2623,8 @@
     }
 
     function showParentEmailVerificationModal(emailStr) {
+      const profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
+      if (profile && profile.email_verified) return;
       const emailModalEl = document.getElementById('emailVerificationModal');
       const emailDisp = document.getElementById('modalEmailDisplay');
       if (emailDisp) emailDisp.textContent = emailStr || _parentCurrentEmail || 'your email inbox';
@@ -2703,16 +2815,16 @@
       try {
         const res = await fetch('/api/parent/link-child', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({ student_code: code, student_identifier: code })
         });
         const data = await res.json();
-        if (!res.ok) { 
-          showToast(data.error || 'Failed to send link request.', 'danger'); 
-          return; 
+        if (!res.ok) {
+          showToast(data.error || 'Failed to send link request.', 'danger');
+          return;
         }
         showToast(data.message || 'Link request sent to student successfully!', 'success');
         await reloadChildren();
@@ -2832,30 +2944,30 @@
         return;
       }
 
-    async function triggerResendReminder() {
-      const activeId = localStorage.getItem('spx_parent_active_id');
-      if (!activeId) return;
-      const btn = document.getElementById('resendEmailBtn');
-      if (btn) btn.disabled = true;
+      async function triggerResendReminder() {
+        const activeId = localStorage.getItem('spx_parent_active_id');
+        if (!activeId) return;
+        const btn = document.getElementById('resendEmailBtn');
+        if (btn) btn.disabled = true;
 
-      try {
-        const res = await fetch('/api/parent/link-child/resend-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId: activeId })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          showToast(data.error || 'Could not resend email', 'danger');
-        } else {
-          showToast(data.message || 'Reminder email sent to student!', 'success');
+        try {
+          const res = await fetch('/api/parent/link-child/resend-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId: activeId })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            showToast(data.error || 'Could not resend email', 'danger');
+          } else {
+            showToast(data.message || 'Reminder email sent to student!', 'success');
+          }
+        } catch (err) {
+          showToast('Failed to connect to server', 'danger');
+        } finally {
+          if (btn) btn.disabled = false;
         }
-      } catch (err) {
-        showToast('Failed to connect to server', 'danger');
-      } finally {
-        if (btn) btn.disabled = false;
       }
-    }
 
       // Approved — show current tab
       statePending.style.display = 'none';
@@ -3549,7 +3661,7 @@
       const profile = window.getParentProfile() || {};
       const name = profile.name || 'Parent';
       const avatarUrl = getAvatarUrl(profile.photo_url, name);
-      
+
       const sideAv = document.getElementById('sidebarAvatar');
       const headAv = document.getElementById('headerAvatar');
       const profAv = document.getElementById('parentProfileAvatar');
@@ -3557,7 +3669,7 @@
       [sideAv, headAv, profAv].forEach(img => {
         if (img) {
           img.src = avatarUrl;
-          img.onerror = function() {
+          img.onerror = function () {
             this.onerror = null;
             this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0d7a6d&color=fff&bold=true`;
           };
@@ -3598,13 +3710,44 @@
     }
 
     async function checkEmailVerificationReminder() {
-      const profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
       const banner = document.getElementById('emailVerificationBanner');
       const bannerEmailDisp = document.getElementById('bannerEmailDisplay');
       const modalEmailDisp = document.getElementById('modalEmailDisplay');
 
+      const token = window.getParentToken();
+      let profile = JSON.parse(localStorage.getItem('spx_parent_profile') || '{}');
+
+      // Fetch Ground-Truth profile status from backend database
+      if (token) {
+        try {
+          const freshRes = await fetch('/api/auth/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (freshRes.ok) {
+            const freshData = await freshRes.json();
+            const freshUser = freshData.user || freshData;
+            if (freshUser && freshUser.email_verified !== undefined) {
+              profile = { ...profile, ...freshUser, email_verified: !!freshUser.email_verified };
+              localStorage.setItem('spx_parent_profile', JSON.stringify(profile));
+              sessionStorage.setItem('spx_parent_profile', JSON.stringify(profile));
+            }
+          }
+        } catch (e) {
+          console.warn('[Parent Email Check] Fresh profile sync warning:', e);
+        }
+      }
+
       if (!profile || !profile.id || profile.email_verified) {
         if (banner) banner.classList.add('d-none');
+        const emailModalEl = document.getElementById('emailVerificationModal');
+        if (emailModalEl) {
+          if (window.bootstrap && window.bootstrap.Modal) {
+            const instance = window.bootstrap.Modal.getInstance(emailModalEl);
+            if (instance) instance.hide();
+          }
+          emailModalEl.classList.remove('show');
+          emailModalEl.style.display = 'none';
+        }
         return;
       }
 

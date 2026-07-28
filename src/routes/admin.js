@@ -1412,6 +1412,11 @@ router.post('/live-classes/:id/end', async (req, res) => {
       WHERE id = $1
     `, [id]);
     await logAudit(req.user.id, 'CLASS_ENDED_BY_ADMIN', 'live_class', id, {});
+
+    // Generate and email Poll Response Report PDF to the teacher
+    const { generateAndEmailPollReport } = require('../services/PollReportPDFService');
+    generateAndEmailPollReport(id).catch(err => console.error('[Admin LiveClass End] generateAndEmailPollReport error:', err));
+
     res.json({ message: 'Class ended by admin' });
   } catch (err) {
     res.status(500).json({ error: err.message });

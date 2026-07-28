@@ -103,7 +103,7 @@ router.post('/:classId/join', async (req, res) => {
       return res.status(400).json({ error: 'Class is not currently live or scheduled' });
     }
 
-    // Check student is enrolled in this batch
+    // Check student or parent authorization for this batch
     if (req.user.role === 'student') {
       const enrolled = await db.query(
         'SELECT id FROM batch_students WHERE batch_id = $1 AND student_id = $2 AND status = $3',
@@ -121,6 +121,15 @@ router.post('/:classId/join', async (req, res) => {
       `, [req.user.id, classId]);
       if (alreadyInClass.rows.length > 0) {
         return res.status(400).json({ error: 'You are already in another live class' });
+      }
+    } else if (req.user.role === 'parent') {
+      const parentLink = await db.query(`
+        SELECT pl.id FROM parent_links pl
+        JOIN batch_students bs ON bs.student_id = pl.student_id
+        WHERE pl.parent_id = $1 AND bs.batch_id = $2 AND pl.status = 'approved' AND bs.status = 'active'
+      `, [req.user.id, liveClass.batch_id]);
+      if (!parentLink.rows.length) {
+        return res.status(403).json({ error: 'Your child is not enrolled in this batch' });
       }
     }
 

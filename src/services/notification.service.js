@@ -180,6 +180,30 @@ async function notifyNewAssignment({ batchId, title, description, dueDate, maxMa
 
     const formattedDueDate = dueDate ? new Date(dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'As specified';
 
+    const formatFullUrl = (urlStr) => {
+      if (!urlStr) return '';
+      if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) return urlStr;
+      const baseUrl = (process.env.APP_URL || process.env.PUBLIC_URL || process.env.BASE_URL || 'http://localhost:5002').replace(/\/+$/, '');
+      const cleanPath = urlStr.startsWith('/') ? urlStr : '/' + urlStr;
+      return `${baseUrl}${cleanPath}`;
+    };
+
+    const fullFileUrl = formatFullUrl(fileUrl);
+    const attachments = [];
+    if (fileUrl) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const diskPath = path.isAbsolute(fileUrl) ? fileUrl : path.join(__dirname, '../../public', fileUrl.startsWith('/') ? fileUrl : '/' + fileUrl);
+        if (fs.existsSync(diskPath)) {
+          attachments.push({
+            filename: path.basename(diskPath),
+            path: diskPath
+          });
+        }
+      } catch (fErr) {}
+    }
+
     for (const student of studentsRes.rows) {
       // In-app notification for student
       await db.query(`
@@ -205,7 +229,7 @@ async function notifyNewAssignment({ batchId, title, description, dueDate, maxMa
           <p style="margin: 8px 0; font-size: 14px;"><strong>Due Date:</strong> ${formattedDueDate}</p>
           <p style="margin: 8px 0; font-size: 14px;"><strong>Max Marks:</strong> ${maxMarks}</p>
           <p style="margin: 8px 0; font-size: 14px; white-space: pre-wrap;"><strong>Instructions:</strong> ${description || 'N/A'}</p>
-          ${fileUrl ? `<p style="margin-top: 12px;"><a href="${fileUrl}" style="color: #0d7a6d; font-weight: bold;">📎 Download Teacher Attachment</a></p>` : ''}
+          ${fullFileUrl ? `<p style="margin-top: 12px;"><a href="${fullFileUrl}" target="_blank" style="color: #0d7a6d; font-weight: bold; background: #e6f4f1; padding: 8px 14px; border-radius: 8px; text-decoration: none; display: inline-block;">📎 Download Teacher Attachment File</a></p>` : ''}
         </div>
         <p style="font-size: 14px; color: #64748b;">Log in to your Student Portal to upload your submission before the due date.</p>
       `;
@@ -214,7 +238,8 @@ async function notifyNewAssignment({ batchId, title, description, dueDate, maxMa
         to: student.email,
         subject: `New Assignment Posted: ${title}`,
         html: studentHtml,
-        type: 'notification'
+        type: 'notification',
+        attachments: attachments.length > 0 ? attachments : undefined
       });
 
       // Linked Parent Emails
@@ -244,6 +269,7 @@ async function notifyNewAssignment({ batchId, title, description, dueDate, maxMa
             <p style="margin: 8px 0; font-size: 14px;"><strong>Due Date:</strong> ${formattedDueDate}</p>
             <p style="margin: 8px 0; font-size: 14px;"><strong>Max Marks:</strong> ${maxMarks}</p>
             <p style="margin: 8px 0; font-size: 14px; white-space: pre-wrap;"><strong>Instructions:</strong> ${description || 'N/A'}</p>
+            ${fullFileUrl ? `<p style="margin-top: 12px;"><a href="${fullFileUrl}" target="_blank" style="color: #0d7a6d; font-weight: bold; background: #e6f4f1; padding: 8px 14px; border-radius: 8px; text-decoration: none; display: inline-block;">📎 View Assignment File</a></p>` : ''}
           </div>
           <p style="font-size: 14px; color: #64748b;">You can track assignment submission status directly from your Parent Portal dashboard.</p>
         `;
@@ -252,7 +278,8 @@ async function notifyNewAssignment({ batchId, title, description, dueDate, maxMa
           to: parent.email,
           subject: `New Assignment Assigned to ${student.name}: ${title}`,
           html: parentHtml,
-          type: 'notification'
+          type: 'notification',
+          attachments: attachments.length > 0 ? attachments : undefined
         });
       }
     }

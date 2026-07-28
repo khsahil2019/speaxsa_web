@@ -127,10 +127,21 @@ async function sendEmail(options) {
 
     let brevoAttachments = undefined;
     if (options.attachments && Array.isArray(options.attachments) && options.attachments.length > 0) {
-      brevoAttachments = options.attachments.map(att => ({
-        name: att.filename || att.name || 'attachment.pdf',
-        content: Buffer.isBuffer(att.content) ? att.content.toString('base64') : (typeof att.content === 'string' ? att.content : '')
-      }));
+      const fs = require('fs');
+      brevoAttachments = options.attachments.map(att => {
+        let contentBase64 = '';
+        if (Buffer.isBuffer(att.content)) {
+          contentBase64 = att.content.toString('base64');
+        } else if (typeof att.content === 'string' && att.content.length > 100) {
+          contentBase64 = att.content;
+        } else if (att.path && fs.existsSync(att.path)) {
+          contentBase64 = fs.readFileSync(att.path).toString('base64');
+        }
+        return {
+          name: att.filename || att.name || 'attachment.pdf',
+          content: contentBase64
+        };
+      });
     }
 
     if (emailProvider === 'dev') {
@@ -329,6 +340,7 @@ async function sendPaymentReceiptEmail({ studentEmail, studentName, courseTitle,
       couponCode,
       paymentId,
       date
+
     });
   } catch (pdfErr) {
     console.error('[Payment Receipt PDF Generation Warning]:', pdfErr.message);

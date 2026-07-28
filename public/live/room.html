@@ -752,20 +752,38 @@
 
     if (!token) {
       if (urlRole === 'teacher') {
-        token = localStorage.getItem('teacher_token');
-        user = JSON.parse(localStorage.getItem('teacher_user') || 'null');
+        token = localStorage.getItem('teacher_token') || localStorage.getItem('token') || localStorage.getItem('spx_token') || sessionStorage.getItem('teacher_token') || sessionStorage.getItem('token');
+        user = JSON.parse(localStorage.getItem('teacher_user') || localStorage.getItem('user') || localStorage.getItem('spx_user') || sessionStorage.getItem('teacher_user') || 'null');
       } else if (urlRole === 'student') {
-        token = localStorage.getItem('student_token');
-        user = JSON.parse(localStorage.getItem('student_user') || 'null');
+        token = localStorage.getItem('student_token') || localStorage.getItem('token') || localStorage.getItem('spx_token') || sessionStorage.getItem('student_token') || sessionStorage.getItem('token');
+        user = JSON.parse(localStorage.getItem('student_user') || localStorage.getItem('user') || localStorage.getItem('spx_user') || sessionStorage.getItem('student_user') || 'null');
       } else if (urlRole === 'admin') {
-        token = localStorage.getItem('admin_token');
-        user = JSON.parse(localStorage.getItem('admin_user') || 'null');
+        token = localStorage.getItem('admin_token') || localStorage.getItem('token') || localStorage.getItem('spx_token');
+        user = JSON.parse(localStorage.getItem('admin_user') || localStorage.getItem('user') || localStorage.getItem('spx_user') || 'null');
       } else if (urlRole === 'parent') {
-        token = localStorage.getItem('speaxa_parent_token');
-        user = JSON.parse(localStorage.getItem('speaxa_parent_profile') || 'null');
+        token = localStorage.getItem('speaxa_parent_token') || localStorage.getItem('parent_token') || localStorage.getItem('token');
+        user = JSON.parse(localStorage.getItem('speaxa_parent_profile') || localStorage.getItem('parent_user') || localStorage.getItem('user') || 'null');
       } else {
-        token = localStorage.getItem('teacher_token') || localStorage.getItem('student_token') || localStorage.getItem('admin_token') || localStorage.getItem('speaxa_parent_token');
-        user = JSON.parse(localStorage.getItem('teacher_user') || localStorage.getItem('student_user') || localStorage.getItem('admin_user') || localStorage.getItem('speaxa_parent_profile') || 'null');
+        token = localStorage.getItem('teacher_token') || localStorage.getItem('student_token') || localStorage.getItem('admin_token') || localStorage.getItem('speaxa_parent_token') || localStorage.getItem('token') || localStorage.getItem('spx_token');
+        user = JSON.parse(localStorage.getItem('teacher_user') || localStorage.getItem('student_user') || localStorage.getItem('admin_user') || localStorage.getItem('speaxa_parent_profile') || localStorage.getItem('user') || localStorage.getItem('spx_user') || 'null');
+      }
+    }
+
+    if (!user && token) {
+      try {
+        const profRes = await fetch(`${API}/api/auth/profile`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (profRes.ok) {
+          const profData = await profRes.json();
+          user = profData.user || profData;
+          if (urlRole === 'teacher' || user.role === 'teacher') {
+            localStorage.setItem('teacher_token', token);
+            localStorage.setItem('teacher_user', JSON.stringify(user));
+          }
+        }
+      } catch (e) {
+        console.warn('[Room Auth] Profile auto-fetch fallback failed:', e);
       }
     }
 
