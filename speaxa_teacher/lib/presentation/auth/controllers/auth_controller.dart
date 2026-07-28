@@ -37,9 +37,61 @@ class AuthController extends GetxController {
   final regPhoneOtpController = TextEditingController();
   final regEmailOtpController = TextEditingController();
   final RxInt currentRegStep = 1.obs;
+  final RxString emailError = ''.obs;
+  final RxBool isCheckingEmail = false.obs;
 
   TextEditingController get nameController => regNameController;
   TextEditingController get phoneController => regPhoneController;
+
+  Future<bool> validateStep1AndCheckEmail() async {
+    final name = regNameController.text.trim();
+    final email = regEmailController.text.trim();
+    final phone = regPhoneController.text.trim();
+    final password = regPasswordController.text;
+
+    emailError.value = '';
+
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
+      Get.snackbar('Missing Information', 'Please fill in all required fields (Name, Email, Phone, Password)', backgroundColor: Colors.red, colorText: Colors.white);
+      return false;
+    }
+
+    if (!GetUtils.isEmail(email)) {
+      emailError.value = 'Please enter a valid email address';
+      Get.snackbar('Invalid Email', 'Please enter a valid email address (e.g. name@domain.com)', backgroundColor: Colors.red, colorText: Colors.white);
+      return false;
+    }
+
+    if (password.length < 6) {
+      Get.snackbar('Weak Password', 'Password must be at least 6 characters long', backgroundColor: Colors.red, colorText: Colors.white);
+      return false;
+    }
+
+    try {
+      isCheckingEmail.value = true;
+      isLoading.value = true;
+
+      final exists = await _authRepository.checkEmailExists(email);
+      if (exists) {
+        emailError.value = 'This email is already registered. Please sign in instead.';
+        Get.snackbar(
+          'Email Already Registered ⚠️',
+          'An account with $email is already registered. Please sign in or use a different email address.',
+          backgroundColor: Colors.red.shade700,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+        );
+        return false;
+      }
+    } catch (e) {
+      print("Email check error: $e");
+    } finally {
+      isCheckingEmail.value = false;
+      isLoading.value = false;
+    }
+
+    return true;
+  }
 
   // Reset Password Controllers
   final resetIdentifierController = TextEditingController();

@@ -73,6 +73,10 @@ class TeacherDashboardController extends GetxController {
 
       if (analytics['wallet'] != null) {
         wallet.value = TeacherWalletModel.fromJson(analytics['wallet']);
+      } else {
+        try {
+          wallet.value = await _teacherRepository.getWallet();
+        } catch (_) {}
       }
       
       // Auto-load secondary lists
@@ -282,6 +286,14 @@ class TeacherDashboardController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<void> gradeAssignment(Map<String, dynamic> body) async {
+    final submissionId = body['submissionId']?.toString() ?? '';
+    final marks = (body['marks_obtained'] is num) ? (body['marks_obtained'] as num).toDouble() : double.tryParse(body['marks_obtained']?.toString() ?? '0') ?? 0.0;
+    final feedback = body['feedback']?.toString() ?? '';
+    final assignmentId = body['assignmentId']?.toString() ?? '';
+    await gradeSubmission(submissionId, marks, feedback, assignmentId);
   }
 
   // Attendance

@@ -87,7 +87,7 @@ class TeacherBatchesTab extends GetView<TeacherDashboardController> {
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.videocam_rounded, size: 18),
                           label: const Text(
-                            "🎥 Launch Agora Live Class",
+                            "Live Class",
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

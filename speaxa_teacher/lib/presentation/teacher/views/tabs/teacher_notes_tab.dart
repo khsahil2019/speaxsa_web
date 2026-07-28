@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../controllers/teacher_dashboard_controller.dart';
 import '../../../shared/widgets/custom_button.dart';
@@ -32,21 +34,70 @@ class TeacherNotesTab extends GetView<TeacherDashboardController> {
             itemCount: list.length,
             itemBuilder: (context, i) {
               final n = list[i] as Map<String, dynamic>;
+              final title = n['title'] ?? n['fileName'] ?? 'Study Material';
+              final batch = n['batch_name'] ?? n['batchName'] ?? 'All Batches';
+              final desc = n['description'] ?? 'No Description provided';
+              final fileUrl = n['file_url'] ?? n['fileUrl'] ?? n['url'];
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: const Icon(Icons.picture_as_pdf, color: Colors.red),
-                  ),
-                  title: Text(n['title'] ?? 'Study Material', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("Batch: ${n['batch_name'] ?? 'All Batches'}\nDesc: ${n['description'] ?? 'No Description'}"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.open_in_new, color: AppColors.primary),
-                    onPressed: () {
-                      Get.snackbar('Open Workbook', 'File link: ${n['file_url']}');
-                    },
+                child: InkWell(
+                  onTap: () => _showMaterialDetailsModal(context, n),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: Colors.red.withOpacity(0.1),
+                          child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text("Batch: $batch", style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                              Text(
+                                desc,
+                                style: TextStyle(color: Colors.grey.shade700, fontSize: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.open_in_new_rounded, color: AppColors.primary),
+                              tooltip: "Open PDF",
+                              onPressed: () => _openPdf(fileUrl),
+                            ),
+                            TextButton(
+                              onPressed: () => _showMaterialDetailsModal(context, n),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(50, 20),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text("View More", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -54,12 +105,12 @@ class TeacherNotesTab extends GetView<TeacherDashboardController> {
           ),
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: () => _showUploadNoteDialog(context),
-        label: const Text("Upload Notes"),
-        icon: const Icon(Icons.upload_file),
+        tooltip: "Upload Notes",
         backgroundColor: AppColors.teacherRole,
         foregroundColor: Colors.white,
+        child: const Icon(Icons.upload_file_rounded),
       ),
     );
   }
@@ -179,6 +230,134 @@ class TeacherNotesTab extends GetView<TeacherDashboardController> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _openPdf(dynamic fileUrl) async {
+    if (fileUrl == null || fileUrl.toString().trim().isEmpty) {
+      Get.snackbar("Open PDF", "No PDF file link attached to this material.", backgroundColor: AppColors.warning, colorText: Colors.white);
+      return;
+    }
+
+    String urlStr = fileUrl.toString().trim();
+    if (!urlStr.startsWith('http')) {
+      final serverBase = ApiEndpoints.baseUrl.replaceAll('/api', '');
+      urlStr = "$serverBase$urlStr";
+    }
+
+    final uri = Uri.parse(urlStr);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      Get.snackbar("Open PDF", "Could not open document: $e", backgroundColor: AppColors.error, colorText: Colors.white);
+    }
+  }
+
+  void _showMaterialDetailsModal(BuildContext context, Map<String, dynamic> n) {
+    final title = n['title'] ?? n['fileName'] ?? 'Study Material Document';
+    final batch = n['batch_name'] ?? n['batchName'] ?? 'All Batches';
+    final desc = n['description'] ?? 'No additional mentor instructions provided.';
+    final date = n['created_at'] != null ? n['created_at'].toString().split('T')[0] : 'Today';
+    final fileUrl = n['file_url'] ?? n['fileUrl'] ?? n['url'];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
+                    "Study Material Details",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Colors.red.shade100,
+                    child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        const SizedBox(height: 4),
+                        Text("Target Batch: $batch", style: TextStyle(color: Colors.grey.shade800, fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text("Uploaded: $date", style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            const Text("Mentor Instructions / Notes Description:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                desc,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade900, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                label: const Text("📄 Open / Launch PDF Workbook", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _openPdf(fileUrl);
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
     );
   }
 }

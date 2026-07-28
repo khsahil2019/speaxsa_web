@@ -234,29 +234,60 @@ class TeacherRepository {
     return response as List;
   }
 
-  // Wallet & Passbook Statement
+  // Wallet & Earnings Sync (1:1 Web Panel Integration)
+  Future<TeacherWalletModel> getWallet() async {
+    final response = await _apiClient.get('/teacher/earnings');
+    if (response is Map && response['wallet'] != null) {
+      return TeacherWalletModel.fromJson(response['wallet']);
+    }
+    return TeacherWalletModel.fromJson(response);
+  }
+
   Future<List<dynamic>> getWalletStatement() async {
-    final response = await _apiClient.get('/teacher/wallet/statement');
-    return response as List;
+    try {
+      final response = await _apiClient.get('/teacher/earnings');
+      if (response is Map) {
+        final ledger = response['ledger'] ?? response['history'] ?? [];
+        if (ledger is List) return ledger;
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<Map<String, dynamic>> getBankDetails() async {
     try {
-      final response = await _apiClient.get('/teacher/bank-details');
-      return response as Map<String, dynamic>;
+      final response = await _apiClient.get('/teacher/earnings');
+      if (response is Map && response['bank_details'] != null) {
+        return Map<String, dynamic>.from(response['bank_details']);
+      }
+      return {};
     } catch (e) {
       return {};
     }
   }
 
   Future<void> saveBankDetails(Map<String, dynamic> data) async {
-    await _apiClient.post('/teacher/bank-details', data: data);
+    final payload = {
+      'bank_account_name': data['bank_account_name'] ?? data['account_holder_name'] ?? '',
+      'bank_name': data['bank_name'] ?? '',
+      'bank_account_number': data['bank_account_number'] ?? data['account_number'] ?? '',
+      'bank_ifsc_code': data['bank_ifsc_code'] ?? data['ifsc_code'] ?? '',
+      'upi_id': data['upi_id'] ?? '',
+    };
+    await _apiClient.post('/teacher/bank-details', data: payload);
   }
 
+  // Payout Requests History (1:1 Web Panel Integration)
   Future<List<dynamic>> getPayoutRequests() async {
     try {
-      final response = await _apiClient.get('/teacher/payout-requests');
-      return response as List;
+      final response = await _apiClient.get('/teacher/earnings');
+      if (response is Map) {
+        final history = response['history'] ?? response['payouts'] ?? [];
+        if (history is List) return history;
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -269,13 +300,8 @@ class TeacherRepository {
     });
   }
 
-  Future<TeacherWalletModel> getWallet() async {
-    final response = await _apiClient.get('/teacher/wallet');
-    return TeacherWalletModel.fromJson(response);
-  }
-
   Future<Map<String, dynamic>> emailPassbookStatement() async {
-    final response = await _apiClient.post('/teacher/wallet/email-passbook');
+    final response = await _apiClient.post(ApiEndpoints.emailPassbookStatement);
     return response as Map<String, dynamic>;
   }
 }

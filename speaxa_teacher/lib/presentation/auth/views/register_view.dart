@@ -140,7 +140,21 @@ class RegisterView extends GetView<AuthController> {
           controller: controller.regEmailController,
           prefixIcon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
+          onChanged: (val) {
+            if (controller.emailError.isNotEmpty) {
+              controller.emailError.value = '';
+            }
+          },
         ),
+        Obx(() => controller.emailError.value.isNotEmpty
+            ? Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  controller.emailError.value,
+                  style: const TextStyle(color: Colors.red, fontSize: 11.5, fontWeight: FontWeight.bold),
+                ),
+              )
+            : const SizedBox.shrink()),
         CustomTextField(
           label: 'Alternative Email (Optional)',
           hint: 'alt.email@domain.com',
@@ -174,19 +188,16 @@ class RegisterView extends GetView<AuthController> {
           ),
         )),
         const SizedBox(height: 20),
-        CustomButton(
-          text: 'Next',
-          onPressed: () {
-            if (controller.regNameController.text.trim().isEmpty ||
-                controller.regEmailController.text.trim().isEmpty ||
-                controller.regPhoneController.text.trim().isEmpty ||
-                controller.regPasswordController.text.isEmpty) {
-              Get.snackbar('Missing Information', 'Please fill in all required fields (Name, Email, Phone, Password)', backgroundColor: Colors.red, colorText: Colors.white);
-              return;
+        Obx(() => CustomButton(
+          text: controller.isCheckingEmail.value ? 'Checking Email Availability...' : 'Next',
+          isLoading: controller.isCheckingEmail.value,
+          onPressed: () async {
+            final isValid = await controller.validateStep1AndCheckEmail();
+            if (isValid) {
+              controller.currentRegStep.value = 2;
             }
-            controller.currentRegStep.value = 2;
           },
-        ),
+        )),
       ],
     );
   }

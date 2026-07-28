@@ -8,14 +8,14 @@ import '../../../shared/widgets/status_chip.dart';
 
 class TeacherSopTab extends GetView<TeacherDashboardController> {
   const TeacherSopTab({super.key});
-
+  
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final sop = controller.sopStatus.value;
       final status = sop?.status ?? 'pending';
       final user = AuthService.to.currentUser.value;
-
+      
       // 6 Essential SOP Compliance Steps State
       final kycUploaded = controller.documents.isNotEmpty;
       final profileCompleted = controller.analytics['totalStudents'] != null;
@@ -146,7 +146,7 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
                 subtitle: "Weekly teaching time slots and preferred class hours.",
                 isCompleted: availabilitySaved,
                 badgeText: availabilitySaved ? "Configured ✓" : "Set Hours",
-                onTapAction: () => _showAvailabilityModal(context),
+                onTapAction: () => _showAvailabilityModal(context, technicalSopDone),
               ),
 
               // STEP 5: Technical SOPs
@@ -157,7 +157,7 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
                 subtitle: "Camera framing, noise-cancelling headset & 20Mbps+ internet proof.",
                 isCompleted: technicalSopDone,
                 badgeText: technicalSopDone ? "Verified ✓" : "Review & Submit",
-                onTapAction: () => _showTechnicalSopModal(context),
+                onTapAction: () => _showTechnicalSopModal(context, technicalSopDone),
               ),
 
               // STEP 6: Deed of Affidavit (DISABLED WHEN SIGNED)
@@ -170,16 +170,7 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
                     : "Binding legal digital teaching agreement & signature.",
                 isCompleted: affidavitSigned,
                 badgeText: affidavitSigned ? "Signed & Verified ✓" : "Sign Now",
-                onTapAction: affidavitSigned
-                    ? () {
-                        Get.snackbar(
-                          "Deed Signed ✓",
-                          "Your Deed of Affidavit is signed, verified, and legally binding.",
-                          backgroundColor: AppColors.success,
-                          colorText: Colors.white,
-                        );
-                      }
-                    : () => _showDeedOfAffidavitModal(context),
+                onTapAction: () => _showDeedOfAffidavitModal(context, affidavitSigned || technicalSopDone),
               ),
 
               const SizedBox(height: 24),
@@ -286,7 +277,7 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
     );
   }
 
-  void _showAvailabilityModal(BuildContext context) {
+  void _showAvailabilityModal(BuildContext context, bool isLocked) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -308,12 +299,15 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                onPressed: () {
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isLocked ? Colors.grey.shade400 : AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isLocked ? null : () {
                   Navigator.pop(ctx);
-                  Get.snackbar("Success", "Availability slots saved successfully!");
+                  Get.snackbar("Success", "Availability slots saved successfully!", backgroundColor: AppColors.success, colorText: Colors.white);
                 },
-                child: const Text("Save Availability Hours ✓"),
+                child: Text(isLocked ? "Availability Hours Configured & Locked ✓" : "Save Availability Hours ✓"),
               ),
             ),
           ],
@@ -322,7 +316,7 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
     );
   }
 
-  void _showTechnicalSopModal(BuildContext context) {
+  void _showTechnicalSopModal(BuildContext context, bool isLocked) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -345,12 +339,15 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                onPressed: () {
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isLocked ? Colors.grey.shade400 : AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isLocked ? null : () {
                   Navigator.pop(ctx);
                   controller.submitSopChecklist({'camera': true, 'audio': true, 'internet': true, 'lighting': true});
                 },
-                child: const Text("Submit Technical Proofs ✓"),
+                child: Text(isLocked ? "Technical Proofs Verified & Locked ✓" : "Submit Technical Proofs ✓"),
               ),
             ),
           ],
@@ -359,7 +356,7 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
     );
   }
 
-  void _showDeedOfAffidavitModal(BuildContext context) {
+  void _showDeedOfAffidavitModal(BuildContext context, bool isLocked) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -374,22 +371,26 @@ class TeacherSopTab extends GetView<TeacherDashboardController> {
             const SizedBox(height: 6),
             const Text("I hereby declare that all provided documents, qualifications, and teaching credentials are authentic and comply with Speaxa Code of Ethics.", style: TextStyle(fontSize: 12, color: Colors.black87)),
             const SizedBox(height: 14),
-            CustomTextField(
-              label: 'Digital Signature (Full Legal Name)',
-              hint: 'e.g. Abhishek Kaushik',
-              controller: controller.signatureController,
-              prefixIcon: Icons.edit_note,
-            ),
+            if (!isLocked)
+              CustomTextField(
+                label: 'Digital Signature (Full Legal Name)',
+                hint: 'e.g. Abhishek Kaushik',
+                controller: controller.signatureController,
+                prefixIcon: Icons.edit_note,
+              ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                onPressed: () {
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isLocked ? Colors.grey.shade400 : AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isLocked ? null : () {
                   Navigator.pop(ctx);
                   controller.signDigitalAgreement();
                 },
-                child: const Text("Sign & Submit Deed of Affidavit ✓"),
+                child: Text(isLocked ? "Deed of Affidavit Signed & Locked ✓" : "Sign & Submit Deed of Affidavit ✓"),
               ),
             ),
           ],

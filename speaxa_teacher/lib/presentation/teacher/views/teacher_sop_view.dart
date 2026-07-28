@@ -14,6 +14,7 @@ class TeacherSopView extends GetView<TeacherDashboardController> {
     return Obx(() {
       final sop = controller.sopStatus.value;
       final status = sop?.status ?? 'pending';
+      final isFullyApproved = status == 'approved' || status == 'completed' || (sop?.agreementSigned == true);
 
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -21,6 +22,7 @@ class TeacherSopView extends GetView<TeacherDashboardController> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -29,17 +31,49 @@ class TeacherSopView extends GetView<TeacherDashboardController> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("SOP Status", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const Text("SOP Verification Status", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text("Current Verification Stage", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                        Text(
+                          isFullyApproved ? "Approved & Agreement Signed" : "Current Verification Stage",
+                          style: TextStyle(color: isFullyApproved ? Colors.green.shade700 : Colors.grey.shade600, fontSize: 12, fontWeight: isFullyApproved ? FontWeight.bold : FontWeight.normal),
+                        ),
                       ],
                     ),
-                    StatusChip(status: status),
+                    StatusChip(status: isFullyApproved ? 'approved' : status),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            if (isFullyApproved) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.verified_rounded, color: Colors.green, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text("SOP & Agreement Fully Approved ✓", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green)),
+                          SizedBox(height: 2),
+                          Text("Your technical setup and teaching agreement have been verified by Speaxa Admin. All setup features are unlocked.", style: TextStyle(fontSize: 11, color: Colors.black87)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             const Text("Technical Verification Checklist", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -54,7 +88,7 @@ class TeacherSopView extends GetView<TeacherDashboardController> {
 
             const SizedBox(height: 24),
 
-            if (status == 'approved' && !sop!.agreementSigned) ...[
+            if (status == 'approved' && !(sop?.agreementSigned ?? false)) ...[
               const Text("Digital Teaching Agreement", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               const Text("SOP approved! Type your full legal name below to sign the digital agreement.", style: TextStyle(color: Colors.grey, fontSize: 13)),
@@ -72,8 +106,8 @@ class TeacherSopView extends GetView<TeacherDashboardController> {
               )),
             ] else ...[
               Obx(() => CustomButton(
-                text: status == 'approved' ? 'SOP & Agreement Completed' : 'Submit Checklist for Admin Review',
-                onPressed: status == 'approved' ? null : () => controller.submitSopChecklist({'camera': true, 'audio': true}),
+                text: isFullyApproved ? 'SOP Verification Approved & Locked ✓' : 'Submit Checklist for Admin Review',
+                onPressed: isFullyApproved ? null : () => controller.submitSopChecklist({'camera': true, 'audio': true}),
                 isLoading: controller.isLoading.value,
               )),
             ]

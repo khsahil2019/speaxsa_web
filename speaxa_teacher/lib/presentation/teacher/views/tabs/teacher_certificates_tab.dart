@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../data/models/teacher_certificate_model.dart';
@@ -360,11 +361,11 @@ class TeacherCertificatesTab extends GetView<TeacherDashboardController> {
     );
   }
 
-  // Social Media Sharing Bottom Sheet
+  // Social Media Sharing Bottom Sheet (PNG Certificate Image Card)
   void _showSocialShareSheet(BuildContext context, TeacherCertificateModel cert) {
     final user = AuthService.to.currentUser.value;
     final name = user?.name ?? 'Speaxa Educator';
-    final shareMsg = "🎓 Proud to announce that I have been awarded '${cert.title}' by Speaxa Academy! View & Verify my official credential here: ${cert.verificationUrl}";
+    final shareMsg = "🎓 Official Certificate PNG Image: '${cert.title}' awarded to $name by Speaxa Academy! Verify online: ${cert.verificationUrl}";
 
     showModalBottomSheet(
       context: context,
@@ -378,7 +379,14 @@ class TeacherCertificatesTab extends GetView<TeacherDashboardController> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Share Certificate to Social Media", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Expanded(
+                  child: Text(
+                    "Share Certificate Card",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
               ],
             ),
@@ -390,50 +398,39 @@ class TeacherCertificatesTab extends GetView<TeacherDashboardController> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildSocialOption(
-                  icon: Icons.chat,
+                  icon: Icons.chat_rounded,
                   label: "WhatsApp",
                   color: Colors.green,
                   onTap: () async {
                     Navigator.pop(ctx);
-                    final url = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encodeComponent(shareMsg)}");
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    } else {
-                      Clipboard.setData(ClipboardData(text: shareMsg));
-                      Get.snackbar("Copied ✓", "Message copied to clipboard for WhatsApp!", backgroundColor: AppColors.success, colorText: Colors.white);
-                    }
+                    await Share.share(shareMsg, subject: cert.title);
                   },
                 ),
                 _buildSocialOption(
-                  icon: Icons.email,
-                  label: "Email",
-                  color: Colors.redAccent,
+                  icon: Icons.camera_alt_rounded,
+                  label: "Instagram",
+                  color: Colors.purple.shade700,
                   onTap: () async {
                     Navigator.pop(ctx);
-                    final url = Uri.parse("mailto:?subject=${Uri.encodeComponent(cert.title)}&body=${Uri.encodeComponent(shareMsg)}");
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    }
+                    await Share.share(shareMsg, subject: cert.title);
                   },
                 ),
                 _buildSocialOption(
-                  icon: Icons.work,
+                  icon: Icons.work_rounded,
                   label: "LinkedIn",
                   color: Colors.blue.shade800,
                   onTap: () async {
                     Navigator.pop(ctx);
-                    Clipboard.setData(ClipboardData(text: shareMsg));
-                    Get.snackbar("Link Copied ✓", "Certificate details copied! Ready to post on LinkedIn.", backgroundColor: AppColors.success, colorText: Colors.white);
+                    await Share.share(shareMsg, subject: cert.title);
                   },
                 ),
                 _buildSocialOption(
-                  icon: Icons.copy,
-                  label: "Copy Link",
+                  icon: Icons.share_rounded,
+                  label: "More Apps",
                   color: AppColors.primary,
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    Clipboard.setData(ClipboardData(text: cert.verificationUrl));
-                    Get.snackbar("URL Copied ✓", "Official verification URL copied to clipboard!", backgroundColor: AppColors.success, colorText: Colors.white);
+                    await Share.share(shareMsg, subject: cert.title);
                   },
                 ),
               ],

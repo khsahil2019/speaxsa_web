@@ -48,16 +48,18 @@ class _TeacherPayoutHistoryViewState extends State<TeacherPayoutHistoryView> {
         final bank = controller.bankDetails;
         final requests = controller.payoutRequestsList;
 
-        final holderName = bank['account_holder_name']?.toString() ?? user?.name ?? 'Educator';
-        final bankName = bank['bank_name']?.toString() ?? 'HDFC Bank';
-        final accNo = bank['account_number']?.toString() ?? '**** **** 4829';
-        final ifsc = bank['ifsc_code']?.toString() ?? 'HDFC0001829';
-        final upiId = bank['upi_id']?.toString() ?? 'educator@upi';
+        final holderName = (bank['bank_account_name'] ?? bank['account_holder_name'] ?? user?.name ?? '').toString();
+        final bankName = (bank['bank_name'] ?? '').toString();
+        final accNo = (bank['bank_account_number'] ?? bank['account_number'] ?? '').toString();
+        final ifsc = (bank['bank_ifsc_code'] ?? bank['ifsc_code'] ?? '').toString();
+        final upiId = (bank['upi_id'] ?? '').toString();
 
         return RefreshIndicator(
           onRefresh: () async {
+            await controller.loadTeacherData();
             await controller.loadBankDetails();
             await controller.loadPayoutRequests();
+            await controller.loadWalletStatement();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -294,7 +296,8 @@ class _TeacherPayoutHistoryViewState extends State<TeacherPayoutHistoryView> {
                       final amt = double.tryParse(item['amount']?.toString() ?? '0') ?? 0.0;
                       final status = item['status']?.toString() ?? 'pending';
                       final reqId = item['id']?.toString() ?? 'PAY-${1000 + i}';
-                      final dateStr = item['created_at']?.toString() ?? 'Today';
+                      final dateStr = (item['requested_at'] ?? item['created_at'] ?? 'Today').toString();
+                      final routeDesc = (item['bank_account'] ?? item['upi_id'] ?? item['description'] ?? 'Bank Payout').toString();
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 10),
@@ -310,8 +313,26 @@ class _TeacherPayoutHistoryViewState extends State<TeacherPayoutHistoryView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 2),
-                              Text("Account: ${item['bank_details'] ?? upiId}", style: const TextStyle(fontSize: 11, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
-                              Text("Date: ${dateStr.contains('T') ? dateStr.split('T')[0] : dateStr}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                              Text(
+                                item['upi_id'] != null && item['upi_id'].toString().isNotEmpty
+                                    ? "UPI: ${item['upi_id']}"
+                                    : (item['bank_account'] != null && item['bank_account'].toString().isNotEmpty
+                                        ? "Bank: ${item['bank_account']}"
+                                        : (routeDesc.isNotEmpty ? routeDesc : "UPI: $upiId")),
+                                style: const TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Wrap(
+                                spacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Text("Date: ${dateStr.contains('T') ? dateStr.split('T')[0] : dateStr}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                  if (item['remarks'] != null || item['admin_remarks'] != null)
+                                    Text("• Remarks: ${item['remarks'] ?? item['admin_remarks'] ?? '—'}", style: const TextStyle(fontSize: 10, color: Colors.grey), overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
                             ],
                           ),
                           trailing: Column(

@@ -18,7 +18,7 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
         if (list.isEmpty) {
           return EmptyStateWidget(
             title: "No Student Observations",
-            message: "Record detailed behavior and academic progress rating observations for students.",
+            message: "Record detailed behavior and 0-100 academic observation scores for your students.",
             buttonText: "Log Observation",
             onButtonPressed: () => _showLogObservationDialog(context),
           );
@@ -31,6 +31,19 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
             itemCount: list.length,
             itemBuilder: (context, i) {
               final obs = list[i] as Map<String, dynamic>;
+              final c = num.tryParse(obs['curiosity']?.toString() ?? '') ?? 0;
+              final u = num.tryParse(obs['understanding']?.toString() ?? '') ?? 0;
+              final con = num.tryParse(obs['consistency']?.toString() ?? '') ?? 0;
+              final comm = num.tryParse(obs['communication']?.toString() ?? '') ?? 0;
+              final p = num.tryParse(obs['participation']?.toString() ?? '') ?? 0;
+              final d = num.tryParse(obs['discipline']?.toString() ?? '') ?? 0;
+
+              final metrics = [c, u, con, comm, p, d].where((m) => m > 0).map((m) => m <= 5 ? m * 20 : m).toList();
+              final computedAvg = metrics.isNotEmpty ? (metrics.reduce((a, b) => a + b) / metrics.length).round() : 80;
+
+              final rawScore = obs['observation_score'] ?? obs['score'];
+              final scoreNum = (rawScore is num && rawScore > 0) ? (rawScore <= 5 ? (rawScore * 20).round() : rawScore.round()) : computedAvg;
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -42,12 +55,20 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(obs['student_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Expanded(
+                            child: Text(
+                              obs['student_name'] ?? 'Student',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(color: AppColors.teacherRole.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
                             child: Text(
-                              "Avg: ${obs['observation_score'] ?? 5.0}★",
+                              "Avg Score: $scoreNum / 100",
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.teacherRole),
                             ),
                           ),
@@ -83,17 +104,21 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
           ),
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: () => _showLogObservationDialog(context),
-        label: const Text("Log Observation"),
-        icon: const Icon(Icons.add),
+        tooltip: "Log Observation",
         backgroundColor: AppColors.teacherRole,
         foregroundColor: Colors.white,
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }
 
   Widget _buildScorePill(String label, dynamic score) {
+    if (score == null) return const SizedBox.shrink();
+    num scoreVal = (score is num) ? (score <= 5 ? score * 20 : score) : (double.tryParse(score.toString()) ?? 0);
+    if (scoreVal <= 0) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade200)),
@@ -102,7 +127,7 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
         children: [
           Text(label, style: const TextStyle(fontSize: 10.5, color: Colors.black54)),
           const SizedBox(width: 4),
-          Text("${score ?? 5}★", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange)),
+          Text("${scoreVal.toInt()}/100", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
         ],
       ),
     );
@@ -115,13 +140,13 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
     final RxString selectedStudentId = ''.obs;
     final RxList<dynamic> studentsList = <dynamic>[].obs;
 
-    // Rating states
-    final RxDouble curiosity = 5.0.obs;
-    final RxDouble understanding = 5.0.obs;
-    final RxDouble consistency = 5.0.obs;
-    final RxDouble communication = 5.0.obs;
-    final RxDouble participation = 5.0.obs;
-    final RxDouble discipline = 5.0.obs;
+    // 0 to 100 Rating states (Step / Gap of 5)
+    final RxDouble curiosity = 80.0.obs;
+    final RxDouble understanding = 80.0.obs;
+    final RxDouble consistency = 80.0.obs;
+    final RxDouble communication = 80.0.obs;
+    final RxDouble participation = 80.0.obs;
+    final RxDouble discipline = 80.0.obs;
 
     showModalBottomSheet(
       context: context,
@@ -141,7 +166,7 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Log Student Observation", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text("Log Student Observation (0-100 Score)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
 
                   // Batch selection
@@ -196,39 +221,38 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
                   )),
                   const SizedBox(height: 20),
 
-                  // Ratings
-                  _buildRatingSlider("Curiosity & questioning", curiosity),
-                  _buildRatingSlider("Topic understanding", understanding),
-                  _buildRatingSlider("Homework consistency", consistency),
-                  _buildRatingSlider("Speech & communication", communication),
-                  _buildRatingSlider("Class participation", participation),
-                  _buildRatingSlider("Behavioral discipline", discipline),
+                  // 0 to 100 Ratings (Step 5)
+                  _buildRatingSlider("Curiosity & Questioning", curiosity),
+                  _buildRatingSlider("Topic Understanding", understanding),
+                  _buildRatingSlider("Homework Consistency", consistency),
+                  _buildRatingSlider("Speech & Communication", communication),
+                  _buildRatingSlider("Class Participation", participation),
+                  _buildRatingSlider("Behavioral Discipline", discipline),
 
                   const SizedBox(height: 16),
                   CustomTextField(label: 'Observation Remarks', hint: 'Write student behavioral observations...', controller: notesCtrl, maxLines: 2, prefixIcon: Icons.notes),
 
                   const SizedBox(height: 24),
                   CustomButton(
-                    text: 'Save Observation',
+                    text: 'Save Observation Score',
                     onPressed: () {
                       if (selectedBatchId.value.isEmpty || selectedStudentId.value.isEmpty) {
                         Get.snackbar('Error', 'Please select a batch and student');
                         return;
                       }
 
-                      // Average score calculation
                       final avg = (curiosity.value + understanding.value + consistency.value + communication.value + participation.value + discipline.value) / 6.0;
 
                       final body = {
                         'studentId': selectedStudentId.value,
                         'batchId': selectedBatchId.value,
-                        'curiosity': curiosity.value,
-                        'understanding': understanding.value,
-                        'consistency': consistency.value,
-                        'communication': communication.value,
-                        'participation': participation.value,
-                        'discipline': discipline.value,
-                        'observation_score': double.parse(avg.toStringAsFixed(1)),
+                        'curiosity': curiosity.value.toInt(),
+                        'understanding': understanding.value.toInt(),
+                        'consistency': consistency.value.toInt(),
+                        'communication': communication.value.toInt(),
+                        'participation': participation.value.toInt(),
+                        'discipline': discipline.value.toInt(),
+                        'observation_score': avg.round(),
                         'notes': notesCtrl.text.trim(),
                       };
 
@@ -245,6 +269,7 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
     );
   }
 
+  // 0 to 100 Score Slider with 5 Gap / Step
   Widget _buildRatingSlider(String label, RxDouble stateVal) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,18 +278,19 @@ class TeacherObservationsTab extends GetView<TeacherDashboardController> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            Obx(() => Text("${stateVal.value.toStringAsFixed(0)} / 5 ★", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontSize: 13))),
+            Obx(() => Text("${stateVal.value.toInt()} / 100", style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13))),
           ],
         ),
         Obx(() => Slider(
               value: stateVal.value,
-              min: 1.0,
-              max: 5.0,
-              divisions: 4,
+              min: 0.0,
+              max: 100.0,
+              divisions: 20, // Gap of 5 (100 / 20 = 5)
               activeColor: AppColors.primary,
               inactiveColor: Colors.grey.shade200,
               onChanged: (val) => stateVal.value = val,
             )),
+        const SizedBox(height: 4),
       ],
     );
   }

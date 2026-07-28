@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
@@ -24,67 +25,100 @@ import '../../shared/views/notifications_view.dart';
 class TeacherDashboardView extends GetView<TeacherDashboardController> {
   const TeacherDashboardView({super.key});
 
+  static DateTime? _lastBackPressTime;
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final idx = controller.selectedIndex.value;
-      return Scaffold(
-        appBar: _buildAppBar(context, idx),
-        drawer: idx == 0 ? _buildDrawer(context, idx) : null,
-        drawerEnableOpenDragGesture: idx == 0,
-        body: _getBody(idx),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: BottomNavigationBar(
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                currentIndex: _getBottomNavIndex(idx),
-                onTap: (val) => _onBottomNavTap(val),
-                type: BottomNavigationBarType.fixed,
-                selectedItemColor: AppColors.primary,
-                unselectedItemColor: Colors.grey.shade500,
-                selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                unselectedLabelStyle: const TextStyle(fontSize: 10),
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_outlined, size: 22),
-                    activeIcon: Icon(Icons.home_rounded, size: 24),
-                    label: 'Home',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.school_outlined, size: 22),
-                    activeIcon: Icon(Icons.school_rounded, size: 24),
-                    label: 'Batches',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.video_camera_front_outlined, size: 22),
-                    activeIcon: Icon(Icons.video_camera_front_rounded, size: 24),
-                    label: 'Live Classes',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.verified_outlined, size: 22),
-                    activeIcon: Icon(Icons.verified_rounded, size: 24),
-                    label: 'SOP Setup',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.account_balance_wallet_outlined, size: 22),
-                    activeIcon: Icon(Icons.account_balance_wallet_rounded, size: 24),
-                    label: 'Earnings',
-                  ),
-                ],
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+
+          final currentIdx = controller.selectedIndex.value;
+          if (currentIdx != 0) {
+            // Return to Home Tab first
+            controller.selectedIndex.value = 0;
+            return;
+          }
+
+          // Double back press to exit
+          final now = DateTime.now();
+          if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+            _lastBackPressTime = now;
+            Get.snackbar(
+              "Exit Speaxa Teacher",
+              "Press back again to exit application",
+              backgroundColor: Colors.black87,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 2),
+              snackPosition: SnackPosition.BOTTOM,
+              margin: const EdgeInsets.all(16),
+            );
+            return;
+          }
+
+          SystemNavigator.pop();
+        },
+        child: Scaffold(
+          appBar: _buildAppBar(context, idx),
+          drawer: idx == 0 ? _buildDrawer(context, idx) : null,
+          drawerEnableOpenDragGesture: idx == 0,
+          body: _getBody(idx),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: BottomNavigationBar(
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  currentIndex: _getBottomNavIndex(idx),
+                  onTap: (val) => _onBottomNavTap(val),
+                  type: BottomNavigationBarType.fixed,
+                  selectedItemColor: AppColors.primary,
+                  unselectedItemColor: Colors.grey.shade500,
+                  selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  unselectedLabelStyle: const TextStyle(fontSize: 10),
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.home_outlined, size: 22),
+                      activeIcon: Icon(Icons.home_rounded, size: 24),
+                      label: 'Home',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.school_outlined, size: 22),
+                      activeIcon: Icon(Icons.school_rounded, size: 24),
+                      label: 'Batches',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.video_camera_front_outlined, size: 22),
+                      activeIcon: Icon(Icons.video_camera_front_rounded, size: 24),
+                      label: 'Live Classes',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.verified_outlined, size: 22),
+                      activeIcon: Icon(Icons.verified_rounded, size: 24),
+                      label: 'SOP Setup',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.account_balance_wallet_outlined, size: 22),
+                      activeIcon: Icon(Icons.account_balance_wallet_rounded, size: 24),
+                      label: 'Earnings',
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

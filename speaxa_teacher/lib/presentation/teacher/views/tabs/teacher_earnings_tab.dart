@@ -20,6 +20,8 @@ class TeacherEarningsTab extends GetView<TeacherDashboardController> {
           onRefresh: () async {
             await controller.loadTeacherData();
             await controller.loadWalletStatement();
+            await controller.loadPayoutRequests();
+            await controller.loadBankDetails();
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -185,11 +187,16 @@ class _WalletTransactionCardState extends State<_WalletTransactionCard> {
   Widget build(BuildContext context) {
     final stmt = widget.stmt;
     final typeStr = stmt['type']?.toString().toLowerCase() ?? '';
-    final amtVal = double.tryParse(stmt['amount']?.toString() ?? '0') ?? 0.0;
-    final isCredit = typeStr == 'credit' || typeStr == 'earnings' || typeStr == 'bonus' || typeStr == 'referral' || (amtVal >= 0 && typeStr != 'debit' && typeStr != 'payout');
-    final desc = stmt['description']?.toString() ?? 'Transaction';
+    final creditAmt = double.tryParse(stmt['credit']?.toString() ?? '0') ?? 0.0;
+    final debitAmt = double.tryParse(stmt['debit']?.toString() ?? '0') ?? 0.0;
+    final rawAmt = double.tryParse(stmt['amount']?.toString() ?? '0') ?? 0.0;
+
+    final isCredit = creditAmt > 0 || (debitAmt == 0 && typeStr != 'debit' && typeStr != 'payout' && typeStr != 'withdrawal');
+    final displayAmt = creditAmt > 0 ? creditAmt : (debitAmt > 0 ? debitAmt : rawAmt);
+
+    final desc = stmt['description']?.toString() ?? 'Passbook Transaction';
     final dateStr = stmt['created_at']?.toString() ?? '';
-    final status = stmt['status']?.toString() ?? 'completed';
+    final runningBal = stmt['running_balance'] ?? stmt['balance'];
 
     final isLongDesc = desc.length > 40;
 
@@ -225,9 +232,21 @@ class _WalletTransactionCardState extends State<_WalletTransactionCard> {
                         overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        dateStr.contains('T') ? dateStr.split('T')[0] : dateStr,
-                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        children: [
+                          Text(
+                            dateStr.contains('T') ? dateStr.split('T')[0] : dateStr,
+                            style: const TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                          if (runningBal != null)
+                            Text(
+                              "Balance: ₹$runningBal",
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.teal.shade800),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -237,7 +256,7 @@ class _WalletTransactionCardState extends State<_WalletTransactionCard> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      "${isCredit ? '+' : '-'} ₹${amtVal.abs().toStringAsFixed(2)}",
+                      "${isCredit ? '+' : '-'} ₹${displayAmt.abs().toStringAsFixed(0)}",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -245,7 +264,17 @@ class _WalletTransactionCardState extends State<_WalletTransactionCard> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    StatusChip(status: status),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isCredit ? Colors.green : Colors.red).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        typeStr.replaceAll('_', ' ').toUpperCase(),
+                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isCredit ? Colors.green.shade800 : Colors.red.shade800),
+                      ),
+                    ),
                   ],
                 ),
               ],

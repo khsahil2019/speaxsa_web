@@ -30,6 +30,19 @@ class AuthRepository {
     };
   }
 
+  Future<bool> checkEmailExists(String email) async {
+    try {
+      final response = await _apiClient.post('/auth/check-email', data: {'email': email});
+      return response['exists'] == true || response['registered'] == true;
+    } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('already registered') || errStr.contains('already exists') || errStr.contains('409')) {
+        return true;
+      }
+      return false;
+    }
+  }
+
   Future<void> sendOtp(String identifier, {String purpose = 'login'}) async {
     await _apiClient.post(ApiEndpoints.sendMobileOtp, data: {'identifier': identifier, 'purpose': purpose});
   }

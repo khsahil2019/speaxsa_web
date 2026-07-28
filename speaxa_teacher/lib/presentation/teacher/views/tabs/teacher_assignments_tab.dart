@@ -184,35 +184,126 @@ class TeacherAssignmentsTab extends GetView<TeacherDashboardController> {
   void _showGradingDialog(BuildContext context, String submissionId, String assignmentId) {
     final marksCtrl = TextEditingController();
     final feedCtrl = TextEditingController();
+    final RxString selectedGradePill = ''.obs;
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Grade Submission"),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.all(20),
+          title: Row(
             children: [
-              CustomTextField(label: 'Marks Obtained', hint: 'e.g. 92', controller: marksCtrl, keyboardType: TextInputType.number, prefixIcon: Icons.score),
-              CustomTextField(label: 'Feedback / Remarks', hint: 'Well solved! Good conceptual understanding.', controller: feedCtrl, maxLines: 2, prefixIcon: Icons.comment),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.grade_rounded, color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 10),
+              const Text("Grade Submission", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
             ],
           ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Quick Score Presets", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: [100, 90, 85, 75, 50].map((score) {
+                    return InkWell(
+                      onTap: () {
+                        marksCtrl.text = score.toString();
+                        selectedGradePill.value = score.toString();
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        child: Text("$score Marks", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+
+                CustomTextField(
+                  label: 'Marks Obtained (out of 100) *',
+                  hint: 'e.g. 92',
+                  controller: marksCtrl,
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.score,
+                ),
+
+                const SizedBox(height: 8),
+                const Text("Feedback Presets", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    "🌟 Outstanding work!",
+                    "👍 Great effort, keep practicing!",
+                    "📝 Review chapter formulas.",
+                  ].map((preset) {
+                    return InkWell(
+                      onTap: () => feedCtrl.text = preset,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+                        child: Text(preset, style: const TextStyle(fontSize: 10.5, color: Colors.black87)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+
+                CustomTextField(
+                  label: 'Mentor Feedback & Remarks',
+                  hint: 'Well solved! Clear step-by-step logic.',
+                  controller: feedCtrl,
+                  maxLines: 2,
+                  prefixIcon: Icons.comment,
+                ),
+              ],
+            ),
+          ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.check_circle_outline, size: 16),
+              label: const Text("Submit Grade"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
               onPressed: () {
-                final marks = double.tryParse(marksCtrl.text.trim());
-                if (marks == null) {
-                  Get.snackbar('Error', 'Please enter a valid numeric mark');
+                if (marksCtrl.text.isEmpty) {
+                  Get.snackbar('Error', 'Please enter marks obtained');
                   return;
                 }
-                controller.gradeSubmission(submissionId, marks, feedCtrl.text.trim(), assignmentId);
+
+                final body = {
+                  'submissionId': submissionId,
+                  'marks_obtained': int.tryParse(marksCtrl.text.trim()) ?? 0,
+                  'feedback': feedCtrl.text.trim(),
+                };
+
+                controller.gradeAssignment(body);
                 Navigator.pop(context);
-                Navigator.pop(context);
+                Get.snackbar('Grade Recorded ✓', 'Student submission successfully graded!', backgroundColor: AppColors.success, colorText: Colors.white);
               },
-              child: const Text("Submit Grade"),
             ),
           ],
         );

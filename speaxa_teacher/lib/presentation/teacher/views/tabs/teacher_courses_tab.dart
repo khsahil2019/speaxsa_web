@@ -110,12 +110,12 @@ class TeacherCoursesTab extends GetView<TeacherDashboardController> {
           ),
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.small(
         onPressed: () => _showCreateCourseDialog(context),
-        label: const Text("Create Course"),
-        icon: const Icon(Icons.add),
+        tooltip: "Create Course",
         backgroundColor: AppColors.teacherRole,
         foregroundColor: Colors.white,
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

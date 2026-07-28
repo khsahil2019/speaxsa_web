@@ -14,18 +14,25 @@ class StatusChip extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'active':
       case 'approved':
+      case 'paid':
+      case 'completed':
       case 'present':
       case 'submitted':
       case 'live':
-        bg = AppColors.success.withOpacity(0.15);
-        fg = AppColors.success;
+        bg = Colors.green.withOpacity(0.15);
+        fg = Colors.green.shade800;
+        break;
+      case 'requested':
+      case 'under_review':
+        bg = Colors.blue.withOpacity(0.15);
+        fg = Colors.blue.shade800;
         break;
       case 'pending':
       case 'sop_pending':
       case 'late':
       case 'scheduled':
-        bg = AppColors.warning.withOpacity(0.15);
-        fg = AppColors.warning;
+        bg = Colors.amber.withOpacity(0.15);
+        fg = Colors.amber.shade900;
         break;
       case 'rejected':
       case 'absent':

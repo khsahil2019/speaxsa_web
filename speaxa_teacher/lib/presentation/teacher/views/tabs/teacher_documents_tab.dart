@@ -16,59 +16,105 @@ class TeacherDocumentsTab extends GetView<TeacherDashboardController> {
       backgroundColor: AppColors.lightBg,
       body: Obx(() {
         final list = controller.documents;
+        final sop = controller.sopStatus.value;
+        final isKycLocked = (sop?.status == 'approved' || sop?.status == 'completed' || (sop?.agreementSigned == true));
+
         if (list.isEmpty) {
           return EmptyStateWidget(
             title: "No Documents Uploaded",
             message: "Upload KYC verification documents (Aadhaar, PAN, Resume, Degree Certificate) to get approved.",
-            buttonText: "Upload Document",
-            onButtonPressed: () => _showUploadDocDialog(context),
+            buttonText: isKycLocked ? "KYC Approved & Locked ✓" : "Upload Document",
+            onButtonPressed: isKycLocked ? null : () => _showUploadDocDialog(context),
           );
         }
 
         return RefreshIndicator(
           onRefresh: controller.loadTeacherData,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final doc = list[i] as Map<String, dynamic>;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListTile(
-                  onTap: () async {
-                    final fileUrl = doc['file_url'] ?? doc['file_path'];
-                    if (fileUrl != null && fileUrl.toString().isNotEmpty) {
-                      final fullUrl = fileUrl.toString().startsWith('http')
-                          ? fileUrl.toString()
-                          : 'https://speaxa.in$fileUrl';
-                      final uri = Uri.parse(fullUrl);
-                      try {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      } catch (e) {
-                        Get.snackbar('Error', 'Could not open document: $e');
-                      }
-                    } else {
-                      Get.snackbar('Info', 'Document URL link is processing');
-                    }
-                  },
-                  leading: const Icon(Icons.description, color: AppColors.primary, size: 28),
-                  title: Text(doc['doc_type']?.toString().toUpperCase() ?? 'DOCUMENT', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text("File: ${doc['original_name'] ?? 'File'}\n(Tap to view document)"),
-                  trailing: const Icon(Icons.check_circle, color: Colors.green),
+          child: Column(
+            children: [
+              if (isKycLocked)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.verified_user_rounded, color: Colors.green, size: 22),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "KYC Verification Approved & Locked ✓\nAll credentials have been verified by Speaxa Admin.",
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: list.length,
+                  itemBuilder: (context, i) {
+                    final doc = list[i] as Map<String, dynamic>;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: ListTile(
+                        onTap: () async {
+                          final fileUrl = doc['file_url'] ?? doc['file_path'];
+                          if (fileUrl != null && fileUrl.toString().isNotEmpty) {
+                            final fullUrl = fileUrl.toString().startsWith('http')
+                                ? fileUrl.toString()
+                                : 'https://speaxa.in$fileUrl';
+                            final uri = Uri.parse(fullUrl);
+                            try {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } catch (e) {
+                              Get.snackbar('Error', 'Could not open document: $e');
+                            }
+                          } else {
+                            Get.snackbar('Info', 'Document URL link is processing');
+                          }
+                        },
+                        leading: const Icon(Icons.description, color: AppColors.primary, size: 28),
+                        title: Text(doc['doc_type']?.toString().toUpperCase() ?? 'DOCUMENT', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text("File: ${doc['original_name'] ?? 'File'}\n(Tap to view document)"),
+                        trailing: const Icon(Icons.check_circle, color: Colors.green),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         );
       }),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showUploadDocDialog(context),
-        label: const Text("Upload Document"),
-        icon: const Icon(Icons.upload),
-        backgroundColor: AppColors.teacherRole,
-        foregroundColor: Colors.white,
-      ),
+      floatingActionButton: Obx(() {
+        final sop = controller.sopStatus.value;
+        final isKycLocked = (sop?.status == 'approved' || sop?.status == 'completed' || (sop?.agreementSigned == true));
+
+        return FloatingActionButton.small(
+          onPressed: isKycLocked
+              ? () {
+                  Get.snackbar(
+                    "KYC Verified & Locked ✓",
+                    "KYC verification is approved by Speaxa Admin. Documents are locked and cannot be modified.",
+                    backgroundColor: AppColors.success,
+                    colorText: Colors.white,
+                  );
+                }
+              : () => _showUploadDocDialog(context),
+          tooltip: isKycLocked ? "KYC Approved & Locked" : "Upload Document",
+          backgroundColor: isKycLocked ? Colors.grey.shade400 : AppColors.teacherRole,
+          foregroundColor: Colors.white,
+          child: Icon(isKycLocked ? Icons.lock_rounded : Icons.upload_rounded),
+        );
+      }),
     );
   }
 
