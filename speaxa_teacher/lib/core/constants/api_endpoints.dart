@@ -1,23 +1,22 @@
 import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
-  // Staging Development Base URL
+  // Production vs Staging Environment Toggle
+  // Set isProduction = true when publishing live to Play Store!
+  static const bool isProduction = false;
+
   static const String stagingBaseUrl = 'https://staging.speaxa.in/api';
-  static const String localAndroidBaseUrl = 'http://10.0.2.2:5002/api';
-  static const String localIosBaseUrl = 'http://localhost:5002/api';
   static const String productionBaseUrl = 'https://speaxa.in/api';
 
   static String get baseUrl {
-    return stagingBaseUrl;
+    return isProduction ? productionBaseUrl : stagingBaseUrl;
   }
 
   static const String stagingSocketUrl = 'https://staging.speaxa.in';
-  static const String localAndroidSocketUrl = 'http://10.0.2.2:5002';
-  static const String localIosSocketUrl = 'http://localhost:5002';
   static const String productionSocketUrl = 'https://speaxa.in';
 
   static String get socketUrl {
-    return stagingSocketUrl;
+    return isProduction ? productionSocketUrl : stagingSocketUrl;
   }
 
   // Auth Endpoints

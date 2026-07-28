@@ -1,4 +1,4 @@
-package com.speaxa.teacher
+package in.speaxa.teacher
 
 import io.flutter.embedding.android.FlutterActivity
 
