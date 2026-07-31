@@ -6369,27 +6369,10 @@ async function renderReferrals() {
             </thead>
             <tbody>
               ${slabs.map(s => {
-      let badgeClass = 'bg-secondary';
-      let statusText = 'LOCKED';
-      let iconHtml = '<i class="fas fa-lock text-muted"></i>';
-
-      if (s.status === 'approved') {
-        badgeClass = 'bg-success';
-        statusText = 'APPROVED';
-        iconHtml = '<i class="fas fa-check-circle text-success fs-5"></i>';
-      } else if (s.status === 'pending_review') {
-        badgeClass = 'bg-warning text-dark';
-        statusText = 'PENDING REVIEW';
-        iconHtml = '<i class="fas fa-spinner fa-spin text-warning fs-5"></i>';
-      } else if (s.status === 'rejected') {
-        badgeClass = 'bg-danger';
-        statusText = 'REJECTED';
-        iconHtml = '<i class="fas fa-times-circle text-danger fs-5"></i>';
-      } else if (cumulativeRevenue >= s.target) {
-        badgeClass = 'bg-info text-dark';
-        statusText = 'UNLOCKED';
-        iconHtml = '<i class="fas fa-unlock text-info fs-5"></i>';
-      }
+      const isAchieved = s.status === 'approved' || cumulativeRevenue >= s.target;
+      let badgeClass = isAchieved ? 'bg-success' : 'bg-secondary';
+      let statusText = isAchieved ? 'AUTOMATICALLY UNLOCKED' : 'LOCKED';
+      let iconHtml = isAchieved ? '<i class="fas fa-check-circle text-success fs-5"></i>' : '<i class="fas fa-lock text-muted"></i>';
 
       const allowanceVal = allowanceMap[s.group] !== undefined ? allowanceMap[s.group] : 0.00;
       const allowanceText = allowanceVal > 0 ? `₹${allowanceVal.toLocaleString('en-IN')}/mo` : '₹0';
