@@ -16,7 +16,16 @@ app.disable('x-powered-by');
 
 // ── Database Self-Healing Migrations ──────────────────────────
 const db = require('./db');
-db.query(`
+(async () => {
+  try {
+    const runMigrations = require('../database/migrator');
+    await runMigrations();
+  } catch (migErr) {
+    console.error("Migration warning:", migErr.message);
+  }
+
+  try {
+    await db.query(`
   ALTER TABLE users ADD COLUMN IF NOT EXISTS password_plain VARCHAR(255);
   ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
@@ -511,14 +520,11 @@ db.query(`
     created_at TIMESTAMPTZ DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_sec_audit_ip ON security_audit_logs (ip_address, created_at DESC);
-`).then(async () => {
-  try {
-    const runMigrations = require('../database/migrator');
-    await runMigrations();
-  } catch (migErr) {
-    console.error("Migration warning:", migErr.message);
+`);
+    console.log("PostgreSQL: Database self-healing migrations verified/created.");
+  } catch (healErr) {
+    console.error("PostgreSQL Self-Healing Warning:", healErr.message);
   }
-  console.log("PostgreSQL: Database self-healing migrations verified/created.");
 
   // Seed blogs if empty
   try {
@@ -598,9 +604,7 @@ db.query(`
   } catch (err) {
     console.error("PostgreSQL FAQs Seeding Error:", err.message);
   }
-}).catch((err) => {
-  console.error("PostgreSQL Migration Warning:", err.message);
-});
+})();
 
 // ── Security Headers ──────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));

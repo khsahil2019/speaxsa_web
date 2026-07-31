@@ -99,7 +99,8 @@ CREATE TABLE IF NOT EXISTS teacher_sop (
   agreement_signed_at   TIMESTAMPTZ,
   digital_signature     VARCHAR(255),
   availability          TEXT,
-  item_approvals        JSONB DEFAULT '{}'
+  item_approvals        JSONB DEFAULT '{}',
+  signature_image       TEXT
 );
 
 -- ============================================================
