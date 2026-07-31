@@ -1396,7 +1396,7 @@ function handleChecklistToggle(checkbox) {
     const saved = JSON.parse(localStorage.getItem('teacher_sop_checklist_state') || '{}');
     saved[key] = checkbox.checked;
     localStorage.setItem('teacher_sop_checklist_state', JSON.stringify(saved));
-  } catch (e) {}
+  } catch (e) { }
 
   toggleSopSubmitBtn();
 }
@@ -2104,7 +2104,7 @@ async function renderSop(targetSlotId) {
           <div class="spx-card text-center py-5 border-start border-4 border-warning" style="background: rgba(245,158,11,0.02)">
             <div class="display-4 text-warning mb-3"><i class="fas fa-lock"></i></div>
             <h4 class="fw-bold text-dark">Agreement Signature Locked</h4>
-            <p class="text-muted small max-width-500 mx-auto">Your Video SOP and KYC Documents must be verified and approved by the Admin before you can review and sign the legal educator affidavit.</p>
+            <p class="text-muted small max-width-500 mx-auto">Your Video SOP and KYC documents are under verification. You will be notified via email once they are approved by the admin. After approval, you can review and sign the Legal Educator Affidavit.</p>
             <button class="btn btn-warning mt-3 btn-sm" onclick="setSopTab('kyc')">Upload Documents</button>
           </div>
         `;
@@ -4945,7 +4945,7 @@ window.validateBankAccountsMatch = validateBankAccountsMatch;
 
 async function saveTeacherBankDetails(e) {
   if (e) e.preventDefault();
-  
+
   if (!validateBankAccountsMatch()) {
     showToast('Please fix Account Number validation errors before saving.', 'error');
     return;
