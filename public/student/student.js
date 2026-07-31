@@ -570,9 +570,10 @@ function saveAuth(tok, usr) {
   sessionStorage.setItem('student_token', tok);
   sessionStorage.setItem('student_user', JSON.stringify(usr));
 
-  const redirectUrl = sessionStorage.getItem('redirect_after_login') || new URLSearchParams(window.location.search).get('redirect');
+  const redirectUrl = sessionStorage.getItem('redirect_after_login') || localStorage.getItem('speaxa_post_login_redirect') || new URLSearchParams(window.location.search).get('redirect');
   if (redirectUrl) {
     sessionStorage.removeItem('redirect_after_login');
+    localStorage.removeItem('speaxa_post_login_redirect');
     window.location.href = redirectUrl;
     return;
   }

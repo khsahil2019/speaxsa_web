@@ -735,8 +735,8 @@
   <!-- Socket.io client -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==';
-    const API = ''; // Set to absolute domain like 'https://speaxa.com' if hosting client & API on separate servers
+    const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS53OS00IDQgMS53OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01\.3My00LTgtNHoiLz48L3N2Zz4=';
+    const API = '';
     const urlParams = new URLSearchParams(window.location.search);
     const classId = urlParams.get('classId');
 
@@ -769,23 +769,10 @@
       }
     }
 
-    if (!user && token) {
-      try {
-        const profRes = await fetch(`${API}/api/auth/profile`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (profRes.ok) {
-          const profData = await profRes.json();
-          user = profData.user || profData;
-          if (urlRole === 'teacher' || user.role === 'teacher') {
-            localStorage.setItem('teacher_token', token);
-            localStorage.setItem('teacher_user', JSON.stringify(user));
-          }
-        }
-      } catch (e) {
-        console.warn('[Room Auth] Profile auto-fetch fallback failed:', e);
-      }
-    }
+    // Role configuration
+    let isTeacher = false;
+    let isAdmin = false;
+    let isStudent = false;
 
     // ── Custom Centered Overlays Functions ──
     function showErrorOverlay(msg, title = 'Classroom Alert', actionText = 'Go Back', actionFn = null, showDismiss = true) {
@@ -835,51 +822,70 @@
       overlay.classList.remove('d-flex');
     }
 
-    if (!classId) {
-      showErrorOverlay('Class ID is required to join live classroom.', 'Classroom Alert', 'Go Back', () => window.history.back(), false);
-      throw new Error('Class ID is required');
-    }
-
-    if (!token || !user) {
-      sessionStorage.setItem('redirect_after_login', window.location.href);
-      const loginUrl = (urlRole === 'teacher') ? '/teacher' : '/student/index.html?redirect=' + encodeURIComponent(window.location.href);
-      showErrorOverlay('Authentication required to join live classroom. Please login to continue.', 'Authentication Alert', 'Go to Login', () => window.location.href = loginUrl, false);
-      throw new Error('Authentication required');
-    }
-
-    // Role configuration
-    const isTeacher = user.role === 'teacher';
-    const isAdmin = user.role === 'admin';
-    const isStudent = user.role === 'student';
-
-    document.getElementById('selfNameLabel').textContent = `${user.name} (${user.role.toUpperCase()})`;
-    if (isTeacher || isAdmin) {
-      document.getElementById('endBtnText').textContent = 'End Class';
-      if (isTeacher) {
-        document.getElementById('teacherPollCreator').style.display = 'block';
-      }
-    } else {
-      document.getElementById('btnHand').style.display = 'flex';
-      // Screen sharing is strictly for Teachers only
-      document.getElementById('btnScreen').style.display = 'none';
-      // Hide whiteboard toggle button for students (auto-shared by teacher)
-      document.getElementById('btnWhiteboard').style.display = 'none';
-
-      // Hide whiteboard modification controls (Tools, Eraser, Color dots, Clear Board) for students
-      if (document.getElementById('whiteboardToolGroup')) document.getElementById('whiteboardToolGroup').style.setProperty('display', 'none', 'important');
-      if (document.getElementById('whiteboardControls')) document.getElementById('whiteboardControls').style.setProperty('display', 'none', 'important');
-      if (document.getElementById('whiteboardBrushControls')) document.getElementById('whiteboardBrushControls').style.setProperty('display', 'none', 'important');
-      if (document.getElementById('btnClearBoard')) document.getElementById('btnClearBoard').style.setProperty('display', 'none', 'important');
-    }
-
     // Timer & Class Info
     let secondsElapsed = 0;
     setInterval(() => {
       secondsElapsed++;
       const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
       const secs = String(secondsElapsed % 60).padStart(2, '0');
-      document.getElementById('classTimer').textContent = `LIVE ${mins}:${secs}`;
+      const timerEl = document.getElementById('classTimer');
+      if (timerEl) timerEl.textContent = `LIVE ${mins}:${secs}`;
     }, 1000);
+
+    (async function initLiveRoomAuth() {
+      if (!user && token) {
+        try {
+          const profRes = await fetch(`${API}/api/auth/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (profRes.ok) {
+            const profData = await profRes.json();
+            user = profData.user || profData;
+            if (urlRole === 'teacher' || user.role === 'teacher') {
+              localStorage.setItem('teacher_token', token);
+              localStorage.setItem('teacher_user', JSON.stringify(user));
+            }
+          }
+        } catch (e) {
+          console.warn('[Room Auth] Profile auto-fetch fallback failed:', e);
+        }
+      }
+
+      if (!classId) {
+        showErrorOverlay('Class ID is required to join live classroom.', 'Classroom Alert', 'Go Back', () => window.history.back(), false);
+        return;
+      }
+
+      if (!token || !user) {
+        sessionStorage.setItem('redirect_after_login', window.location.href);
+        const loginUrl = (urlRole === 'teacher') ? '/teacher' : '/student/index.html?redirect=' + encodeURIComponent(window.location.href);
+        showErrorOverlay('Authentication required to join live classroom. Please login to continue.', 'Authentication Alert', 'Go to Login', () => window.location.href = loginUrl, false);
+        return;
+      }
+
+      isTeacher = user.role === 'teacher';
+      isAdmin = user.role === 'admin';
+      isStudent = user.role === 'student';
+
+      const nameLabel = document.getElementById('selfNameLabel');
+      if (nameLabel) nameLabel.textContent = `${user.name} (${user.role.toUpperCase()})`;
+
+      if (isTeacher || isAdmin) {
+        const endBtnText = document.getElementById('endBtnText');
+        if (endBtnText) endBtnText.textContent = 'End Class';
+        if (isTeacher && document.getElementById('teacherPollCreator')) {
+          document.getElementById('teacherPollCreator').style.display = 'block';
+        }
+      } else {
+        if (document.getElementById('btnHand')) document.getElementById('btnHand').style.display = 'flex';
+        if (document.getElementById('btnScreen')) document.getElementById('btnScreen').style.display = 'none';
+        if (document.getElementById('btnWhiteboard')) document.getElementById('btnWhiteboard').style.display = 'none';
+        if (document.getElementById('whiteboardToolGroup')) document.getElementById('whiteboardToolGroup').style.setProperty('display', 'none', 'important');
+        if (document.getElementById('whiteboardControls')) document.getElementById('whiteboardControls').style.setProperty('display', 'none', 'important');
+        if (document.getElementById('whiteboardBrushControls')) document.getElementById('whiteboardBrushControls').style.setProperty('display', 'none', 'important');
+        if (document.getElementById('btnClearBoard')) document.getElementById('btnClearBoard').style.setProperty('display', 'none', 'important');
+      }
+    })();
 
     // Toast Helper
     const bsToast = new bootstrap.Toast(document.getElementById('liveToast'), { delay: 3000 });
@@ -1151,11 +1157,19 @@
       ctx.restore();
     }
 
-    canvas.addEventListener('mousedown', (e) => {
-      if (!isTeacher && !isAdmin) return;
+    function getCanvasCoords(e) {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const clientX = e.touches && e.touches.length ? e.touches[0].clientX : (e.changedTouches && e.changedTouches.length ? e.changedTouches[0].clientX : e.clientX);
+      const clientY = e.touches && e.touches.length ? e.touches[0].clientY : (e.changedTouches && e.changedTouches.length ? e.changedTouches[0].clientY : e.clientY);
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function handleDrawStart(e) {
+      if (!isTeacher && !isAdmin) return;
+      const { x, y } = getCanvasCoords(e);
 
       if (currentActiveTool === 'text') {
         handleCanvasTextInput(x, y);
@@ -1172,13 +1186,11 @@
         ctx.moveTo(x, y);
         relayDrawPoint(x, y, true);
       }
-    });
+    }
 
-    canvas.addEventListener('mousemove', (e) => {
+    function handleDrawMove(e) {
       if (!drawing || (!isTeacher && !isAdmin)) return;
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getCanvasCoords(e);
 
       if (currentActiveTool === 'pen') {
         updateContextStyles();
@@ -1188,18 +1200,16 @@
         ctx.moveTo(x, y);
         relayDrawPoint(x, y, false);
       }
-    });
+    }
 
-    canvas.addEventListener('mouseup', (e) => {
+    function handleDrawEnd(e) {
       if (!drawing || (!isTeacher && !isAdmin)) {
         drawing = false;
         return;
       }
       drawing = false;
 
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getCanvasCoords(e);
 
       if (currentActiveTool === 'rectangle') {
         const w = x - shapeStartX;
@@ -1214,9 +1224,16 @@
         drawCanvasShape({ shape: 'line', x1: shapeStartX, y1: shapeStartY, x2: x, y2: y, color: currentStrokeColor, size: currentLineWidth });
         relayDrawShape({ shape: 'line', x1: shapeStartX, y1: shapeStartY, x2: x, y2: y, color: currentStrokeColor, size: currentLineWidth });
       }
-    });
+    }
 
+    canvas.addEventListener('mousedown', handleDrawStart);
+    canvas.addEventListener('mousemove', handleDrawMove);
+    canvas.addEventListener('mouseup', handleDrawEnd);
     canvas.addEventListener('mouseout', () => drawing = false);
+
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleDrawStart(e); }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleDrawMove(e); }, { passive: false });
+    canvas.addEventListener('touchend', (e) => { e.preventDefault(); handleDrawEnd(e); }, { passive: false });
 
     document.getElementById('btnClearBoard').addEventListener('click', () => {
       if (!isTeacher && !isAdmin) return;

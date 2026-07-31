@@ -617,6 +617,13 @@ function saveAuth(tok, usr) {
     localStorage.removeItem('teacher_token');
     localStorage.removeItem('teacher_user');
   }
+  const redirectTarget = sessionStorage.getItem('redirect_after_login') || localStorage.getItem('speaxa_post_login_redirect') || new URLSearchParams(window.location.search).get('redirect');
+  if (redirectTarget) {
+    sessionStorage.removeItem('redirect_after_login');
+    localStorage.removeItem('speaxa_post_login_redirect');
+    window.location.href = redirectTarget;
+    return;
+  }
   showApp();
   navigateTo('home');
 }
