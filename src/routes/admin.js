@@ -359,6 +359,15 @@ router.post('/teachers/:id/approve', async (req, res) => {
     await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1 AND role = 'teacher'", [id]);
     await db.query("UPDATE teacher_sop SET status = 'approved', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1", [id, req.user.id]);
     await logAudit(req.user.id, 'TEACHER_APPROVED', 'teacher', id, {});
+
+    // Auto-issue SOP certificate and dispatch email with PDF attachment
+    try {
+      const { issueSopCertificateAndNotify } = require('../services/SopCertificateService');
+      await issueSopCertificateAndNotify(id, req.user.id);
+    } catch (certErr) {
+      console.error('[Admin Teacher Approve Cert Error]:', certErr.message);
+    }
+
     res.json({ message: 'Teacher SOP approved. Waiting for agreement signature.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -463,22 +472,8 @@ router.post('/sop/:teacherId/approve', async (req, res) => {
     await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, { note: 'Auto Approved Full' });
 
     try {
-      const teacherRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
-      if (teacherRes.rows.length > 0 && teacherRes.rows[0].email) {
-        const { sendEmail } = require('../services/EmailService');
-        await sendEmail({
-          to: teacherRes.rows[0].email,
-          subject: 'SPEAXA — SOP & Teacher Profile Approved!',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #0d7a6d;">Congratulations ${teacherRes.rows[0].name}!</h2>
-              <p>Your <strong>SOP Verification & Profile Onboarding</strong> has been reviewed and <strong style="color: #10b981;">APPROVED</strong> by the SPEAXA Admin team!</p>
-              <p>Please log in to your Teacher Dashboard to sign the digital agreement and activate live class hosting.</p>
-            </div>
-          `,
-          type: 'notification'
-        });
-      }
+      const { issueSopCertificateAndNotify } = require('../services/SopCertificateService');
+      await issueSopCertificateAndNotify(teacherId, req.user.id);
     } catch (mailErr) {
       console.error('[Admin SOP Approval Email Error]:', mailErr.message);
     }
@@ -542,6 +537,14 @@ router.post('/sop/:teacherId/item-approval', async (req, res) => {
       );
       await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1", [teacherId]);
       await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, { note: 'All items granularly approved' });
+
+      try {
+        const { issueSopCertificateAndNotify } = require('../services/SopCertificateService');
+        await issueSopCertificateAndNotify(teacherId, req.user.id);
+      } catch (certErr) {
+        console.error('[Item Approval Cert Error]:', certErr.message);
+      }
+
       return res.json({ message: 'Item updated. All items are now approved. Teacher account status set to agreement pending.', itemStatus: status, overallStatus: 'approved' });
     } else if (hasAnyRejected) {
       await db.query(

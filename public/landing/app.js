@@ -894,24 +894,46 @@ async function verifyCheckoutMobileOtp() {
   try {
     const phone = postPaymentUserPhone || document.getElementById('checkoutPhone')?.value || '';
     const email = document.getElementById('checkoutEmail')?.value || '';
-    const res = await fetch('/api/auth/verify-mobile-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier: phone || email, otp })
-    });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Mobile verification failed');
-    }
+    let tokenToUse = currentCheckoutToken || localStorage.getItem('student_token');
 
-    const userStr = localStorage.getItem('student_user');
-    if (userStr) {
-      try {
-        const u = JSON.parse(userStr);
-        u.phone_verified = true;
-        localStorage.setItem('student_user', JSON.stringify(u));
-      } catch (e) {}
+    if (window._pendingRegistrationData) {
+      const regRes = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...window._pendingRegistrationData, otp })
+      });
+      const regData = await regRes.json();
+      if (!regRes.ok) {
+        throw new Error(regData.error || 'Registration verification failed');
+      }
+      if (!regData.token) {
+        throw new Error('Registration completed but no token returned. Please try logging in.');
+      }
+      tokenToUse = regData.token;
+      localStorage.setItem('student_token', regData.token);
+      localStorage.setItem('student_user', JSON.stringify(regData.user || {}));
+      window._pendingRegistrationData = null;
+    } else {
+      const res = await fetch('/api/auth/verify-mobile-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: phone || email, otp })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Mobile verification failed');
+      }
+
+      const userStr = localStorage.getItem('student_user');
+      if (userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          u.phone_verified = true;
+          localStorage.setItem('student_user', JSON.stringify(u));
+        } catch (e) {}
+      }
     }
 
     if (succBanner) {
@@ -920,8 +942,7 @@ async function verifyCheckoutMobileOtp() {
     }
 
     setTimeout(() => {
-      const token = currentCheckoutToken || localStorage.getItem('student_token') || localStorage.getItem('token');
-      startPaymentFlow(token);
+      startPaymentFlow(tokenToUse);
     }, 1000);
 
   } catch (err) {
@@ -1139,6 +1160,38 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
             throw new Error(regData.error || 'Registration failed');
           }
+        } else if (regData.status === 'otp_sent') {
+          window._pendingRegistrationData = {
+            name,
+            email,
+            phone,
+            password,
+            role: 'student',
+            board,
+            grade,
+            referred_by_code
+          };
+          postPaymentUserPhone = phone;
+
+          document.getElementById('modalStepCheckout').style.display = 'none';
+          const mobileOtpStep = document.getElementById('modalStepMobileOtp');
+          if (mobileOtpStep) {
+            mobileOtpStep.style.display = 'block';
+            const phoneDisp = document.getElementById('otpMobileDisplay');
+            if (phoneDisp) phoneDisp.textContent = phone;
+            clearCheckoutOtpBoxes();
+
+            const succBanner = document.getElementById('otpStepSuccessBanner');
+            if (succBanner) {
+              succBanner.textContent = regData.message || `Verification OTP sent to mobile number (${phone}). Enter code below to proceed.`;
+              succBanner.classList.remove('d-none');
+            }
+          } else {
+            throw new Error(regData.message || 'OTP sent to mobile number. Please check your phone.');
+          }
+          submitBtn.innerHTML = originalHtml;
+          submitBtn.disabled = false;
+          return;
         } else {
           targetToken = regData.token;
           targetUser = regData.user;

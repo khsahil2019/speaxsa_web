@@ -275,10 +275,10 @@ router.post('/sop/submit', async (req, res) => {
 
 // Sign agreement after SOP is approved
 router.post('/sop/sign-agreement', async (req, res) => {
-  const { digital_signature } = req.body;
+  const { digital_signature, signature_image } = req.body;
   try {
     if (!digital_signature || !digital_signature.trim()) {
-      return res.status(400).json({ error: 'Digital signature is required (type your full name)' });
+      return res.status(400).json({ error: 'Digital signature printed name is required' });
     }
 
     const sop = await db.query('SELECT status FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
@@ -287,33 +287,76 @@ router.post('/sop/sign-agreement', async (req, res) => {
       return res.status(400).json({ error: 'SOP must be approved by admin before signing the agreement' });
     }
 
+    const signedAt = new Date();
+    const sigHash = require('crypto').createHash('md5').update(`agreement_${req.user.id}_${signedAt.getTime()}`).digest('hex').substring(0, 16).toUpperCase();
+    const sigHashFull = `SPEAXA-DIGITAL-SIG-${sigHash}`;
+
     await db.query(
       `UPDATE teacher_sop 
        SET agreement_signed = true, 
            agreement_signed_at = NOW(), 
-           digital_signature = $2 
+           digital_signature = $2,
+           signature_image = $3
        WHERE teacher_id = $1`,
-      [req.user.id, digital_signature.trim()]
+      [req.user.id, digital_signature.trim(), signature_image || null]
     );
 
     await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1", [req.user.id]);
     await logAudit(req.user.id, 'AGREEMENT_SIGNED', 'teacher', req.user.id, { signature: digital_signature });
 
-    // Auto-issue SOP Verification & Compliance certificate
-    const certId = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    await db.query(`
-      INSERT INTO teacher_certificates (id, teacher_id, certificate_type, title, description, metadata)
-      VALUES ($1, $2, 'sop_completed', $3, $4, $5)
-      ON CONFLICT DO NOTHING
-    `, [
-      certId,
-      req.user.id,
-      'SOP Verification & Teaching Compliance Certificate',
-      'This certificate is awarded to acknowledge that the teacher has successfully completed the Speaxa Standard Operating Procedures (SOP) verification, technical compliance checks, and teaching standards certification.',
-      JSON.stringify({ signature: digital_signature })
-    ]);
+    // Generate & Dispatch Executed Agreement PDF Email to Teacher
+    try {
+      const userRes = await db.query('SELECT name, email FROM users WHERE id = $1', [req.user.id]);
+      if (userRes.rows.length > 0 && userRes.rows[0].email) {
+        const u = userRes.rows[0];
+        const { generateAgreementPDFBuffer } = require('../services/AgreementPDFService');
+        const { sendEmail } = require('../services/EmailService');
 
-    res.json({ message: 'Agreement signed successfully. You can now start teaching!' });
+        const pdfBuffer = await generateAgreementPDFBuffer({
+          teacherName: u.name || digital_signature,
+          teacherEmail: u.email,
+          signedAt: signedAt,
+          digitalSignature: sigHashFull,
+          signatureImage: signature_image || null
+        });
+
+        await sendEmail({
+          to: u.email,
+          subject: '📜 SPEAXA — Executed Teacher Governance & Deed of Affidavit (Signed Copy Attached)',
+          type: 'notification',
+          headerTitle: 'Legal Agreement Executed',
+          badgeLabel: 'Executed Contract Copy',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 580px; margin: 0 auto; color: #334155;">
+              <h2 style="color: #0d7a6d;">Hello ${u.name}!</h2>
+              <p>Your <strong>Teacher Partnership Governance Agreement & Deed of Affidavit</strong> has been successfully executed and recorded in your account.</p>
+              
+              <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; margin: 20px 0;">
+                <h4 style="color: #0d7a6d; margin: 0 0 8px 0;">📜 Signed Copy Attached</h4>
+                <p style="margin: 0 0 10px 0; font-size: 14px;">An official PDF copy of your executed agreement (including your drawn signature and digital signature hash) is attached to this email for your permanent records.</p>
+                <div style="font-size: 13px; font-family: monospace; color: #64748b;">
+                  <div>Signed On: <strong>${signedAt.toLocaleString('en-IN')}</strong></div>
+                  <div>Digital Hash: <strong>${sigHashFull}</strong></div>
+                </div>
+              </div>
+
+              <p>Your educator account is now fully active! You can start managing batches and hosting live interactive classes.</p>
+            </div>
+          `,
+          attachments: [
+            {
+              filename: `SPEAXA_Executed_Teacher_Agreement_${(u.name || 'Teacher').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }
+          ]
+        });
+      }
+    } catch (pdfErr) {
+      console.error('[Sign Agreement Email PDF Error]:', pdfErr.message);
+    }
+
+    res.json({ message: 'Agreement signed successfully! A copy of your executed agreement has been emailed to you.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

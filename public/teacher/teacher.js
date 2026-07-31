@@ -905,8 +905,13 @@ async function checkSopStatus() {
     const banner = document.getElementById('sopBanner');
     if (!sop || sop.status !== 'approved') {
       if (banner) {
-        banner.innerHTML = `<span style="color:#F59E0B;font-size:.875rem"><i class="fas fa-exclamation-triangle me-2"></i><strong>SOP Pending:</strong> Complete your SOP setup to start teaching</span>
-        <button class="btn btn-sm btn-warning" onclick="navigateTo('sop')">Complete SOP →</button>`;
+        if (sop && sop.status === 'sop_pending') {
+          banner.innerHTML = `<span style="color:#F59E0B;font-size:.875rem"><i class="fas fa-hourglass-half fa-spin me-2"></i><strong>SOP Under Admin Review:</strong> Submitted & awaiting verification (Est. 24–48 hrs)</span>
+          <button class="btn btn-sm btn-outline-warning ms-2" onclick="navigateTo('sop')">Check Status →</button>`;
+        } else {
+          banner.innerHTML = `<span style="color:#F59E0B;font-size:.875rem"><i class="fas fa-exclamation-triangle me-2"></i><strong>SOP Pending:</strong> Complete your SOP setup to start teaching</span>
+          <button class="btn btn-sm btn-warning" onclick="navigateTo('sop')">Complete SOP →</button>`;
+        }
         banner.classList.remove('d-none');
       }
     } else if (!sop.agreement_signed) {
@@ -2065,12 +2070,25 @@ async function renderSop(targetSlotId) {
                   </div>
                   
                   <div class="mb-3">
-                    <label class="spx-label font-bold text-dark mb-1">Digital Signature (Type your Full Name to Sign)</label>
-                    <input type="text" class="form-control border p-3 spx-input" id="agreementSigInput" placeholder="Type your registered name here" style="background:#ffffff; color:#000000; border-color:#cbd5e1 !important">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <label class="spx-label font-bold text-dark mb-0"><i class="fas fa-pen-nib text-primary me-2"></i>Handwritten Signature (Use Laptop Touchpad / Mouse)</label>
+                      <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="clearSignaturePad()" style="font-size:0.75rem;"><i class="fas fa-eraser me-1"></i>Clear Signature</button>
+                    </div>
+                    <div class="signature-pad-wrapper p-2 bg-white rounded border position-relative" style="border: 2px dashed #0d7a6d !important; background: #f8fafc !important;">
+                      <canvas id="signaturePadCanvas" width="600" height="140" style="width: 100%; height: 140px; cursor: crosshair; touch-action: none; display: block; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1;"></canvas>
+                      <div class="text-muted text-center py-1 mt-1" style="font-size: 0.72rem; font-style: italic; color: #64748b !important;">
+                        <i class="fas fa-hand-pointer me-1 text-primary"></i> Touch & drag on your touchpad or mouse to sign inside the white box above.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="spx-label font-bold text-dark mb-1">Printed Full Name (Attestation Name)</label>
+                    <input type="text" class="form-control border p-3 spx-input" id="agreementSigInput" placeholder="Type your full registered name here" value="${user?.name || ''}" style="background:#ffffff; color:#000000; border-color:#cbd5e1 !important">
                   </div>
                 </div>
 
-                <button class="btn btn-spx w-100 py-3" onclick="submitDigitalAgreement()">Sign & Activate Account</button>
+                <button class="btn btn-spx w-100 py-3 fw-bold" onclick="submitDigitalAgreement()"><i class="fas fa-file-signature me-2"></i>Sign & Activate Account</button>
               </div>
             </div>
           </div>
@@ -2132,8 +2150,60 @@ async function renderSop(targetSlotId) {
       `;
     }
 
+    let pendingStatusHeaderHtml = '';
+    if (sop && sop.status === 'sop_pending') {
+      const submittedDate = fmtDate(sop.submitted_at || sop.created_at);
+      pendingStatusHeaderHtml = `
+        <div class="sop-pending-center-card spx-card text-center p-4 mb-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%); border: 1px solid #fcd34d; border-radius: 16px; max-width: 680px; margin: 0 auto;">
+          <div class="sop-radar-container mb-3 position-relative d-inline-block">
+            <div class="sop-timer-ring-outer"></div>
+            <div class="sop-timer-ring-inner"></div>
+            <div class="sop-radar-icon d-flex align-items-center justify-content-center mx-auto" style="width: 72px; height: 72px; background: rgba(245, 158, 11, 0.12); border-radius: 50%; border: 2px solid rgba(245, 158, 11, 0.3);">
+              <i class="fas fa-hourglass-half fa-spin text-warning fs-3"></i>
+            </div>
+          </div>
+
+          <h4 class="fw-bold text-dark mb-1">SOP Verification Under Admin Review</h4>
+          <div class="d-flex align-items-center justify-content-center gap-2 mb-3 flex-wrap">
+            <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-1 rounded-pill fw-semibold" style="font-size: 0.8rem;">
+              <i class="fas fa-clock me-1"></i>Est. Review Time: 24–48 Hours
+            </span>
+            <span class="badge bg-light text-secondary border px-3 py-1 rounded-pill fw-normal" style="font-size: 0.8rem;">
+              Submitted: ${submittedDate}
+            </span>
+          </div>
+
+          <p class="text-muted small mx-auto mb-3" style="max-width: 520px; line-height: 1.5;">
+            Your SOP submission is under active review by the Admin team. Once approved, your official <strong>Certificate PDF</strong> will be automatically issued and emailed to you.
+          </p>
+
+          <div class="d-flex justify-content-center">
+            <button class="btn btn-sm btn-outline-warning px-4 py-2 fw-semibold" onclick="renderSop()"><i class="fas fa-sync-alt me-2"></i>Refresh Status</button>
+          </div>
+        </div>
+      `;
+    }
+
+    let approvedStatusHeaderHtml = '';
+    if (sop && sop.status === 'approved') {
+      approvedStatusHeaderHtml = `
+        <div class="alert alert-success p-4 mb-4 text-start d-flex justify-content-between align-items-center flex-wrap gap-3" style="border-radius: 14px; border-left: 5px solid #10b981; background: rgba(16, 185, 129, 0.08);">
+          <div>
+            <h5 class="fw-bold text-success mb-1"><i class="fas fa-check-circle me-2"></i>SOP Verification Approved & Certificate Issued!</h5>
+            <p class="text-secondary small mb-0">Your SOP and teacher profile have been verified by Admin. Your official Certificate PDF has been sent to your email and is ready in your portal.</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-success" onclick="navigateTo('certificates')"><i class="fas fa-award me-1"></i>View Certificate</button>
+            ${!sop.agreement_signed ? `<button class="btn btn-sm btn-warning" onclick="setSopTab('agreement')"><i class="fas fa-file-contract me-1"></i>Sign Agreement →</button>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
     document.getElementById('pageContent').innerHTML = `
       ${rejectAlertHtml}
+      ${pendingStatusHeaderHtml}
+      ${approvedStatusHeaderHtml}
       <div class="sop-wizard-tabs">
         <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'guidelines' ? 'active' : ''}" onclick="setSopTab('guidelines')">
           <i class="fas fa-book-open"></i> 1. Onboarding Guide
@@ -2175,6 +2245,11 @@ async function renderSop(targetSlotId) {
       setupAutoSave('autosave_teacher_sop_video_links', [
         'link_camera_sop', 'link_lighting_sop', 'link_audio_sop', 'link_internet_proof', 'link_demo_teaching'
       ]);
+    }
+
+    // Initialize signature pad if agreement tab active
+    if (window._sopActiveTab === 'agreement') {
+      setTimeout(initSignaturePad, 120);
     }
 
     // Restore scroll position or target slot position
@@ -2404,22 +2479,94 @@ async function submitSopForReview() {
   }
 }
 
+function initSignaturePad() {
+  const canvas = document.getElementById('signaturePadCanvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  let isDrawing = false;
+  window._hasSignatureDrawn = false;
+
+  ctx.strokeStyle = '#0d7a6d';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+
+  function startDrawing(e) {
+    isDrawing = true;
+    window._hasSignatureDrawn = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    if (e.cancelable && e.type && e.type.startsWith('touch')) e.preventDefault();
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    if (e.cancelable && e.type && e.type.startsWith('touch')) e.preventDefault();
+  }
+
+  function stopDrawing() {
+    isDrawing = false;
+  }
+
+  canvas.onmousedown = startDrawing;
+  canvas.onmousemove = draw;
+  canvas.onmouseup = stopDrawing;
+  canvas.onmouseleave = stopDrawing;
+
+  canvas.ontouchstart = startDrawing;
+  canvas.ontouchmove = draw;
+  canvas.ontouchend = stopDrawing;
+}
+
+function clearSignaturePad() {
+  const canvas = document.getElementById('signaturePadCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  window._hasSignatureDrawn = false;
+}
+
 async function submitDigitalAgreement() {
   const signatureInput = document.getElementById('agreementSigInput');
   const signature = signatureInput ? signatureInput.value.trim() : '';
   const consentCb = document.getElementById('agreementConsentCheckbox');
+  const canvas = document.getElementById('signaturePadCanvas');
 
   if (!consentCb || !consentCb.checked) {
     return showToast('You must consent to the agreement terms', 'error');
   }
+  if (!window._hasSignatureDrawn) {
+    return showToast('Please draw your signature using your touchpad or mouse inside the signature box', 'error');
+  }
   if (!signature) {
-    return showToast('Please type your full name to digitally sign', 'error');
+    return showToast('Please type your printed name to verify attestation', 'error');
+  }
+
+  let signatureImage = null;
+  if (canvas) {
+    signatureImage = canvas.toDataURL('image/png');
   }
 
   try {
+    showToast('Executing agreement & generating signed PDF copy...', 'info');
     const data = await api('/teacher/sop/sign-agreement', {
       method: 'POST',
-      body: JSON.stringify({ digital_signature: signature })
+      body: JSON.stringify({ digital_signature: signature, signature_image: signatureImage })
     });
     showToast(data.message || 'Agreement signed successfully!');
 

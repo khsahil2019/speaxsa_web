@@ -59,6 +59,7 @@ db.query(`
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS digital_signature VARCHAR(255);
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS availability TEXT;
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS item_approvals JSONB DEFAULT '{}';
+  ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS signature_image TEXT;
   ALTER TABLE batches DROP CONSTRAINT IF EXISTS batches_capacity_check;
 
   ALTER TABLE courses ADD COLUMN IF NOT EXISTS created_by VARCHAR(100) REFERENCES users(id);
