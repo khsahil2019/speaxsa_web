@@ -291,15 +291,31 @@ router.post('/sop/sign-agreement', async (req, res) => {
     const sigHash = require('crypto').createHash('md5').update(`agreement_${req.user.id}_${signedAt.getTime()}`).digest('hex').substring(0, 16).toUpperCase();
     const sigHashFull = `SPEAXA-DIGITAL-SIG-${sigHash}`;
 
-    await db.query(
-      `UPDATE teacher_sop 
-       SET agreement_signed = true, 
-           agreement_signed_at = NOW(), 
-           digital_signature = $2,
-           signature_image = $3
-       WHERE teacher_id = $1`,
-      [req.user.id, digital_signature.trim(), signature_image || null]
-    );
+    try {
+      await db.query(
+        `UPDATE teacher_sop 
+         SET agreement_signed = true, 
+             agreement_signed_at = NOW(), 
+             digital_signature = $2,
+             signature_image = $3
+         WHERE teacher_id = $1`,
+        [req.user.id, digital_signature.trim(), signature_image || null]
+      );
+    } catch (dbErr) {
+      if (dbErr.message && dbErr.message.includes('signature_image')) {
+        console.warn('[Sign Agreement] signature_image column missing in DB, executing fallback update without signature_image column');
+        await db.query(
+          `UPDATE teacher_sop 
+           SET agreement_signed = true, 
+               agreement_signed_at = NOW(), 
+               digital_signature = $2
+           WHERE teacher_id = $1`,
+          [req.user.id, digital_signature.trim()]
+        );
+      } else {
+        throw dbErr;
+      }
+    }
 
     await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1", [req.user.id]);
     await logAudit(req.user.id, 'AGREEMENT_SIGNED', 'teacher', req.user.id, { signature: digital_signature });
