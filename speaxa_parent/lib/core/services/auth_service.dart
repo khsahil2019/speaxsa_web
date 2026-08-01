@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import '../constants/api_endpoints.dart';
+import '../network/api_client.dart';
 import '../network/socket_service.dart';
 import '../services/storage_service.dart';
 import '../../data/models/user_model.dart';
@@ -44,6 +46,21 @@ class AuthService extends GetxService {
     SocketService.to.disconnectSocket();
     await StorageService.to.clearAll();
     Get.offAllNamed('/landing');
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      final apiClient = Get.find<ApiClient>();
+      final response = await apiClient.delete(ApiEndpoints.deleteAccount);
+      if (response != null) {
+        await logout();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print("[AuthService] Error deleting account: $e");
+      rethrow;
+    }
   }
 
   String getInitialRoute() {

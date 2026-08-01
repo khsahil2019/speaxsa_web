@@ -709,6 +709,7 @@ app.use('/live', express.static(path.join(__dirname, '../public/live')));
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 app.get('/verify-certificate', (req, res) => res.sendFile(path.join(__dirname, '../public/landing/verify-certificate.html')));
+app.get('/account-deletion', (req, res) => res.sendFile(path.join(__dirname, '../public/account-deletion.html')));
 
 // ── Sitemap & Robots Router ──────────────────────────────────────
 const sitemapRouter = require('./routes/sitemap');

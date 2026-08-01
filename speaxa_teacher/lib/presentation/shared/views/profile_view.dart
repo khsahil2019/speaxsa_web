@@ -106,15 +106,89 @@ class ProfileView extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              CustomButton(
-                text: 'Logout Account',
-                isSecondary: true,
-                onPressed: () => AuthService.to.logout(),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomButton(
+                      text: 'Logout',
+                      isSecondary: true,
+                      onPressed: () => AuthService.to.logout(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.delete_forever, size: 18),
+                      label: const Text("Delete Account", style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () => _confirmDeleteAccount(context),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         );
       }),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text("Delete Account?"),
+          ],
+        ),
+        content: const Text(
+          "Are you sure you want to permanently delete your account? All your personal data, records, and history will be permanently erased. This action CANNOT be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              try {
+                final success = await AuthService.to.deleteAccount();
+                if (success) {
+                  Get.snackbar(
+                    'Account Deleted',
+                    'Your account has been permanently deleted.',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.black87,
+                    colorText: Colors.white,
+                  );
+                }
+              } catch (e) {
+                Get.snackbar(
+                  'Error',
+                  'Failed to delete account. Please try again.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+              }
+            },
+            child: const Text("Delete Permanently"),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -80,26 +80,97 @@ class _TeacherProfileTabState extends State<TeacherProfileTab> {
               _buildProfileSettingsCard(),
               const SizedBox(height: 20),
 
-              // ── Logout Button ──────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              // ── Logout & Delete Account Buttons ────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text("Logout", style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () => AuthService.to.logout(),
+                    ),
                   ),
-                  icon: const Icon(Icons.logout, size: 20),
-                  label: const Text("Logout Account", style: TextStyle(fontWeight: FontWeight.bold)),
-                  onPressed: () => AuthService.to.logout(),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.delete_forever, size: 18),
+                      label: const Text("Delete Account", style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () => _showDeleteAccountConfirmation(context),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
             ],
           ),
         );
       }),
+    );
+  }
+
+  void _showDeleteAccountConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text("Delete Account?"),
+          ],
+        ),
+        content: const Text(
+          "Are you sure you want to permanently delete your account? All your batches, live classes, wallet balance, certificates, and student records will be permanently erased. This action CANNOT be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              try {
+                final success = await AuthService.to.deleteAccount();
+                if (success) {
+                  Get.snackbar(
+                    'Account Deleted',
+                    'Your account has been permanently deleted.',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.black87,
+                    colorText: Colors.white,
+                  );
+                }
+              } catch (e) {
+                Get.snackbar(
+                  'Error',
+                  'Failed to delete account. Please try again.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+              }
+            },
+            child: const Text("Delete Permanently"),
+          ),
+        ],
+      ),
     );
   }
 

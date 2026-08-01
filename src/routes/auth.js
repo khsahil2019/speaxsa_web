@@ -869,6 +869,161 @@ router.post('/logout', authenticateToken, async (req, res) => {
   }
 });
 
+// ── Helper: Delete User Account & Clean Data ─────────────────
+async function deleteUserAccount(userId) {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Clean up tokens & session logs
+    await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM fcm_tokens WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM email_verification_tokens WHERE user_id = $1', [userId]);
+
+    // 2. Clean up notifications & support
+    await client.query('DELETE FROM notifications WHERE target_user = $1 OR sent_by = $1', [userId]);
+    await client.query('DELETE FROM support_replies WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM support_tickets WHERE user_id = $1', [userId]);
+
+    // 3. Clean up live classes, attendance, participants, polls
+    await client.query('DELETE FROM class_poll_responses WHERE student_id = $1', [userId]);
+    await client.query('DELETE FROM class_polls WHERE teacher_id = $1', [userId]);
+    await client.query('DELETE FROM class_participants WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM attendance WHERE student_id = $1 OR teacher_id = $1', [userId]);
+
+    // 4. Clean up parent/student links, ratings, chats, observations, reports
+    await client.query('DELETE FROM parent_student_links WHERE parent_id = $1 OR student_id = $1', [userId]);
+    await client.query('DELETE FROM parent_teacher_chats WHERE parent_id = $1 OR teacher_id = $1 OR student_id = $1 OR sender_id = $1', [userId]);
+    await client.query('DELETE FROM teacher_ratings WHERE teacher_id = $1 OR parent_id = $1 OR student_id = $1', [userId]);
+    await client.query('DELETE FROM student_observations WHERE student_id = $1 OR teacher_id = $1', [userId]);
+    await client.query('DELETE FROM monthly_reports WHERE student_id = $1 OR teacher_id = $1', [userId]);
+
+    // 5. Clean up assignments & submissions
+    await client.query('DELETE FROM assignment_submissions WHERE student_id = $1 OR graded_by = $1', [userId]);
+    await client.query('DELETE FROM assignments WHERE teacher_id = $1', [userId]);
+
+    // 6. Clean up batches, batch_students, study materials
+    await client.query('DELETE FROM batch_students WHERE student_id = $1', [userId]);
+    await client.query('DELETE FROM study_materials WHERE teacher_id = $1', [userId]);
+
+    // 7. Clean up financial records, payouts, wallets
+    await client.query('DELETE FROM teacher_wallet_ledger WHERE teacher_id = $1 OR referred_user_id = $1', [userId]);
+    await client.query('DELETE FROM teacher_wallet WHERE teacher_id = $1', [userId]);
+    await client.query('DELETE FROM teacher_payouts WHERE teacher_id = $1 OR processed_by = $1', [userId]);
+    await client.query('DELETE FROM teacher_rewards WHERE teacher_id = $1 OR processed_by = $1', [userId]);
+    await client.query('DELETE FROM teacher_allowances WHERE teacher_id = $1', [userId]);
+    await client.query('DELETE FROM teacher_certificates WHERE teacher_id = $1', [userId]);
+    await client.query('DELETE FROM refunds WHERE student_id = $1 OR processed_by = $1', [userId]);
+    await client.query('DELETE FROM payments WHERE student_id = $1 OR teacher_id = $1 OR referral_teacher_id = $1', [userId]);
+
+    // 8. Clean up teacher SOP, docs, levels
+    await client.query('DELETE FROM teacher_documents WHERE teacher_id = $1', [userId]);
+    await client.query('DELETE FROM teacher_sop WHERE teacher_id = $1', [userId]);
+    await client.query('DELETE FROM teacher_levels WHERE teacher_id = $1', [userId]);
+
+    // 9. Nullify self-referrals / recycle bin / audit logs references
+    await client.query('UPDATE users SET referred_by = NULL WHERE referred_by = $1', [userId]);
+    await client.query('DELETE FROM recycle_bin WHERE requested_by = $1 OR processed_by = $1', [userId]);
+    await client.query('DELETE FROM email_campaigns WHERE sent_by = $1', [userId]);
+    await client.query('DELETE FROM audit_logs WHERE actor_id = $1', [userId]);
+
+    // 10. Nullify teacher_id on batches / live_classes / courses if any remain
+    await client.query('UPDATE courses SET created_by = NULL WHERE created_by = $1', [userId]);
+    await client.query('UPDATE batches SET teacher_id = NULL WHERE teacher_id = $1', [userId]);
+    await client.query('DELETE FROM live_classes WHERE teacher_id = $1', [userId]);
+
+    // 11. Finally delete user row
+    const deleteRes = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+    await client.query('COMMIT');
+    return deleteRes.rowCount > 0;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ── DELETE/POST /api/auth/delete-account ───────────────────────
+const handleDeleteAccount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { password } = req.body || {};
+    if (password) {
+      const userRes = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+      if (userRes.rows.length > 0 && userRes.rows[0].password_hash) {
+        const isValid = await verifyPassword(password, userRes.rows[0].password_hash);
+        if (!isValid) {
+          return res.status(400).json({ error: 'Incorrect password. Account deletion aborted.' });
+        }
+      }
+    }
+
+    const deleted = await deleteUserAccount(userId);
+    if (!deleted) {
+      return res.status(404).json({ error: 'User account not found or already deleted.' });
+    }
+
+    res.json({ message: 'Account permanently deleted successfully.' });
+  } catch (err) {
+    console.error('[Auth] Account deletion error:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete account' });
+  }
+};
+
+router.delete('/delete-account', authenticateToken, handleDeleteAccount);
+router.post('/delete-account', authenticateToken, handleDeleteAccount);
+
+// ── POST /api/auth/request-account-deletion ─────────────────────
+router.post('/request-account-deletion', async (req, res) => {
+  const { identifier, password, reason } = req.body || {};
+  if (!identifier) {
+    return res.status(400).json({ error: 'Email or Mobile Number is required.' });
+  }
+
+  try {
+    const cleanIdentifier = identifier.trim().toLowerCase();
+    const cleanPhone = identifier.replace(/^\+91/, '').replace(/^91/, '').trim().replace(/[^0-9]/g, '');
+
+    const userRes = await db.query(
+      `SELECT id, name, email, phone, password_hash, role 
+       FROM users 
+       WHERE LOWER(email) = $1 
+          OR phone = $1 
+          OR RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $2`,
+      [cleanIdentifier, cleanPhone]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'No account found with the provided details.' });
+    }
+
+    const user = userRes.rows[0];
+
+    if (password) {
+      const isValid = await verifyPassword(password, user.password_hash);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Invalid password. Verification failed.' });
+      }
+      await deleteUserAccount(user.id);
+      return res.json({ message: 'Your account and all associated data have been permanently deleted.' });
+    }
+
+    // If password is not provided, create a support ticket / deletion request
+    await db.query(
+      `INSERT INTO support_tickets (user_id, guest_name, guest_email, guest_phone, guest_role, category, subject, description, priority, status)
+       VALUES ($1, $2, $3, $4, $5, 'Account Deletion', 'Account Deletion Request via Web', $6, 'high', 'open')`,
+      [user.id, user.name, user.email, user.phone, user.role, reason || 'User submitted account deletion request from speaxa.in/account-deletion']
+    );
+
+    res.json({ message: 'Account deletion request received successfully. Our team will verify and process your request within 24-48 hours.' });
+  } catch (err) {
+    console.error('[Auth] Web Account deletion request error:', err);
+    res.status(500).json({ error: err.message || 'Failed to submit account deletion request.' });
+  }
+});
+
 // ── POST /api/auth/profile/send-phone-otp ───────────────────
 router.post('/profile/send-phone-otp', authenticateToken, async (req, res) => {
   const { phone } = req.body;

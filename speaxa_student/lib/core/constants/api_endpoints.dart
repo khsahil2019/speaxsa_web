@@ -31,6 +31,7 @@ class ApiEndpoints {
   static const String uploadAvatar = '/auth/upload-avatar';
   static const String fcmToken = '/auth/fcm-token';
   static const String logout = '/auth/logout';
+  static const String deleteAccount = '/auth/delete-account';
 
   // Public Endpoints (Configured from Admin Panel)
   static const String publicCourses = '/public/courses';
