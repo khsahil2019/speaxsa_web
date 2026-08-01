@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/fcm_service.dart';
 import '../../../data/repositories/auth_repository.dart';
 
 class AuthController extends GetxController {
