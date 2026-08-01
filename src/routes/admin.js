@@ -1989,6 +1989,23 @@ router.get('/fcm/stats', async (req, res) => {
   }
 });
 
+// ── GET /api/admin/fcm/tokens ─────────────────────────────────
+router.get('/fcm/tokens', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT ft.id, ft.user_id, ft.token, ft.device_type, ft.updated_at,
+             u.name, u.email, u.role
+      FROM fcm_tokens ft
+      LEFT JOIN users u ON u.id = ft.user_id
+      ORDER BY ft.updated_at DESC
+      LIMIT 100
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /api/admin/fcm/test ──────────────────────────────────
 router.post('/fcm/test', async (req, res) => {
   const { token, user_id, title = '🧪 FCM Test Push', message = 'Push notification system is working!' } = req.body;

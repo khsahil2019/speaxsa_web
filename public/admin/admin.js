@@ -3748,7 +3748,10 @@ async function renderNotifications() {
           <div class="spx-card">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <h6 class="mb-0">Recent Broadcast Notifications</h6>
-              <span class="badge bg-secondary">${notifs.length} Total</span>
+              <div>
+                <button class="btn btn-outline-info btn-sm me-2" onclick="showRegisteredTokensModal()"><i class="fas fa-key me-1"></i>View Registered Device Tokens</button>
+                <span class="badge bg-secondary">${notifs.length} Total</span>
+              </div>
             </div>
             ${table(
               ['Title', 'Target', 'Type', 'Date'],
@@ -3811,6 +3814,74 @@ async function testFcmPush(e) {
     showToast(res.message || 'FCM push dispatched successfully!');
   } catch (err) {
     showToast(err.message || 'FCM test failed', 'error');
+  }
+}
+
+async function showRegisteredTokensModal() {
+  try {
+    const tokens = await apiGet('/admin/fcm/tokens');
+    if (!tokens || tokens.length === 0) {
+      showToast('No registered FCM tokens found in database yet', 'warning');
+      return;
+    }
+
+    const rows = tokens.map(t => `
+      <tr>
+        <td><code>${t.user_id}</code></td>
+        <td><strong>${t.name || 'N/A'}</strong><br><small class="text-muted">${t.email || ''}</small></td>
+        <td><span class="badge bg-secondary">${t.role || 'user'}</span></td>
+        <td><span class="badge bg-info text-dark">${t.device_type || 'mobile'}</span></td>
+        <td>
+          <input type="text" class="form-control form-control-sm spx-input" readonly value="${t.token}" style="max-width: 180px;" onclick="this.select(); navigator.clipboard.writeText('${t.token}'); showToast('Token copied to clipboard!');">
+        </td>
+        <td>${fmtDate(t.updated_at)}</td>
+        <td>
+          <button class="btn btn-xs btn-outline-warning" onclick="document.getElementById('testFcmToken').value = '${t.user_id}'; showToast('Loaded User ID into FCM Tester!');">Use ID</button>
+        </td>
+      </tr>
+    `).join('');
+
+    const modalHtml = `
+      <div class="modal fade" id="fcmTokensModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+              <h5 class="modal-title"><i class="fas fa-mobile-alt text-info me-2"></i>Active Registered FCM Device Tokens (${tokens.length})</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-content p-3">
+              <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>User ID</th>
+                      <th>Name / Email</th>
+                      <th>Role</th>
+                      <th>Device</th>
+                      <th>FCM Token</th>
+                      <th>Last Updated</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    let container = document.getElementById('modalContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'modalContainer';
+      document.body.appendChild(container);
+    }
+    container.innerHTML = modalHtml;
+    const modal = new bootstrap.Modal(document.getElementById('fcmTokensModal'));
+    modal.show();
+  } catch (err) {
+    showToast('Failed to load registered tokens: ' + err.message, 'error');
   }
 }
 
