@@ -3757,9 +3757,9 @@ async function renderNotifications() {
               ['Title', 'Target', 'Type', 'Date'],
               notifs.slice(0, 25).map(n => `
                 <tr>
-                  <td class="fw-semibold text-white">${n.title}<br><small class="text-muted">${n.message || ''}</small></td>
-                  <td><span class="badge bg-dark">${n.target_user ? `User: ${n.target_user}` : (n.target_role || 'all')}</span></td>
-                  <td><span class="badge bg-info text-dark">${n.type || 'info'}</span></td>
+                  <td class="fw-semibold text-dark">${n.title}<br><small class="text-muted">${n.message || ''}</small></td>
+                  <td><span class="badge bg-light text-dark border">${n.target_user ? `User: ${n.target_user}` : (n.target_role || 'all')}</span></td>
+                  <td><span class="badge bg-info-subtle text-info border border-info-subtle">${n.type || 'info'}</span></td>
                   <td>${fmtDate(n.created_at)}</td>
                 </tr>`).join(''),
               false
@@ -3822,11 +3822,11 @@ window.fcmActiveRoleFilter = 'all';
 function getRoleBadgeHtml(role) {
   const r = (role || 'user').toLowerCase();
   if (r === 'student') {
-    return `<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 11px; padding: 4px 10px; border-radius: 50px;"><i class="fas fa-user-graduate me-1"></i>Student</span>`;
+    return `<span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; padding: 5px 12px; border-radius: 50px;"><i class="fas fa-user-graduate me-1"></i>Student</span>`;
   } else if (r === 'teacher') {
-    return `<span class="badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); font-size: 11px; padding: 4px 10px; border-radius: 50px;"><i class="fas fa-chalkboard-teacher me-1"></i>Teacher</span>`;
+    return `<span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-size: 11px; padding: 5px 12px; border-radius: 50px;"><i class="fas fa-chalkboard-teacher me-1"></i>Teacher</span>`;
   } else if (r === 'parent') {
-    return `<span class="badge" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); font-size: 11px; padding: 4px 10px; border-radius: 50px;"><i class="fas fa-user-friends me-1"></i>Parent</span>`;
+    return `<span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 11px; padding: 5px 12px; border-radius: 50px;"><i class="fas fa-user-friends me-1"></i>Parent</span>`;
   }
   return `<span class="badge bg-secondary">${role}</span>`;
 }
@@ -3845,11 +3845,15 @@ window.filterFcmRole = function(role, btn) {
   window.fcmActiveRoleFilter = role;
   const btns = btn.parentElement.querySelectorAll('.btn');
   btns.forEach(b => {
-    b.classList.remove('active', 'btn-info', 'text-white');
-    b.classList.add('btn-outline-info');
+    b.classList.remove('active', 'btn-teal', 'text-white');
+    b.classList.add('btn-outline-secondary');
+    b.style.background = '';
+    b.style.color = '#475569';
   });
-  btn.classList.add('active', 'btn-info', 'text-white');
-  btn.classList.remove('btn-outline-info');
+  btn.classList.add('active', 'btn-teal', 'text-white');
+  btn.classList.remove('btn-outline-secondary');
+  btn.style.background = '#0d7a6d';
+  btn.style.color = '#ffffff';
   filterFcmModalTable();
 };
 
@@ -3885,34 +3889,34 @@ async function showRegisteredTokensModal() {
       <tr class="fcm-user-row" data-role="${u.role}" data-search="${(u.name + ' ' + u.email + ' ' + u.id).toLowerCase()}">
         <td style="vertical-align: middle;">
           <div class="d-flex align-items-center">
-            <code style="background: #0f172a; color: #f59e0b; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; font-weight: 600; font-family: monospace;">${u.id}</code>
+            <code style="background: #f1f5f9; color: #0d7a6d; padding: 5px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: 700; font-family: monospace;">${u.id}</code>
             <button type="button" class="btn btn-link text-muted btn-xs ms-1 p-0" onclick="navigator.clipboard.writeText('${u.id}'); showToast('User ID copied to clipboard!');" title="Copy User ID">
               <i class="fas fa-copy"></i>
             </button>
           </div>
         </td>
         <td style="vertical-align: middle;">
-          <span class="fw-bold text-white font-size-14">${u.name || 'N/A'}</span>
+          <span class="fw-bold text-dark font-size-14">${u.name || 'N/A'}</span>
           <br>
-          <span style="color: #94a3b8; font-size: 12px;">${u.email || ''}</span>
+          <span style="color: #64748b; font-size: 12px;">${u.email || ''}</span>
         </td>
         <td style="vertical-align: middle;">${getRoleBadgeHtml(u.role)}</td>
         <td style="vertical-align: middle;">
-          ${u.hasToken ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11px; padding: 5px 10px; border-radius: 50px;"><i class="fas fa-check-circle me-1"></i>Registered</span>` : `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 11px; padding: 5px 10px; border-radius: 50px;"><i class="fas fa-clock me-1"></i>Awaiting Sync</span>`}
+          ${u.hasToken ? `<span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-size: 11px; padding: 5px 12px; border-radius: 50px;"><i class="fas fa-check-circle me-1"></i>Registered</span>` : `<span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 11px; padding: 5px 12px; border-radius: 50px;"><i class="fas fa-clock me-1"></i>Awaiting Sync</span>`}
         </td>
         <td style="vertical-align: middle;">
           ${u.hasToken ? `
-            <div class="input-group input-group-sm" style="max-width: 210px;">
-              <input type="text" class="form-control spx-input text-truncate font-monospace" readonly value="${u.token}" style="background: #0f172a; color: #38bdf8; border: 1px solid #334155; font-size: 11px;" onclick="this.select();">
-              <button class="btn btn-outline-info" type="button" onclick="navigator.clipboard.writeText('${u.token}'); showToast('Token copied!');" title="Copy Token"><i class="fas fa-copy"></i></button>
+            <div class="input-group input-group-sm" style="max-width: 220px;">
+              <input type="text" class="form-control spx-input text-truncate font-monospace" readonly value="${u.token}" style="background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; font-size: 11px;" onclick="this.select();">
+              <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('${u.token}'); showToast('Token copied!');" title="Copy Token"><i class="fas fa-copy"></i></button>
             </div>
           ` : `<span style="color: #64748b; font-size: 12px;"><i class="fas fa-mobile-alt me-1"></i>Syncs upon mobile login</span>`}
         </td>
         <td style="vertical-align: middle; text-align: right;">
-          <button class="btn btn-sm btn-spx fw-semibold px-3 shadow-sm" onclick="copyAndUseUserId('${u.id}')">
+          <button class="btn btn-sm btn-spx fw-bold px-3 shadow-sm" onclick="copyAndUseUserId('${u.id}')">
             <i class="fas fa-paper-plane me-1"></i>Select Target
           </button>
-          ${u.hasToken ? `<button class="btn btn-sm btn-outline-info ms-1" onclick="copyAndUseToken('${u.token}')" title="Test Push Token"><i class="fas fa-bolt"></i></button>` : ''}
+          ${u.hasToken ? `<button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyAndUseToken('${u.token}')" title="Test Push Token"><i class="fas fa-bolt"></i></button>` : ''}
         </td>
       </tr>
     `).join('');
@@ -3920,28 +3924,28 @@ async function showRegisteredTokensModal() {
     const modalHtml = `
       <div class="modal fade" id="fcmTokensModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-          <div class="modal-content" style="background: #0f172a; color: #f8fafc; border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); border-radius: 16px;">
+          <div class="modal-content" style="background: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border-radius: 16px;">
             
-            <div class="modal-header border-secondary px-4 py-3" style="border-bottom-color: rgba(51, 65, 85, 0.6) !important;">
+            <div class="modal-header border-bottom px-4 py-3" style="background: #f8fafc; border-bottom-color: #e2e8f0 !important; border-top-left-radius: 16px; border-top-right-radius: 16px;">
               <div class="d-flex align-items-center">
-                <div style="background: linear-gradient(135deg, #0284c7, #0d7a6d); border-radius: 10px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);" class="me-3">
+                <div style="background: #0d7a6d; border-radius: 10px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(13, 122, 109, 0.25);" class="me-3">
                   <i class="fas fa-users text-white font-size-18"></i>
                 </div>
                 <div>
-                  <h5 class="modal-title fw-bold text-white mb-0" style="letter-spacing: 0.3px;">Platform Users & Push Target Inspector</h5>
+                  <h5 class="modal-title fw-bold text-dark mb-0" style="letter-spacing: 0.3px;">Platform Users & Push Target Inspector</h5>
                   <div class="d-flex align-items-center mt-1">
-                    <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 11px;"><i class="fas fa-shield-alt me-1"></i>Audience Target Selector</span>
+                    <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px;"><i class="fas fa-shield-alt me-1"></i>Audience Target Selector</span>
                     <span class="text-muted small ms-2">${usersList.length} Accounts Loaded</span>
                   </div>
                 </div>
               </div>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body p-4">
               
               ${!tokens || tokens.length === 0 ? `
-                <div class="alert py-2 px-3 mb-3 d-flex align-items-center" style="background: rgba(13, 148, 136, 0.12); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 10px; color: #5eead4; font-size: 13px;">
+                <div class="alert py-2 px-3 mb-3 d-flex align-items-center" style="background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 10px; color: #0369a1; font-size: 13px;">
                   <i class="fas fa-info-circle me-2 font-size-16"></i>
                   <div>
                     <strong>Target Selector Ready:</strong> Select any user below to load their User ID for push notifications. To view live device token hashes on staging, deploy server updates via <code>bash deploy.sh</code>.
@@ -3952,30 +3956,30 @@ async function showRegisteredTokensModal() {
               <div class="row g-2 mb-3 align-items-center">
                 <div class="col-md-7">
                   <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="fas fa-search"></i></span>
-                    <input type="text" id="fcmModalSearch" onkeyup="filterFcmModalTable()" placeholder="Search by name, email, or user ID (e.g. stu_...)" class="form-control spx-input bg-dark text-white border-secondary">
+                    <span class="input-group-text bg-light border-secondary-subtle text-muted"><i class="fas fa-search"></i></span>
+                    <input type="text" id="fcmModalSearch" onkeyup="filterFcmModalTable()" placeholder="Search by name, email, or user ID (e.g. stu_...)" class="form-control spx-input bg-white text-dark border-secondary-subtle">
                   </div>
                 </div>
                 <div class="col-md-5 text-md-end">
                   <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-info text-white active" onclick="filterFcmRole('all', this)">All</button>
-                    <button type="button" class="btn btn-outline-info" onclick="filterFcmRole('student', this)">Students</button>
-                    <button type="button" class="btn btn-outline-info" onclick="filterFcmRole('teacher', this)">Teachers</button>
-                    <button type="button" class="btn btn-outline-info" onclick="filterFcmRole('parent', this)">Parents</button>
+                    <button type="button" class="btn btn-teal text-white active" style="background: #0d7a6d; color: #ffffff;" onclick="filterFcmRole('all', this)">All</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="filterFcmRole('student', this)">Students</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="filterFcmRole('teacher', this)">Teachers</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="filterFcmRole('parent', this)">Parents</button>
                   </div>
                 </div>
               </div>
 
               <div class="table-responsive" style="max-height: 480px;">
-                <table class="table table-dark table-hover align-middle mb-0" style="--bs-table-bg: transparent;">
-                  <thead style="background: #1e293b; position: sticky; top: 0; z-index: 10;">
-                    <tr style="border-bottom: 2px solid rgba(51, 65, 85, 0.8);">
-                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">User ID</th>
-                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Name / Email</th>
-                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Role</th>
-                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">FCM Status</th>
-                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Device Token</th>
-                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; text-align: right;">Action</th>
+                <table class="table table-hover align-middle mb-0" style="--bs-table-bg: transparent; color: #1e293b;">
+                  <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #cbd5e1;">
+                    <tr>
+                      <th style="color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">User ID</th>
+                      <th style="color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Name / Email</th>
+                      <th style="color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Role</th>
+                      <th style="color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">FCM Status</th>
+                      <th style="color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Device Token</th>
+                      <th style="color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-align: right;">Action</th>
                     </tr>
                   </thead>
                   <tbody>${tableRows.length > 0 ? tableRows : '<tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>'}</tbody>
