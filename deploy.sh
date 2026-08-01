@@ -7,7 +7,7 @@ echo "===================================="
 
 echo "📥 Resetting local modifications on server..."
 git reset --hard HEAD
-git clean -fd -e .env -e public/uploads -e uploads
+git clean -fd -e .env -e firebase-service-account.json -e public/uploads -e uploads
 
 echo "⬇️ Pulling latest code from GitHub..."
 git fetch origin main
