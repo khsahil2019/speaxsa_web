@@ -819,16 +819,29 @@ router.post('/upload-avatar', authenticateToken, avatarUpload.single('avatar'), 
 
 // ── POST /api/auth/fcm-token ──────────────────────────────────
 router.post('/fcm-token', authenticateToken, async (req, res) => {
-  const { token, device_type = 'web' } = req.body;
+  const { token, device_type = 'mobile' } = req.body;
   try {
     if (!token) return res.status(400).json({ error: 'token is required' });
-    await db.query(`
-      INSERT INTO fcm_tokens (user_id, token, device_type, updated_at)
-      VALUES ($1, $2, $3, NOW())
-      ON CONFLICT (user_id, token) DO UPDATE SET updated_at = NOW()
-    `, [req.user.id, token, device_type]);
-    res.json({ message: 'FCM token registered' });
+    
+    try {
+      await db.query(`
+        INSERT INTO fcm_tokens (user_id, token, device_type, updated_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (user_id, token) DO UPDATE SET device_type = $3, updated_at = NOW()
+      `, [req.user.id, token, device_type]);
+    } catch (dbErr) {
+      console.warn('[FCM Token] ON CONFLICT fallback triggered:', dbErr.message);
+      await db.query('DELETE FROM fcm_tokens WHERE user_id = $1 AND token = $2', [req.user.id, token]);
+      await db.query(`
+        INSERT INTO fcm_tokens (user_id, token, device_type, updated_at)
+        VALUES ($1, $2, $3, NOW())
+      `, [req.user.id, token, device_type]);
+    }
+
+    console.log(`[FCM Token] Registered token for user ${req.user.id} (${device_type})`);
+    res.json({ message: 'FCM token registered successfully' });
   } catch (err) {
+    console.error('[FCM Token] Registration error:', err);
     res.status(500).json({ error: err.message });
   }
 });
