@@ -1,7 +1,11 @@
 # ProGuard / R8 Rules for Speaxa Teacher App
 -keep class com.speaxa.teacher.** { *; }
 
-# Flutter Wrapper
+# Ignore warnings for Flutter Play Store Deferred Components (SplitInstall)
+-dontwarn com.google.android.play.core.**
+-dontwarn io.flutter.embedding.engine.deferredcomponents.**
+
+# Flutter Engine & Wrapper
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
 -keep class io.flutter.util.** { *; }
