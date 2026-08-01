@@ -1,4 +1,4 @@
-name: speaxsa_parent
+name: speaxa_parent
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -47,6 +47,10 @@ dependencies:
   url_launcher: ^6.3.2
   shimmer: ^3.0.0
   fl_chart: ^1.2.0
+  firebase_core: ^3.12.0
+  firebase_messaging: ^15.2.4
+  firebase_analytics: ^11.4.3
+  firebase_crashlytics: ^4.3.4
 
 dev_dependencies:
   flutter_test:

@@ -1,7 +1,4 @@
-/**
- * Firebase Cloud Messaging (FCM) Service
- * Sends push notifications to users via Firebase Admin SDK
- */
+require('dotenv').config();
 let admin = null;
 
 function initFirebase() {
@@ -14,16 +11,30 @@ function initFirebase() {
     }
 
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'speaxa-teacher';
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : null;
+
     if (serviceAccountPath) {
-      const serviceAccount = require(serviceAccountPath);
+      const path = require('path');
+      const resolvedPath = path.isAbsolute(serviceAccountPath) 
+        ? serviceAccountPath 
+        : path.resolve(process.cwd(), serviceAccountPath);
+      const serviceAccount = require(resolvedPath);
       firebaseAdmin.initializeApp({
         credential: firebaseAdmin.credential.cert(serviceAccount),
       });
-    } else {
-      // Try default credentials (Cloud environment)
+    } else if (clientEmail && privateKey) {
       firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.applicationDefault(),
+        credential: firebaseAdmin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
       });
+    } else {
+      console.warn('[FCM] No Firebase Service Account configured. To send live FCM push notifications, download service account JSON from Firebase Console > Project Settings > Service Accounts and set FIREBASE_SERVICE_ACCOUNT_PATH in .env');
+      return null;
     }
     admin = firebaseAdmin;
     return admin;
@@ -121,4 +132,9 @@ async function sendToRole(role, title, body, data = {}) {
   }
 }
 
-module.exports = { sendToToken, sendToMultipleTokens, sendToRole };
+module.exports = { 
+  sendToToken, 
+  sendPushNotification: sendToToken,
+  sendToMultipleTokens, 
+  sendToRole 
+};

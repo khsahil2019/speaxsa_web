@@ -1,16 +1,54 @@
-# Environment variables
+# ==========================
+# Environment Variables
+# ==========================
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 
+# ==========================
+# Firebase / Google Credentials
+# ==========================
+firebase-service-account.json
+**/firebase-service-account.json
+google-services.json
+GoogleService-Info.plist
+*.p12
+*.pem
+*.key
+
+# ==========================
 # Dependencies
+# ==========================
 node_modules/
 
+# ==========================
+# Build Files
+# ==========================
+build/
+dist/
+coverage/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+ios/Pods/
+android/.gradle/
+android/app/build/
+
+# ==========================
 # Logs
+# ==========================
 *.log
 logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Uploads & Temp storage
+# ==========================
+# Uploads & Temp Storage
+# ==========================
 uploads/*
 !public/uploads/
 !public/uploads/profiles/
@@ -19,7 +57,21 @@ uploads/*
 scratch/
 .tempmediaStorage/
 
-# OS / Editor files
-.DS_Store
+# ==========================
+# IDE / Editor
+# ==========================
 .vscode/
 .idea/
+
+# ==========================
+# OS Files
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# Miscellaneous
+# ==========================
+*.tmp
+*.bak
+*.swp

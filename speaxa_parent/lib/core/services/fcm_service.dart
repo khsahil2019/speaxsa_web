@@ -13,7 +13,7 @@ import 'auth_service.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print("[FCM Background] Message received: ${message.messageId}");
+  debugPrint("[FCM Parent Background] Message received: ${message.messageId}");
 }
 
 class FcmService extends GetxService {
@@ -25,7 +25,6 @@ class FcmService extends GetxService {
     try {
       await Firebase.initializeApp();
 
-      // Register background handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
       // 1. Initialize Analytics
@@ -41,13 +40,7 @@ class FcmService extends GetxService {
 
       // 3. Initialize Cloud Messaging (FCM)
       final messaging = FirebaseMessaging.instance;
-      
-      // Set foreground notification options for iOS / Android
-      await messaging.setForegroundNotificationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await messaging.setForegroundNotificationOptions(alert: true, badge: true, sound: true);
 
       NotificationSettings settings = await messaging.requestPermission(
         alert: true,
@@ -56,11 +49,11 @@ class FcmService extends GetxService {
         provisional: false,
       );
 
-      print('[FCM] Permission status: ${settings.authorizationStatus}');
+      debugPrint('[FCM Parent] Permission status: ${settings.authorizationStatus}');
 
       final token = await messaging.getToken();
       if (token != null) {
-        print('[FCM] Device Token: $token');
+        debugPrint('[FCM Parent] Device Token: $token');
         registerFcmToken(token);
       }
 
@@ -68,10 +61,9 @@ class FcmService extends GetxService {
         registerFcmToken(newToken);
       });
 
-      // 4. Foreground Message Listener (In-App Push Banner)
+      // 4. Foreground Banner Listener
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print('[FCM Foreground] Received: ${message.notification?.title}');
-        final title = message.notification?.title ?? 'Speaxa Alert';
+        final title = message.notification?.title ?? 'Speaxa Notification';
         final body = message.notification?.body ?? '';
 
         Get.snackbar(
@@ -87,13 +79,13 @@ class FcmService extends GetxService {
         );
       });
 
-      // 5. App Opened from Notification Tap
+      // 5. Notification Tap Listener
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        print('[FCM Tap] App opened from notification: ${message.data}');
+        debugPrint('[FCM Parent Tap] Notification clicked: ${message.data}');
       });
 
     } catch (e) {
-      print('[Firebase] Initialization notice: $e');
+      debugPrint('[FCM Parent] Initialization notice: $e');
     }
     return this;
   }
@@ -106,9 +98,9 @@ class FcmService extends GetxService {
         'token': token,
         'device_type': deviceType,
       });
-      print('[FCM] Token registered successfully: $token');
+      debugPrint('[FCM Parent] Token registered successfully: $token');
     } catch (e) {
-      print('[FCM] Token registration failed: $e');
+      debugPrint('[FCM Parent] Token registration failed: $e');
     }
   }
 }

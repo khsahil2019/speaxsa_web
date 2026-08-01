@@ -1941,12 +1941,12 @@ router.post('/notifications', async (req, res) => {
     `, [id, title, message, target_role || 'all', target_user || null, type, req.user.id]);
 
     // Send FCM push notification
-    const FCMService = require('../services/FCMService');
+    const fcmService = require('../services/fcmService');
     if (target_user) {
       const tokenRes = await db.query('SELECT token FROM fcm_tokens WHERE user_id = $1', [target_user]);
-      for (const t of tokenRes.rows) await FCMService.sendToToken(t.token, title, message);
+      for (const t of tokenRes.rows) await fcmService.sendToToken(t.token, title, message);
     } else {
-      await FCMService.sendToRole(target_role || 'all', title, message, { type });
+      await fcmService.sendToRole(target_role || 'all', title, message, { type });
     }
 
     res.status(201).json({ message: 'Notification sent', id });

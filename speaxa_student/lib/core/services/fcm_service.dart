@@ -2,14 +2,17 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../network/api_client.dart';
 import '../constants/api_endpoints.dart';
 import 'auth_service.dart';
 
 // Background messaging handler (must be a top-level function)
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Process background message
+  await Firebase.initializeApp();
   debugPrint('[FCM] Handling background message: ${message.messageId}');
 }
 
@@ -17,33 +20,42 @@ class FcmService extends GetxService {
   static FcmService get to => Get.find<FcmService>();
 
   FirebaseMessaging? _messaging;
+  FirebaseAnalytics? analytics;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   
   bool _firebaseInitialized = false;
 
   Future<FcmService> init() async {
     try {
-      // 1. Initialize Firebase Core
-      // Wrapped in try/catch in case Google Services config files (google-services.json / plist)
-      // are not downloaded or initialized yet.
       await Firebase.initializeApp();
       _messaging = FirebaseMessaging.instance;
       _firebaseInitialized = true;
       debugPrint('[FCM] Firebase initialized successfully.');
 
-      // 2. Setup Background Handler
+      // 1. Initialize Analytics
+      analytics = FirebaseAnalytics.instance;
+      await analytics?.logAppOpen();
+
+      // 2. Initialize Crashlytics
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+
+      // 3. Setup Background Handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
       
-      // 3. Request permissions (iOS/Android 13+)
+      // 4. Request permissions (iOS/Android 13+)
       await _requestPermissions();
 
-      // 4. Register listeners
+      // 5. Register listeners
       _setupForegroundListeners();
     } catch (e) {
-      debugPrint('[FCM] Firebase Core could not be initialized (Configuration files may be missing). Fallback to Local Notifications only: $e');
+      debugPrint('[FCM] Firebase Core notice: $e');
     }
 
-    // 5. Initialize Local Notifications (always runs so local notifications work)
+    // Initialize Local Notifications
     await _initLocalNotifications();
 
     return this;
