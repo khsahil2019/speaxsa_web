@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
   // Production vs Staging Environment Toggle
-  // Set isProduction = true when publishing live to Play Store!
-  static const bool isProduction = false;
+  // Automatically uses Production URLs in release builds or when IS_PRODUCTION=true is set!
+  static const bool isProduction = bool.fromEnvironment('IS_PRODUCTION', defaultValue: kReleaseMode);
 
   static const String stagingBaseUrl = 'https://staging.speaxa.in/api';
   static const String productionBaseUrl = 'https://speaxa.in/api';
