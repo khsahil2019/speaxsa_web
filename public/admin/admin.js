@@ -3640,6 +3640,25 @@ function filterAdminNotifTab(tab) {
   renderNotifications();
 }
 
+async function updateAdminNotifBadge() {
+  try {
+    const res = await apiGet('/admin/notifications').catch(() => ({ notifications: [] }));
+    const notifs = Array.isArray(res) ? res : (res.notifications || []);
+    const unreadCount = notifs.filter(n => !n.is_read).length || notifs.length;
+    const badgeEl = document.getElementById('adminNotifBadge');
+    if (badgeEl) {
+      if (unreadCount > 0) {
+        badgeEl.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        badgeEl.style.display = 'inline-block';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+  } catch (e) {
+    console.warn('[Admin Notif Badge] Failed to fetch badge count:', e.message);
+  }
+}
+
 async function renderNotifications() {
   loading();
   try {
@@ -3649,6 +3668,7 @@ async function renderNotifications() {
     ]);
 
     const notifs = Array.isArray(res) ? res : (res.notifications || []);
+    updateAdminNotifBadge();
     let filteredNotifs = notifs;
     if (adminNotifFilter === 'unread') filteredNotifs = notifs.filter(n => !n.is_read);
     else if (adminNotifFilter === 'read') filteredNotifs = notifs.filter(n => n.is_read);

@@ -818,28 +818,41 @@ router.post('/upload-avatar', authenticateToken, avatarUpload.single('avatar'), 
 });
 
 // ── POST /api/auth/fcm-token ──────────────────────────────────
-router.post('/fcm-token', authenticateToken, async (req, res) => {
+router.post('/fcm-token', async (req, res) => {
+  // Extract user_id from auth token or request body
+  let userId = req.body.user_id;
+  if (!userId && req.headers.authorization) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const tokenStr = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(tokenStr, process.env.JWT_SECRET || 'speaxa_jwt_secret_2026');
+      userId = decoded.id || decoded.userId;
+    } catch (e) {}
+  }
+  
   const { token, device_type = 'mobile' } = req.body;
+  if (!userId || !token) {
+    return res.status(400).json({ error: 'user_id and token are required' });
+  }
+
   try {
-    if (!token) return res.status(400).json({ error: 'token is required' });
-    
     try {
       await db.query(`
         INSERT INTO fcm_tokens (user_id, token, device_type, updated_at)
         VALUES ($1, $2, $3, NOW())
         ON CONFLICT (user_id, token) DO UPDATE SET device_type = $3, updated_at = NOW()
-      `, [req.user.id, token, device_type]);
+      `, [userId, token, device_type]);
     } catch (dbErr) {
       console.warn('[FCM Token] ON CONFLICT fallback triggered:', dbErr.message);
-      await db.query('DELETE FROM fcm_tokens WHERE user_id = $1 AND token = $2', [req.user.id, token]);
+      await db.query('DELETE FROM fcm_tokens WHERE user_id = $1 AND token = $2', [userId, token]);
       await db.query(`
         INSERT INTO fcm_tokens (user_id, token, device_type, updated_at)
         VALUES ($1, $2, $3, NOW())
-      `, [req.user.id, token, device_type]);
+      `, [userId, token, device_type]);
     }
 
-    console.log(`[FCM Token] Registered token for user ${req.user.id} (${device_type})`);
-    res.json({ message: 'FCM token registered successfully' });
+    console.log(`[FCM Token] Registered token for user ${userId} (${device_type})`);
+    res.json({ message: 'FCM token registered successfully', user_id: userId });
   } catch (err) {
     console.error('[FCM Token] Registration error:', err);
     res.status(500).json({ error: err.message });

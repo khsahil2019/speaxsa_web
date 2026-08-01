@@ -120,12 +120,14 @@ class FcmService extends GetxService {
       return;
     }
     try {
+      final currentUserId = AuthService.to.currentUser.value?.id;
       final apiClient = Get.find<ApiClient>();
       await apiClient.post(ApiEndpoints.fcmToken, data: {
         'token': token,
+        'user_id': currentUserId,
         'device_type': deviceType,
       });
-      print('[FCM] Token registered successfully: $token');
+      print('[FCM] Token registered successfully: $token for user: $currentUserId');
     } catch (e) {
       print('[FCM] Token registration failed: $e');
     }
