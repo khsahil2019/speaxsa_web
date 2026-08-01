@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account Deletion Request - SPEAXA</title>
+  <title>Account Deletion Policy & Request - SPEAXA</title>
   <meta name="description" content="Request permanent deletion of your SPEAXA account and associated personal data.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,7 +12,7 @@
   <style>
     :root {
       --bg-dark: #0f172a;
-      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-bg: rgba(30, 41, 59, 0.75);
       --card-border: rgba(255, 255, 255, 0.1);
       --primary: #0db7af;
       --primary-hover: #099b94;
@@ -33,7 +33,7 @@
       background-color: var(--bg-dark);
       background-image: 
         radial-gradient(at 0% 0%, rgba(13, 183, 175, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.1) 0px, transparent 50%);
+        radial-gradient(at 100% 100%, rgba(239, 68, 68, 0.12) 0px, transparent 50%);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
@@ -65,7 +65,7 @@
     }
 
     .container {
-      max-width: 800px;
+      max-width: 840px;
       margin: 40px auto;
       padding: 0 20px;
       width: 100%;
@@ -92,15 +92,57 @@
       color: var(--text-muted);
       font-size: 15px;
       line-height: 1.6;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
+    }
+
+    .steps-box {
+      background: rgba(13, 183, 175, 0.08);
+      border: 1px solid rgba(13, 183, 175, 0.25);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+
+    .steps-box h3 {
+      font-size: 17px;
+      color: var(--primary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .steps-box p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      margin-bottom: 12px;
+    }
+
+    .app-steps {
+      background: rgba(15, 23, 42, 0.6);
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .app-steps i {
+      color: #94a3b8;
+      font-size: 12px;
     }
 
     .warning-box {
       background: rgba(239, 68, 68, 0.1);
       border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 20px;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
       display: flex;
       gap: 16px;
     }
@@ -135,7 +177,7 @@
 
     .info-list {
       list-style: none;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
     }
 
     .info-list li {
@@ -151,6 +193,29 @@
     .info-list li i {
       color: var(--primary);
       margin-top: 3px;
+    }
+
+    .time-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 32px;
+    }
+
+    .time-box h4 {
+      font-size: 15px;
+      color: #ffffff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .time-box p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
     }
 
     .form-group {
@@ -250,32 +315,65 @@
 
   <div class="container">
     <div class="card">
-      <h1>Account & Data Deletion Request</h1>
+      <h1>SPEAXA Account & Data Deletion Policy</h1>
       <p class="subtitle">
-        We respect your privacy rights. Use this form to request permanent deletion of your SPEAXA account (Teacher, Student, or Parent) and associated personal data.
+        In accordance with Google Play Store & Apple App Store developer requirements and our Privacy Policy, users have full control to permanently delete their SPEAXA account (Teacher, Student, or Parent) and all associated data.
       </p>
 
+      <!-- How to delete account -->
+      <div class="steps-box">
+        <h3><i class="fa-solid fa-mobile-screen-button"></i> How to Delete Your Account</h3>
+        <p>
+          Users can permanently delete their SPEAXA account directly from within the mobile application under <strong>Settings / Profile → Delete Account</strong>, or by submitting a deletion request using the online form below.
+        </p>
+        <div class="app-steps">
+          <span>In-App Path: Profile</span>
+          <i class="fa-solid fa-chevron-right"></i>
+          <span>Settings</span>
+          <i class="fa-solid fa-chevron-right"></i>
+          <span>Delete Account</span>
+          <i class="fa-solid fa-chevron-right"></i>
+          <span>Confirm & Delete</span>
+        </div>
+      </div>
+
+      <!-- Warning Box -->
       <div class="warning-box">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <div>
-          <h4>Important Notice & Data Retention</h4>
+          <h4>Permanent Deletion Notice</h4>
           <p>
-            Deleting your account is permanent and cannot be undone. All active enrollments, course progress, certificates, wallet history, attendance records, and messages will be permanently removed.
+            Account deletion is irreversible. Once processed, your profile, authentication credentials, course access, wallet balances, progress reports, certificates, and messages will be permanently purged from our servers.
           </p>
         </div>
       </div>
 
+      <!-- What data will be deleted -->
       <div class="section-title">
         <i class="fa-solid fa-database" style="color: var(--primary);"></i>
         What data will be deleted?
       </div>
       <ul class="info-list">
-        <li><i class="fa-solid fa-check"></i> Account Profile Details (Name, Email, Mobile Number, Photo, Credentials)</li>
-        <li><i class="fa-solid fa-check"></i> Course Enrollments, Attendance Records & Progress Reports</li>
-        <li><i class="fa-solid fa-check"></i> Submitted Assignments, Observations, & Classroom Chat Messages</li>
-        <li><i class="fa-solid fa-check"></i> Wallet Records, Rewards, SOP Submissions, & FCM Push Tokens</li>
+        <li><i class="fa-solid fa-check"></i> <strong>Account Details:</strong> Full Name, Email Address, Mobile Number, Profile Picture, and Password Hash.</li>
+        <li><i class="fa-solid fa-check"></i> <strong>Academic Data:</strong> Enrolled Batches, Live Class Attendance, Test & Poll Responses, and Certificates.</li>
+        <li><i class="fa-solid fa-check"></i> <strong>Submissions & Activity:</strong> Homework/Assignment Submissions, Teacher Observations, and Classroom Chat History.</li>
+        <li><i class="fa-solid fa-check"></i> <strong>Financial & Governance:</strong> Wallet Ledger, Payout Requests, Rewards, Teacher SOP Submissions, and Push Notification Tokens.</li>
       </ul>
 
+      <!-- How long deletion takes -->
+      <div class="time-box">
+        <h4><i class="fa-solid fa-clock" style="color: var(--primary);"></i> Deletion Processing Timeframe</h4>
+        <p>
+          <strong>In-App / Password Verified:</strong> Instant permanent deletion upon confirmation.<br>
+          <strong>Web Deletion Request:</strong> Verified and processed by our compliance team within <strong>24 to 48 hours</strong>.
+        </p>
+      </div>
+
+      <!-- Interactive Web Request Form -->
+      <div class="section-title">
+        <i class="fa-solid fa-paper-plane" style="color: var(--primary);"></i>
+        Submit Online Account Deletion Request
+      </div>
       <form id="deletionForm">
         <div class="form-group">
           <label for="identifier">Registered Email Address or Mobile Number *</label>
@@ -286,13 +384,13 @@
           <label for="password">Account Password (Optional - for instant automatic deletion)</label>
           <input type="password" id="password" name="password" placeholder="Enter password to delete immediately without waiting">
           <small style="color: var(--text-muted); font-size: 12px; margin-top: 4px; display: block;">
-            If password is provided and verified, your account will be deleted instantly.
+            Providing your valid password allows the system to verify your identity and delete your account instantly.
           </small>
         </div>
 
         <div class="form-group">
           <label for="reason">Reason for Deletion (Optional)</label>
-          <textarea id="reason" name="reason" rows="3" placeholder="Please let us know why you are leaving..."></textarea>
+          <textarea id="reason" name="reason" rows="3" placeholder="Please let us know why you wish to delete your account..."></textarea>
         </div>
 
         <button type="submit" class="btn-submit" id="submitBtn">
@@ -306,7 +404,9 @@
   </div>
 
   <footer>
-    &copy; 2026 SPEAXA. All rights reserved. | <a href="/policies/privacy-policy.html" style="color: var(--primary); text-decoration: none;">Privacy Policy</a>
+    &copy; 2026 SPEAXA. All rights reserved. | 
+    <a href="/privacy-policy" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> | 
+    <a href="/terms-and-conditions" style="color: var(--primary); text-decoration: none;">Terms & Conditions</a>
   </footer>
 
   <script>
