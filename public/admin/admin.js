@@ -3819,24 +3819,98 @@ async function testFcmPush(e) {
 
 async function showRegisteredTokensModal() {
   try {
-    const tokens = await apiGet('/admin/fcm/tokens');
+    let tokens = [];
+    try {
+      const res = await apiGet('/admin/fcm/tokens');
+      tokens = Array.isArray(res) ? res : [];
+    } catch (e) {
+      console.warn('[FCM Tokens] Backend route /admin/fcm/tokens notice:', e.message);
+    }
+
     if (!tokens || tokens.length === 0) {
-      showToast('No registered FCM tokens found in database yet', 'warning');
+      // Fallback: fetch active users so admin can still easily pick User IDs!
+      const [students, teachers, parents] = await Promise.all([
+        apiGet('/admin/students').catch(() => []),
+        apiGet('/admin/teachers').catch(() => []),
+        apiGet('/admin/parents').catch(() => []),
+      ]);
+
+      const allUsers = [
+        ...(Array.isArray(students) ? students : (students.students || [])).map(u => ({ ...u, role: 'student' })),
+        ...(Array.isArray(teachers) ? teachers : (teachers.teachers || [])).map(u => ({ ...u, role: 'teacher' })),
+        ...(Array.isArray(parents) ? parents : (parents.parents || [])).map(u => ({ ...u, role: 'parent' })),
+      ];
+
+      const fallbackRows = allUsers.slice(0, 50).map(u => `
+        <tr>
+          <td><code class="text-warning">${u.id}</code></td>
+          <td><strong>${u.name || 'N/A'}</strong><br><small class="text-muted">${u.email || ''}</small></td>
+          <td><span class="badge bg-secondary">${u.role}</span></td>
+          <td><span class="badge bg-dark">Awaiting App Login</span></td>
+          <td><small class="text-muted">Token sync will occur when user logs into mobile app</small></td>
+          <td>
+            <button class="btn btn-xs btn-outline-warning" onclick="copyAndUseUserId('${u.id}')">Use User ID</button>
+          </td>
+        </tr>
+      `).join('');
+
+      const modalHtml = `
+        <div class="modal fade" id="fcmTokensModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-white">
+              <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="fas fa-users text-info me-2"></i>Platform Users & FCM Target Inspector</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body p-3">
+                <div class="alert alert-info py-2 px-3 small mb-3">
+                  <i class="fas fa-info-circle me-1"></i> <strong>Live Deployment Note:</strong> Below are active user IDs ready for push target selection. To see live device token hashes, ensure backend updates are deployed to your server (<code>bash deploy.sh</code>).
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-dark table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>User ID</th>
+                        <th>Name / Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>FCM Registration</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>${fallbackRows || '<tr><td colspan="6" class="text-center">No users found.</td></tr>'}</tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      let container = document.getElementById('modalContainer');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'modalContainer';
+        document.body.appendChild(container);
+      }
+      container.innerHTML = modalHtml;
+      const modal = new bootstrap.Modal(document.getElementById('fcmTokensModal'));
+      modal.show();
       return;
     }
 
     const rows = tokens.map(t => `
       <tr>
-        <td><code>${t.user_id}</code></td>
+        <td><code class="text-warning">${t.user_id}</code></td>
         <td><strong>${t.name || 'N/A'}</strong><br><small class="text-muted">${t.email || ''}</small></td>
         <td><span class="badge bg-secondary">${t.role || 'user'}</span></td>
         <td><span class="badge bg-info text-dark">${t.device_type || 'mobile'}</span></td>
         <td>
-          <input type="text" class="form-control form-control-sm spx-input" readonly value="${t.token}" style="max-width: 180px;" onclick="this.select(); navigator.clipboard.writeText('${t.token}'); showToast('Token copied to clipboard!');">
+          <input type="text" class="form-control form-control-sm spx-input" readonly value="${t.token}" style="max-width: 220px;" onclick="this.select(); navigator.clipboard.writeText('${t.token}'); showToast('FCM Token copied to clipboard!');">
         </td>
         <td>${fmtDate(t.updated_at)}</td>
         <td>
-          <button class="btn btn-xs btn-outline-warning" onclick="document.getElementById('testFcmToken').value = '${t.user_id}'; showToast('Loaded User ID into FCM Tester!');">Use ID</button>
+          <button class="btn btn-xs btn-outline-warning me-1" onclick="copyAndUseUserId('${t.user_id}')">Use User ID</button>
+          <button class="btn btn-xs btn-outline-info" onclick="copyAndUseToken('${t.token}')">Use Token</button>
         </td>
       </tr>
     `).join('');
@@ -3849,7 +3923,7 @@ async function showRegisteredTokensModal() {
               <h5 class="modal-title"><i class="fas fa-mobile-alt text-info me-2"></i>Active Registered FCM Device Tokens (${tokens.length})</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-content p-3">
+            <div class="modal-body p-3">
               <div class="table-responsive">
                 <table class="table table-dark table-hover align-middle mb-0">
                   <thead>
@@ -3881,8 +3955,30 @@ async function showRegisteredTokensModal() {
     const modal = new bootstrap.Modal(document.getElementById('fcmTokensModal'));
     modal.show();
   } catch (err) {
-    showToast('Failed to load registered tokens: ' + err.message, 'error');
+    showToast('Failed to load tokens: ' + err.message, 'error');
   }
+}
+
+function copyAndUseUserId(id) {
+  const el = document.getElementById('notifTargetUser') || document.getElementById('testFcmToken');
+  if (el) el.value = id;
+  const modalEl = document.getElementById('fcmTokensModal');
+  if (modalEl) {
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+  }
+  showToast(`Loaded User ID "${id}" into form!`);
+}
+
+function copyAndUseToken(tokenStr) {
+  const el = document.getElementById('testFcmToken');
+  if (el) el.value = tokenStr;
+  const modalEl = document.getElementById('fcmTokensModal');
+  if (modalEl) {
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+  }
+  showToast('Loaded FCM Device Token into Live Tester!');
 }
 
 // ── Settings & OTP System Management ──────────────────────────────
