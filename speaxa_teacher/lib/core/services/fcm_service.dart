@@ -41,13 +41,6 @@ class FcmService extends GetxService {
 
       // 3. Initialize Cloud Messaging (FCM)
       final messaging = FirebaseMessaging.instance;
-      
-      // Set foreground notification options for iOS / Android
-      await messaging.setForegroundNotificationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
 
       NotificationSettings settings = await messaging.requestPermission(
         alert: true,
