@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sendPushNotification } = require('../src/services/fcmService');
+const { sendPushNotification } = require('../src/services/FCMService');
 
 async function main() {
   const fcmToken = process.argv[2];

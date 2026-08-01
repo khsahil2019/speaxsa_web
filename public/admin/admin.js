@@ -3643,49 +3643,124 @@ function filterAdminNotifTab(tab) {
 async function renderNotifications() {
   loading();
   try {
-    const res = await apiGet('/admin/notifications');
-    const notifs = Array.isArray(res) ? res : (res.notifications || []);
-    const unreadCount = Array.isArray(res) ? notifs.filter(n => !n.is_read).length : (res.unread_count || 0);
+    const [res, fcmStats] = await Promise.all([
+      apiGet('/admin/notifications').catch(() => ({ notifications: [] })),
+      apiGet('/admin/fcm/stats').catch(() => ({ total_tokens: 0, by_role: [], by_device: [] })),
+    ]);
 
+    const notifs = Array.isArray(res) ? res : (res.notifications || []);
     let filteredNotifs = notifs;
     if (adminNotifFilter === 'unread') filteredNotifs = notifs.filter(n => !n.is_read);
     else if (adminNotifFilter === 'read') filteredNotifs = notifs.filter(n => n.is_read);
 
+    const roleMap = (fcmStats.by_role || []).reduce((acc, r) => { acc[r.role] = r.count; return acc; }, {});
+    const devMap = (fcmStats.by_device || []).reduce((acc, d) => { acc[d.device_type] = d.count; return acc; }, {});
+
     document.getElementById('pageContent').innerHTML = `
+      <div class="row g-4 mb-4">
+        <div class="col-md-3">
+          <div class="spx-card text-center p-3">
+            <h3 class="text-primary fw-bold mb-1">${fcmStats.total_tokens || 0}</h3>
+            <span class="text-muted small"><i class="fas fa-mobile-alt me-1"></i>Total Registered Devices</span>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="spx-card text-center p-3">
+            <h3 class="text-info fw-bold mb-1">${roleMap.student || 0}</h3>
+            <span class="text-muted small"><i class="fas fa-user-graduate me-1"></i>Student Devices</span>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="spx-card text-center p-3">
+            <h3 class="text-success fw-bold mb-1">${roleMap.teacher || 0}</h3>
+            <span class="text-muted small"><i class="fas fa-chalkboard-teacher me-1"></i>Teacher Devices</span>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="spx-card text-center p-3">
+            <h3 class="text-warning fw-bold mb-1">${roleMap.parent || 0}</h3>
+            <span class="text-muted small"><i class="fas fa-user-friends me-1"></i>Parent Devices</span>
+          </div>
+        </div>
+      </div>
+
       <div class="row g-4">
-        <div class="col-lg-4">
-          <div class="spx-card">
-            <h6 class="mb-3 fw-bold"><i class="fas fa-paper-plane text-primary me-2"></i>Dispatch Platform Broadcast</h6>
+        <div class="col-lg-5">
+          <div class="spx-card mb-4">
+            <h6 class="mb-3 fw-bold"><i class="fas fa-paper-plane text-primary me-2"></i>Dispatch Push Notification</h6>
             <form onsubmit="sendNotif(event)">
-              <div class="mb-3"><label class="spx-label">Title *</label><input class="form-control spx-input" id="notifTitle" required></div>
-              <div class="mb-3"><label class="spx-label">Message *</label><textarea class="form-control spx-input" id="notifMsg" rows="4" required></textarea></div>
               <div class="mb-3">
-                <label class="spx-label">Target</label>
-                <select class="form-select spx-input" id="notifRole">
-                  <option value="all">Everyone</option>
-                  <option value="student">Students</option>
-                  <option value="teacher">Teachers</option>
-                  <option value="parent">Parents</option>
-                </select>
+                <label class="spx-label">Title *</label>
+                <input class="form-control spx-input" id="notifTitle" placeholder="e.g. Class Schedule Updated" required>
               </div>
-              <button type="submit" class="btn btn-spx w-100"><i class="fas fa-paper-plane me-2"></i>Send Notification</button>
+              <div class="mb-3">
+                <label class="spx-label">Message *</label>
+                <textarea class="form-control spx-input" id="notifMsg" rows="3" placeholder="Enter push notification body message..." required></textarea>
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="spx-label">Target Role</label>
+                  <select class="form-select spx-input" id="notifRole" onchange="toggleTargetUser(this.value)">
+                    <option value="all">Everyone (All Devices)</option>
+                    <option value="student">Students Only</option>
+                    <option value="teacher">Teachers Only</option>
+                    <option value="parent">Parents Only</option>
+                    <option value="single_user">Specific User ID</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label class="spx-label">Type / Category</label>
+                  <select class="form-select spx-input" id="notifType">
+                    <option value="info">Information</option>
+                    <option value="announcement">Announcement</option>
+                    <option value="class_alert">Class Alert</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mb-3 d-none" id="targetUserContainer">
+                <label class="spx-label">Target User ID *</label>
+                <input class="form-control spx-input" id="notifTargetUser" placeholder="e.g. usr_12345">
+              </div>
+              <button type="submit" class="btn btn-spx w-100"><i class="fas fa-paper-plane me-2"></i>Dispatch FCM Push</button>
+            </form>
+          </div>
+
+          <div class="spx-card">
+            <h6 class="mb-3 fw-bold"><i class="fas fa-vial text-warning me-2"></i>FCM Live Device Push Tester</h6>
+            <p class="text-muted small">Send instant push message directly to a target FCM Device Token or User ID for debugging.</p>
+            <form onsubmit="testFcmPush(event)">
+              <div class="mb-2">
+                <input class="form-control spx-input form-control-sm" id="testFcmToken" placeholder="Target FCM Token or User ID" required>
+              </div>
+              <div class="mb-2">
+                <input class="form-control spx-input form-control-sm" id="testFcmTitle" value="🎉 Test FCM Push Notification">
+              </div>
+              <div class="mb-3">
+                <input class="form-control spx-input form-control-sm" id="testFcmMsg" value="If you see this, your FCM mobile push configuration is working perfectly!">
+              </div>
+              <button type="submit" class="btn btn-outline-warning btn-sm w-100"><i class="fas fa-bolt me-1"></i>Send Test FCM Push</button>
             </form>
           </div>
         </div>
+
         <div class="col-lg-7">
           <div class="spx-card">
-            <h6 class="mb-4">Recent Notifications</h6>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h6 class="mb-0">Recent Broadcast Notifications</h6>
+              <span class="badge bg-secondary">${notifs.length} Total</span>
+            </div>
             ${table(
-      ['Title', 'Target', 'Type', 'Date'],
-      notifs.slice(0, 20).map(n => `
+              ['Title', 'Target', 'Type', 'Date'],
+              notifs.slice(0, 25).map(n => `
                 <tr>
-                  <td class="fw-semibold text-white">${n.title}</td>
-                  <td>${n.target_role || 'all'}</td>
-                  <td>${n.type || 'info'}</td>
+                  <td class="fw-semibold text-white">${n.title}<br><small class="text-muted">${n.message || ''}</small></td>
+                  <td><span class="badge bg-dark">${n.target_user ? `User: ${n.target_user}` : (n.target_role || 'all')}</span></td>
+                  <td><span class="badge bg-info text-dark">${n.type || 'info'}</span></td>
                   <td>${fmtDate(n.created_at)}</td>
                 </tr>`).join(''),
-      false
-    )}
+              false
+            )}
           </div>
         </div>
       </div>`;
@@ -3694,13 +3769,49 @@ async function renderNotifications() {
   }
 }
 
+function toggleTargetUser(val) {
+  const container = document.getElementById('targetUserContainer');
+  if (val === 'single_user') {
+    container.classList.remove('d-none');
+  } else {
+    container.classList.add('d-none');
+  }
+}
+
 async function sendNotif(e) {
   e.preventDefault();
   try {
-    const d = await apiPost('/admin/notifications', { title: document.getElementById('notifTitle').value, message: document.getElementById('notifMsg').value, target_role: document.getElementById('notifRole').value });
-    showToast(d.message || 'Notification sent'); document.getElementById('notifTitle').value = ''; document.getElementById('notifMsg').value = '';
+    const roleVal = document.getElementById('notifRole').value;
+    const targetUser = roleVal === 'single_user' ? document.getElementById('notifTargetUser').value.trim() : null;
+    const payload = {
+      title: document.getElementById('notifTitle').value,
+      message: document.getElementById('notifMsg').value,
+      target_role: roleVal === 'single_user' ? 'all' : roleVal,
+      target_user: targetUser,
+      type: document.getElementById('notifType').value,
+    };
+    const d = await apiPost('/admin/notifications', payload);
+    showToast(d.message || 'Notification sent');
+    document.getElementById('notifTitle').value = '';
+    document.getElementById('notifMsg').value = '';
     renderNotifications();
   } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function testFcmPush(e) {
+  e.preventDefault();
+  const inputVal = document.getElementById('testFcmToken').value.trim();
+  const title = document.getElementById('testFcmTitle').value.trim();
+  const message = document.getElementById('testFcmMsg').value.trim();
+  if (!inputVal) return;
+
+  const payload = inputVal.length > 50 ? { token: inputVal, title, message } : { user_id: inputVal, title, message };
+  try {
+    const res = await apiPost('/admin/fcm/test', payload);
+    showToast(res.message || 'FCM push dispatched successfully!');
+  } catch (err) {
+    showToast(err.message || 'FCM test failed', 'error');
+  }
 }
 
 // ── Settings & OTP System Management ──────────────────────────────

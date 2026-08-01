@@ -20,12 +20,21 @@ class FcmService extends GetxService {
   static FcmService get to => Get.find<FcmService>();
 
   FirebaseAnalytics? analytics;
+  String? _cachedToken;
 
   Future<FcmService> init() async {
     try {
       await Firebase.initializeApp();
 
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+      // Reactively sync token as soon as user logs in
+      ever(AuthService.to.isLoggedIn, (bool isLoggedIn) {
+        if (isLoggedIn) {
+          debugPrint('[FCM Parent] User logged in state changed to true -> Syncing FCM token...');
+          syncToken();
+        }
+      });
 
       // 1. Initialize Analytics
       analytics = FirebaseAnalytics.instance;
@@ -52,6 +61,7 @@ class FcmService extends GetxService {
 
       final token = await messaging.getToken();
       if (token != null) {
+        _cachedToken = token;
         debugPrint('[FCM Parent] Device Token: $token');
         registerFcmToken(token);
       }
@@ -89,8 +99,24 @@ class FcmService extends GetxService {
     return this;
   }
 
+  Future<void> syncToken() async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      final tokenToRegister = token ?? _cachedToken;
+      if (tokenToRegister != null) {
+        await registerFcmToken(tokenToRegister);
+      }
+    } catch (e) {
+      debugPrint('[FCM Parent] Error syncing token: $e');
+    }
+  }
+
   Future<void> registerFcmToken(String token, {String deviceType = 'mobile'}) async {
-    if (!AuthService.to.isLoggedIn.value) return;
+    _cachedToken = token;
+    if (!AuthService.to.isLoggedIn.value) {
+      debugPrint('[FCM Parent] User not logged in yet. Token cached for post-login registration.');
+      return;
+    }
     try {
       final apiClient = Get.find<ApiClient>();
       await apiClient.post(ApiEndpoints.fcmToken, data: {

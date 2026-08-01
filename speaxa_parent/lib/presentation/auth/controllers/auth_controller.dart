@@ -5,6 +5,8 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../data/repositories/auth_repository.dart';
 
+import '../../../core/services/fcm_service.dart';
+
 class AuthController extends GetxController {
   final AuthRepository _authRepository = AuthRepository();
 
@@ -76,6 +78,7 @@ class AuthController extends GetxController {
       }
 
       AuthService.to.setUserSession(user, token);
+      FcmService.to.syncToken();
 
       Get.snackbar('Success', 'Welcome back, ${user.name}!', backgroundColor: Colors.green, colorText: Colors.white);
 

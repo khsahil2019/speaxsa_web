@@ -1930,7 +1930,8 @@ router.delete('/notifications/:id', async (req, res) => {
 });
 
 router.post('/notifications', async (req, res) => {
-  const { title, message, target_role, target_user, type = 'info' } = req.body;
+  const { title, message, target_user, type = 'info' } = req.body;
+  const targetRole = req.body.target_role || req.body.target || 'all';
   try {
     if (!title || !message) return res.status(400).json({ error: 'title and message required' });
     const id = `notif_${Date.now()}`;
@@ -1938,18 +1939,75 @@ router.post('/notifications', async (req, res) => {
     await db.query(`
       INSERT INTO notifications (id, title, message, target_role, target_user, type, sent_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7)
-    `, [id, title, message, target_role || 'all', target_user || null, type, req.user.id]);
+    `, [id, title, message, targetRole, target_user || null, type, req.user ? req.user.id : null]);
 
     // Send FCM push notification
-    const fcmService = require('../services/fcmService');
+    const fcmService = require('../services/FCMService');
+    let fcmResult = null;
     if (target_user) {
       const tokenRes = await db.query('SELECT token FROM fcm_tokens WHERE user_id = $1', [target_user]);
-      for (const t of tokenRes.rows) await fcmService.sendToToken(t.token, title, message);
+      const tokens = tokenRes.rows.map(r => r.token);
+      if (tokens.length > 0) {
+        fcmResult = await fcmService.sendToMultipleTokens(tokens, title, message, { type, notification_id: id });
+      } else {
+        fcmResult = { success: true, count: 0, message: 'No registered device tokens for user' };
+      }
     } else {
-      await fcmService.sendToRole(target_role || 'all', title, message, { type });
+      fcmResult = await fcmService.sendToRole(targetRole, title, message, { type, notification_id: id });
     }
 
-    res.status(201).json({ message: 'Notification sent', id });
+    res.status(201).json({ message: 'Notification broadcast processed', id, fcm: fcmResult });
+  } catch (err) {
+    console.error('[Admin Notification] Error dispatching notification:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/admin/fcm/stats ──────────────────────────────────
+router.get('/fcm/stats', async (req, res) => {
+  try {
+    const totalRes = await db.query('SELECT COUNT(*) FROM fcm_tokens');
+    const roleStatsRes = await db.query(`
+      SELECT COALESCE(u.role, 'unassigned') as role, COUNT(ft.id) as count
+      FROM fcm_tokens ft
+      LEFT JOIN users u ON u.id = ft.user_id
+      GROUP BY COALESCE(u.role, 'unassigned')
+    `);
+    const deviceStatsRes = await db.query(`
+      SELECT COALESCE(device_type, 'unknown') as device_type, COUNT(*) as count
+      FROM fcm_tokens
+      GROUP BY COALESCE(device_type, 'unknown')
+    `);
+
+    res.json({
+      total_tokens: parseInt(totalRes.rows[0].count) || 0,
+      by_role: roleStatsRes.rows,
+      by_device: deviceStatsRes.rows,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/admin/fcm/test ──────────────────────────────────
+router.post('/fcm/test', async (req, res) => {
+  const { token, user_id, title = '🧪 FCM Test Push', message = 'Push notification system is working!' } = req.body;
+  const fcmService = require('../services/FCMService');
+  try {
+    if (token) {
+      const result = await fcmService.sendToToken(token, title, message, { type: 'test_push' });
+      return res.json({ message: 'Test notification sent to token', result });
+    } else if (user_id) {
+      const tokenRes = await db.query('SELECT token FROM fcm_tokens WHERE user_id = $1', [user_id]);
+      const tokens = tokenRes.rows.map(r => r.token);
+      if (tokens.length === 0) {
+        return res.status(404).json({ error: 'No FCM tokens found for target user ID' });
+      }
+      const result = await fcmService.sendToMultipleTokens(tokens, title, message, { type: 'test_push' });
+      return res.json({ message: `Test notification sent to ${tokens.length} token(s)`, result });
+    } else {
+      return res.status(400).json({ error: 'Either token or user_id is required for test dispatch' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

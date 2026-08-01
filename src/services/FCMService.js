@@ -45,6 +45,59 @@ function initFirebase() {
 }
 
 /**
+ * Helper to build rich FCM v1 payload for mobile (Android/iOS) and web push.
+ */
+function buildFcmPayload(title, body, data = {}) {
+  const formattedData = Object.fromEntries(
+    Object.entries({
+      ...data,
+      click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      title: String(title || ''),
+      body: String(body || ''),
+    }).map(([k, v]) => [k, String(v != null ? v : '')])
+  );
+
+  return {
+    notification: { title, body },
+    data: formattedData,
+    android: {
+      priority: 'high',
+      notification: {
+        title,
+        body,
+        channelId: 'high_importance_channel',
+        sound: 'default',
+        priority: 'high',
+        defaultSound: true,
+        defaultVibrateTimings: true,
+        visibility: 'public',
+      },
+    },
+    apns: {
+      headers: {
+        'apns-priority': '10',
+      },
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: 'default',
+          badge: 1,
+          contentAvailable: true,
+        },
+      },
+    },
+    webpush: {
+      notification: {
+        title,
+        body,
+        icon: '/admin/logo.png',
+        badge: '/admin/logo.png',
+      },
+    },
+  };
+}
+
+/**
  * Send a push notification to a specific FCM token.
  */
 async function sendToToken(token, title, body, data = {}) {
@@ -55,13 +108,10 @@ async function sendToToken(token, title, body, data = {}) {
   }
 
   try {
+    const payload = buildFcmPayload(title, body, data);
     const message = {
       token,
-      notification: { title, body },
-      data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
-      webpush: {
-        notification: { icon: '/admin/logo.png', badge: '/admin/logo.png' },
-      },
+      ...payload,
     };
 
     const response = await firebase.messaging().send(message);
@@ -85,14 +135,11 @@ async function sendToMultipleTokens(tokens, title, body, data = {}) {
   }
 
   try {
-    const message = {
-      notification: { title, body },
-      data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])),
-    };
+    const payload = buildFcmPayload(title, body, data);
 
     const response = await firebase.messaging().sendEachForMulticast({
       tokens,
-      ...message,
+      ...payload,
     });
 
     return {

@@ -118,15 +118,24 @@ class FcmService extends GetxService {
     }
   }
 
+  String? _cachedToken;
+
   void _setupForegroundListeners() {
     if (!_firebaseInitialized || _messaging == null) return;
+
+    // Reactively register token as soon as user logs in
+    ever(AuthService.to.isLoggedIn, (bool isLoggedIn) {
+      if (isLoggedIn) {
+        debugPrint('[FCM] User logged in state changed to true -> Syncing FCM token...');
+        syncToken();
+      }
+    });
 
     // Listen when a message arrives while app is in foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('[FCM] Foreground message: ${message.notification?.title}');
       
       final notification = message.notification;
-      final android = message.notification?.android;
 
       if (notification != null) {
         showLocalNotification(
@@ -165,15 +174,29 @@ class FcmService extends GetxService {
   Future<String?> getToken() async {
     if (!_firebaseInitialized || _messaging == null) return null;
     try {
-      return await _messaging!.getToken();
+      final token = await _messaging!.getToken();
+      if (token != null) _cachedToken = token;
+      return token;
     } catch (e) {
       debugPrint('[FCM] Error fetching token: $e');
       return null;
     }
   }
 
+  Future<void> syncToken() async {
+    final token = await getToken();
+    final tokenToRegister = token ?? _cachedToken;
+    if (tokenToRegister != null) {
+      await registerFcmToken(tokenToRegister);
+    }
+  }
+
   Future<void> registerFcmToken(String token, {String deviceType = 'mobile'}) async {
-    if (!AuthService.to.isLoggedIn.value) return;
+    _cachedToken = token;
+    if (!AuthService.to.isLoggedIn.value) {
+      debugPrint('[FCM] User not logged in yet. Token cached for post-login registration.');
+      return;
+    }
     try {
       final apiClient = Get.find<ApiClient>();
       await apiClient.post(ApiEndpoints.fcmToken, data: {

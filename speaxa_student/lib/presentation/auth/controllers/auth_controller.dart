@@ -199,6 +199,7 @@ class AuthController extends GetxController {
       }
 
       AuthService.to.setUserSession(user, token);
+      FcmService.to.syncToken();
 
       Get.snackbar('Success', 'Welcome back, ${user.name}!', backgroundColor: Colors.green, colorText: Colors.white);
 
