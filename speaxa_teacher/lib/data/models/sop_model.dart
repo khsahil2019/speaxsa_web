@@ -9,8 +9,11 @@ class SopModel {
   final String status; // pending, sop_pending, approved, rejected, suspended
   final bool agreementSigned;
   final String? digitalSignature;
+  final String? signatureImage;
   final String? availability;
   final String? adminNotes;
+  final String? submittedAt;
+  final dynamic teacherChecklist;
 
   SopModel({
     required this.id,
@@ -23,8 +26,11 @@ class SopModel {
     this.status = 'pending',
     this.agreementSigned = false,
     this.digitalSignature,
+    this.signatureImage,
     this.availability,
     this.adminNotes,
+    this.submittedAt,
+    this.teacherChecklist,
   });
 
   factory SopModel.fromJson(Map<String, dynamic> json) {
@@ -39,8 +45,11 @@ class SopModel {
       status: json['status']?.toString() ?? 'pending',
       agreementSigned: json['agreement_signed'] == true,
       digitalSignature: json['digital_signature']?.toString(),
+      signatureImage: json['signature_image']?.toString(),
       availability: json['availability']?.toString(),
       adminNotes: json['admin_notes']?.toString(),
+      submittedAt: json['submitted_at']?.toString(),
+      teacherChecklist: json['teacher_checklist'],
     );
   }
 }

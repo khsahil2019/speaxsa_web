@@ -29,13 +29,13 @@ class OtpVerificationView extends GetView<AuthController> {
 
             if (purpose == 'register') ...[
               if (args['otp_email'] != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    "Dev OTP -> Email: ${args['otp_email'] ?? ''}",
-                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                ),
+                // Padding(
+                //   padding: const EdgeInsets.only(bottom: 16),
+                //   child: Text(
+                //     "Dev OTP -> Email: ${args['otp_email'] ?? ''}",
+                //     style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                //   ),
+                // ),
               CustomTextField(
                 label: 'Email OTP Code',
                 hint: '123456',

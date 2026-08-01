@@ -29,16 +29,16 @@ class OtpVerificationView extends GetView<AuthController> {
 
             if (purpose == 'register') ...[
               if (args['otp_val'] != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.blue.shade200)),
-                  child: Text(
-                    "Dev OTP: ${args['otp_val']}",
-                    style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
+                // Container(
+                //   width: double.infinity,
+                //   padding: const EdgeInsets.all(12),
+                //   margin: const EdgeInsets.only(bottom: 16),
+                //   decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.blue.shade200)),
+                //   child: Text(
+                //     "Dev OTP: ${args['otp_val']}",
+                //     style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 14),
+                //   ),
+                // ),
               CustomTextField(
                 label: 'Enter 6-Digit OTP Code',
                 hint: '123456',

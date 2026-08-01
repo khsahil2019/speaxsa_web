@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import '../network/api_client.dart';
 import '../network/socket_service.dart';
 import '../services/storage_service.dart';
 import '../../data/models/user_model.dart';
@@ -21,8 +22,27 @@ class AuthService extends GetxService {
       currentUser.value = user;
       isLoggedIn.value = true;
       SocketService.to.connectSocket();
+      fetchLatestUserProfile();
     }
     return this;
+  }
+
+  Future<void> fetchLatestUserProfile() async {
+    try {
+      final token = await StorageService.to.getToken();
+      if (token == null || token.isEmpty) return;
+      final apiClient = Get.find<ApiClient>();
+      final response = await apiClient.get('/auth/profile');
+      if (response != null) {
+        final userJson = (response is Map<String, dynamic> && response.containsKey('user'))
+            ? response['user']
+            : response;
+        final updatedUser = UserModel.fromJson(Map<String, dynamic>.from(userJson));
+        updateUserProfile(updatedUser);
+      }
+    } catch (e) {
+      print("[AuthService] Error refreshing user profile: $e");
+    }
   }
 
   void setUserSession(UserModel user, String token) async {

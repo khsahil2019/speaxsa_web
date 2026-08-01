@@ -36,7 +36,21 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
 
+          if (controller.popNavigationStack()) {
+            return;
+          }
+
           final currentIdx = controller.selectedIndex.value;
+          if (currentIdx == 1) {
+            if (controller.sopCurrentStep.value > 1) {
+              controller.sopCurrentStep.value--;
+              return;
+            } else {
+              controller.selectedIndex.value = 0;
+              return;
+            }
+          }
+
           if (currentIdx != 0) {
             // Return to Home Tab first
             controller.selectedIndex.value = 0;
@@ -66,7 +80,7 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
           drawer: idx == 0 ? _buildDrawer(context, idx) : null,
           drawerEnableOpenDragGesture: idx == 0,
           body: _getBody(idx),
-          bottomNavigationBar: Container(
+          bottomNavigationBar: idx == 1 ? null : Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -236,8 +250,21 @@ class TeacherDashboardView extends GetView<TeacherDashboardController> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 18),
-                  tooltip: "Back to Home Dashboard",
-                  onPressed: () => controller.selectedIndex.value = 0,
+                  tooltip: index == 1 ? "Previous SOP Step" : "Back to Home Dashboard",
+                  onPressed: () {
+                    if (controller.popNavigationStack()) {
+                      return;
+                    }
+                    if (index == 1) {
+                      if (controller.sopCurrentStep.value > 1) {
+                        controller.sopCurrentStep.value--;
+                      } else {
+                        controller.selectedIndex.value = 0;
+                      }
+                    } else {
+                      controller.selectedIndex.value = 0;
+                    }
+                  },
                 ),
               ),
             ),

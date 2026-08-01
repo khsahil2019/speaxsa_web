@@ -156,15 +156,27 @@ class TeacherCertificatesTab extends GetView<TeacherDashboardController> {
                                       const SizedBox(height: 4),
                                       Text(cert.description, style: TextStyle(color: Colors.grey.shade700, fontSize: 11, height: 1.3)),
                                       const SizedBox(height: 8),
-                                      Row(
+                                      Wrap(
+                                        spacing: 12,
+                                        runSpacing: 4,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
                                         children: [
-                                          const Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          Text("Issued: $dateStr", style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                                          const SizedBox(width: 12),
-                                          const Icon(Icons.verified_user_outlined, size: 12, color: Colors.green),
-                                          const SizedBox(width: 4),
-                                          const Text("Verified Credential", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey),
+                                              const SizedBox(width: 4),
+                                              Text("Issued: $dateStr", style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                                            ],
+                                          ),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.verified_user_outlined, size: 12, color: Colors.green),
+                                              const SizedBox(width: 4),
+                                              const Text("Verified Credential", style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     ],

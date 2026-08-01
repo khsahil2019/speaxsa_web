@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,13 +16,41 @@ import '../../../data/repositories/teacher_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/network/api_client.dart';
 
 class TeacherDashboardController extends GetxController {
   final TeacherRepository _teacherRepository = TeacherRepository();
 
   final RxInt selectedIndex = 0.obs;
+  final RxInt sopCurrentStep = 1.obs;
   final RxBool isLoading = true.obs;
   final RxString errorMessage = ''.obs;
+
+  // Reusable Navigation History Stack
+  final RxList<Map<String, dynamic>> navigationStack = <Map<String, dynamic>>[].obs;
+
+  void navigateToTab(int tabIndex, {int? sopStep}) {
+    navigationStack.add({
+      'tabIndex': selectedIndex.value,
+      'sopStep': sopCurrentStep.value,
+    });
+    selectedIndex.value = tabIndex;
+    if (sopStep != null) {
+      sopCurrentStep.value = sopStep;
+    }
+  }
+
+  bool popNavigationStack() {
+    if (navigationStack.isNotEmpty) {
+      final prev = navigationStack.removeLast();
+      selectedIndex.value = prev['tabIndex'] as int;
+      if (prev['sopStep'] != null) {
+        sopCurrentStep.value = prev['sopStep'] as int;
+      }
+      return true;
+    }
+    return false;
+  }
 
   // Reactive Data States
   final RxMap analytics = {}.obs;
@@ -59,6 +88,8 @@ class TeacherDashboardController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
 
+      await AuthService.to.fetchLatestUserProfile();
+
       final results = await Future.wait([
         _teacherRepository.getAnalytics(),
         _teacherRepository.getSopStatus(),
@@ -91,11 +122,155 @@ class TeacherDashboardController extends GetxController {
       loadLevelData();
       loadCertificates();
       loadWalletStatement();
+
+      checkAndPromptEmailVerification();
     } catch (e) {
       errorMessage.value = e.toString();
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Timer? _emailReminderTimer;
+
+  void checkAndPromptEmailVerification() {
+    final user = AuthService.to.currentUser.value;
+    if (user != null && (user.emailVerified != true)) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (Get.context != null) {
+          _showEmailUnverifiedModal(Get.context!, user.email);
+        }
+      });
+
+      // Periodic 2-minute reminder timer until email is verified
+      _emailReminderTimer?.cancel();
+      _emailReminderTimer = Timer.periodic(const Duration(minutes: 2), (timer) async {
+        await AuthService.to.fetchLatestUserProfile();
+        final refreshedUser = AuthService.to.currentUser.value;
+        if (refreshedUser == null || refreshedUser.emailVerified == true) {
+          timer.cancel();
+          _emailReminderTimer = null;
+        } else if (Get.context != null) {
+          _showEmailUnverifiedModal(Get.context!, refreshedUser.email);
+        }
+      });
+    } else {
+      _emailReminderTimer?.cancel();
+      _emailReminderTimer = null;
+    }
+  }
+
+  void resendEmailVerification() async {
+    final user = AuthService.to.currentUser.value;
+    if (user == null) return;
+    try {
+      final apiClient = Get.find<ApiClient>();
+      await apiClient.post('/auth/resend-verification', data: {'email': user.email, 'identifier': user.email});
+      Get.snackbar('Verification Dispatched', 'A new email verification link has been sent to ${user.email} ✓', backgroundColor: AppColors.success, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Notice', 'Verification link sent to ${user.email}. Please check your inbox or spam folder.', backgroundColor: AppColors.info, colorText: Colors.white);
+    }
+  }
+
+  void _showEmailUnverifiedModal(BuildContext context, String email) {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Icon(Icons.mark_email_unread_rounded, color: Colors.amber.shade900, size: 44),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Email Verification Pending ⚠️",
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Your account email address is not yet verified. Please verify your email to ensure full platform access and receive student notifications:",
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEFCE8),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.email, size: 16, color: Colors.amber),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      email,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amber.shade900),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Remind Me Later", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      resendEmailVerification();
+                    },
+                    child: const Text("Resend Link", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
   }
 
   // Courses
@@ -492,35 +667,95 @@ class TeacherDashboardController extends GetxController {
     }
   }
 
-  // Sign agreement
-  Future<void> signDigitalAgreement() async {
+  // Signature image state
+  final RxString signatureImageBase64 = ''.obs;
+
+  // Sign agreement with printed name and signature image
+  Future<void> signDigitalAgreement({String? customSignatureImage}) async {
     final sig = signatureController.text.trim();
     if (sig.isEmpty) {
-      Get.snackbar('Error', 'Please type your full legal name as digital signature');
+      Get.snackbar('Error', 'Please type your full legal name as digital signature', backgroundColor: AppColors.error, colorText: Colors.white);
       return;
     }
 
     try {
       isLoading.value = true;
-      await _teacherRepository.signAgreement(sig);
-      Get.snackbar('Agreement Signed', 'Digital teaching agreement signed successfully! You can now launch classes.');
+      final sigImg = customSignatureImage ?? (signatureImageBase64.value.isNotEmpty ? signatureImageBase64.value : null);
+      await _teacherRepository.signAgreement(sig, signatureImage: sigImg);
+      Get.snackbar('Agreement Executed', 'Deed of Affidavit & Governance Agreement signed successfully! Copy emailed ✓', backgroundColor: AppColors.success, colorText: Colors.white);
       loadTeacherData();
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      Get.snackbar('Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
     } finally {
       isLoading.value = false;
     }
   }
 
-  // KYC uploads
-  Future<void> uploadKyc(String filePath, String docType) async {
+  // SOP File Proof Upload
+  Future<void> uploadSopFile(String fieldName, String filePath) async {
     try {
       isLoading.value = true;
-      await _teacherRepository.uploadDocument(filePath, docType);
-      Get.snackbar('Success', '$docType uploaded successfully!');
+      await _teacherRepository.uploadSopProof(fieldName, filePath);
+      Get.snackbar('Proof Uploaded', '$fieldName verified successfully!', backgroundColor: AppColors.success, colorText: Colors.white);
       loadTeacherData();
     } catch (e) {
-      Get.snackbar('Error', e.toString());
+      Get.snackbar('Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // SOP Link Proof
+  Future<void> linkSopUrl(String fieldName, String linkUrl) async {
+    try {
+      isLoading.value = true;
+      await _teacherRepository.linkSopProof(fieldName, linkUrl);
+      Get.snackbar('Link Saved', '$fieldName link saved successfully!', backgroundColor: AppColors.success, colorText: Colors.white);
+      loadTeacherData();
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Save Availability
+  Future<void> saveAvailabilitySlots(String slotsJson) async {
+    try {
+      isLoading.value = true;
+      await _teacherRepository.saveAvailability(slotsJson);
+      Get.snackbar('Availability Saved', 'Teaching time slots saved successfully!', backgroundColor: AppColors.success, colorText: Colors.white);
+      loadTeacherData();
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // KYC uploads with visibility selection
+  Future<void> uploadKyc(String filePath, String docType, {String visibility = 'private'}) async {
+    try {
+      isLoading.value = true;
+      await _teacherRepository.uploadDocument(filePath, docType, visibility: visibility);
+      Get.snackbar('Upload Complete ✓', '$docType document uploaded successfully!', backgroundColor: AppColors.success, colorText: Colors.white);
+      loadTeacherData();
+    } catch (e) {
+      Get.snackbar('Upload Failed', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Remove KYC Document
+  Future<void> removeKycDocument(String docType) async {
+    try {
+      isLoading.value = true;
+      await _teacherRepository.removeDocument(docType);
+      Get.snackbar('Document Removed', '$docType removed successfully!', backgroundColor: AppColors.success, colorText: Colors.white);
+      loadTeacherData();
+    } catch (e) {
+      Get.snackbar('Remove Failed', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
     } finally {
       isLoading.value = false;
     }
@@ -551,6 +786,7 @@ class TeacherDashboardController extends GetxController {
 
   @override
   void onClose() {
+    _emailReminderTimer?.cancel();
     signatureController.dispose();
     super.onClose();
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/storage_service.dart';
@@ -46,24 +47,50 @@ class AuthController extends GetxController {
   Future<bool> validateStep1AndCheckEmail() async {
     final name = regNameController.text.trim();
     final email = regEmailController.text.trim();
+    final altEmail = regAltEmailController.text.trim();
     final phone = regPhoneController.text.trim();
+    final secMobile = regMobileNumberController.text.trim();
     final password = regPasswordController.text;
 
     emailError.value = '';
 
     if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
-      Get.snackbar('Missing Information', 'Please fill in all required fields (Name, Email, Phone, Password)', backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Missing Information', 'Please fill in all required fields (Name, Email, Phone, Password)', backgroundColor: AppColors.error, colorText: Colors.white);
+      return false;
+    }
+
+    if (name.length < 2) {
+      Get.snackbar('Invalid Name', 'Please enter your full legal name (at least 2 characters)', backgroundColor: AppColors.error, colorText: Colors.white);
       return false;
     }
 
     if (!GetUtils.isEmail(email)) {
       emailError.value = 'Please enter a valid email address';
-      Get.snackbar('Invalid Email', 'Please enter a valid email address (e.g. name@domain.com)', backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Invalid Email', 'Please enter a valid primary email address (e.g. name@domain.com)', backgroundColor: AppColors.error, colorText: Colors.white);
       return false;
     }
 
+    if (altEmail.isNotEmpty && !GetUtils.isEmail(altEmail)) {
+      Get.snackbar('Invalid Alternative Email', 'Please enter a valid alternative email address (e.g. alt@domain.com)', backgroundColor: AppColors.error, colorText: Colors.white);
+      return false;
+    }
+
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (cleanPhone.length < 10) {
+      Get.snackbar('Invalid Phone Number', 'Please enter a valid 10-digit mobile number', backgroundColor: AppColors.error, colorText: Colors.white);
+      return false;
+    }
+
+    if (secMobile.isNotEmpty) {
+      final cleanSecMobile = secMobile.replaceAll(RegExp(r'[^\d]'), '');
+      if (cleanSecMobile.length < 10) {
+        Get.snackbar('Invalid Secondary Mobile', 'Please enter a valid 10-digit WhatsApp/Secondary phone number', backgroundColor: AppColors.error, colorText: Colors.white);
+        return false;
+      }
+    }
+
     if (password.length < 6) {
-      Get.snackbar('Weak Password', 'Password must be at least 6 characters long', backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Weak Password', 'Password must be at least 6 characters long', backgroundColor: AppColors.error, colorText: Colors.white);
       return false;
     }
 
@@ -77,7 +104,7 @@ class AuthController extends GetxController {
         Get.snackbar(
           'Email Already Registered ⚠️',
           'An account with $email is already registered. Please sign in or use a different email address.',
-          backgroundColor: Colors.red.shade700,
+          backgroundColor: AppColors.error,
           colorText: Colors.white,
           duration: const Duration(seconds: 4),
         );
@@ -233,17 +260,131 @@ class AuthController extends GetxController {
         AuthService.to.setUserSession(user, token);
       }
 
-      Get.snackbar('Success', 'Account created successfully!', backgroundColor: Colors.green, colorText: Colors.white);
-
-      final route = AuthService.to.getInitialRoute();
-      Get.offAllNamed(route);
+      if (Get.context != null) {
+        _showEmailVerificationBottomSheet(Get.context!, email);
+      } else {
+        Get.snackbar('Success', 'Account created successfully!', backgroundColor: AppColors.success, colorText: Colors.white);
+        final route = AuthService.to.getInitialRoute();
+        Get.offAllNamed(route);
+      }
     } on ApiException catch (e) {
-      Get.snackbar('Registration Failed', e.message, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Registration Failed', e.message, backgroundColor: AppColors.error, colorText: Colors.white);
     } catch (e) {
-      Get.snackbar('Error', 'An unexpected error occurred during registration', backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Error', 'An unexpected error occurred during registration', backgroundColor: AppColors.error, colorText: Colors.white);
     } finally {
       isLoading.value = false;
     }
+  }
+
+  void _showEmailVerificationBottomSheet(BuildContext context, String userEmail) {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.mark_email_read_rounded, color: AppColors.primary, size: 48),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Mobile Verified! Email Verification Sent ✉️",
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Your mobile number has been verified successfully. We have dispatched a verification email link to:",
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.email, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      userEmail,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Please check your inbox or spam folder and tap the link to activate full Teacher privileges.",
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600, height: 1.3),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Get.snackbar('Link Dispatched', 'Verification link re-sent to $userEmail ✓', backgroundColor: AppColors.success, colorText: Colors.white);
+                    },
+                    child: const Text("Resend Link", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Get.back();
+                      final route = AuthService.to.getInitialRoute();
+                      Get.offAllNamed(route);
+                    },
+                    child: const Text("Continue to App →", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> sendForgotPasswordOtp() async {

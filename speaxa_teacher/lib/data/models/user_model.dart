@@ -4,6 +4,8 @@ class UserModel {
   final String phone;
   final String name;
   final String role; // student, teacher, parent, admin
+  final bool? _phoneVerified;
+  final bool? _emailVerified;
   final String? photoUrl;
   final String? approvalStatus;
   final String? teacherLevel;
@@ -25,12 +27,17 @@ class UserModel {
   final Map<String, dynamic>? socialLinks;
   final String? referredBy;
 
+  bool get phoneVerified => _phoneVerified ?? true;
+  bool get emailVerified => _emailVerified ?? false;
+
   UserModel({
     required this.id,
     required this.email,
     required this.phone,
     required this.name,
     required this.role,
+    bool? phoneVerified = true,
+    bool? emailVerified = false,
     this.photoUrl,
     this.approvalStatus,
     this.teacherLevel,
@@ -51,7 +58,8 @@ class UserModel {
     this.mobileNumber,
     this.socialLinks,
     this.referredBy,
-  });
+  })  : _phoneVerified = phoneVerified,
+        _emailVerified = emailVerified;
 
   String? get fullPhotoUrl {
     if (photoUrl == null || photoUrl!.isEmpty) return null;
@@ -68,6 +76,8 @@ class UserModel {
       phone: json['phone']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       role: json['role']?.toString() ?? 'student',
+      phoneVerified: json['phone_verified'] == null || json['phone_verified'] == true || json['is_phone_verified'] == true || json['phone_verified'] == 'true' || json['phone_verified'] == 1,
+      emailVerified: json['email_verified'] == true || json['is_email_verified'] == true || json['email_verified'] == 'true' || json['email_verified'] == 1,
       photoUrl: json['photo_url']?.toString(),
       approvalStatus: json['approval_status']?.toString(),
       teacherLevel: json['teacher_level']?.toString(),
@@ -98,6 +108,8 @@ class UserModel {
       'phone': phone,
       'name': name,
       'role': role,
+      'phone_verified': phoneVerified,
+      'email_verified': emailVerified,
       'photo_url': photoUrl,
       'approval_status': approvalStatus,
       'teacher_level': teacherLevel,

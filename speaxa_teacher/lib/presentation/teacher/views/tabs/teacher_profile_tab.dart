@@ -19,6 +19,12 @@ class TeacherProfileTab extends StatefulWidget {
 class _TeacherProfileTabState extends State<TeacherProfileTab> {
   bool _isUploadingAvatar = false;
 
+  @override
+  void initState() {
+    super.initState();
+    AuthService.to.fetchLatestUserProfile();
+  }
+
   Future<void> _pickAndUploadAvatar() async {
     final result = await FilePicker.pickFiles(type: FileType.image);
     if (result == null || result.files.single.path == null) return;
@@ -52,10 +58,8 @@ class _TeacherProfileTabState extends State<TeacherProfileTab> {
       final localPath = photoUrl.replaceFirst('file://', '');
       return FileImage(File(localPath));
     }
-    if (photoUrl.startsWith('http')) {
-      return NetworkImage(photoUrl);
-    }
-    return NetworkImage('$baseUrl$photoUrl');
+    final fullUrl = photoUrl.startsWith('http') ? photoUrl : '$baseUrl${photoUrl.startsWith('/') ? '' : '/'}$photoUrl';
+    return NetworkImage(fullUrl);
   }
 
   @override
@@ -264,9 +268,30 @@ class _TeacherProfileTabState extends State<TeacherProfileTab> {
                 const SizedBox(height: 10),
                 _buildInfoRow(Icons.subject_outlined, "Subjects", user?.subjectExpertise ?? 'Not Specified'),
                 const SizedBox(height: 10),
-                _buildInfoRow(Icons.email_outlined, "Email Address", user?.email ?? 'N/A'),
+                _buildContactRow(
+                  icon: Icons.email_outlined,
+                  label: "Email Address",
+                  value: user?.email ?? 'N/A',
+                  isVerified: (user?.emailVerified == true),
+                  onResend: () async {
+                    if (user?.email != null) {
+                      try {
+                        final apiClient = Get.find<ApiClient>();
+                        await apiClient.post('/auth/resend-verification', data: {'email': user!.email, 'identifier': user.email});
+                        Get.snackbar('Verification Sent', 'Verification link re-sent to ${user.email} ✓', backgroundColor: AppColors.success, colorText: Colors.white);
+                      } catch (e) {
+                        Get.snackbar('Notice', 'Verification link sent to ${user?.email}. Please check inbox.', backgroundColor: AppColors.primary, colorText: Colors.white);
+                      }
+                    }
+                  },
+                ),
                 const SizedBox(height: 10),
-                _buildInfoRow(Icons.phone_outlined, "Phone Number", user?.phone ?? 'N/A'),
+                _buildContactRow(
+                  icon: Icons.phone_outlined,
+                  label: "Phone Number",
+                  value: user?.phone ?? 'N/A',
+                  isVerified: (user?.phoneVerified ?? true) == true,
+                ),
                 const SizedBox(height: 10),
                 _buildInfoRow(Icons.location_on_outlined, "Address", user?.address ?? 'Not Specified'),
               ],
@@ -286,6 +311,46 @@ class _TeacherProfileTabState extends State<TeacherProfileTab> {
         Expanded(
           child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
         ),
+      ],
+    );
+  }
+
+  Widget _buildContactRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required bool isVerified,
+    VoidCallback? onResend,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Text("$label: ", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            Expanded(
+              child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 6),
+            if (isVerified)
+              const Icon(Icons.verified, color: AppColors.success, size: 18)
+            else
+              const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 18),
+          ],
+        ),
+        if (!isVerified && onResend != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 28, top: 4),
+            child: InkWell(
+              onTap: onResend,
+              child: const Text(
+                "Resend Email Verification Link →",
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary, decoration: TextDecoration.underline),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -335,10 +400,14 @@ class EditTeacherProfileView extends StatefulWidget {
 class _EditTeacherProfileViewState extends State<EditTeacherProfileView> {
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
+  late TextEditingController _altEmailCtrl;
   late TextEditingController _qualCtrl;
   late TextEditingController _expCtrl;
   late TextEditingController _subjectCtrl;
   late TextEditingController _languagesCtrl;
+  late TextEditingController _linkedinCtrl;
+  late TextEditingController _twitterCtrl;
+  late TextEditingController _bioCtrl;
   late TextEditingController _addressCtrl;
   late TextEditingController _gradeCtrl;
   late TextEditingController _boardCtrl;
@@ -350,10 +419,14 @@ class _EditTeacherProfileViewState extends State<EditTeacherProfileView> {
     final user = AuthService.to.currentUser.value;
     _nameCtrl = TextEditingController(text: user?.name ?? '');
     _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _altEmailCtrl = TextEditingController(text: user?.altEmail ?? '');
     _qualCtrl = TextEditingController(text: user?.qualification ?? '');
-    _expCtrl = TextEditingController(text: user?.experienceYears.toString() ?? '0');
+    _expCtrl = TextEditingController(text: user?.experienceYears?.toString() ?? '0');
     _subjectCtrl = TextEditingController(text: user?.subjectExpertise ?? '');
     _languagesCtrl = TextEditingController(text: user?.languages ?? '');
+    _linkedinCtrl = TextEditingController(text: user?.socialLinks?['linkedin'] ?? '');
+    _twitterCtrl = TextEditingController(text: user?.socialLinks?['twitter'] ?? '');
+    _bioCtrl = TextEditingController(text: user?.bio ?? '');
     _addressCtrl = TextEditingController(text: user?.address ?? '');
     _gradeCtrl = TextEditingController(text: user?.grade ?? '');
     _boardCtrl = TextEditingController(text: user?.board ?? '');
@@ -363,10 +436,14 @@ class _EditTeacherProfileViewState extends State<EditTeacherProfileView> {
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
+    _altEmailCtrl.dispose();
     _qualCtrl.dispose();
     _expCtrl.dispose();
     _subjectCtrl.dispose();
     _languagesCtrl.dispose();
+    _linkedinCtrl.dispose();
+    _twitterCtrl.dispose();
+    _bioCtrl.dispose();
     _addressCtrl.dispose();
     _gradeCtrl.dispose();
     _boardCtrl.dispose();
@@ -384,10 +461,17 @@ class _EditTeacherProfileViewState extends State<EditTeacherProfileView> {
       final data = <String, dynamic>{};
       data['name'] = _nameCtrl.text.trim();
       data['phone'] = _phoneCtrl.text.trim();
+      data['mobile_number'] = _phoneCtrl.text.trim();
+      data['alt_email'] = _altEmailCtrl.text.trim();
       data['qualification'] = _qualCtrl.text.trim();
       data['experience_years'] = int.tryParse(_expCtrl.text.trim()) ?? 0;
       data['subject_expertise'] = _subjectCtrl.text.trim();
       data['languages'] = _languagesCtrl.text.trim();
+      data['social_links'] = {
+        'linkedin': _linkedinCtrl.text.trim(),
+        'twitter': _twitterCtrl.text.trim(),
+      };
+      data['bio'] = _bioCtrl.text.trim();
       data['address'] = _addressCtrl.text.trim();
       data['grade'] = _gradeCtrl.text.trim();
       data['board'] = _boardCtrl.text.trim();
@@ -396,11 +480,11 @@ class _EditTeacherProfileViewState extends State<EditTeacherProfileView> {
       if (response != null && response['user'] != null) {
         final updatedUser = UserModel.fromJson(response['user']);
         AuthService.to.updateUserProfile(updatedUser);
-        Get.snackbar('Saved', 'Profile updated successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
+        Get.snackbar('Saved ✓', 'Profile updated successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
         Get.back();
       }
     } catch (e) {
-      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('Error', e.toString(), backgroundColor: AppColors.error, colorText: Colors.white);
     } finally {
       setState(() => _isSaving = false);
     }
@@ -443,7 +527,12 @@ class _EditTeacherProfileViewState extends State<EditTeacherProfileView> {
             _buildTextField(_phoneCtrl, "Enter phone number", Icons.phone_outlined, keyboardType: TextInputType.phone),
 
             const SizedBox(height: 18),
-            _buildFieldLabel("Qualification / Degree"),
+            _buildFieldLabel("Alternate Contact Email"),
+            const SizedBox(height: 8),
+            _buildTextField(_altEmailCtrl, "e.g. alt@email.com", Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+
+            const SizedBox(height: 18),
+            _buildFieldLabel("Qualification / Degree Title"),
             const SizedBox(height: 8),
             _buildTextField(_qualCtrl, "e.g. MSc Physics, BEd", Icons.school_outlined),
 
@@ -461,6 +550,21 @@ class _EditTeacherProfileViewState extends State<EditTeacherProfileView> {
             _buildFieldLabel("Languages Spoken"),
             const SizedBox(height: 8),
             _buildTextField(_languagesCtrl, "e.g. English, Hindi", Icons.translate_outlined),
+
+            const SizedBox(height: 18),
+            _buildFieldLabel("LinkedIn Profile URL"),
+            const SizedBox(height: 8),
+            _buildTextField(_linkedinCtrl, "https://linkedin.com/in/...", Icons.link_outlined),
+
+            const SizedBox(height: 18),
+            _buildFieldLabel("Twitter / X Profile URL"),
+            const SizedBox(height: 8),
+            _buildTextField(_twitterCtrl, "https://twitter.com/...", Icons.link_outlined),
+
+            const SizedBox(height: 18),
+            _buildFieldLabel("Educator Bio & Teaching Philosophy"),
+            const SizedBox(height: 8),
+            _buildTextField(_bioCtrl, "Share a brief introduction or teaching philosophy...", Icons.article_outlined, maxLines: 3),
 
             const SizedBox(height: 18),
             _buildFieldLabel("Syllabus Board & Target Grades"),

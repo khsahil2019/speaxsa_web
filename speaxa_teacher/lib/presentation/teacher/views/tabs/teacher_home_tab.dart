@@ -20,7 +20,11 @@ class TeacherHomeTab extends GetView<TeacherDashboardController> {
 
       final analytics = controller.analytics;
       final sop = controller.sopStatus.value;
-      final isSopCompleted = sop?.status == 'approved' || sop != null;
+      final String sopStatus = sop?.status ?? 'pending';
+      final bool isSopApproved = sopStatus == 'approved';
+      final String sopBadgeText = isSopApproved
+          ? "Approved ✓"
+          : (sopStatus == 'submitted' || sopStatus == 'sop_pending' ? "Submitted" : "Pending");
       final batches = controller.batches;
       final userName = AuthService.to.currentUser.value?.name ?? 'Educator';
 
@@ -162,8 +166,8 @@ class TeacherHomeTab extends GetView<TeacherDashboardController> {
                       Icons.verified_rounded,
                       "SOP Setup",
                       1,
-                      isSopCompleted: isSopCompleted,
-                      badgeText: isSopCompleted ? "Done ✓" : "Pending",
+                      isSopCompleted: isSopApproved,
+                      badgeText: sopBadgeText,
                     ),
                   ),
                   const SizedBox(width: 10),

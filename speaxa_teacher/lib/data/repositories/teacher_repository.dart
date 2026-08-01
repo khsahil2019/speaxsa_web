@@ -30,8 +30,27 @@ class TeacherRepository {
     await _apiClient.post('/teacher/sop/submit', data: {'teacher_checklist': checklist});
   }
 
-  Future<void> signAgreement(String digitalSignature) async {
-    await _apiClient.post('/teacher/sop/sign-agreement', data: {'digital_signature': digitalSignature});
+  Future<void> signAgreement(String digitalSignature, {String? signatureImage}) async {
+    await _apiClient.post('/teacher/sop/sign-agreement', data: {
+      'digital_signature': digitalSignature,
+      if (signatureImage != null && signatureImage.isNotEmpty) 'signature_image': signatureImage,
+    });
+  }
+
+  Future<void> uploadSopProof(String fieldName, String filePath) async {
+    await _apiClient.uploadFile(
+      '/teacher/sop/upload/$fieldName',
+      filePath,
+      fieldName: fieldName,
+    );
+  }
+
+  Future<void> linkSopProof(String fieldName, String linkUrl) async {
+    await _apiClient.post('/teacher/sop/link/$fieldName', data: {'link': linkUrl});
+  }
+
+  Future<void> saveAvailability(String availability) async {
+    await _apiClient.post('/teacher/sop/availability', data: {'availability': availability});
   }
 
   Future<List<dynamic>> getDocuments() async {
@@ -39,13 +58,17 @@ class TeacherRepository {
     return response as List;
   }
 
-  Future<void> uploadDocument(String filePath, String docType) async {
+  Future<void> uploadDocument(String filePath, String docType, {String visibility = 'private'}) async {
     await _apiClient.uploadFile(
       '${ApiEndpoints.teacherDocuments}/upload',
       filePath,
       fieldName: 'document',
-      extraFields: {'doc_type': docType},
+      extraFields: {'doc_type': docType, 'visibility': visibility},
     );
+  }
+
+  Future<void> removeDocument(String docType) async {
+    await _apiClient.post('/teacher/documents/remove/$docType');
   }
 
   // Courses Management
