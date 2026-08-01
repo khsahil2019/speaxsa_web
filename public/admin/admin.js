@@ -3817,6 +3817,42 @@ async function testFcmPush(e) {
   }
 }
 
+window.fcmActiveRoleFilter = 'all';
+
+function getRoleBadgeHtml(role) {
+  const r = (role || 'user').toLowerCase();
+  if (r === 'student') {
+    return `<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 11px; padding: 4px 10px; border-radius: 50px;"><i class="fas fa-user-graduate me-1"></i>Student</span>`;
+  } else if (r === 'teacher') {
+    return `<span class="badge" style="background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); font-size: 11px; padding: 4px 10px; border-radius: 50px;"><i class="fas fa-chalkboard-teacher me-1"></i>Teacher</span>`;
+  } else if (r === 'parent') {
+    return `<span class="badge" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); font-size: 11px; padding: 4px 10px; border-radius: 50px;"><i class="fas fa-user-friends me-1"></i>Parent</span>`;
+  }
+  return `<span class="badge bg-secondary">${role}</span>`;
+}
+
+window.filterFcmModalTable = function() {
+  const query = (document.getElementById('fcmModalSearch')?.value || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('.fcm-user-row');
+  rows.forEach(row => {
+    const roleMatch = !window.fcmActiveRoleFilter || window.fcmActiveRoleFilter === 'all' || row.getAttribute('data-role') === window.fcmActiveRoleFilter;
+    const searchMatch = !query || (row.getAttribute('data-search') || '').includes(query);
+    row.style.display = (roleMatch && searchMatch) ? '' : 'none';
+  });
+};
+
+window.filterFcmRole = function(role, btn) {
+  window.fcmActiveRoleFilter = role;
+  const btns = btn.parentElement.querySelectorAll('.btn');
+  btns.forEach(b => {
+    b.classList.remove('active', 'btn-info', 'text-white');
+    b.classList.add('btn-outline-info');
+  });
+  btn.classList.add('active', 'btn-info', 'text-white');
+  btn.classList.remove('btn-outline-info');
+  filterFcmModalTable();
+};
+
 async function showRegisteredTokensModal() {
   try {
     let tokens = [];
@@ -3827,7 +3863,10 @@ async function showRegisteredTokensModal() {
       console.warn('[FCM Tokens] Backend route /admin/fcm/tokens notice:', e.message);
     }
 
-    if (!tokens || tokens.length === 0) {
+    let usersList = [];
+    if (tokens && tokens.length > 0) {
+      usersList = tokens.map(t => ({ ...t, hasToken: true }));
+    } else {
       // Fallback: fetch active users so admin can still easily pick User IDs!
       const [students, teachers, parents] = await Promise.all([
         apiGet('/admin/students').catch(() => []),
@@ -3835,82 +3874,45 @@ async function showRegisteredTokensModal() {
         apiGet('/admin/parents').catch(() => []),
       ]);
 
-      const allUsers = [
-        ...(Array.isArray(students) ? students : (students.students || [])).map(u => ({ ...u, role: 'student' })),
-        ...(Array.isArray(teachers) ? teachers : (teachers.teachers || [])).map(u => ({ ...u, role: 'teacher' })),
-        ...(Array.isArray(parents) ? parents : (parents.parents || [])).map(u => ({ ...u, role: 'parent' })),
+      usersList = [
+        ...(Array.isArray(students) ? students : (students.students || [])).map(u => ({ ...u, role: 'student', hasToken: false })),
+        ...(Array.isArray(teachers) ? teachers : (teachers.teachers || [])).map(u => ({ ...u, role: 'teacher', hasToken: false })),
+        ...(Array.isArray(parents) ? parents : (parents.parents || [])).map(u => ({ ...u, role: 'parent', hasToken: false })),
       ];
-
-      const fallbackRows = allUsers.slice(0, 50).map(u => `
-        <tr>
-          <td><code class="text-warning">${u.id}</code></td>
-          <td><strong>${u.name || 'N/A'}</strong><br><small class="text-muted">${u.email || ''}</small></td>
-          <td><span class="badge bg-secondary">${u.role}</span></td>
-          <td><span class="badge bg-dark">Awaiting App Login</span></td>
-          <td><small class="text-muted">Token sync will occur when user logs into mobile app</small></td>
-          <td>
-            <button class="btn btn-xs btn-outline-warning" onclick="copyAndUseUserId('${u.id}')">Use User ID</button>
-          </td>
-        </tr>
-      `).join('');
-
-      const modalHtml = `
-        <div class="modal fade" id="fcmTokensModal" tabindex="-1" aria-hidden="true">
-          <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content bg-dark text-white">
-              <div class="modal-header border-secondary">
-                <h5 class="modal-title"><i class="fas fa-users text-info me-2"></i>Platform Users & FCM Target Inspector</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body p-3">
-                <div class="alert alert-info py-2 px-3 small mb-3">
-                  <i class="fas fa-info-circle me-1"></i> <strong>Live Deployment Note:</strong> Below are active user IDs ready for push target selection. To see live device token hashes, ensure backend updates are deployed to your server (<code>bash deploy.sh</code>).
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-dark table-hover align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>User ID</th>
-                        <th>Name / Email</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>FCM Registration</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>${fallbackRows || '<tr><td colspan="6" class="text-center">No users found.</td></tr>'}</tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>`;
-
-      let container = document.getElementById('modalContainer');
-      if (!container) {
-        container = document.createElement('div');
-        container.id = 'modalContainer';
-        document.body.appendChild(container);
-      }
-      container.innerHTML = modalHtml;
-      const modal = new bootstrap.Modal(document.getElementById('fcmTokensModal'));
-      modal.show();
-      return;
     }
 
-    const rows = tokens.map(t => `
-      <tr>
-        <td><code class="text-warning">${t.user_id}</code></td>
-        <td><strong>${t.name || 'N/A'}</strong><br><small class="text-muted">${t.email || ''}</small></td>
-        <td><span class="badge bg-secondary">${t.role || 'user'}</span></td>
-        <td><span class="badge bg-info text-dark">${t.device_type || 'mobile'}</span></td>
-        <td>
-          <input type="text" class="form-control form-control-sm spx-input" readonly value="${t.token}" style="max-width: 220px;" onclick="this.select(); navigator.clipboard.writeText('${t.token}'); showToast('FCM Token copied to clipboard!');">
+    const tableRows = usersList.map(u => `
+      <tr class="fcm-user-row" data-role="${u.role}" data-search="${(u.name + ' ' + u.email + ' ' + u.id).toLowerCase()}">
+        <td style="vertical-align: middle;">
+          <div class="d-flex align-items-center">
+            <code style="background: #0f172a; color: #f59e0b; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px; font-weight: 600; font-family: monospace;">${u.id}</code>
+            <button type="button" class="btn btn-link text-muted btn-xs ms-1 p-0" onclick="navigator.clipboard.writeText('${u.id}'); showToast('User ID copied to clipboard!');" title="Copy User ID">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
         </td>
-        <td>${fmtDate(t.updated_at)}</td>
-        <td>
-          <button class="btn btn-xs btn-outline-warning me-1" onclick="copyAndUseUserId('${t.user_id}')">Use User ID</button>
-          <button class="btn btn-xs btn-outline-info" onclick="copyAndUseToken('${t.token}')">Use Token</button>
+        <td style="vertical-align: middle;">
+          <span class="fw-bold text-white font-size-14">${u.name || 'N/A'}</span>
+          <br>
+          <span style="color: #94a3b8; font-size: 12px;">${u.email || ''}</span>
+        </td>
+        <td style="vertical-align: middle;">${getRoleBadgeHtml(u.role)}</td>
+        <td style="vertical-align: middle;">
+          ${u.hasToken ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11px; padding: 5px 10px; border-radius: 50px;"><i class="fas fa-check-circle me-1"></i>Registered</span>` : `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 11px; padding: 5px 10px; border-radius: 50px;"><i class="fas fa-clock me-1"></i>Awaiting Sync</span>`}
+        </td>
+        <td style="vertical-align: middle;">
+          ${u.hasToken ? `
+            <div class="input-group input-group-sm" style="max-width: 210px;">
+              <input type="text" class="form-control spx-input text-truncate font-monospace" readonly value="${u.token}" style="background: #0f172a; color: #38bdf8; border: 1px solid #334155; font-size: 11px;" onclick="this.select();">
+              <button class="btn btn-outline-info" type="button" onclick="navigator.clipboard.writeText('${u.token}'); showToast('Token copied!');" title="Copy Token"><i class="fas fa-copy"></i></button>
+            </div>
+          ` : `<span style="color: #64748b; font-size: 12px;"><i class="fas fa-mobile-alt me-1"></i>Syncs upon mobile login</span>`}
+        </td>
+        <td style="vertical-align: middle; text-align: right;">
+          <button class="btn btn-sm btn-spx fw-semibold px-3 shadow-sm" onclick="copyAndUseUserId('${u.id}')">
+            <i class="fas fa-paper-plane me-1"></i>Select Target
+          </button>
+          ${u.hasToken ? `<button class="btn btn-sm btn-outline-info ms-1" onclick="copyAndUseToken('${u.token}')" title="Test Push Token"><i class="fas fa-bolt"></i></button>` : ''}
         </td>
       </tr>
     `).join('');
@@ -3918,29 +3920,70 @@ async function showRegisteredTokensModal() {
     const modalHtml = `
       <div class="modal fade" id="fcmTokensModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-          <div class="modal-content bg-dark text-white">
-            <div class="modal-header border-secondary">
-              <h5 class="modal-title"><i class="fas fa-mobile-alt text-info me-2"></i>Active Registered FCM Device Tokens (${tokens.length})</h5>
+          <div class="modal-content" style="background: #0f172a; color: #f8fafc; border: 1px solid rgba(56, 189, 248, 0.25); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); border-radius: 16px;">
+            
+            <div class="modal-header border-secondary px-4 py-3" style="border-bottom-color: rgba(51, 65, 85, 0.6) !important;">
+              <div class="d-flex align-items-center">
+                <div style="background: linear-gradient(135deg, #0284c7, #0d7a6d); border-radius: 10px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);" class="me-3">
+                  <i class="fas fa-users text-white font-size-18"></i>
+                </div>
+                <div>
+                  <h5 class="modal-title fw-bold text-white mb-0" style="letter-spacing: 0.3px;">Platform Users & Push Target Inspector</h5>
+                  <div class="d-flex align-items-center mt-1">
+                    <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 11px;"><i class="fas fa-shield-alt me-1"></i>Audience Target Selector</span>
+                    <span class="text-muted small ms-2">${usersList.length} Accounts Loaded</span>
+                  </div>
+                </div>
+              </div>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-3">
-              <div class="table-responsive">
-                <table class="table table-dark table-hover align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th>User ID</th>
-                      <th>Name / Email</th>
-                      <th>Role</th>
-                      <th>Device</th>
-                      <th>FCM Token</th>
-                      <th>Last Updated</th>
-                      <th>Action</th>
+
+            <div class="modal-body p-4">
+              
+              ${!tokens || tokens.length === 0 ? `
+                <div class="alert py-2 px-3 mb-3 d-flex align-items-center" style="background: rgba(13, 148, 136, 0.12); border: 1px solid rgba(45, 212, 191, 0.3); border-radius: 10px; color: #5eead4; font-size: 13px;">
+                  <i class="fas fa-info-circle me-2 font-size-16"></i>
+                  <div>
+                    <strong>Target Selector Ready:</strong> Select any user below to load their User ID for push notifications. To view live device token hashes on staging, deploy server updates via <code>bash deploy.sh</code>.
+                  </div>
+                </div>
+              ` : ''}
+
+              <div class="row g-2 mb-3 align-items-center">
+                <div class="col-md-7">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="fas fa-search"></i></span>
+                    <input type="text" id="fcmModalSearch" onkeyup="filterFcmModalTable()" placeholder="Search by name, email, or user ID (e.g. stu_...)" class="form-control spx-input bg-dark text-white border-secondary">
+                  </div>
+                </div>
+                <div class="col-md-5 text-md-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-info text-white active" onclick="filterFcmRole('all', this)">All</button>
+                    <button type="button" class="btn btn-outline-info" onclick="filterFcmRole('student', this)">Students</button>
+                    <button type="button" class="btn btn-outline-info" onclick="filterFcmRole('teacher', this)">Teachers</button>
+                    <button type="button" class="btn btn-outline-info" onclick="filterFcmRole('parent', this)">Parents</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-responsive" style="max-height: 480px;">
+                <table class="table table-dark table-hover align-middle mb-0" style="--bs-table-bg: transparent;">
+                  <thead style="background: #1e293b; position: sticky; top: 0; z-index: 10;">
+                    <tr style="border-bottom: 2px solid rgba(51, 65, 85, 0.8);">
+                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">User ID</th>
+                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Name / Email</th>
+                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Role</th>
+                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">FCM Status</th>
+                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Device Token</th>
+                      <th style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; text-align: right;">Action</th>
                     </tr>
                   </thead>
-                  <tbody>${rows}</tbody>
+                  <tbody>${tableRows.length > 0 ? tableRows : '<tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>'}</tbody>
                 </table>
               </div>
+
             </div>
+
           </div>
         </div>
       </div>`;
@@ -3962,12 +4005,17 @@ async function showRegisteredTokensModal() {
 function copyAndUseUserId(id) {
   const el = document.getElementById('notifTargetUser') || document.getElementById('testFcmToken');
   if (el) el.value = id;
+  const roleSelect = document.getElementById('notifRole');
+  if (roleSelect && document.getElementById('notifTargetUser')) {
+    roleSelect.value = 'single_user';
+    toggleTargetUser('single_user');
+  }
   const modalEl = document.getElementById('fcmTokensModal');
   if (modalEl) {
     const modal = bootstrap.Modal.getInstance(modalEl);
     if (modal) modal.hide();
   }
-  showToast(`Loaded User ID "${id}" into form!`);
+  showToast(`Target User ID set to "${id}"!`);
 }
 
 function copyAndUseToken(tokenStr) {
