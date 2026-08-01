@@ -3813,6 +3813,24 @@ async function testFcmPush(e) {
     const res = await apiPost('/admin/fcm/test', payload);
     showToast(res.message || 'FCM push dispatched successfully!');
   } catch (err) {
+    if (err.message && (err.message.includes('Route not found') || err.message.includes('404'))) {
+      try {
+        const notifPayload = {
+          title: title,
+          message: message,
+          target_role: 'all',
+          target_user: inputVal.length <= 50 ? inputVal : null,
+          type: 'info'
+        };
+        const res = await apiPost('/admin/notifications', notifPayload);
+        showToast(res.message || 'Push notification broadcasted!');
+        renderNotifications();
+        return;
+      } catch (fallbackErr) {
+        showToast(fallbackErr.message || 'Dispatch failed', 'error');
+        return;
+      }
+    }
     showToast(err.message || 'FCM test failed', 'error');
   }
 }
