@@ -44,6 +44,24 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
+  void _showPhoneOtpModal(BuildContext context, String currentPhone) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => PhoneOtpVerificationBottomSheet(phone: currentPhone),
+    );
+  }
+
+  void _showEmailOtpModal(BuildContext context, String currentEmail) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => EmailOtpVerificationBottomSheet(email: currentEmail),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final content = Obx(() {
@@ -53,7 +71,7 @@ class _ProfileViewState extends State<ProfileView> {
         child: Column(
           children: [
             // ── Profile Header Card ────────────────────────────
-            _buildProfileHeaderCard(user),
+            _buildProfileHeaderCard(context, user),
             const SizedBox(height: 20),
 
             // ── Profile Settings / Navigation Card ──────────────
@@ -166,7 +184,63 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildProfileHeaderCard(UserModel? user) {
+  Widget _buildVerifiedBadge({required bool isVerified, VoidCallback? onVerifyTap}) {
+    if (isVerified) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withOpacity(0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 13),
+            SizedBox(width: 3),
+            Text(
+              "Verified",
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF10B981),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return InkWell(
+      onTap: onVerifyTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded, color: Colors.orange, size: 13),
+            SizedBox(width: 3),
+            Text(
+              "Verify OTP",
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeaderCard(BuildContext context, UserModel? user) {
     final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api', '');
     final hasPhoto = user?.photoUrl != null && user!.photoUrl!.isNotEmpty && user.photoUrl != 'null';
 
@@ -256,11 +330,11 @@ class _ProfileViewState extends State<ProfileView> {
                     color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.school_rounded, size: 14, color: AppColors.primary),
-                      const SizedBox(width: 4),
+                      Icon(Icons.school_rounded, size: 14, color: AppColors.primary),
+                      SizedBox(width: 4),
                       Text(
                         "Student Portal",
                         style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
@@ -324,14 +398,30 @@ class _ProfileViewState extends State<ProfileView> {
                 ),
                 const SizedBox(height: 20),
 
-                // Info rows
+                // Info rows with Verified badges
                 const Divider(),
                 const SizedBox(height: 10),
                 _buildInfoRow(Icons.school_outlined, "Academic Level", "${user?.grade ?? 'N/A'} (${user?.board ?? 'N/A'})"),
-                const SizedBox(height: 10),
-                _buildInfoRow(Icons.email_outlined, "Email Address", user?.email ?? 'N/A'),
-                const SizedBox(height: 10),
-                _buildInfoRow(Icons.phone_outlined, "Phone Number", user?.phone ?? 'N/A'),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.email_outlined,
+                  "Email Address",
+                  user?.email ?? 'N/A',
+                  badge: _buildVerifiedBadge(
+                    isVerified: user?.emailVerified ?? true,
+                    onVerifyTap: () => _showEmailOtpModal(context, user?.email ?? ''),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.phone_outlined,
+                  "Phone Number",
+                  user?.phone ?? 'N/A',
+                  badge: _buildVerifiedBadge(
+                    isVerified: user?.phoneVerified ?? true,
+                    onVerifyTap: () => _showPhoneOtpModal(context, user?.phone ?? ''),
+                  ),
+                ),
               ],
             ),
           ),
@@ -340,8 +430,9 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value, {Widget? badge}) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, size: 18, color: AppColors.primary),
         const SizedBox(width: 10),
@@ -349,6 +440,10 @@ class _ProfileViewState extends State<ProfileView> {
         Expanded(
           child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
         ),
+        if (badge != null) ...[
+          const SizedBox(width: 6),
+          badge,
+        ],
       ],
     );
   }
@@ -398,6 +493,7 @@ class EditProfileView extends StatefulWidget {
 class _EditProfileViewState extends State<EditProfileView> {
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
+  late TextEditingController _emailCtrl;
   String? _selectedGrade;
   String? _selectedBoard;
   bool _isSaving = false;
@@ -414,6 +510,7 @@ class _EditProfileViewState extends State<EditProfileView> {
     final user = AuthService.to.currentUser.value;
     _nameCtrl = TextEditingController(text: user?.name ?? '');
     _phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    _emailCtrl = TextEditingController(text: user?.email ?? '');
     _selectedGrade = user?.grade;
     _selectedBoard = user?.board;
   }
@@ -422,7 +519,26 @@ class _EditProfileViewState extends State<EditProfileView> {
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
+  }
+
+  void _showPhoneOtpModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => PhoneOtpVerificationBottomSheet(phone: _phoneCtrl.text.trim()),
+    );
+  }
+
+  void _showEmailOtpModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => EmailOtpVerificationBottomSheet(email: _emailCtrl.text.trim()),
+    );
   }
 
   Future<void> _saveProfile() async {
@@ -436,6 +552,7 @@ class _EditProfileViewState extends State<EditProfileView> {
       final data = <String, dynamic>{};
       data['name'] = _nameCtrl.text.trim();
       data['phone'] = _phoneCtrl.text.trim();
+      data['email'] = _emailCtrl.text.trim();
       if (_selectedGrade != null) data['grade'] = _selectedGrade;
       if (_selectedBoard != null) data['board'] = _selectedBoard;
 
@@ -443,6 +560,9 @@ class _EditProfileViewState extends State<EditProfileView> {
       if (response != null && response['user'] != null) {
         final updatedUser = UserModel.fromJson(response['user']);
         AuthService.to.updateUserProfile(updatedUser);
+        Get.snackbar('Saved', 'Profile updated successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
+        Get.back();
+      } else {
         Get.snackbar('Saved', 'Profile updated successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
         Get.back();
       }
@@ -457,10 +577,27 @@ class _EditProfileViewState extends State<EditProfileView> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+    final user = AuthService.to.currentUser.value;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
+              onPressed: () => Get.back(),
+            ),
+          ),
+        ),
         title: const Text("Edit Profile", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         elevation: 0,
         backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
@@ -477,10 +614,11 @@ class _EditProfileViewState extends State<EditProfileView> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Update your personal academic details.",
+              "Update your personal academic details and verify contact information.",
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
             const SizedBox(height: 24),
+
             Text(
               "Full Name",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
@@ -496,9 +634,27 @@ class _EditProfileViewState extends State<EditProfileView> {
               ),
             ),
             const SizedBox(height: 18),
-            Text(
-              "Phone Number",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Phone Number", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                if (user?.phoneVerified ?? true)
+                  const Row(
+                    children: [
+                      Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
+                      SizedBox(width: 3),
+                      Text("Verified", style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 11)),
+                    ],
+                  )
+                else
+                  TextButton.icon(
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    onPressed: () => _showPhoneOtpModal(context),
+                    icon: const Icon(Icons.security, size: 13, color: Colors.orange),
+                    label: const Text("Verify OTP", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange)),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             TextField(
@@ -512,87 +668,492 @@ class _EditProfileViewState extends State<EditProfileView> {
               ),
             ),
             const SizedBox(height: 18),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Email Address", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                if (user?.emailVerified ?? true)
+                  const Row(
+                    children: [
+                      Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
+                      SizedBox(width: 3),
+                      Text("Verified", style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 11)),
+                    ],
+                  )
+                else
+                  TextButton.icon(
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    onPressed: () => _showEmailOtpModal(context),
+                    icon: const Icon(Icons.mail_outline, size: 13, color: Colors.orange),
+                    label: const Text("Verify Email", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.email_outlined, size: 18),
+                hintText: "Enter your email address",
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 18),
+
             Text(
               "Grade / Class",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
             ),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: Colors.grey.shade400),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _grades.contains(_selectedGrade) ? _selectedGrade : null,
+                  hint: const Text("Select Class/Grade"),
                   isExpanded: true,
-                  items: _grades.map((String val) {
-                    return DropdownMenuItem<String>(
-                      value: val,
-                      child: Text(val),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedGrade = val;
-                    });
-                  },
+                  onChanged: (val) => setState(() => _selectedGrade = val),
+                  items: _grades.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                 ),
               ),
             ),
             const SizedBox(height: 18),
+
             Text(
-              "Syllabus Board",
+              "Educational Board",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
             ),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: Colors.grey.shade400),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _boards.contains(_selectedBoard) ? _selectedBoard : null,
+                  hint: const Text("Select Board"),
                   isExpanded: true,
-                  items: _boards.map((String val) {
-                    return DropdownMenuItem<String>(
-                      value: val,
-                      child: Text(val),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedBoard = val;
-                    });
-                  },
+                  onChanged: (val) => setState(() => _selectedBoard = val),
+                  items: _boards.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
                 ),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
+
             SizedBox(
               width: double.infinity,
               height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _isSaving ? null : _saveProfile,
+                child: _isSaving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text("SAVE CHANGES", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PhoneOtpVerificationBottomSheet extends StatefulWidget {
+  final String phone;
+  const PhoneOtpVerificationBottomSheet({super.key, required this.phone});
+
+  @override
+  State<PhoneOtpVerificationBottomSheet> createState() => _PhoneOtpVerificationBottomSheetState();
+}
+
+class _PhoneOtpVerificationBottomSheetState extends State<PhoneOtpVerificationBottomSheet> {
+  late TextEditingController _phoneCtrl;
+  final TextEditingController _otpCtrl = TextEditingController();
+  bool _otpSent = false;
+  bool _isLoading = false;
+  String? _receivedDevOtp;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneCtrl = TextEditingController(text: widget.phone);
+  }
+
+  @override
+  void dispose() {
+    _phoneCtrl.dispose();
+    _otpCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendPhoneOtp() async {
+    if (_phoneCtrl.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter a valid phone number');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final apiClient = Get.find<ApiClient>();
+      final res = await apiClient.post('/auth/profile/send-phone-otp', data: {'phone': _phoneCtrl.text.trim()});
+      setState(() {
+        _otpSent = true;
+        _receivedDevOtp = res?['otp']?.toString();
+        if (_receivedDevOtp != null) {
+          _otpCtrl.text = _receivedDevOtp!;
+        }
+      });
+      Get.snackbar('OTP Sent', res?['message'] ?? 'Verification OTP sent to phone', backgroundColor: AppColors.primary, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyPhoneOtp() async {
+    if (_otpCtrl.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter 6-digit OTP code');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final apiClient = Get.find<ApiClient>();
+      final res = await apiClient.post('/auth/profile/verify-phone-otp', data: {
+        'phone': _phoneCtrl.text.trim(),
+        'otp': _otpCtrl.text.trim(),
+      });
+      final currentUser = AuthService.to.currentUser.value;
+      if (currentUser != null) {
+        final updatedUser = currentUser.copyWith(
+          phone: _phoneCtrl.text.trim(),
+          phoneVerified: true,
+        );
+        AuthService.to.updateUserProfile(updatedUser);
+      }
+      Get.snackbar('Verified!', res?['message'] ?? 'Mobile number verified successfully!', backgroundColor: const Color(0xFF10B981), colorText: Colors.white);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      Get.snackbar('Verification Failed', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkCard : Colors.white;
+    final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B);
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: isDark ? Colors.white24 : Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.phonelink_ring_rounded, color: AppColors.primary, size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text("Mobile OTP Verification", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColor)),
+              ),
+              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _otpSent ? "Enter 6-digit OTP code sent to your phone" : "We will send a 6-digit SMS verification code to your phone.",
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+
+          Text("Phone Number", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _phoneCtrl,
+            enabled: !_otpSent,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.phone, size: 18),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          if (_otpSent) ...[
+            Text("Verification OTP Code", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _otpCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              style: const TextStyle(letterSpacing: 6, fontWeight: FontWeight.bold, fontSize: 18),
+              decoration: InputDecoration(
+                hintText: "123456",
+                prefixIcon: const Icon(Icons.lock_clock_outlined, size: 18),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            if (_receivedDevOtp != null) ...[
+              const SizedBox(height: 4),
+              Text("DEV Mode OTP: $_receivedDevOtp", style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+            ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _isLoading ? null : _verifyPhoneOtp,
+                icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check_circle_rounded, size: 18),
+                label: const Text("VERIFY & CONFIRM", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              height: 46,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                icon: _isSaving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.save_outlined, size: 20),
-                label: Text(
-                  _isSaving ? "Saving..." : "Save Changes",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                onPressed: _isSaving ? null : _saveProfile,
+                onPressed: _isLoading ? null : _sendPhoneOtp,
+                icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded, size: 18),
+                label: const Text("SEND VERIFICATION OTP", style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class EmailOtpVerificationBottomSheet extends StatefulWidget {
+  final String email;
+  const EmailOtpVerificationBottomSheet({super.key, required this.email});
+
+  @override
+  State<EmailOtpVerificationBottomSheet> createState() => _EmailOtpVerificationBottomSheetState();
+}
+
+class _EmailOtpVerificationBottomSheetState extends State<EmailOtpVerificationBottomSheet> {
+  late TextEditingController _emailCtrl;
+  final TextEditingController _otpCtrl = TextEditingController();
+  bool _otpSent = false;
+  bool _isLoading = false;
+  String? _receivedDevOtp;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailCtrl = TextEditingController(text: widget.email);
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _otpCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendEmailOtp() async {
+    if (_emailCtrl.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter a valid email address');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final apiClient = Get.find<ApiClient>();
+      final res = await apiClient.post('/auth/send-otp', data: {
+        'identifier': _emailCtrl.text.trim(),
+        'purpose': 'verify_email',
+      });
+      setState(() {
+        _otpSent = true;
+        _receivedDevOtp = res?['otp']?.toString();
+        if (_receivedDevOtp != null) {
+          _otpCtrl.text = _receivedDevOtp!;
+        }
+      });
+      Get.snackbar('OTP Sent', res?['message'] ?? 'Verification code sent to your email', backgroundColor: AppColors.primary, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyEmailOtp() async {
+    if (_otpCtrl.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Please enter 6-digit OTP code');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final apiClient = Get.find<ApiClient>();
+      final res = await apiClient.post('/auth/verify-otp', data: {
+        'identifier': _emailCtrl.text.trim(),
+        'otp': _otpCtrl.text.trim(),
+        'purpose': 'verify_email',
+      });
+      final currentUser = AuthService.to.currentUser.value;
+      if (currentUser != null) {
+        final updatedUser = currentUser.copyWith(
+          email: _emailCtrl.text.trim(),
+          emailVerified: true,
+        );
+        AuthService.to.updateUserProfile(updatedUser);
+      }
+      Get.snackbar('Verified!', res?['message'] ?? 'Email address verified successfully!', backgroundColor: const Color(0xFF10B981), colorText: Colors.white);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      Get.snackbar('Verification Failed', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkCard : Colors.white;
+    final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B);
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: isDark ? Colors.white24 : Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.mark_email_read_rounded, color: AppColors.primary, size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text("Email OTP Verification", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColor)),
+              ),
+              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _otpSent ? "Enter 6-digit OTP code sent to your email" : "We will send a 6-digit verification code to your email address.",
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+
+          Text("Email Address", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _emailCtrl,
+            enabled: !_otpSent,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.email, size: 18),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          if (_otpSent) ...[
+            Text("Verification OTP Code", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _otpCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              style: const TextStyle(letterSpacing: 6, fontWeight: FontWeight.bold, fontSize: 18),
+              decoration: InputDecoration(
+                hintText: "123456",
+                prefixIcon: const Icon(Icons.lock_clock_outlined, size: 18),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            if (_receivedDevOtp != null) ...[
+              const SizedBox(height: 4),
+              Text("DEV Mode OTP: $_receivedDevOtp", style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+            ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _isLoading ? null : _verifyEmailOtp,
+                icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check_circle_rounded, size: 18),
+                label: const Text("VERIFY & CONFIRM", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _isLoading ? null : _sendEmailOtp,
+                icon: _isLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded, size: 18),
+                label: const Text("SEND VERIFICATION OTP", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -606,45 +1167,54 @@ class ChangePasswordView extends StatefulWidget {
 }
 
 class _ChangePasswordViewState extends State<ChangePasswordView> {
-  final _currentPassCtrl = TextEditingController();
+  final _oldPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
-  bool _isChangingPass = false;
-
-  Future<void> _changePassword() async {
-    if (_currentPassCtrl.text.isEmpty || _newPassCtrl.text.isEmpty) {
-      Get.snackbar('Error', 'Both password fields are required', backgroundColor: Colors.orange, colorText: Colors.white);
-      return;
-    }
-    if (_newPassCtrl.text.length < 6) {
-      Get.snackbar('Error', 'New password must be at least 6 characters', backgroundColor: Colors.orange, colorText: Colors.white);
-      return;
-    }
-
-    setState(() => _isChangingPass = true);
-    try {
-      final apiClient = Get.find<ApiClient>();
-      await apiClient.post(ApiEndpoints.changePassword, data: {
-        'currentPassword': _currentPassCtrl.text,
-        'newPassword': _newPassCtrl.text,
-      });
-
-      _currentPassCtrl.clear();
-      _newPassCtrl.clear();
-
-      Get.snackbar('Success', 'Password changed successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
-      Get.back();
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to update password: $e', backgroundColor: Colors.red, colorText: Colors.white);
-    } finally {
-      setState(() => _isChangingPass = false);
-    }
-  }
+  final _confirmPassCtrl = TextEditingController();
+  bool _isSaving = false;
+  bool _obscureOld = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
-    _currentPassCtrl.dispose();
+    _oldPassCtrl.dispose();
     _newPassCtrl.dispose();
+    _confirmPassCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _changePassword() async {
+    final oldPass = _oldPassCtrl.text.trim();
+    final newPass = _newPassCtrl.text.trim();
+    final confirmPass = _confirmPassCtrl.text.trim();
+
+    if (oldPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
+      Get.snackbar('Error', 'All fields are required', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    if (newPass != confirmPass) {
+      Get.snackbar('Error', 'New password and confirmation do not match', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+    if (newPass.length < 6) {
+      Get.snackbar('Error', 'Password must be at least 6 characters', backgroundColor: Colors.orange, colorText: Colors.white);
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final apiClient = Get.find<ApiClient>();
+      await apiClient.post(ApiEndpoints.changePassword, data: {
+        'oldPassword': oldPass,
+        'newPassword': newPass,
+      });
+      Get.snackbar('Success', 'Password changed successfully!', backgroundColor: AppColors.primary, colorText: Colors.white);
+      Get.back();
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -655,6 +1225,22 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
+              onPressed: () => Get.back(),
+            ),
+          ),
+        ),
         title: const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         elevation: 0,
         backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
@@ -665,65 +1251,70 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Update Security Password",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Choose a strong password with at least 6 characters.",
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              "Current Password",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
-            ),
+            Text("Current Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
             const SizedBox(height: 8),
             TextField(
-              controller: _currentPassCtrl,
-              obscureText: true,
+              controller: _oldPassCtrl,
+              obscureText: _obscureOld,
               decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.lock_open, size: 18),
-                hintText: "Enter current password",
+                prefixIcon: const Icon(Icons.lock_outline, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureOld ? Icons.visibility_off : Icons.visibility, size: 18),
+                  onPressed: () => setState(() => _obscureOld = !_obscureOld),
+                ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 18),
-            Text(
-              "New Password",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
-            ),
+
+            Text("New Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
             const SizedBox(height: 8),
             TextField(
               controller: _newPassCtrl,
-              obscureText: true,
+              obscureText: _obscureNew,
               decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.lock_outline, size: 18),
-                hintText: "Enter new password",
+                prefixIcon: const Icon(Icons.lock_clock_outlined, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility, size: 18),
+                  onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 18),
+
+            Text("Confirm New Password", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _confirmPassCtrl,
+              obscureText: _obscureConfirm,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.check_circle_outline, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility, size: 18),
+                  onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 32),
+
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                icon: _isChangingPass
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.save_outlined, size: 20),
-                label: Text(
-                  _isChangingPass ? "Updating..." : "Update Password",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                onPressed: _isChangingPass ? null : _changePassword,
+                onPressed: _isSaving ? null : _changePassword,
+                child: _isSaving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text("UPDATE PASSWORD", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               ),
             ),
           ],

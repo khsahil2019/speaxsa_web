@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class BatchModel {
   final String id;
   final String? courseId;
@@ -59,7 +61,21 @@ class BatchModel {
     List<String> days = [];
     if (json['days_of_week'] is List) {
       days = List<String>.from(json['days_of_week'].map((e) => e.toString()));
+    } else if (json['days_of_week'] is String && json['days_of_week'].toString().isNotEmpty) {
+      try {
+        final parsed = jsonDecode(json['days_of_week']);
+        if (parsed is List) {
+          days = List<String>.from(parsed.map((e) => e.toString()));
+        }
+      } catch (_) {
+        days = [json['days_of_week'].toString()];
+      }
     }
+
+    final cap = json['capacity'] is num ? (json['capacity'] as num).toInt() : (int.tryParse(json['capacity']?.toString() ?? '30') ?? 30);
+    final filled = json['seats_filled'] is num ? (json['seats_filled'] as num).toInt() : (int.tryParse(json['seats_filled']?.toString() ?? '0') ?? 0);
+    final availParsed = json['available_seats'] != null ? int.tryParse(json['available_seats'].toString()) : null;
+    final avail = availParsed ?? (cap - filled);
 
     return BatchModel(
       id: json['id']?.toString() ?? '',
@@ -72,8 +88,8 @@ class BatchModel {
       startTime: json['start_time']?.toString(),
       endTime: json['end_time']?.toString(),
       daysOfWeek: days,
-      capacity: json['capacity'] is int ? json['capacity'] : int.tryParse(json['capacity']?.toString() ?? '30') ?? 30,
-      seatsFilled: json['seats_filled'] is int ? json['seats_filled'] : int.tryParse(json['seats_filled']?.toString() ?? '0') ?? 0,
+      capacity: cap,
+      seatsFilled: filled,
       status: json['status']?.toString() ?? 'active',
       agoraChannel: json['agora_channel']?.toString(),
       courseTitle: json['course_title']?.toString(),
@@ -82,7 +98,7 @@ class BatchModel {
       teacherPhoto: json['teacher_photo']?.toString(),
       teacherLevel: json['teacher_level']?.toString(),
       teacherRating: json['teacher_rating'] is num ? (json['teacher_rating'] as num).toDouble() : double.tryParse(json['teacher_rating']?.toString() ?? '5.0'),
-      availableSeats: json['available_seats'] is int ? json['available_seats'] : int.tryParse(json['available_seats']?.toString() ?? '30') ?? 30,
+      availableSeats: avail < 0 ? 0 : avail,
       plannerUrl: json['planner_url']?.toString(),
       plannerName: json['planner_name']?.toString(),
       plannerDesc: json['planner_desc']?.toString(),

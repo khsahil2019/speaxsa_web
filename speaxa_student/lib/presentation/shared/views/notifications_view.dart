@@ -29,8 +29,14 @@ class _NotificationsViewState extends State<NotificationsView> {
     try {
       setState(() => isLoading = true);
       final response = await _apiClient.get(ApiEndpoints.studentNotifications);
+      List<dynamic> list = [];
+      if (response is List) {
+        list = response;
+      } else if (response is Map && response['notifications'] is List) {
+        list = List<dynamic>.from(response['notifications']);
+      }
       setState(() {
-        notifications = (response as List).toList();
+        notifications = list;
         isLoading = false;
       });
     } catch (e) {
@@ -70,6 +76,39 @@ class _NotificationsViewState extends State<NotificationsView> {
         backgroundColor: Colors.red.shade800,
         colorText: Colors.white,
       );
+    }
+  }
+
+  Future<void> _markAsRead(String notifId, int index) async {
+    try {
+      await _apiClient.post('/student/notifications/$notifId/read');
+      if (mounted) {
+        setState(() {
+          if (index < notifications.length && notifications[index] is Map) {
+            notifications[index]['is_read'] = true;
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _markAllRead() async {
+    try {
+      await _apiClient.post('/student/notifications/read-all');
+      if (mounted) {
+        setState(() {
+          for (var item in notifications) {
+            if (item is Map) item['is_read'] = true;
+          }
+        });
+        Get.rawSnackbar(
+          messageText: const Text("All notifications marked as read", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.primary,
+          duration: const Duration(seconds: 2),
+        );
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to mark notifications read: $e');
     }
   }
 
@@ -140,6 +179,22 @@ class _NotificationsViewState extends State<NotificationsView> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
+              onPressed: () => Get.back(),
+            ),
+          ),
+        ),
         title: const Text(
           "Notifications",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -147,6 +202,17 @@ class _NotificationsViewState extends State<NotificationsView> {
         elevation: 0,
         backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
         foregroundColor: textColor,
+        actions: [
+          if (notifications.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton.icon(
+                onPressed: _markAllRead,
+                icon: const Icon(Icons.done_all_rounded, size: 18, color: AppColors.primary),
+                label: const Text("Mark All Read", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              ),
+            ),
+        ],
       ),
       body: isLoading
           ? const SkeletonLoader(itemCount: 5)

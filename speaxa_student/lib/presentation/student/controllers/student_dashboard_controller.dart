@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/fcm_service.dart';
 import '../../../data/models/batch_model.dart';
@@ -11,6 +12,7 @@ import '../../../data/models/report_model.dart';
 import '../../../data/models/live_class_model.dart';
 import '../../../data/models/recording_model.dart';
 import '../../../data/models/parent_request_model.dart';
+import '../../../data/models/notification_model.dart';
 import '../../../data/repositories/student_repository.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../core/network/api_client.dart';
@@ -29,6 +31,8 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
   // Course search and filter fields
   final RxString courseSearchQuery = ''.obs;
   final RxString courseSelectedSubject = 'All'.obs;
+  final RxString courseSelectedGrade = 'All Grades'.obs;
+  final RxString courseSelectedBoard = 'All Boards'.obs;
 
   // Enquiry form controllers
   final enquiryNameController = TextEditingController();
@@ -50,6 +54,7 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
   final RxList<ParentRequestModel> parentRequests = <ParentRequestModel>[].obs;
   final RxList<LiveClassModel> upcomingClasses = <LiveClassModel>[].obs;
   final RxList<RecordingModel> recordings = <RecordingModel>[].obs;
+  final RxList<NotificationModel> notificationsList = <NotificationModel>[].obs;
 
   @override
   void onInit() {
@@ -174,6 +179,13 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
       }
 
       try {
+        final res = await _studentRepository.getNotifications();
+        notificationsList.assignAll(res);
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading notifications: $e');
+      }
+
+      try {
         final res = await _studentRepository.getCourses();
         courses.assignAll(res);
       } catch (e) {
@@ -189,26 +201,43 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
 
       debugPrint('[Dashboard] Loaded ${myBatches.length} enrolled batches, ${courses.length} courses, ${availableBatches.length} available batches');
 
-      // Dynamically fetch live/scheduled classes for all enrolled batches sequentially to prevent port socket drops
+      // Dynamically fetch live/scheduled classes for all enrolled batches sequentially to match website behavior
       final upcomingClassesList = <LiveClassModel>[];
+
+      // 1. Check globally active live classes
+      try {
+        final activeRes = await Get.find<ApiClient>().get(ApiEndpoints.activeLiveClasses);
+        if (activeRes is List) {
+          for (final item in activeRes) {
+            final lc = LiveClassModel.fromJson(item);
+            upcomingClassesList.add(lc);
+          }
+        }
+      } catch (e) {
+        debugPrint('[Dashboard] Error loading active live classes: $e');
+      }
+
+      // 2. Fetch classes for student's enrolled batches
       if (myBatches.isNotEmpty) {
         for (final batch in myBatches) {
           try {
             final classes = await _studentRepository.getLiveClassesForBatch(batch.id);
             for (final c in classes) {
-              if (c.status == 'scheduled' || c.status == 'live') {
-                upcomingClassesList.add(LiveClassModel(
-                  id: c.id,
-                  batchId: c.batchId,
-                  teacherId: c.teacherId,
-                  title: c.title,
-                  classDate: c.classDate,
-                  classTime: c.classTime,
-                  status: c.status,
-                  agoraChannel: c.agoraChannel,
-                  teacherName: c.teacherName ?? batch.teacherName,
-                  batchName: batch.batchName,
-                ));
+              if (!upcomingClassesList.any((existing) => existing.id == c.id)) {
+                if (c.status != 'cancelled') {
+                  upcomingClassesList.add(LiveClassModel(
+                    id: c.id,
+                    batchId: c.batchId,
+                    teacherId: c.teacherId,
+                    title: c.title,
+                    classDate: c.classDate,
+                    classTime: c.classTime,
+                    status: c.status,
+                    agoraChannel: c.agoraChannel,
+                    teacherName: c.teacherName ?? batch.teacherName,
+                    batchName: (c.batchName != null && c.batchName!.isNotEmpty) ? c.batchName! : batch.batchName,
+                  ));
+                }
               }
             }
           } catch (e) {
@@ -217,8 +246,11 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
         }
       }
 
-      // Sort by scheduled date and time
+      // Sort: Live classes first, then Scheduled, then Ended (by date descending)
       upcomingClassesList.sort((a, b) {
+        if (a.status == 'live' && b.status != 'live') return -1;
+        if (b.status == 'live' && a.status != 'live') return 1;
+
         final aDateStr = a.classDate?.split('T').first ?? '1970-01-01';
         final aTimeStr = a.classTime ?? '00:00:00';
         final aDateTime = DateTime.tryParse('${aDateStr}T$aTimeStr') ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -227,7 +259,7 @@ class StudentDashboardController extends GetxController with WidgetsBindingObser
         final bTimeStr = b.classTime ?? '00:00:00';
         final bDateTime = DateTime.tryParse('${bDateStr}T$bTimeStr') ?? DateTime.fromMillisecondsSinceEpoch(0);
 
-        return aDateTime.compareTo(bDateTime);
+        return bDateTime.compareTo(aDateTime);
       });
 
       upcomingClasses.value = upcomingClassesList;

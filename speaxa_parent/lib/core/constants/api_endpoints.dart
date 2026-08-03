@@ -1,16 +1,23 @@
+import 'package:flutter/foundation.dart';
+
 class ApiEndpoints {
-  // Base Production URL for Speaxa domain
-  static const String localAndroidBaseUrl = 'http://10.0.2.2:5002/api';
-  static const String localIosBaseUrl = 'http://localhost:5002/api';
+  // Production vs Staging Environment Toggle
+  // Automatically uses Production URLs in release builds or when IS_PRODUCTION=true is set!
+  static const bool isProduction = bool.fromEnvironment('IS_PRODUCTION', defaultValue: kReleaseMode);
+
+  static const String stagingBaseUrl = 'https://staging.speaxa.in/api';
   static const String productionBaseUrl = 'https://speaxa.in/api';
 
-  static String get baseUrl => productionBaseUrl;
+  static String get baseUrl {
+    return isProduction ? productionBaseUrl : stagingBaseUrl;
+  }
 
-  static const String localAndroidSocketUrl = 'http://10.0.2.2:5002';
-  static const String localIosSocketUrl = 'http://localhost:5002';
+  static const String stagingSocketUrl = 'https://staging.speaxa.in';
   static const String productionSocketUrl = 'https://speaxa.in';
 
-  static String get socketUrl => productionSocketUrl;
+  static String get socketUrl {
+    return isProduction ? productionSocketUrl : stagingSocketUrl;
+  }
 
   // Auth Endpoints
   static const String login = '/auth/login';

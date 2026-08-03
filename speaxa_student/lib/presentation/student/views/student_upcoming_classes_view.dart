@@ -312,11 +312,34 @@ class StudentUpcomingClassesView extends GetView<StudentDashboardController> {
       );
     });
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (isEmbedded) return bodyContent;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       appBar: AppBar(
-        title: const Text("Upcoming Lectures"),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
+              onPressed: () => Get.back(),
+            ),
+          ),
+        ),
+        title: Text(
+          "Upcoming Lectures",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A)),
+        ),
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       ),
       body: bodyContent,
     );

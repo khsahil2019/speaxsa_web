@@ -19,6 +19,7 @@ import 'student_assignments_view.dart';
 import 'student_reports_view.dart';
 import 'parent_requests_view.dart';
 import 'student_upcoming_classes_view.dart';
+import 'student_my_batches_view.dart';
 import 'student_recordings_view.dart';
 import '../../shared/views/notifications_view.dart';
 import '../../shared/views/profile_view.dart';
@@ -79,8 +80,8 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
               _buildMainDashboard(context),
               const StudentCoursesView(),
               if (isLoggedIn) ...[
-                const StudentUpcomingClassesView(isEmbedded: true),
-                const StudentAssignmentsView(),
+                const StudentMyBatchesView(isEmbedded: true),
+                const StudentAssignmentsView(isEmbedded: true),
                 const ProfileView(isEmbedded: true),
               ] else ...[
                 const SizedBox.shrink(),
@@ -98,7 +99,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
         ? [
             _NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
             _NavItemData(icon: Icons.auto_stories_outlined, activeIcon: Icons.auto_stories_rounded, label: 'Courses'),
-            _NavItemData(icon: Icons.groups_outlined, activeIcon: Icons.groups_rounded, label: 'Batches'),
+            _NavItemData(icon: Icons.groups_outlined, activeIcon: Icons.groups_rounded, label: 'My Batches'),
             _NavItemData(icon: Icons.assignment_outlined, activeIcon: Icons.assignment_rounded, label: 'Tasks'),
             _NavItemData(
               icon: Icons.person_outline_rounded,
@@ -207,16 +208,19 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                         AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
                           style: TextStyle(
-                            fontSize: isSelected ? 11 : 10.5,
+                            fontSize: isSelected ? 10.5 : 10,
                             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                             color: isSelected
                                 ? AppColors.primary
                                 : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                           ),
-                          child: Text(
-                            item.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              item.label,
+                              maxLines: 1,
+                              softWrap: false,
+                            ),
                           ),
                         ),
                       ],
@@ -282,7 +286,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
           : buildHeaderButton(
               child: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
               onTap: () => controller.selectedIndex.value = 0,
-              tooltip: "Back to Home Dashboard",
+              tooltip: "Back to Home",
             ),
       title: isHome
           ? Image.asset(
@@ -316,14 +320,37 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
       centerTitle: isHome,
       actions: isLoggedIn
           ? [
-              IconButton(
-                icon: Icon(
-                  Icons.notifications_outlined,
-                  size: 24,
-                  color: isDark ? AppColors.darkTextPrimary : Colors.black87,
-                ),
-                onPressed: () => Get.to(() => const NotificationsView()),
-              ),
+              Obx(() {
+                final unreadCount = controller.notificationsList.where((n) => !n.isRead).length;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        size: 24,
+                        color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+                      ),
+                      onPressed: () => Get.to(() => const NotificationsView()),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                          child: Text(
+                            '$unreadCount',
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
               const SizedBox(width: 4),
               GestureDetector(
                 onTap: () => controller.selectedIndex.value = 4, // Profile tab
@@ -378,106 +405,141 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
     final user = AuthService.to.currentUser.value;
     final photoUrl = user?.fullPhotoUrl;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeIdx = controller.selectedIndex.value;
 
     return Drawer(
-      backgroundColor: Colors.transparent,
       child: Container(
-        margin: const EdgeInsets.only(top: 44, bottom: 16, left: 8, right: 8),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(28),
-        ),
+        color: isDark ? AppColors.darkCard : Colors.white,
         child: Column(
           children: [
-            // ── Profile Header ─────────────────────────────────
+            // ── Modern Educator-Style Header Banner ────────────
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+              padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
               decoration: const BoxDecoration(
                 gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: 38,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    backgroundImage: photoUrl != null ? NetworkImage(photoUrl) as ImageProvider : null,
-                    child: photoUrl == null
-                        ? Text(
-                            user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'S',
-                            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  // Greeting
-                  Text(
-                    "Hello, ${user?.name.split(' ').first ?? 'Student'}! 👋",
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    user?.email ?? '',
-                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
-                  ),
-                  const SizedBox(height: 10),
-                  // Student code pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.badge_outlined, color: Colors.white, size: 14),
-                        const SizedBox(width: 6),
-                        Text(
-                          user?.studentCode ?? 'Pending',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
                         ),
-                      ],
-                    ),
+                        child: CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.white,
+                          backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                              ? NetworkImage(photoUrl) as ImageProvider
+                              : null,
+                          child: photoUrl == null || photoUrl.isEmpty
+                              ? Text(
+                                  user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'S',
+                                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    user?.name ?? 'Student User',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (user?.emailVerified == true)
+                                  const Icon(Icons.verified_rounded, color: Colors.amber, size: 18),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              user?.email ?? 'student@speaxa.in',
+                              style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Student Code & Grade Tags Row
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.22),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.badge_outlined, color: Colors.white, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              user?.studentCode ?? 'STD-ACTIVE',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (user?.grade != null && user!.grade!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.22),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            user.grade!,
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.deepOrange.shade600,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.local_fire_department, size: 12, color: Colors.white),
+                            const SizedBox(width: 3),
+                            Text(
+                              "${user?.learningStreak ?? 0} Day Streak",
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // ── Streak Badge ───────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.local_fire_department, color: Colors.deepOrange, size: 22),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("${user?.learningStreak ?? 0} Day Streak", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.deepOrange)),
-                        Text("Keep the momentum going!", style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Menu Items ─────────────────────────────────────
+            // ── Menu Options List ──────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 children: [
                   // SECTION 1: Overview
                   _buildDrawerSectionHeader("Overview"),
@@ -485,30 +547,30 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                     context,
                     icon: Icons.dashboard_rounded,
                     label: 'Dashboard',
-                    isSelected: controller.selectedIndex.value == 0,
+                    isSelected: activeIdx == 0,
                     onTap: () { Navigator.pop(context); controller.selectedIndex.value = 0; },
                   ),
 
-                  // SECTION 2: Academics & Learning
-                  _buildDrawerSectionHeader("Academics & Learning"),
+                  // SECTION 2: Academic & Classes
+                  _buildDrawerSectionHeader("Academic & Classes"),
                   _buildDrawerItem(
                     context,
                     icon: Icons.menu_book_rounded,
                     label: 'Browse Courses',
-                    isSelected: controller.selectedIndex.value == 1,
+                    isSelected: activeIdx == 1,
                     onTap: () { Navigator.pop(context); controller.selectedIndex.value = 1; },
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.groups_rounded,
                     label: 'My Batches',
-                    isSelected: controller.selectedIndex.value == 2,
+                    isSelected: activeIdx == 2,
                     onTap: () { Navigator.pop(context); controller.selectedIndex.value = 2; },
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.video_call_rounded,
-                    label: 'Upcoming Classes',
+                    label: 'Live Classes',
                     onTap: () { Navigator.pop(context); Get.to(() => const StudentUpcomingClassesView()); },
                   ),
                   _buildDrawerItem(
@@ -518,30 +580,30 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                     onTap: () { Navigator.pop(context); Get.to(() => const StudentRecordingsView()); },
                   ),
 
-                  // SECTION 3: Progress & Work
-                  _buildDrawerSectionHeader("Progress & Work"),
+                  // SECTION 3: Student Tracking & Work
+                  _buildDrawerSectionHeader("Student Tracking & Work"),
                   _buildDrawerItem(
                     context,
                     icon: Icons.assignment_rounded,
-                    label: 'Assignments',
-                    isSelected: controller.selectedIndex.value == 3,
+                    label: 'Assignments & Tasks',
+                    isSelected: activeIdx == 3,
                     onTap: () { Navigator.pop(context); controller.selectedIndex.value = 3; },
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.calendar_today_rounded,
-                    label: 'Attendance',
+                    label: 'Attendance Log',
                     onTap: () { Navigator.pop(context); Get.to(() => const StudentAttendanceView()); },
                   ),
                   _buildDrawerItem(
                     context,
                     icon: Icons.analytics_rounded,
-                    label: 'My Reports',
+                    label: 'Academic Reports',
                     onTap: () { Navigator.pop(context); Get.to(() => const StudentReportsView()); },
                   ),
 
-                  // SECTION 4: Account & Settings
-                  _buildDrawerSectionHeader("Account & Settings"),
+                  // SECTION 4: Parent Connect & Finance
+                  _buildDrawerSectionHeader("Parent Connect & Finance"),
                   _buildDrawerItem(
                     context,
                     icon: Icons.receipt_long_rounded,
@@ -551,41 +613,45 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                       _showPaymentsReceiptsModal(context);
                     },
                   ),
-                  _buildDrawerItem(
+                  Obx(() => _buildDrawerItem(
                     context,
-                    icon: Icons.notifications_rounded,
-                    label: 'Notifications',
-                    onTap: () { Navigator.pop(context); Get.to(() => const NotificationsView()); },
-                  ),
+                    icon: Icons.family_restroom_rounded,
+                    label: 'Parent Access Requests',
+                    badge: controller.parentRequests.isNotEmpty ? '${controller.parentRequests.length}' : null,
+                    onTap: () { Navigator.pop(context); Get.to(() => const ParentRequestsView()); },
+                  )),
+
+                  // SECTION 5: Account & Settings
+                  _buildDrawerSectionHeader("Account & Settings"),
+                  Obx(() {
+                    final unreadCount = controller.notificationsList.where((n) => !n.isRead).length;
+                    return _buildDrawerItem(
+                      context,
+                      icon: Icons.notifications_rounded,
+                      label: 'Notifications',
+                      badge: unreadCount > 0 ? '$unreadCount' : null,
+                      onTap: () { Navigator.pop(context); Get.to(() => const NotificationsView()); },
+                    );
+                  }),
                   _buildDrawerItem(
                     context,
                     icon: Icons.person_rounded,
                     label: 'My Profile',
-                    isSelected: controller.selectedIndex.value == 4,
+                    isSelected: activeIdx == 4,
                     onTap: () { Navigator.pop(context); controller.selectedIndex.value = 4; },
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    icon: Icons.family_restroom_rounded,
-                    label: 'Parent Access',
-                    badge: controller.parentRequests.isNotEmpty ? '${controller.parentRequests.length}' : null,
-                    onTap: () { Navigator.pop(context); Get.to(() => const ParentRequestsView()); },
                   ),
                 ],
               ),
             ),
-            
-            // Speaxa Logo
+
+            // Logo Branding
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Opacity(
-                opacity: 0.85,
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 26,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, err, stack) => const SizedBox(),
-                ),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 24,
+                fit: BoxFit.contain,
+                errorBuilder: (context, err, stack) => const SizedBox(),
               ),
             ),
 
@@ -598,11 +664,11 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.error, width: 1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    side: const BorderSide(color: AppColors.error, width: 1.2),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: const Icon(Icons.logout_rounded, size: 18),
-                  label: const Text("Logout", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text("Sign Out", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   onPressed: () => AuthService.to.logout(),
                 ),
               ),
@@ -1299,7 +1365,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
@@ -1312,25 +1378,37 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
               ],
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: color, size: 20),
+                  child: Icon(icon, color: color, size: 18),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+                const SizedBox(height: 5),
+                SizedBox(
+                  height: 26,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+                          height: 1.1,
+                        ),
+                        maxLines: 2,
+                        softWrap: true,
+                      ),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -1817,7 +1895,7 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
             crossAxisCount: 4,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 0.85,
+            childAspectRatio: 0.78,
           ),
           itemCount: menuItems.length,
           itemBuilder: (context, i) {
@@ -1845,14 +1923,24 @@ class StudentDashboardView extends GetView<StudentDashboardController> {
                       child: Icon(item['icon'] as IconData, color: color, size: 20),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      item['title'] as String,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
-                        height: 1.15,
+                    SizedBox(
+                      height: 26,
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            item['title'] as String,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                              height: 1.15,
+                            ),
+                            maxLines: 2,
+                            softWrap: true,
+                          ),
+                        ),
                       ),
                     ),
                   ],

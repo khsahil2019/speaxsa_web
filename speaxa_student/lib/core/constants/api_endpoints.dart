@@ -1,22 +1,22 @@
 import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
-  // Base URLs — In debug mode, uses the Mac's IP on the mobile hotspot network
-  // (10.149.11.237) so the phone can connect directly to the laptop.
-  static const String localAndroidBaseUrl = 'http://10.149.11.237:5002/api';
-  static const String localIosBaseUrl = 'http://localhost:5002/api';
+  // Production vs Staging Environment Toggle
+  // Automatically uses Production URLs in release builds or when IS_PRODUCTION=true is set!
+  static const bool isProduction = bool.fromEnvironment('IS_PRODUCTION', defaultValue: kReleaseMode);
+
+  static const String stagingBaseUrl = 'https://staging.speaxa.in/api';
   static const String productionBaseUrl = 'https://speaxa.in/api';
 
   static String get baseUrl {
-    return productionBaseUrl;
+    return isProduction ? productionBaseUrl : stagingBaseUrl;
   }
 
-  static const String localAndroidSocketUrl = 'http://10.149.11.237:5002';
-  static const String localIosSocketUrl = 'http://localhost:5002';
+  static const String stagingSocketUrl = 'https://staging.speaxa.in';
   static const String productionSocketUrl = 'https://speaxa.in';
 
   static String get socketUrl {
-    return productionSocketUrl;
+    return isProduction ? productionSocketUrl : stagingSocketUrl;
   }
 
   // Auth Endpoints

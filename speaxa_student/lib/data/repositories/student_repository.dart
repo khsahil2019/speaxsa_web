@@ -86,7 +86,13 @@ class StudentRepository {
 
   Future<List<NotificationModel>> getNotifications() async {
     final response = await _apiClient.get(ApiEndpoints.studentNotifications);
-    return (response as List).map((e) => NotificationModel.fromJson(e)).toList();
+    List<dynamic> list = [];
+    if (response is List) {
+      list = response;
+    } else if (response is Map && response['notifications'] is List) {
+      list = List<dynamic>.from(response['notifications']);
+    }
+    return list.map((e) => NotificationModel.fromJson(Map<String, dynamic>.from(e))).toList();
   }
 
   Future<List<ParentRequestModel>> getParentRequests() async {

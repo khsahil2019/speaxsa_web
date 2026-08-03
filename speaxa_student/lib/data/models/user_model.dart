@@ -26,6 +26,8 @@ class UserModel {
   final String? mobileNumber;
   final Map<String, dynamic>? socialLinks;
   final String? referredBy;
+  final bool phoneVerified;
+  final bool emailVerified;
 
   String? get fullPhotoUrl {
     if (photoUrl == null || photoUrl!.isEmpty || photoUrl == 'null') return null;
@@ -60,9 +62,21 @@ class UserModel {
     this.mobileNumber,
     this.socialLinks,
     this.referredBy,
+    this.phoneVerified = true,
+    this.emailVerified = true,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    bool isPhoneVerified = true;
+    if (json.containsKey('phone_verified') && json['phone_verified'] != null) {
+      isPhoneVerified = json['phone_verified'] == true || json['phone_verified']?.toString() == 'true';
+    }
+
+    bool isEmailVerified = true;
+    if (json.containsKey('email_verified') && json['email_verified'] != null) {
+      isEmailVerified = json['email_verified'] == true || json['email_verified']?.toString() == 'true';
+    }
+
     return UserModel(
       id: json['id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
@@ -89,6 +103,8 @@ class UserModel {
       mobileNumber: json['mobile_number']?.toString(),
       socialLinks: json['social_links'] is Map ? Map<String, dynamic>.from(json['social_links']) : null,
       referredBy: json['referred_by']?.toString(),
+      phoneVerified: isPhoneVerified,
+      emailVerified: isEmailVerified,
     );
   }
 
@@ -119,6 +135,68 @@ class UserModel {
       'mobile_number': mobileNumber,
       'social_links': socialLinks,
       'referred_by': referredBy,
+      'phone_verified': phoneVerified,
+      'email_verified': emailVerified,
     };
+  }
+
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? phone,
+    String? name,
+    String? role,
+    String? photoUrl,
+    String? approvalStatus,
+    String? teacherLevel,
+    String? qualification,
+    int? experienceYears,
+    String? subjectExpertise,
+    String? languages,
+    String? address,
+    String? bio,
+    double? rating,
+    int? totalRatings,
+    String? referralCode,
+    String? studentCode,
+    String? board,
+    String? grade,
+    int? learningStreak,
+    String? altEmail,
+    String? mobileNumber,
+    Map<String, dynamic>? socialLinks,
+    String? referredBy,
+    bool? phoneVerified,
+    bool? emailVerified,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      photoUrl: photoUrl ?? this.photoUrl,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      teacherLevel: teacherLevel ?? this.teacherLevel,
+      qualification: qualification ?? this.qualification,
+      experienceYears: experienceYears ?? this.experienceYears,
+      subjectExpertise: subjectExpertise ?? this.subjectExpertise,
+      languages: languages ?? this.languages,
+      address: address ?? this.address,
+      bio: bio ?? this.bio,
+      rating: rating ?? this.rating,
+      totalRatings: totalRatings ?? this.totalRatings,
+      referralCode: referralCode ?? this.referralCode,
+      studentCode: studentCode ?? this.studentCode,
+      board: board ?? this.board,
+      grade: grade ?? this.grade,
+      learningStreak: learningStreak ?? this.learningStreak,
+      altEmail: altEmail ?? this.altEmail,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      socialLinks: socialLinks ?? this.socialLinks,
+      referredBy: referredBy ?? this.referredBy,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
+      emailVerified: emailVerified ?? this.emailVerified,
+    );
   }
 }

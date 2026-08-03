@@ -17,9 +17,15 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
   static const Map<String, String> _subjectEmojis = {
     'Physics': '⚛️',
     'Mathematics': '📐',
+    'Maths': '📐',
+    'Math': '📐',
     'Chemistry': '🧪',
     'Biology': '🧬',
+    'Science': '🔬',
     'English': '📚',
+    'Hindi': '✍️',
+    'Social Science': '🌍',
+    'Computer Science': '💻',
   };
 
   @override
@@ -29,9 +35,14 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
         final matchesSearch = c.title.toLowerCase().contains(controller.courseSearchQuery.value.toLowerCase()) ||
             (c.description ?? '').toLowerCase().contains(controller.courseSearchQuery.value.toLowerCase()) ||
             (c.subject ?? '').toLowerCase().contains(controller.courseSearchQuery.value.toLowerCase());
-        final matchesSubject = controller.courseSelectedSubject.value == 'All' ||
-            c.subject == controller.courseSelectedSubject.value;
-        return matchesSearch && matchesSubject;
+
+        final selGrade = controller.courseSelectedGrade.value;
+        final matchesGrade = selGrade == 'All Grades' || selGrade == 'All' || (c.grade ?? '').toLowerCase() == selGrade.toLowerCase();
+
+        final selBoard = controller.courseSelectedBoard.value;
+        final matchesBoard = selBoard == 'All Boards' || selBoard == 'All' || (c.board ?? '').toLowerCase() == selBoard.toLowerCase();
+
+        return matchesSearch && matchesGrade && matchesBoard;
       }).toList();
 
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -42,7 +53,7 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
         children: [
           // Search & Filter Panel
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             color: Theme.of(context).scaffoldBackgroundColor,
             child: Column(
               children: [
@@ -66,54 +77,69 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                 ),
                 const SizedBox(height: 10),
 
-                // 2. Horizontal Filter Chips
-        // 2. Horizontal Filter Chips (Dynamically populated from Database)
-        Obx(() {
-          final Set<String> availableSubjects = {'All', ...controller.courses.map((c) => c.subject ?? 'General').where((s) => s.isNotEmpty)};
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: availableSubjects.map((subject) {
-                final isSelected = controller.courseSelectedSubject.value == subject;
-                final chipEmoji = _subjectEmojis[subject] ?? '📖';
-                final labelText = subject == 'All' ? 'All Subjects' : '$chipEmoji $subject';
+                // 2. Grade & Board Filter Dropdowns
+                Obx(() {
+                  const grades = ['All Grades', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
+                  const boards = ['All Boards', 'CBSE', 'ICSE', 'State Board'];
 
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(
-                      labelText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                  return Row(
+                    children: [
+                      // Grade Dropdown
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: grades.contains(controller.courseSelectedGrade.value) ? controller.courseSelectedGrade.value : 'All Grades',
+                              isExpanded: true,
+                              icon: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: isDark ? Colors.white70 : Colors.black54),
+                              dropdownColor: isDark ? AppColors.darkCard : Colors.white,
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                              onChanged: (val) {
+                                if (val != null) controller.courseSelectedGrade.value = val;
+                              },
+                              items: grades.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: AppColors.primary,
-                    backgroundColor: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
-                    onSelected: (selected) {
-                      if (selected) {
-                        controller.courseSelectedSubject.value = subject;
-                      }
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppColors.primary
-                            : (isDark ? Colors.white10 : Colors.grey.shade200),
+                      const SizedBox(width: 10),
+
+                      // Board Dropdown
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: boards.contains(controller.courseSelectedBoard.value) ? controller.courseSelectedBoard.value : 'All Boards',
+                              isExpanded: true,
+                              icon: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: isDark ? Colors.white70 : Colors.black54),
+                              dropdownColor: isDark ? AppColors.darkCard : Colors.white,
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                              onChanged: (val) {
+                                if (val != null) controller.courseSelectedBoard.value = val;
+                              },
+                              items: boards.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                    ],
+                  );
+                }),
+              ],
             ),
-          );
-        }),
-      ],
-    ),
-  ),
+          ),
   const Divider(height: 1),
 
   // Course List
