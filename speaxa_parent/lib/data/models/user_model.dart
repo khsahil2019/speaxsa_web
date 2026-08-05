@@ -1,3 +1,5 @@
+import '../../core/constants/api_endpoints.dart';
+
 class UserModel {
   final String id;
   final String email;
@@ -24,6 +26,8 @@ class UserModel {
   final String? mobileNumber;
   final Map<String, dynamic>? socialLinks;
   final String? referredBy;
+  final bool phoneVerified;
+  final bool emailVerified;
 
   UserModel({
     required this.id,
@@ -51,15 +55,40 @@ class UserModel {
     this.mobileNumber,
     this.socialLinks,
     this.referredBy,
+    this.phoneVerified = true,
+    this.emailVerified = true,
   });
 
+  String? get fullPhotoUrl {
+    if (photoUrl == null || photoUrl!.isEmpty) return null;
+    if (photoUrl!.startsWith('http://') || photoUrl!.startsWith('https://')) {
+      return photoUrl;
+    }
+    final rootHost = ApiEndpoints.baseUrl.replaceAll('/api', '');
+    return photoUrl!.startsWith('/') ? '$rootHost$photoUrl' : '$rootHost/$photoUrl';
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    bool isPhoneVerified = true;
+    if (json.containsKey('phone_verified')) {
+      isPhoneVerified = json['phone_verified'] == true || json['phone_verified'] == 1 || json['phone_verified'] == 'true';
+    } else if (json.containsKey('is_phone_verified')) {
+      isPhoneVerified = json['is_phone_verified'] == true || json['is_phone_verified'] == 1 || json['is_phone_verified'] == 'true';
+    }
+
+    bool isEmailVerified = true;
+    if (json.containsKey('email_verified')) {
+      isEmailVerified = json['email_verified'] == true || json['email_verified'] == 1 || json['email_verified'] == 'true';
+    } else if (json.containsKey('is_email_verified')) {
+      isEmailVerified = json['is_email_verified'] == true || json['is_email_verified'] == 1 || json['is_email_verified'] == 'true';
+    }
+
     return UserModel(
       id: json['id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
-      role: json['role']?.toString() ?? 'student',
+      role: json['role']?.toString() ?? 'parent',
       photoUrl: json['photo_url']?.toString(),
       approvalStatus: json['approval_status']?.toString(),
       teacherLevel: json['teacher_level']?.toString(),
@@ -80,6 +109,8 @@ class UserModel {
       mobileNumber: json['mobile_number']?.toString(),
       socialLinks: json['social_links'] is Map ? Map<String, dynamic>.from(json['social_links']) : null,
       referredBy: json['referred_by']?.toString(),
+      phoneVerified: isPhoneVerified,
+      emailVerified: isEmailVerified,
     );
   }
 
@@ -110,6 +141,49 @@ class UserModel {
       'mobile_number': mobileNumber,
       'social_links': socialLinks,
       'referred_by': referredBy,
+      'phone_verified': phoneVerified,
+      'email_verified': emailVerified,
     };
+  }
+
+  UserModel copyWith({
+    String? name,
+    String? phone,
+    String? email,
+    String? photoUrl,
+    String? address,
+    String? bio,
+    bool? phoneVerified,
+    bool? emailVerified,
+  }) {
+    return UserModel(
+      id: id,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      name: name ?? this.name,
+      role: role,
+      photoUrl: photoUrl ?? this.photoUrl,
+      approvalStatus: approvalStatus,
+      teacherLevel: teacherLevel,
+      qualification: qualification,
+      experienceYears: experienceYears,
+      subjectExpertise: subjectExpertise,
+      languages: languages,
+      address: address ?? this.address,
+      bio: bio ?? this.bio,
+      rating: rating,
+      totalRatings: totalRatings,
+      referralCode: referralCode,
+      studentCode: studentCode,
+      board: board,
+      grade: grade,
+      learningStreak: learningStreak,
+      altEmail: altEmail,
+      mobileNumber: mobileNumber,
+      socialLinks: socialLinks,
+      referredBy: referredBy,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
+      emailVerified: emailVerified ?? this.emailVerified,
+    );
   }
 }

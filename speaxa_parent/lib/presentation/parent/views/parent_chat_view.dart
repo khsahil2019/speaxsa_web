@@ -27,189 +27,212 @@ class ParentChatView extends GetView<ParentDashboardController> {
       final child = controller.selectedChild.value;
       if (child == null) {
         return const EmptyStateWidget(
-          title: "Select a Child",
-          message: "Please link or select a child account to connect with their teachers.",
+          title: "Select a Child Account",
+          message: "Please link or select a child account to connect with their educators.",
+          icon: Icons.person_add_alt_1_outlined,
         );
       }
 
-      if (controller.childObservations.isEmpty) {
-        return EmptyStateWidget(
-          title: "No Mentors Assigned Yet",
-          message: "Subject mentors will appear here once ${child.name} is enrolled in a course batch and therapist reviews are logged.",
-          icon: Icons.supervisor_account_outlined,
-        );
-      }
-
-      // Group observations by teacher to avoid duplicate profiles
       final Map<String, Map<String, dynamic>> teachersMap = {};
+      
+      // 1. Populate from teachersList
+      for (var t in controller.teachersList) {
+        final tId = t['id']?.toString() ?? t['teacher_id']?.toString() ?? '';
+        final tName = t['name']?.toString() ?? t['teacher_name']?.toString() ?? 'Educator';
+        if (tId.isNotEmpty) {
+          teachersMap[tId] = {
+            'teacher_id': tId,
+            'teacher_name': tName,
+            'subject': t['subject']?.toString() ?? t['subject_expertise']?.toString() ?? 'Subject Educator',
+            'curiosity': 0.0,
+            'understanding': 0.0,
+            'consistency': 0.0,
+            'communication': 0.0,
+          };
+        }
+      }
+
+      // 2. Overlay metrics from childObservations
       for (var obs in controller.childObservations) {
-        final tName = obs['teacher_name']?.toString();
-        if (tName != null && tName.isNotEmpty) {
-          if (!teachersMap.containsKey(tName)) {
-            teachersMap[tName] = {
-              'teacher_id': obs['teacher_id']?.toString() ?? '',
+        final tId = obs['teacher_id']?.toString() ?? '';
+        final tName = obs['teacher_name']?.toString() ?? '';
+        if (tName.isNotEmpty) {
+          final key = tId.isNotEmpty ? tId : tName;
+          if (!teachersMap.containsKey(key)) {
+            teachersMap[key] = {
+              'teacher_id': tId,
               'teacher_name': tName,
-              'batches': <String>{obs['batch_name']?.toString() ?? ''},
+              'subject': obs['batch_name']?.toString() ?? 'Course Educator',
               'curiosity': scaleMetric(obs['curiosity']),
               'understanding': scaleMetric(obs['understanding']),
               'consistency': scaleMetric(obs['consistency']),
               'communication': scaleMetric(obs['communication']),
             };
           } else {
-            (teachersMap[tName]!['batches'] as Set<String>).add(obs['batch_name']?.toString() ?? '');
+            teachersMap[key]!['curiosity'] = scaleMetric(obs['curiosity']);
+            teachersMap[key]!['understanding'] = scaleMetric(obs['understanding']);
+            teachersMap[key]!['consistency'] = scaleMetric(obs['consistency']);
+            teachersMap[key]!['communication'] = scaleMetric(obs['communication']);
           }
         }
       }
+
       final teachersList = teachersMap.values.toList();
 
       if (teachersList.isEmpty) {
         return EmptyStateWidget(
           title: "No Mentors Assigned Yet",
-          message: "Subject mentors will appear here once ${child.name} is enrolled in a course batch.",
+          message: "Educators will appear here once ${child.name} is enrolled in an active batch.",
           icon: Icons.supervisor_account_outlined,
         );
       }
 
-      return ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: teachersList.length,
-        itemBuilder: (context, i) {
-          final t = teachersList[i];
-          final String name = t['teacher_name'];
-          final String id = t['teacher_id'];
-          final Set<String> batches = t['batches'];
-          
-          final initials = name.isNotEmpty
-              ? name.split(' ').map((n) => n.isNotEmpty ? n[0] : '').join('').toUpperCase().substring(0, name.split(' ').length > 1 ? 2 : 1)
-              : 'T';
+      return RefreshIndicator(
+        onRefresh: () => controller.loadParentData(),
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          itemCount: teachersList.length,
+          itemBuilder: (context, i) {
+            final t = teachersList[i];
+            final String name = t['teacher_name'];
+            final String id = t['teacher_id'];
+            final String subject = t['subject'];
 
-          final ratings = [
-            {'label': 'Curiosity', 'val': t['curiosity']},
-            {'label': 'Focus', 'val': t['understanding']},
-            {'label': 'Consistency', 'val': t['consistency']},
-            {'label': 'Speech & Comm', 'val': t['communication']},
-          ];
+            final initials = name.isNotEmpty
+                ? name.split(' ').map((n) => n.isNotEmpty ? n[0] : '').join('').toUpperCase().substring(0, name.split(' ').length > 1 ? 2 : 1)
+                : 'T';
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 2,
-            shadowColor: Colors.black.withOpacity(0.04),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
-                        foregroundColor: AppColors.primary,
-                        child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 2),
-                            Text(
-                              batches.join(', '),
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+            final ratings = [
+              {'label': 'Curiosity', 'val': t['curiosity']},
+              {'label': 'Focus', 'val': t['understanding']},
+              {'label': 'Consistency', 'val': t['consistency']},
+              {'label': 'Speech & Comm', 'val': t['communication']},
+            ];
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade200),
+              ),
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          foregroundColor: AppColors.primary,
+                          child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Observations score grid
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 2.8,
-                    ),
-                    itemCount: ratings.length,
-                    itemBuilder: (context, idx) {
-                      final r = ratings[idx];
-                      final double score = r['val'] as double;
-                      return Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade100),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              r['label'] as String,
-                              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-                            ),
-                            const SizedBox(height: 2),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: score > 0 ? score.toStringAsFixed(1) : '—',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: score > 0 ? getBadgeColor(score) : Colors.black87,
-                                    ),
-                                  ),
-                                  if (score > 0)
-                                    const TextSpan(
-                                      text: '/10',
-                                      style: TextStyle(fontSize: 10, color: Colors.grey),
-                                    ),
-                                ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 2),
+                              Text(
+                                subject,
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 40,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 0,
+                    // Observations score grid
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 2.8,
                       ),
-                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      label: const Text("Message Teacher", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      onPressed: () {
-                        Get.to(() => ParentChatDetailView(
-                          teacherId: id,
-                          teacherName: name,
-                          studentId: child.id,
-                          studentName: child.name,
-                        ));
+                      itemCount: ratings.length,
+                      itemBuilder: (context, idx) {
+                        final r = ratings[idx];
+                        final double score = r['val'] as double;
+                        return Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkCardAlt : Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                r['label'] as String,
+                                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                              ),
+                              const SizedBox(height: 2),
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: score > 0 ? score.toStringAsFixed(1) : '—',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: score > 0 ? getBadgeColor(score) : Colors.black87,
+                                      ),
+                                    ),
+                                    if (score > 0)
+                                      const TextSpan(
+                                        text: '/10',
+                                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
                       },
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 42,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.parentRole,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                        label: const Text("Message Educator", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: () {
+                          Get.to(() => ParentChatDetailView(
+                            teacherId: id,
+                            teacherName: name,
+                            studentId: child.id,
+                            studentName: child.name,
+                          ));
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       );
     });
   }

@@ -12,7 +12,8 @@ import '../../parent/controllers/parent_dashboard_controller.dart';
 import '../widgets/custom_button.dart';
 
 class ProfileView extends StatefulWidget {
-  const ProfileView({super.key});
+  final bool isEmbedded;
+  const ProfileView({super.key, this.isEmbedded = false});
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
@@ -23,9 +24,10 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: AppColors.lightBg,
-      appBar: AppBar(
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      appBar: widget.isEmbedded ? null : AppBar(
         title: const Text("My Profile", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       body: Obx(() {

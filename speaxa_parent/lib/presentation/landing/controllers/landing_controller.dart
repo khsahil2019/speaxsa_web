@@ -12,6 +12,9 @@ class LandingController extends GetxController {
   final RxMap<String, dynamic> platformStats = <String, dynamic>{}.obs;
   final RxMap<String, dynamic> adminSettings = <String, dynamic>{}.obs;
 
+  RxList<dynamic> get publicCourses => liveCourses;
+  RxList<dynamic> get publicTeachers => liveTeachers;
+
   @override
   void onInit() {
     super.onInit();

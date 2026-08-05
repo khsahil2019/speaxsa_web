@@ -10,84 +10,90 @@ class RegisterView extends GetView<AuthController> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+    final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
+
     return Scaffold(
-      backgroundColor: AppColors.lightBg,
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor, size: 20),
           onPressed: () => Get.back(),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Centered Logo Avatar (Exact matching screenshot 2)
+              // Logo Avatar
               Center(
                 child: Container(
-                  width: 90,
-                  height: 90,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: AppColors.parentRole.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   child: Image.asset(
                     'assets/images/logo.png',
-                    errorBuilder: (c, e, s) => const Icon(Icons.school, size: 48, color: AppColors.primary),
+                    errorBuilder: (c, e, s) => const Icon(Icons.family_restroom_rounded, size: 40, color: AppColors.parentRole),
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
 
-              // Title (Exact matching screenshot 2)
               Center(
                 child: Text(
-                  "Join Speaxsa",
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.lightTextPrimary,
-                      ),
+                  "Create Parent Account",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
 
-              const Center(
+              Center(
                 child: Text(
-                  "Create your Parent account",
-                  style: TextStyle(color: Colors.grey, fontSize: 15),
+                  "Monitor your child's learning journey and progress",
+                  style: TextStyle(color: secTextColor, fontSize: 13.5),
+                  textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 24),
 
               CustomTextField(
-                label: 'Full Name',
-                hint: 'enter full name',
+                label: 'Full Name *',
+                hint: 'e.g. Anish Sharma',
                 controller: controller.nameController,
                 prefixIcon: Icons.person_outline,
               ),
 
               CustomTextField(
-                label: 'Email Address',
-                hint: 'enter email address',
+                label: 'Primary Email Address *',
+                hint: 'parent@example.com',
                 controller: controller.regEmailController,
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
               ),
 
               CustomTextField(
-                label: 'Phone Number',
-                hint: 'enter mobile number',
+                label: 'Mobile Number *',
+                hint: '+91 9876543210',
                 controller: controller.phoneController,
                 prefixIcon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
               ),
 
               Obx(() => CustomTextField(
-                label: 'Password',
+                label: 'Password *',
                 hint: '••••••••',
                 controller: controller.regPasswordController,
                 obscureText: !controller.isPasswordVisible.value,
@@ -97,30 +103,30 @@ class RegisterView extends GetView<AuthController> {
                   onPressed: () => controller.isPasswordVisible.toggle(),
                 ),
               )),
+              const SizedBox(height: 12),
 
-              // Terms & Conditions Checkbox (Exact matching screenshot 2)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Checkbox(
                     value: true,
                     onChanged: (val) {},
-                    activeColor: AppColors.primary,
+                    activeColor: AppColors.parentRole,
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text.rich(
                       TextSpan(
                         text: "I agree to the ",
-                        style: TextStyle(fontSize: 12.5, color: Colors.grey),
-                        children: [
+                        style: TextStyle(fontSize: 12, color: secTextColor),
+                        children: const [
                           TextSpan(
-                            text: "Terms & Conditions",
-                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                            text: "Terms of Service",
+                            style: TextStyle(color: AppColors.parentRole, fontWeight: FontWeight.bold),
                           ),
                           TextSpan(text: " and "),
                           TextSpan(
                             text: "Privacy Policy",
-                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: AppColors.parentRole, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -131,7 +137,7 @@ class RegisterView extends GetView<AuthController> {
               const SizedBox(height: 24),
 
               Obx(() => CustomButton(
-                text: 'Create Account',
+                text: 'Create Parent Account',
                 onPressed: controller.register,
                 isLoading: controller.isLoading.value,
               )),
@@ -140,42 +146,18 @@ class RegisterView extends GetView<AuthController> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Already have an account? ", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                  Text("Already registered? ", style: TextStyle(fontSize: 13.5, color: secTextColor)),
                   GestureDetector(
-                    onTap: () => Get.toNamed('/login'),
+                    onTap: () => Get.back(),
                     child: const Text(
                       "Sign In",
-                      style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(color: AppColors.parentRole, fontWeight: FontWeight.bold, fontSize: 13.5),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleTab(String title, String roleKey) {
-    final isSelected = controller.selectedRole.value == roleKey;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => controller.selectedRole.value = roleKey,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.lightTextSecondary,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: 13,
-            ),
           ),
         ),
       ),

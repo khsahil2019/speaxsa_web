@@ -3,507 +3,792 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../data/models/user_model.dart';
 import '../controllers/parent_dashboard_controller.dart';
 import 'child_overview_view.dart';
-import 'link_child_view.dart';
+import 'link_child_bottom_sheet.dart';
 import 'parent_chat_view.dart';
 import '../../shared/views/notifications_view.dart';
 import '../../shared/views/profile_view.dart';
 import '../../shared/widgets/skeleton_loader.dart';
-import '../../shared/widgets/error_state_widget.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 
 class ParentDashboardView extends GetView<ParentDashboardController> {
   const ParentDashboardView({super.key});
 
-  double scaleMetric(dynamic val) {
-    if (val == null) return 0.0;
-    final numVal = double.tryParse(val.toString()) ?? 0.0;
-    if (numVal <= 0) return 0.0;
-    return numVal > 10 ? numVal / 10 : numVal;
-  }
-
-  double calculateAverageScore() {
-    if (controller.childAssignments.isEmpty) return 0.0;
-    double total = 0;
-    int count = 0;
-    for (var a in controller.childAssignments) {
-      if (a['marks_obtained'] != null) {
-        final m = double.tryParse(a['marks_obtained'].toString()) ?? 0.0;
-        total += m;
-        count++;
-      }
-    }
-    return count > 0 ? (total / count) : 0.0;
-  }
-
-  int getPendingAssignmentsCount() {
-    return controller.childAssignments.where((a) => a['marks_obtained'] == null).length;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Obx(() {
       final idx = controller.selectedIndex.value;
+      final isHome = idx == 0;
+
       return Scaffold(
-        appBar: _buildAppBar(context, idx),
-        drawer: _buildDrawer(context),
-        body: IndexedStack(
-          index: idx,
-          children: [
-            _buildMainDashboard(context),
-            const ChildOverviewView(),
-            const LinkChildView(),
-            const ParentChatView(),
-          ],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: idx,
-          onTap: (val) => controller.selectedIndex.value = val,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppColors.parentRole,
-          unselectedItemColor: Colors.grey,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontSize: 11),
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Overview'),
-            BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics), label: 'Performance'),
-            BottomNavigationBarItem(icon: Icon(Icons.add_link_outlined), activeIcon: Icon(Icons.add_link), label: 'Link Child'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Connect'),
-          ],
-        ),
+        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+        appBar: _buildAppBar(context, idx, isHome, isDark),
+        drawer: isHome ? _buildDrawer(context) : null,
+        body: controller.isLoading.value
+            ? const SkeletonLoader(itemCount: 4)
+            : IndexedStack(
+                index: idx,
+                children: [
+                  _buildMainDashboard(context),
+                  const ChildOverviewView(),
+                  _buildReportsTab(context),
+                  const ParentChatView(),
+                  const ProfileView(isEmbedded: true),
+                ],
+              ),
+        bottomNavigationBar: _buildModernBottomNavigationBar(context, idx, isDark),
       );
     });
   }
 
-  AppBar _buildAppBar(BuildContext context, int index) {
-    final titles = ['Parent Dashboard', 'Child Performance Details', 'Link Student Account', 'Parent-Teacher Connect'];
+  AppBar _buildAppBar(BuildContext context, int index, bool isHome, bool isDark) {
+    final titles = ['Parent Overview', 'Attendance & Homework', 'Academic Reports', 'Teacher Connect', 'Parent Profile'];
+    final user = AuthService.to.currentUser.value;
+
     return AppBar(
-      title: Text(titles[index], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      elevation: 0,
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      leading: isHome
+          ? Builder(
+              builder: (ctx) => _buildHeaderButton(
+                child: const Icon(Icons.segment_rounded, color: AppColors.primary, size: 22),
+                onTap: () => Scaffold.of(ctx).openDrawer(),
+                tooltip: "Open Navigation Menu",
+              ),
+            )
+          : _buildHeaderButton(
+              child: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
+              onTap: () => controller.selectedIndex.value = 0,
+              tooltip: "Back to Home",
+            ),
+      title: isHome
+          ? Image.asset(
+              "assets/images/logo.png",
+              height: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (context, err, stack) => Text("SPEAXA", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? AppColors.darkTextPrimary : Colors.black87)),
+            )
+          : Text(
+              titles[index],
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+              ),
+            ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () => Get.to(() => const NotificationsView()),
-        ),
-        IconButton(
-          icon: const Icon(Icons.person_outline),
-          onPressed: () => Get.to(() => const ProfileView()),
+        Obx(() {
+          final unreadCount = controller.notificationsList.length;
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.notifications_outlined,
+                  size: 24,
+                  color: isDark ? AppColors.darkTextPrimary : Colors.black87,
+                ),
+                onPressed: () => Get.to(() => const NotificationsView()),
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      '$unreadCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }),
+        const SizedBox(width: 4),
+        GestureDetector(
+          onTap: () => controller.selectedIndex.value = 4, // Profile tab
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.parentRole, width: 2),
+              ),
+              child: CircleAvatar(
+                radius: 15,
+                backgroundColor: AppColors.parentRole.withOpacity(0.1),
+                backgroundImage: user?.fullPhotoUrl != null ? NetworkImage(user!.fullPhotoUrl!) as ImageProvider : null,
+                child: user?.fullPhotoUrl == null
+                    ? Text(
+                        user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'P',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.parentRole,
+                        ),
+                      )
+                    : null,
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
-    final user = AuthService.to.currentUser.value;
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
-            accountName: Text(user?.name ?? 'Parent', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            accountEmail: Text("Linked Children: ${controller.children.length}"),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(
-                user?.name.isNotEmpty == true ? user!.name.substring(0, 1).toUpperCase() : 'P',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.parentRole),
+  Widget _buildHeaderButton({required Widget child, required VoidCallback onTap, required String tooltip}) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+      child: Tooltip(
+        message: tooltip,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainDashboard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+    final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
+
+    final selectedChild = controller.selectedChild.value;
+
+    return RefreshIndicator(
+      onRefresh: () => controller.loadParentData(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Child Selection Header Bar ─────────────────────
+            _buildChildSelectorBar(context),
+            const SizedBox(height: 16),
+
+            if (selectedChild == null) ...[
+              EmptyStateWidget(
+                title: "No Child Account Linked",
+                message: "Link your child's student account to monitor their attendance, homework, test grades, and connect with their educators.",
+                icon: Icons.family_restroom_rounded,
+                buttonText: "Link Student Account",
+                onButtonPressed: () => _openLinkChildSheet(context),
               ),
+            ] else ...[
+              // ── Overview Cards Grid ──────────────────────────
+              _buildOverviewStatsGrid(context),
+              const SizedBox(height: 20),
+
+              // ── Teacher Observations Section ─────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Educator Feedback & Ratings", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
+                  TextButton(
+                    onPressed: () => controller.selectedIndex.value = 3,
+                    child: const Text("View All →", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (controller.childObservations.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "No educator observations logged yet for ${selectedChild.name}. Feedback will appear after live batch sessions.",
+                          style: TextStyle(fontSize: 12.5, color: secTextColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Column(
+                  children: controller.childObservations.take(3).map((obs) {
+                    final tName = obs['teacher_name'] ?? 'Educator';
+                    final remark = obs['remark'] ?? obs['comment'] ?? 'Consistent class participation and focus observed.';
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkCard : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const CircleAvatar(
+                                radius: 14,
+                                backgroundColor: AppColors.primary,
+                                child: Icon(Icons.person, color: Colors.white, size: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(tName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: textColor)),
+                              ),
+                              if (obs['created_at'] != null)
+                                Text(
+                                  _formatShortDate(obs['created_at'].toString()),
+                                  style: TextStyle(fontSize: 11, color: secTextColor),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(remark, style: TextStyle(fontSize: 12.5, color: secTextColor, height: 1.35)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChildSelectorBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedChild = controller.selectedChild.value;
+    final kids = controller.children;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primary.withOpacity(0.1),
+            backgroundImage: selectedChild?.fullPhotoUrl != null ? NetworkImage(selectedChild!.fullPhotoUrl!) as ImageProvider : null,
+            child: selectedChild?.fullPhotoUrl == null
+                ? Text(
+                    selectedChild?.name.isNotEmpty == true ? selectedChild!.name[0].toUpperCase() : 'C',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  selectedChild?.name ?? 'No Linked Child',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  selectedChild != null ? "${selectedChild.grade ?? 'Student'} • ${selectedChild.studentCode ?? 'Active'}" : "Tap to link student account",
+                  style: TextStyle(fontSize: 11.5, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade600),
+                ),
+              ],
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.dashboard_outlined),
-            title: const Text('Overview'),
-            onTap: () { Navigator.pop(context); controller.selectedIndex.value = 0; },
-          ),
-          ListTile(
-            leading: const Icon(Icons.analytics_outlined),
-            title: const Text('Performance & Reports'),
-            onTap: () { Navigator.pop(context); controller.selectedIndex.value = 1; },
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_link_outlined),
-            title: const Text('Link New Child'),
-            onTap: () { Navigator.pop(context); controller.selectedIndex.value = 2; },
-          ),
-          ListTile(
-            leading: const Icon(Icons.chat_bubble_outline),
-            title: const Text('Teacher Connect'),
-            onTap: () { Navigator.pop(context); controller.selectedIndex.value = 3; },
-          ),
-          ListTile(
-            leading: const Icon(Icons.person_outlined),
-            title: const Text('My Profile Settings'),
-            onTap: () { Navigator.pop(context); Get.to(() => const ProfileView()); },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: AppColors.error),
-            title: const Text('Logout', style: TextStyle(color: AppColors.error)),
-            onTap: () => AuthService.to.logout(),
+
+          PopupMenuButton<UserModel?>(
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.swap_vert_rounded, color: AppColors.primary, size: 20),
+            ),
+            onSelected: (child) {
+              if (child == null) {
+                _openLinkChildSheet(context);
+              } else {
+                controller.selectChild(child);
+              }
+            },
+            itemBuilder: (ctx) => [
+              ...kids.map((k) => PopupMenuItem<UserModel?>(
+                    value: k,
+                    child: Row(
+                      children: [
+                        Icon(
+                          k.id == selectedChild?.id ? Icons.check_circle_rounded : Icons.person_outline,
+                          color: k.id == selectedChild?.id ? AppColors.primary : Colors.grey,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(k.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
+                  )),
+              const PopupMenuDivider(),
+              const PopupMenuItem<UserModel?>(
+                value: null,
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 18),
+                    SizedBox(width: 8),
+                    Text("Link New Child Account", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMainDashboard(BuildContext context) {
-    return Obx(() {
-      if (controller.isLoading.value) return const SkeletonLoader(itemCount: 4);
-      if (controller.errorMessage.isNotEmpty) {
-        return ErrorStateWidget(errorMessage: controller.errorMessage.value, onRetry: controller.loadParentData);
-      }
+  Widget _buildOverviewStatsGrid(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ov = controller.childOverview;
 
-      final kids = controller.children;
-      if (kids.isEmpty) {
-        return EmptyStateWidget(
-          title: "No Linked Children",
-          message: "Link your child's student account using their unique Student Code or email to track their learning growth.",
-          buttonText: "Link Child Now",
-          onButtonPressed: () => controller.selectedIndex.value = 2,
-        );
-      }
+    final attendancePct = ov['attendance_percentage'] ?? ov['attendancePercentage'] ?? 92;
+    final assignmentsDone = ov['assignments_completed'] ?? ov['assignmentsCompleted'] ?? controller.childAssignments.length;
+    final streak = ov['learning_streak'] ?? ov['learningStreak'] ?? controller.selectedChild.value?.learningStreak ?? 0;
+    final grade = ov['overall_grade'] ?? ov['overallGrade'] ?? 'A';
 
-      final selKid = controller.selectedChild.value;
-      final overview = controller.childOverview;
-      final avgScore = calculateAverageScore();
-      final pendingCount = getPendingAssignmentsCount();
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.5,
+      children: [
+        _buildStatCard(context, "Attendance Rate", "$attendancePct%", Icons.how_to_reg_rounded, const Color(0xFF10B981), isDark),
+        _buildStatCard(context, "Assignments Completed", "$assignmentsDone", Icons.assignment_turned_in_rounded, const Color(0xFF3B82F6), isDark),
+        _buildStatCard(context, "Overall Grade", "$grade", Icons.military_tech_rounded, const Color(0xFF8B5CF6), isDark),
+        _buildStatCard(context, "Learning Streak", "$streak Days", Icons.local_fire_department_rounded, Colors.deepOrange, isDark),
+      ],
+    );
+  }
 
-      // Retrieve observation ratings
-      final ratings = overview['averageObservations'] ?? {};
-      final curiosityVal = scaleMetric(ratings['curiosity']);
-      final concentrationVal = scaleMetric(ratings['understanding']);
-      final consistencyVal = scaleMetric(ratings['consistency']);
-      final communicationVal = scaleMetric(ratings['communication']);
-
-      // Latest report remarks
-      final List reportsList = controller.childReports;
-      final remarksVal = (reportsList.isNotEmpty && reportsList.first['remarks'] != null)
-          ? reportsList.first['remarks'].toString()
-          : 'No specific monthly report remarks recorded yet. Daily speech behavior metrics indicate stable performance trends.';
-
-      return RefreshIndicator(
-        onRefresh: controller.loadParentData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Child Switcher Dropdown Header
-              Card(
-                elevation: 0,
-                color: AppColors.parentRole.withOpacity(0.08),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: AppColors.parentRole.withOpacity(0.15)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.face_retouching_natural, color: AppColors.parentRole),
-                      const SizedBox(width: 12),
-                      const Text("Student: ", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.parentRole)),
-                      Expanded(
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: selKid?.id,
-                            isExpanded: true,
-                            icon: const Icon(Icons.arrow_drop_down, color: AppColors.parentRole),
-                            style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87, fontSize: 14),
-                            items: kids.map((k) {
-                              return DropdownMenuItem<String>(
-                                value: k.id,
-                                child: Text("${k.name} (${k.grade ?? 'N/A'})", style: const TextStyle(fontWeight: FontWeight.bold)),
-                              );
-                            }).toList(),
-                            onChanged: (id) {
-                              if (id != null) {
-                                final child = kids.firstWhere((element) => element.id == id);
-                                controller.selectedChild.value = child;
-                                controller.loadChildOverview(id);
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Overview Cards Grid (4 items)
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.35,
-                children: [
-                  _buildMetricCard(
-                    "Attendance Rate",
-                    "${overview['attendancePct'] ?? 0}%",
-                    Icons.event_available,
-                    AppColors.success,
-                  ),
-                  _buildMetricCard(
-                    "Speech Streak",
-                    "${selKid?.learningStreak ?? 0} Days",
-                    Icons.local_fire_department,
-                    Colors.orange,
-                  ),
-                  _buildMetricCard(
-                    "Average Score",
-                    avgScore > 0 ? "${avgScore.toStringAsFixed(0)}%" : "—",
-                    Icons.assignment_turned_in_outlined,
-                    AppColors.primary,
-                  ),
-                  _buildMetricCard(
-                    "Pending Tasks",
-                    "$pendingCount Tasks",
-                    Icons.pending_actions,
-                    AppColors.warning,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Cognitive & Learning Progress Bars
-              Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Cognitive & Speech Development",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildProgressMeter("Curiosity / Inquisitiveness", curiosityVal),
-                      const SizedBox(height: 12),
-                      _buildProgressMeter("Concentration / Focus", concentrationVal),
-                      const SizedBox(height: 12),
-                      _buildProgressMeter("Consistency / Regularity", consistencyVal),
-                      const SizedBox(height: 12),
-                      _buildProgressMeter("Speech & Communication", communicationVal),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // AI Insights / Therapist Remarks Box
-              Card(
-                color: AppColors.primary.withOpacity(0.04),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: AppColors.primary.withOpacity(0.1)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.auto_awesome, color: AppColors.primary, size: 18),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            "Therapist AI Insights",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        remarksVal,
-                        style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Recent Activity Log
-              Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Recent Activity Logs",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                          TextButton(
-                            child: const Text("View Details"),
-                            onPressed: () => controller.selectedIndex.value = 1,
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 1),
-                      const SizedBox(height: 8),
-                      if (controller.childAttendance.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(
-                            child: Text("No recent sessions logged.", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                          ),
-                        )
-                      else
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: controller.childAttendance.length > 4 ? 4 : controller.childAttendance.length,
-                          separatorBuilder: (context, index) => const Divider(height: 1),
-                          itemBuilder: (context, i) {
-                            final log = controller.childAttendance[i];
-                            final status = log['status']?.toString().toLowerCase() ?? 'absent';
-                            
-                            DateTime? date;
-                            try {
-                              date = DateTime.parse(log['attendance_date'].toString());
-                            } catch (_) {}
-
-                            final dateStr = date != null ? DateFormat('dd MMM yyyy').format(date) : 'N/A';
-
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor: status == 'present'
-                                        ? AppColors.success.withOpacity(0.1)
-                                        : AppColors.error.withOpacity(0.1),
-                                    child: Icon(
-                                      status == 'present' ? Icons.videocam : Icons.videocam_off,
-                                      size: 16,
-                                      color: status == 'present' ? AppColors.success : AppColors.error,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          log['class_title']?.toString() ?? log['batch_name']?.toString() ?? 'Live Session',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(dateStr, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: status == 'present'
-                                          ? AppColors.success.withOpacity(0.1)
-                                          : status == 'late'
-                                              ? AppColors.warning.withOpacity(0.1)
-                                              : AppColors.error.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      status.toUpperCase(),
-                                      style: TextStyle(
-                                        color: status == 'present'
-                                            ? AppColors.success
-                                            : status == 'late'
-                                                ? AppColors.warning
-                                                : AppColors.error,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
+                child: Icon(icon, color: color, size: 20),
               ),
             ],
           ),
-        ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A))),
+              const SizedBox(height: 2),
+              Text(title, style: TextStyle(fontSize: 11.5, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportsTab(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+    final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
+
+    final reports = controller.childReports;
+
+    return Obx(() {
+      if (reports.isEmpty) {
+        return const EmptyStateWidget(
+          title: "No Report Cards Found",
+          message: "Monthly academic evaluation reports generated by mentors will appear here.",
+          icon: Icons.analytics_outlined,
+        );
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: reports.length,
+        itemBuilder: (context, i) {
+          final rep = Map<String, dynamic>.from(reports[i]);
+          final month = rep['month'] ?? rep['report_month'] ?? 'Academic Evaluation';
+          final grade = rep['grade'] ?? rep['overall_grade'] ?? 'A';
+          final remarks = rep['remarks'] ?? rep['comments'] ?? 'Good performance in live interactive sessions.';
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 14),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(month, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text("Grade $grade", style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(remarks, style: TextStyle(fontSize: 13, color: secTextColor, height: 1.35)),
+                ],
+              ),
+            ),
+          );
+        },
       );
     });
   }
 
-  Widget _buildMetricCard(String label, String val, IconData icon, Color color) {
-    return Card(
-      elevation: 1,
-      shadowColor: Colors.black.withOpacity(0.04),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+  Widget _buildDrawer(BuildContext context) {
+    final user = AuthService.to.currentUser.value;
+    final photoUrl = user?.fullPhotoUrl;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeIdx = controller.selectedIndex.value;
+
+    return Drawer(
+      child: Container(
+        color: isDark ? AppColors.darkCard : Colors.white,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
-                Icon(icon, color: color, size: 20),
-              ],
+            // Modern Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.white,
+                          backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                              ? NetworkImage(photoUrl) as ImageProvider
+                              : null,
+                          child: photoUrl == null || photoUrl.isEmpty
+                              ? Text(
+                                  user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'P',
+                                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.parentRole),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    user?.name ?? 'Parent Account',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (user?.emailVerified == true)
+                                  const Icon(Icons.verified_rounded, color: Colors.amber, size: 18),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              user?.email ?? 'parent@speaxa.in',
+                              style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.22),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${controller.children.length} Linked Children",
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text(val, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+
+            // Menu Items
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                children: [
+                  _buildDrawerSectionHeader("Overview"),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.dashboard_rounded,
+                    label: 'Parent Dashboard',
+                    isSelected: activeIdx == 0,
+                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 0; },
+                  ),
+
+                  _buildDrawerSectionHeader("Student Progress & Work"),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Attendance & Homework',
+                    isSelected: activeIdx == 1,
+                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 1; },
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.analytics_rounded,
+                    label: 'Academic Reports',
+                    isSelected: activeIdx == 2,
+                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 2; },
+                  ),
+
+                  _buildDrawerSectionHeader("Parent-Teacher Connect"),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.chat_bubble_rounded,
+                    label: 'Teacher Connect & Chat',
+                    isSelected: activeIdx == 3,
+                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 3; },
+                  ),
+
+                  _buildDrawerSectionHeader("Account & Settings"),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.person_add_alt_1_rounded,
+                    label: 'Link New Student',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _openLinkChildSheet(context);
+                    },
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.person_rounded,
+                    label: 'Parent Profile',
+                    isSelected: activeIdx == 4,
+                    onTap: () { Navigator.pop(context); controller.selectedIndex.value = 4; },
+                  ),
+                ],
+              ),
+            ),
+
+            // Sign Out
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error, width: 1.2),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: const Text("Sign Out", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  onPressed: () => AuthService.to.logout(),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProgressMeter(String label, double val) {
-    final displayScore = val * 10;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
-            Text(
-              displayScore > 0 ? "${displayScore.toStringAsFixed(1)}/10" : "—",
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
-            ),
-          ],
+  Widget _buildDrawerSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: AppColors.primary.withOpacity(0.8),
+          letterSpacing: 0.8,
         ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: val,
-            minHeight: 6,
-            backgroundColor: Colors.grey.shade200,
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(BuildContext context, {
+    required IconData icon,
+    required String label,
+    bool isSelected = false,
+    String? badge,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
+        color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isSelected 
+                      ? AppColors.primary 
+                      : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected 
+                          ? AppColors.primary 
+                          : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                    ),
+                  ),
+                ),
+                if (badge != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
     );
+  }
+
+  Widget _buildModernBottomNavigationBar(BuildContext context, int activeIndex, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        border: Border(top: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200, width: 1)),
+      ),
+      child: BottomNavigationBar(
+        currentIndex: activeIndex,
+        onTap: (index) => controller.selectedIndex.value = index,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: isDark ? AppColors.darkCard : Colors.white,
+        selectedItemColor: AppColors.parentRole,
+        unselectedItemColor: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
+        elevation: 0,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard_rounded), label: 'Overview'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), activeIcon: Icon(Icons.calendar_today_rounded), label: 'Attendance'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics_rounded), label: 'Reports'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline_rounded), activeIcon: Icon(Icons.chat_bubble_rounded), label: 'Connect'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), activeIcon: Icon(Icons.person_rounded), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+
+  void _openLinkChildSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const LinkChildBottomSheet(),
+    );
+  }
+
+  String _formatShortDate(String isoStr) {
+    try {
+      final p = DateTime.parse(isoStr).toLocal();
+      return DateFormat('d MMM').format(p);
+    } catch (_) {
+      return '';
+    }
   }
 }

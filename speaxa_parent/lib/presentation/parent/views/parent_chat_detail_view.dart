@@ -56,14 +56,101 @@ class _ParentChatDetailViewState extends State<ParentChatDetailView> {
     super.dispose();
   }
 
+  void _openRateTeacherDialog(BuildContext context) {
+    double selectedRating = 5.0;
+    final commentCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.star_rounded, color: Colors.amber, size: 24),
+            const SizedBox(width: 8),
+            Expanded(child: Text("Rate ${widget.teacherName}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: StatefulBuilder(
+          builder: (context, setDlgState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("How would you rate this educator's teaching and guidance?", style: TextStyle(fontSize: 13)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starVal = index + 1;
+                  return IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      starVal <= selectedRating ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                    onPressed: () => setDlgState(() => selectedRating = starVal.toDouble()),
+                  );
+                }),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: "Write a short review or feedback...",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              controller.rateTeacher(teacherId: widget.teacherId, rating: selectedRating, comment: commentCtrl.text.trim());
+            },
+            child: const Text("Submit Review"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final initials = widget.teacherName.isNotEmpty
         ? widget.teacherName.split(' ').map((n) => n.isNotEmpty ? n[0] : '').join('').toUpperCase().substring(0, widget.teacherName.split(' ').length > 1 ? 2 : 1)
         : 'T';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: isDark ? AppColors.darkTextPrimary : Colors.black87, size: 18),
+              onPressed: () => Get.back(),
+            ),
+          ),
+        ),
         title: Row(
           children: [
             CircleAvatar(
@@ -87,6 +174,15 @@ class _ParentChatDetailViewState extends State<ParentChatDetailView> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.star_rate_rounded, color: Colors.amber),
+            tooltip: "Rate Educator",
+            onPressed: () => _openRateTeacherDialog(context),
+          ),
+        ],
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       ),
       body: Column(
         children: [
