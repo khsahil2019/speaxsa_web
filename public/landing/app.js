@@ -279,6 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!response.ok) throw new Error('Failed to submit message.');
 
+        // Trigger Meta Pixel Lead Event ONLY AFTER CONFIRMED SUCCESSFUL SUBMISSION
+        if (typeof window.trackMetaLead === 'function') {
+          window.trackMetaLead();
+        }
+
         btn.innerHTML = '<i class="fas fa-check me-2"></i>Message Sent!';
         btn.style.background = 'linear-gradient(135deg,#10B981,#059669)';
 
