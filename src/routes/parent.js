@@ -28,14 +28,30 @@ const verifyChildLink = async (req, res, next) => {
 };
 
 router.post('/link-child', async (req, res) => {
-  const { student_code, student_identifier } = req.body;
-  const rawInput = (student_code || student_identifier || '').trim();
+  const { student_code, student_identifier, email } = req.body;
+  const rawInput = (student_code || student_identifier || email || '').trim();
   const cleanDigits = rawInput.replace(/\D/g, '');
   try {
     if (!rawInput) return res.status(400).json({ error: 'Student email, student code, or phone number is required' });
 
     const studentRes = await db.query(
-      "SELECT id, name, email FROM users WHERE (LOWER(TRIM(email)) = LOWER(TRIM($1)) OR UPPER(TRIM(student_code)) = UPPER(TRIM($1)) OR TRIM(phone) = TRIM($1) OR ($2 != '' AND (TRIM(phone) = $2 OR TRIM(phone) = '91' || $2 OR RIGHT(TRIM(phone), 10) = RIGHT($2, 10))) OR id = TRIM($1)) AND LOWER(role) = 'student'",
+      `SELECT id, name, email FROM users 
+       WHERE (
+         LOWER(TRIM(email)) = LOWER(TRIM($1)) 
+         OR UPPER(TRIM(student_code)) = UPPER(TRIM($1)) 
+         OR REPLACE(UPPER(TRIM(student_code)), '-', '') = REPLACE(UPPER(TRIM($1)), '-', '')
+         OR TRIM(phone) = TRIM($1) 
+         OR TRIM(mobile_number) = TRIM($1) 
+         OR ($2 != '' AND (
+           TRIM(phone) = $2 
+           OR TRIM(mobile_number) = $2 
+           OR TRIM(phone) = '91' || $2 
+           OR TRIM(mobile_number) = '91' || $2 
+           OR RIGHT(TRIM(phone), 10) = RIGHT($2, 10) 
+           OR RIGHT(TRIM(mobile_number), 10) = RIGHT($2, 10)
+         )) 
+         OR id = TRIM($1)
+       ) AND LOWER(role) = 'student'`,
       [rawInput, cleanDigits]
     );
     if (!studentRes.rows.length) {
@@ -56,16 +72,30 @@ router.post('/link-child', async (req, res) => {
       } else if (link.status === 'pending') {
         return res.status(400).json({ error: 'A link request is already pending child approval' });
       } else if (link.status === 'rejected') {
-        await db.query(
-          "UPDATE parent_student_links SET status = 'pending', linked_at = NOW(), last_email_sent_at = NOW() WHERE id = $1",
-          [link.id]
-        );
+        try {
+          await db.query(
+            "UPDATE parent_student_links SET status = 'pending', linked_at = NOW(), last_email_sent_at = NOW() WHERE id = $1",
+            [link.id]
+          );
+        } catch (updateErr) {
+          await db.query(
+            "UPDATE parent_student_links SET status = 'pending', linked_at = NOW() WHERE id = $1",
+            [link.id]
+          );
+        }
       }
     } else {
-      await db.query(
-        "INSERT INTO parent_student_links (parent_id, student_id, status, linked_at, last_email_sent_at) VALUES ($1,$2,'pending', NOW(), NOW())",
-        [req.user.id, student.id]
-      );
+      try {
+        await db.query(
+          "INSERT INTO parent_student_links (parent_id, student_id, status, linked_at, last_email_sent_at) VALUES ($1,$2,'pending', NOW(), NOW())",
+          [req.user.id, student.id]
+        );
+      } catch (insertErr) {
+        await db.query(
+          "INSERT INTO parent_student_links (parent_id, student_id, status, linked_at) VALUES ($1,$2,'pending', NOW())",
+          [req.user.id, student.id]
+        );
+      }
     }
 
     // Fetch parent user info for email
@@ -117,7 +147,7 @@ router.post('/link-child', async (req, res) => {
     // 2. Insert In-App Notification for Student
     try {
       await db.query(`
-        INSERT INTO notifications (id, title, message, user_id, role_target, type, metadata)
+        INSERT INTO notifications (id, title, message, target_user, target_role, type, metadata)
         VALUES ($1, $2, $3, $4, 'student', 'info', $5)
       `, [
         'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -138,17 +168,33 @@ router.post('/link-child', async (req, res) => {
 
 // ── Resend Parent Link Reminder Email (5 Min Cooldown) ─────────────────
 router.post('/link-child/resend-email', async (req, res) => {
-  const { studentId } = req.body;
-  if (!studentId) return res.status(400).json({ error: 'studentId is required' });
+  const { studentId, student_id, link_id, linkId } = req.body;
+  const targetStudentId = studentId || student_id;
+  const targetLinkId = link_id || linkId;
+
+  if (!targetStudentId && !targetLinkId) {
+    return res.status(400).json({ error: 'studentId or link_id is required' });
+  }
 
   try {
-    const linkRes = await db.query(
-      `SELECT psl.*, u.name as student_name, u.email as student_email 
-       FROM parent_student_links psl 
-       JOIN users u ON u.id = psl.student_id 
-       WHERE psl.parent_id = $1 AND psl.student_id = $2`,
-      [req.user.id, studentId]
-    );
+    let linkRes;
+    if (targetLinkId) {
+      linkRes = await db.query(
+        `SELECT psl.*, u.name as student_name, u.email as student_email 
+         FROM parent_student_links psl 
+         JOIN users u ON u.id = psl.student_id 
+         WHERE psl.parent_id = $1 AND (psl.id::text = $2 OR psl.student_id = $2)`,
+        [req.user.id, targetLinkId.toString()]
+      );
+    } else {
+      linkRes = await db.query(
+        `SELECT psl.*, u.name as student_name, u.email as student_email 
+         FROM parent_student_links psl 
+         JOIN users u ON u.id = psl.student_id 
+         WHERE psl.parent_id = $1 AND psl.student_id = $2`,
+        [req.user.id, targetStudentId]
+      );
+    }
 
     if (!linkRes.rows.length) {
       return res.status(404).json({ error: 'No connection link found for this student.' });
@@ -218,13 +264,13 @@ router.post('/link-child/resend-email', async (req, res) => {
 
     try {
       await db.query(`
-        INSERT INTO notifications (id, title, message, user_id, role_target, type, metadata)
+        INSERT INTO notifications (id, title, message, target_user, target_role, type, metadata)
         VALUES ($1, $2, $3, $4, 'student', 'info', $5)
       `, [
         'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         `Reminder: Parent Access Request from ${parentName}`,
         `Reminder: Parent ${parentName} is waiting for your approval on parent-student link request.`,
-        studentId,
+        link.student_id,
         JSON.stringify({ parent_id: req.user.id, parent_name: parentName })
       ]);
     } catch (e) {}

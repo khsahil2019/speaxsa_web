@@ -62,6 +62,7 @@ const db = require('./db');
   ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS id SERIAL;
   ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'pending';
   ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS last_email_sent_at TIMESTAMPTZ DEFAULT NOW();
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS teacher_checklist JSONB DEFAULT '{}';
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed BOOLEAN DEFAULT false;
   ALTER TABLE teacher_sop ADD COLUMN IF NOT EXISTS agreement_signed_at TIMESTAMPTZ;
@@ -524,6 +525,17 @@ const db = require('./db');
     console.log("PostgreSQL: Database self-healing migrations verified/created.");
   } catch (healErr) {
     console.error("PostgreSQL Self-Healing Warning:", healErr.message);
+  }
+
+  // Ensure parent_student_links columns independently
+  try {
+    await db.query(`
+      ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS last_email_sent_at TIMESTAMPTZ DEFAULT NOW();
+      ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS linked_at TIMESTAMPTZ DEFAULT NOW();
+      ALTER TABLE parent_student_links ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+    `);
+  } catch (pslErr) {
+    console.error("Parent student links schema check warning:", pslErr.message);
   }
 
   // Seed blogs if empty

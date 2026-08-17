@@ -783,7 +783,7 @@ router.post('/parent-requests/:linkId/approve', async (req, res) => {
 
       try {
         await db.query(`
-          INSERT INTO notifications (id, title, message, user_id, role_target, type, metadata)
+          INSERT INTO notifications (id, title, message, target_user, target_role, type, metadata)
           VALUES ($1, $2, $3, $4, 'parent', 'info', $5)
         `, [
           'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
