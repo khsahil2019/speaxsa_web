@@ -10,6 +10,7 @@ import 'link_child_bottom_sheet.dart';
 import 'parent_chat_view.dart';
 import '../../shared/views/notifications_view.dart';
 import '../../shared/views/profile_view.dart';
+import '../../landing/views/faq_speaxa_view.dart';
 import '../../shared/widgets/skeleton_loader.dart';
 import '../../shared/widgets/empty_state_widget.dart';
 
@@ -82,7 +83,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
             ),
       actions: [
         Obx(() {
-          final unreadCount = controller.notificationsList.length;
+          final unreadCount = controller.unreadNotificationCount;
           return Stack(
             alignment: Alignment.center,
             children: [
@@ -92,7 +93,10 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
                   size: 24,
                   color: isDark ? AppColors.darkTextPrimary : Colors.black87,
                 ),
-                onPressed: () => Get.to(() => const NotificationsView()),
+                onPressed: () async {
+                  await Get.to(() => const NotificationsView());
+                  controller.loadTeachersAndNotifications();
+                },
               ),
               if (unreadCount > 0)
                 Positioned(
@@ -126,8 +130,10 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
               child: CircleAvatar(
                 radius: 15,
                 backgroundColor: AppColors.parentRole.withOpacity(0.1),
-                backgroundImage: user?.fullPhotoUrl != null ? NetworkImage(user!.fullPhotoUrl!) as ImageProvider : null,
-                child: user?.fullPhotoUrl == null
+                backgroundImage: (user?.fullPhotoUrl != null && user!.fullPhotoUrl!.isNotEmpty)
+                    ? NetworkImage(user.fullPhotoUrl!) as ImageProvider
+                    : null,
+                child: (user?.fullPhotoUrl == null || user!.fullPhotoUrl!.isEmpty)
                     ? Text(
                         user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'P',
                         style: const TextStyle(
@@ -181,6 +187,49 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Obx(() {
+              final user = AuthService.to.currentUser.value;
+              if (user?.emailVerified == false) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Email Not Verified",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.amber),
+                            ),
+                            Text(
+                              "Verify ${user?.email ?? 'email'} to secure account",
+                              style: TextStyle(fontSize: 11.5, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => controller.showEmailVerificationDialog(),
+                        child: const Text("Verify", style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12.5)),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+
             // ── Child Selection Header Bar ─────────────────────
             _buildChildSelectorBar(context),
             const SizedBox(height: 16),
@@ -388,7 +437,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 1.5,
+      childAspectRatio: 1.25,
       children: [
         _buildStatCard(context, "Attendance Rate", "$attendancePct%", Icons.how_to_reg_rounded, const Color(0xFF10B981), isDark),
         _buildStatCard(context, "Assignments Completed", "$assignmentsDone", Icons.assignment_turned_in_rounded, const Color(0xFF3B82F6), isDark),
@@ -400,7 +449,7 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
 
   Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -414,21 +463,37 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: 18),
               ),
             ],
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A))),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(title, style: TextStyle(fontSize: 11.5, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade600)),
+              Text(
+                title,
+                style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ],
@@ -643,6 +708,12 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
                     label: 'Parent Profile',
                     isSelected: activeIdx == 4,
                     onTap: () { Navigator.pop(context); controller.selectedIndex.value = 4; },
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.help_outline_rounded,
+                    label: 'Help & FAQs',
+                    onTap: () { Navigator.pop(context); Get.to(() => const FaqSpeaxaView()); },
                   ),
                 ],
               ),

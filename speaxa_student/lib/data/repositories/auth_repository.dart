@@ -22,7 +22,13 @@ class AuthRepository {
   Future<Map<String, dynamic>> register(Map<String, dynamic> data) async {
     final response = await _apiClient.post(ApiEndpoints.register, data: data);
     if (response['status'] == 'otp_sent') {
-      return {'status': 'otp_sent', 'message': response['message'], 'otp': response['otp']};
+      return {
+        'status': 'otp_sent',
+        'message': response['message'],
+        'otp': response['otp'],
+        'phone': response['phone'],
+        'email': response['email'],
+      };
     }
     return {
       'token': response['token'],

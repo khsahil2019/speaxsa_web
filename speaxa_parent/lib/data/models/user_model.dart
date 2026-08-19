@@ -69,18 +69,20 @@ class UserModel {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    bool isPhoneVerified = true;
-    if (json.containsKey('phone_verified')) {
-      isPhoneVerified = json['phone_verified'] == true || json['phone_verified'] == 1 || json['phone_verified'] == 'true';
-    } else if (json.containsKey('is_phone_verified')) {
-      isPhoneVerified = json['is_phone_verified'] == true || json['is_phone_verified'] == 1 || json['is_phone_verified'] == 'true';
+    bool isPhoneVerified = false;
+    final rawPv = json['phone_verified'] ?? json['phoneVerified'] ?? json['is_phone_verified'] ?? json['isPhoneVerified'];
+    if (rawPv != null) {
+      final s = rawPv.toString().toLowerCase().trim();
+      isPhoneVerified = rawPv == true || rawPv == 1 || s == 'true' || s == '1' || s == 't';
+    } else {
+      isPhoneVerified = true;
     }
 
-    bool isEmailVerified = true;
-    if (json.containsKey('email_verified')) {
-      isEmailVerified = json['email_verified'] == true || json['email_verified'] == 1 || json['email_verified'] == 'true';
-    } else if (json.containsKey('is_email_verified')) {
-      isEmailVerified = json['is_email_verified'] == true || json['is_email_verified'] == 1 || json['is_email_verified'] == 'true';
+    bool isEmailVerified = false;
+    final rawEv = json['email_verified'] ?? json['emailVerified'] ?? json['is_email_verified'] ?? json['isEmailVerified'];
+    if (rawEv != null) {
+      final s = rawEv.toString().toLowerCase().trim();
+      isEmailVerified = rawEv == true || rawEv == 1 || s == 'true' || s == '1' || s == 't';
     }
 
     return UserModel(
@@ -89,7 +91,7 @@ class UserModel {
       phone: json['phone']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       role: json['role']?.toString() ?? 'parent',
-      photoUrl: json['photo_url']?.toString(),
+      photoUrl: (json['photo_url'] ?? json['photoUrl'] ?? json['avatar'] ?? json['photo'])?.toString(),
       approvalStatus: json['approval_status']?.toString(),
       teacherLevel: json['teacher_level']?.toString(),
       qualification: json['qualification']?.toString(),

@@ -5,6 +5,8 @@ import '../../../core/network/api_client.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/chat_message_model.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/parent_repository.dart';
 
 class ParentDashboardController extends GetxController with WidgetsBindingObserver {
@@ -23,6 +25,16 @@ class ParentDashboardController extends GetxController with WidgetsBindingObserv
   final RxList<dynamic> childObservations = <dynamic>[].obs;
   final RxList<Map<String, dynamic>> teachersList = <Map<String, dynamic>>[].obs;
   final RxList<dynamic> notificationsList = <dynamic>[].obs;
+
+  int get unreadNotificationCount {
+    return notificationsList.where((n) {
+      if (n is Map) {
+        final isRead = n['is_read'] == true || n['is_read'] == 1 || n['is_read'] == 'true';
+        return !isRead;
+      }
+      return false;
+    }).length;
+  }
 
   // Link child controller
   final studentCodeController = TextEditingController();
@@ -76,6 +88,13 @@ class ParentDashboardController extends GetxController with WidgetsBindingObserv
         return;
       }
 
+      try {
+        final freshUser = await AuthRepository().fetchProfile();
+        AuthService.to.updateUserProfile(freshUser);
+      } catch (pErr) {
+        debugPrint('[ParentDashboard] Live profile sync notice: $pErr');
+      }
+
       final kids = await _parentRepository.getChildren();
       children.value = kids;
 
@@ -91,12 +110,151 @@ class ParentDashboardController extends GetxController with WidgetsBindingObserv
       }
 
       await loadTeachersAndNotifications();
+      checkEmailVerificationPopup();
     } catch (e) {
       errorMessage.value = e.toString();
       debugPrint('[ParentDashboard] Load error: $e');
     } finally {
       isLoading.value = false;
     }
+  }
+
+  bool _hasPromptedEmailVerification = false;
+
+  void checkEmailVerificationPopup() {
+    if (_hasPromptedEmailVerification) return;
+    final user = AuthService.to.currentUser.value;
+    if (user != null && user.emailVerified == false) {
+      _hasPromptedEmailVerification = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showEmailVerificationDialog();
+      });
+    }
+  }
+
+  void showEmailVerificationDialog() {
+    final user = AuthService.to.currentUser.value;
+    if (user == null) return;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.mark_email_unread_rounded, size: 40, color: Colors.amber),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Email Verification Required",
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Your registered email (${user.email}) is not verified yet. Click below to receive a direct verification link in your email inbox.",
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text("Later", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Get.back();
+                        try {
+                          final authRepo = AuthRepository();
+                          await authRepo.sendEmailVerificationLink(user.email);
+                          
+                          Get.dialog(
+                            Dialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(22),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981).withOpacity(0.12),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.mark_email_read_rounded, size: 42, color: Color(0xFF10B981)),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      "Verification Link Sent!",
+                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      "We have sent a verification link to:\n${user.email}\n\nPlease check your email inbox (and spam folder) and click the link to verify your account.",
+                                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.4),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: () => Get.back(),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.parentRole,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          padding: const EdgeInsets.symmetric(vertical: 13),
+                                        ),
+                                        child: const Text("OK, Got It", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        } catch (e) {
+                          Get.snackbar('Error', 'Failed to send verification link: $e', backgroundColor: Colors.red, colorText: Colors.white);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.parentRole,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text("Send Link", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
   }
 
   Future<void> loadTeachersAndNotifications() async {

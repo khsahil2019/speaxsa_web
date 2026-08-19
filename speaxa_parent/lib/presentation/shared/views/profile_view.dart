@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -9,6 +10,7 @@ import '../../../core/services/storage_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../parent/controllers/parent_dashboard_controller.dart';
+import '../../landing/views/faq_speaxa_view.dart';
 import '../widgets/custom_button.dart';
 
 class ProfileView extends StatefulWidget {
@@ -21,6 +23,25 @@ class ProfileView extends StatefulWidget {
 
 class _ProfileViewState extends State<ProfileView> {
   final ParentDashboardController dashboardController = Get.find<ParentDashboardController>();
+
+  Future<void> _pickAndUploadAvatar() async {
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.image);
+      if (result != null && result.files.single.path != null) {
+        Get.snackbar('Uploading', 'Uploading profile picture...', backgroundColor: Colors.blue, colorText: Colors.white);
+        final photoUrl = await AuthRepository().uploadAvatar(result.files.single.path!);
+        final currentUser = AuthService.to.currentUser.value;
+        if (currentUser != null) {
+          final updatedUser = currentUser.copyWith(photoUrl: photoUrl);
+          AuthService.to.updateUserProfile(updatedUser);
+        }
+        Get.snackbar('Success', 'Profile picture updated!', backgroundColor: AppColors.parentRole, colorText: Colors.white);
+        if (mounted) setState(() {});
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to upload avatar: $e', backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,12 +81,36 @@ class _ProfileViewState extends State<ProfileView> {
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 46,
-                            backgroundColor: AppColors.parentRole.withOpacity(0.12),
-                            child: Text(
-                              user?.name.isNotEmpty == true ? user!.name.substring(0, 1).toUpperCase() : 'P',
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.parentRole),
+                          GestureDetector(
+                            onTap: _pickAndUploadAvatar,
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 46,
+                                  backgroundColor: AppColors.parentRole.withOpacity(0.12),
+                                  backgroundImage: user?.fullPhotoUrl != null && user!.fullPhotoUrl!.isNotEmpty
+                                      ? NetworkImage(user.fullPhotoUrl!) as ImageProvider
+                                      : null,
+                                  child: user?.fullPhotoUrl == null || user!.fullPhotoUrl!.isEmpty
+                                      ? Text(
+                                          user?.name.isNotEmpty == true ? user!.name.substring(0, 1).toUpperCase() : 'P',
+                                          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.parentRole),
+                                        )
+                                      : null,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.parentRole,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -136,12 +181,21 @@ class _ProfileViewState extends State<ProfileView> {
                     const Divider(height: 1, indent: 20, endIndent: 20),
                     ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20))),
                       leading: const Icon(Icons.lock_outline, color: Colors.orangeAccent),
                       title: const Text("Change Security Password", style: TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: const Text("Change account password", style: TextStyle(fontSize: 12, color: Colors.grey)),
                       trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
                       onTap: () => Get.to(() => const ChangeParentPasswordView()),
+                    ),
+                    const Divider(height: 1, indent: 20, endIndent: 20),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20))),
+                      leading: const Icon(Icons.help_outline_rounded, color: Colors.teal),
+                      title: const Text("Help & FAQs", style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: const Text("Parent portal guidance and instant answers", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                      onTap: () => Get.to(() => const FaqSpeaxaView()),
                     ),
                   ],
                 ),
@@ -222,7 +276,12 @@ class _ProfileViewState extends State<ProfileView> {
                                   CircleAvatar(
                                     backgroundColor: AppColors.primary.withOpacity(0.1),
                                     foregroundColor: AppColors.primary,
-                                    child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    backgroundImage: kid.fullPhotoUrl != null && kid.fullPhotoUrl!.isNotEmpty
+                                        ? NetworkImage(kid.fullPhotoUrl!) as ImageProvider
+                                        : null,
+                                    child: kid.fullPhotoUrl == null || kid.fullPhotoUrl!.isEmpty
+                                        ? Text(initials, style: const TextStyle(fontWeight: FontWeight.bold))
+                                        : null,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
