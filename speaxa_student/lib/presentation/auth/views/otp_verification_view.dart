@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
@@ -75,8 +76,8 @@ class OtpVerificationView extends GetView<AuthController> {
               ),
               const SizedBox(height: 24),
 
-              // Dev OTP Banner if present
-              if (devOtp != null && devOtp.toString().isNotEmpty) ...[
+              // Dev OTP Banner if present (Strictly disabled in Production Release Mode)
+              if (!kReleaseMode && devOtp != null && devOtp.toString().isNotEmpty) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
@@ -109,21 +110,25 @@ class OtpVerificationView extends GetView<AuthController> {
               ],
 
               if (purpose == 'register') ...[
-                CustomTextField(
-                  label: '6-Digit Verification OTP *',
-                  hint: 'e.g. 123456',
-                  controller: controller.regEmailOtpController,
-                  prefixIcon: Icons.pin_outlined,
-                  keyboardType: TextInputType.number,
+                const Text(
+                  "Enter 6-Digit OTP Code *",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+
+                // Production 6-Box Pin Input
+                OtpPinInput(
+                  controller: controller.regEmailOtpController,
+                  length: 6,
+                ),
+                const SizedBox(height: 32),
 
                 Obx(() => CustomButton(
                   text: 'Verify & Complete Registration',
                   onPressed: controller.register,
                   isLoading: controller.isLoading.value,
                 )),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 // Resend OTP section
                 Center(
@@ -146,14 +151,19 @@ class OtpVerificationView extends GetView<AuthController> {
                   }),
                 ),
               ] else ...[
-                CustomTextField(
-                  label: '6-Digit OTP Code *',
-                  hint: 'e.g. 123456',
-                  controller: controller.resetOtpController,
-                  prefixIcon: Icons.pin_outlined,
-                  keyboardType: TextInputType.number,
+                const Text(
+                  "Enter 6-Digit Reset Code *",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
+
+                // Production 6-Box Pin Input for Reset Password
+                OtpPinInput(
+                  controller: controller.resetOtpController,
+                  length: 6,
+                ),
+                const SizedBox(height: 20),
+
                 CustomTextField(
                   label: 'New Password *',
                   hint: 'At least 6 characters',
@@ -161,7 +171,7 @@ class OtpVerificationView extends GetView<AuthController> {
                   obscureText: true,
                   prefixIcon: Icons.lock_outline,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
                 Obx(() => CustomButton(
                   text: 'Verify & Reset Password',
@@ -191,6 +201,122 @@ class OtpVerificationView extends GetView<AuthController> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Production 6-Box Digit Pin Input Widget
+class OtpPinInput extends StatefulWidget {
+  final TextEditingController controller;
+  final int length;
+
+  const OtpPinInput({
+    super.key,
+    required this.controller,
+    this.length = 6,
+  });
+
+  @override
+  State<OtpPinInput> createState() => _OtpPinInputState();
+}
+
+class _OtpPinInputState extends State<OtpPinInput> {
+  late List<FocusNode> _focusNodes;
+  late List<TextEditingController> _boxControllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNodes = List.generate(widget.length, (_) => FocusNode());
+    _boxControllers = List.generate(widget.length, (_) => TextEditingController());
+
+    if (widget.controller.text.isNotEmpty) {
+      final text = widget.controller.text;
+      for (int i = 0; i < widget.length && i < text.length; i++) {
+        _boxControllers[i].text = text[i];
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var node in _focusNodes) {
+      node.dispose();
+    }
+    for (var ctrl in _boxControllers) {
+      ctrl.dispose();
+    }
+    super.dispose();
+  }
+
+  void _updateMainController() {
+    final pin = _boxControllers.map((c) => c.text).join();
+    widget.controller.text = pin;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(widget.length, (index) {
+        return SizedBox(
+          width: 46,
+          height: 56,
+          child: TextField(
+            controller: _boxControllers[index],
+            focusNode: _focusNodes[index],
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: 1,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+            ),
+            decoration: InputDecoration(
+              counterText: '',
+              contentPadding: EdgeInsets.zero,
+              filled: true,
+              fillColor: isDark ? AppColors.darkCard : Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.studentRole, width: 2),
+              ),
+            ),
+            onChanged: (value) {
+              if (value.length > 1) {
+                final code = value.replaceAll(RegExp(r'\D'), '');
+                for (int i = 0; i < widget.length && i < code.length; i++) {
+                  _boxControllers[i].text = code[i];
+                }
+                _focusNodes[widget.length - 1].requestFocus();
+                _updateMainController();
+                return;
+              }
+              if (value.isNotEmpty) {
+                if (index < widget.length - 1) {
+                  _focusNodes[index + 1].requestFocus();
+                } else {
+                  _focusNodes[index].unfocus();
+                }
+              } else if (value.isEmpty && index > 0) {
+                _focusNodes[index - 1].requestFocus();
+              }
+              _updateMainController();
+            },
+          ),
+        );
+      }),
     );
   }
 }

@@ -183,6 +183,46 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                     .where((b) => b.courseId == course.id)
                     .toList();
 
+                // Extract unique teachers for this course from batches
+                final List<Map<String, dynamic>> teachersList = [];
+                final Set<String> seenTeacherKeys = {};
+
+                for (final batch in courseBatches) {
+                  final name = (batch.teacherName != null && batch.teacherName!.trim().isNotEmpty)
+                      ? batch.teacherName!.trim()
+                      : 'SOP Verified Educator';
+                  final photo = batch.teacherPhoto;
+                  final level = batch.teacherLevel ?? 'Master Mentor';
+                  final rating = batch.teacherRating ?? 4.9;
+                  final teacherId = batch.teacherId ?? name;
+
+                  final key = '$teacherId-$name';
+                  if (!seenTeacherKeys.contains(key)) {
+                    seenTeacherKeys.add(key);
+                    teachersList.add({
+                      'id': teacherId,
+                      'name': name,
+                      'photo': photo,
+                      'level': level,
+                      'rating': rating,
+                      'batchName': batch.batchName,
+                      'subject': batch.subject ?? course.subject ?? 'General',
+                    });
+                  }
+                }
+
+                if (teachersList.isEmpty) {
+                  teachersList.add({
+                    'id': 'default',
+                    'name': 'Speaxa Verified Mentor',
+                    'photo': null,
+                    'level': 'Lead Educator',
+                    'rating': 5.0,
+                    'batchName': 'Upcoming Speech Batch',
+                    'subject': course.subject ?? 'General',
+                  });
+                }
+
                 final rawThumbnail = course.thumbnailUrl;
                 final fullThumbnailUrl = rawThumbnail != null && rawThumbnail.isNotEmpty
                     ? (rawThumbnail.startsWith('http')
@@ -216,103 +256,169 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.06),
                           ),
-                                  child: fullThumbnailUrl != null
-                                      ? Image.network(
-                                          fullThumbnailUrl,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) =>
-                                              _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
-                                        )
-                                      : _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
-                                ),
+                          child: fullThumbnailUrl != null
+                              ? Image.network(
+                                  fullThumbnailUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
+                                )
+                              : _buildPlaceholderBanner(course.subject ?? 'Course', subjectEmoji),
+                        ),
 
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Badges Row
-                                      Row(
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildBadge(
-                                course.subject ?? 'General',
-                                AppColors.primary.withOpacity(0.12),
-                                AppColors.primary,
+                              // Badges Row
+                              Row(
+                                children: [
+                                  _buildBadge(
+                                    course.subject ?? 'General',
+                                    AppColors.primary.withOpacity(0.12),
+                                    AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildBadge(
+                                    course.grade ?? 'Class 10',
+                                    const Color(0xFF10B981).withOpacity(0.12),
+                                    const Color(0xFF10B981),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              _buildBadge(
-                                course.grade ?? 'Class 10',
-                                const Color(0xFF10B981).withOpacity(0.12),
-                                const Color(0xFF10B981),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
+                              const SizedBox(height: 12),
 
-                          // Title
-                          Text(
-                            course.title,
-                            style: TextStyle(
-                              fontSize: 16.5,
-                              fontWeight: FontWeight.w800,
-                              color: textColor,
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // Description snippet
-                          if (course.description != null && course.description!.isNotEmpty)
-                            Text(
-                              course.description!,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: secTextColor,
-                                height: 1.4,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          const SizedBox(height: 16),
-
-                          const Divider(height: 1),
-                          const SizedBox(height: 14),
-
-                          // Bottom Price & Total Batches Info Row
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+                              // Title
                               Text(
-                                "₹${course.fees.toStringAsFixed(0)}",
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              Text(
-                                "${course.batchCount} batches",
+                                course.title,
                                 style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: Colors.grey.shade500,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: textColor,
+                                  height: 1.3,
                                 ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Description snippet
+                              if (course.description != null && course.description!.isNotEmpty)
+                                Text(
+                                  course.description!,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: secTextColor,
+                                    height: 1.4,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              const SizedBox(height: 14),
+
+                              // Compact Educator Row (1-Line, Zero Overflow)
+                              Row(
+                                children: [
+                                  const Icon(Icons.school_outlined, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Educators: ",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: secTextColor,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      physics: const BouncingScrollPhysics(),
+                                      child: Row(
+                                        children: teachersList.map((teacher) {
+                                          return InkWell(
+                                            onTap: () => _showTeacherDetailsBottomSheet(context, teacher, courseBatches, course),
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: Container(
+                                              margin: const EdgeInsets.only(right: 8),
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  _buildTeacherAvatarImage(teacher['photo'], teacher['name'], size: 22),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    teacher['name'],
+                                                    style: TextStyle(
+                                                      fontSize: 11.5,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: textColor,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    "⭐${teacher['rating']}",
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFFD97706),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  const Icon(Icons.info_outline_rounded, size: 12, color: AppColors.primary),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+
+                              const Divider(height: 1),
+                              const SizedBox(height: 14),
+
+                              // Bottom Price & Total Batches Info Row
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "₹${course.fees.toStringAsFixed(0)}",
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  Text(
+                                    "${course.batchCount} batches",
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: Colors.grey.shade500,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
+                  ),
+                );
+              },
+            ),
+          ),
         ),
-      ),
-    ),
-  ],
-);
+      ],
+    );
     });
   }
 
@@ -821,5 +927,337 @@ class StudentCoursesView extends GetView<StudentDashboardController> {
     } catch (e) {
       Get.snackbar('Error', 'Could not open link: $e');
     }
+  }
+
+  static void _showTeacherDetailsBottomSheet(
+    BuildContext context,
+    Map<String, dynamic> teacher,
+    List<BatchModel> courseBatches,
+    CourseModel course,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? AppColors.darkCard : Colors.white;
+        final textColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B);
+        final secTextColor = isDark ? AppColors.darkTextSecondary : Colors.grey.shade600;
+
+        final teacherBatches = courseBatches
+            .where((b) => b.teacherName == teacher['name'] || b.teacherId == teacher['id'])
+            .toList();
+
+        return Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag Indicator Bar
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Teacher Header Avatar Card
+                Center(
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: AppColors.tealIndigoGradient,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(3),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: bgColor,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: _buildTeacherAvatarImage(teacher['photo'], teacher['name'], size: 78),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.verified_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                Text(
+                  teacher['name'] ?? 'SOP Verified Educator',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: textColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        teacher['level'] ?? 'Lead Faculty',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.star_rounded, size: 14, color: Color(0xFFD97706)),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${teacher['rating']} Rating",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFB45309),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Verification Badges Row (Wrapped in Expanded to prevent RenderFlex overflow)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.03) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: _buildMetaDetailItem(Icons.verified_user_rounded, "SOP Audit", "Verified Specialist", isDark)),
+                      Container(height: 28, width: 1, color: isDark ? Colors.white10 : Colors.grey.shade300),
+                      Expanded(child: _buildMetaDetailItem(Icons.school_rounded, "Subject", teacher['subject'] ?? "Speech Therapy", isDark)),
+                      Container(height: 28, width: 1, color: isDark ? Colors.white10 : Colors.grey.shade300),
+                      Expanded(child: _buildMetaDetailItem(Icons.stars_rounded, "Experience", "5+ Years", isDark)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Active Batches Section
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Batches Taught by ${teacher['name']}:",
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                if (teacherBatches.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.03) : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "This educator is assigned to active batches for ${course.title}. Click below to explore schedule & enroll.",
+                      style: TextStyle(fontSize: 13, color: secTextColor),
+                    ),
+                  )
+                else
+                  ...teacherBatches.map((b) => Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.groups_rounded, size: 20, color: AppColors.primary),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                b.batchName,
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "${b.daysOfWeek.join(', ')} • ${b.startTime ?? 'TBD'} - ${b.endTime ?? ''}",
+                                style: TextStyle(fontSize: 12, color: secTextColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "${b.availableSeats} seats left",
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+
+                const SizedBox(height: 20),
+
+                // Action button to enroll
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 20),
+                    label: Text(
+                      "Enroll in ${course.title} (₹${course.fees.toStringAsFixed(0)})",
+                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showCourseDetailsBottomSheet(context, course, courseBatches, Get.find<StudentDashboardController>());
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Widget _buildTeacherAvatarImage(String? photoUrl, String teacherName, {double size = 36}) {
+    final fullUrl = photoUrl != null && photoUrl.isNotEmpty
+        ? (photoUrl.startsWith('http')
+            ? photoUrl
+            : '${ApiEndpoints.baseUrl.replaceAll('/api', '')}$photoUrl')
+        : null;
+
+    if (fullUrl != null) {
+      return Image.network(
+        fullUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildAvatarPlaceholderWidget(teacherName, size: size),
+      );
+    }
+    return _buildAvatarPlaceholderWidget(teacherName, size: size);
+  }
+
+  static Widget _buildAvatarPlaceholderWidget(String name, {double size = 36}) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'T';
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        gradient: AppColors.tealIndigoGradient,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: size * 0.42,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildMetaDetailItem(IconData icon, String title, String subtitle, bool isDark) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: TextStyle(fontSize: 10, color: isDark ? Colors.white54 : Colors.grey.shade600, fontWeight: FontWeight.w500),
+        ),
+        Text(
+          subtitle,
+          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+        ),
+      ],
+    );
   }
 }
