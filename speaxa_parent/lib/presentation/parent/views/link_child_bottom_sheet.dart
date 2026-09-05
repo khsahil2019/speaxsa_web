@@ -95,8 +95,8 @@ class LinkChildBottomSheet extends GetView<ParentDashboardController> {
                 onPressed: controller.isLoading.value
                     ? null
                     : () async {
-                        await controller.linkChildByCode();
-                        if (context.mounted && controller.errorMessage.value.isEmpty) {
+                        final success = await controller.linkChildByCode();
+                        if (context.mounted && success) {
                           Navigator.pop(context);
                         }
                       },

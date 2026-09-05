@@ -23,7 +23,7 @@ class ParentRequestModel {
 
   factory ParentRequestModel.fromJson(Map<String, dynamic> json) {
     return ParentRequestModel(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['link_id']?.toString() ?? json['linkId']?.toString() ?? '',
       parentId: json['parent_id']?.toString() ?? json['parentId']?.toString() ?? '',
       studentId: json['student_id']?.toString() ?? json['studentId']?.toString() ?? '',
       parentName: json['parent_name']?.toString() ?? json['parentName']?.toString() ?? json['name']?.toString(),
@@ -31,7 +31,7 @@ class ParentRequestModel {
       parentPhone: json['parent_phone']?.toString() ?? json['parentPhone']?.toString() ?? json['phone']?.toString(),
       parentPhoto: json['parent_photo']?.toString() ?? json['photo_url']?.toString(),
       status: json['status']?.toString() ?? 'pending',
-      createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString(),
+      createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString() ?? json['linked_at']?.toString(),
     );
   }
 

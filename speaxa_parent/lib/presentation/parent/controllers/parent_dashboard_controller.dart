@@ -99,14 +99,27 @@ class ParentDashboardController extends GetxController with WidgetsBindingObserv
       children.value = kids;
 
       if (kids.isNotEmpty) {
-        // If previous selection exists in kids, keep it, otherwise pick first
         final currentId = selectedChild.value?.id;
         final match = kids.firstWhereOrNull((k) => k.id == currentId);
-        selectedChild.value = match ?? kids.first;
-        await loadChildOverview(selectedChild.value!.id);
+        final firstApproved = kids.firstWhereOrNull((k) => k.approvalStatus == null || k.approvalStatus == 'approved');
+        selectedChild.value = match ?? firstApproved ?? kids.first;
+
+        if (selectedChild.value != null && (selectedChild.value!.approvalStatus == null || selectedChild.value!.approvalStatus == 'approved')) {
+          await loadChildOverview(selectedChild.value!.id);
+        } else {
+          childOverview.clear();
+          childAttendance.clear();
+          childAssignments.clear();
+          childReports.clear();
+          childObservations.clear();
+        }
       } else {
         selectedChild.value = null;
         childOverview.clear();
+        childAttendance.clear();
+        childAssignments.clear();
+        childReports.clear();
+        childObservations.clear();
       }
 
       await loadTeachersAndNotifications();
@@ -278,7 +291,15 @@ class ParentDashboardController extends GetxController with WidgetsBindingObserv
 
   Future<void> selectChild(UserModel child) async {
     selectedChild.value = child;
-    await loadChildOverview(child.id);
+    if (child.approvalStatus == null || child.approvalStatus == 'approved') {
+      await loadChildOverview(child.id);
+    } else {
+      childOverview.clear();
+      childAttendance.clear();
+      childAssignments.clear();
+      childReports.clear();
+      childObservations.clear();
+    }
   }
 
   Future<void> loadChildOverview(String studentId) async {
@@ -305,11 +326,11 @@ class ParentDashboardController extends GetxController with WidgetsBindingObserv
     }
   }
 
-  Future<void> linkChildByCode() async {
+  Future<bool> linkChildByCode() async {
     final code = studentCodeController.text.trim();
     if (code.isEmpty) {
       Get.snackbar('Error', 'Please enter student code or email address', backgroundColor: Colors.red, colorText: Colors.white);
-      return;
+      return false;
     }
 
     try {
@@ -318,8 +339,22 @@ class ParentDashboardController extends GetxController with WidgetsBindingObserv
       Get.snackbar('Request Sent', 'Link request sent to student! Pending approval.', backgroundColor: Colors.green, colorText: Colors.white);
       studentCodeController.clear();
       await loadParentData();
+      return true;
     } catch (e) {
       Get.snackbar('Link Failed', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> resendReminderEmail(String studentId) async {
+    try {
+      isLoading.value = true;
+      await _parentRepository.resendLinkEmail(studentId);
+      Get.snackbar('Reminder Sent', 'Reminder email sent to student successfully!', backgroundColor: Colors.green, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       isLoading.value = false;
     }

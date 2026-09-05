@@ -97,7 +97,15 @@ class StudentRepository {
 
   Future<List<ParentRequestModel>> getParentRequests() async {
     final response = await _apiClient.get(ApiEndpoints.parentRequests);
-    return (response as List).map((e) => ParentRequestModel.fromJson(e)).toList();
+    List<dynamic> list = [];
+    if (response is List) {
+      list = response;
+    } else if (response is Map && response['requests'] is List) {
+      list = List<dynamic>.from(response['requests']);
+    } else if (response is Map && response['data'] is List) {
+      list = List<dynamic>.from(response['data']);
+    }
+    return list.map((e) => ParentRequestModel.fromJson(Map<String, dynamic>.from(e))).toList();
   }
 
   Future<void> approveParentRequest(String linkId) async {

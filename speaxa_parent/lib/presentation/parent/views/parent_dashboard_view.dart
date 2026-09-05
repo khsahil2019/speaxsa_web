@@ -242,6 +242,72 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
                 buttonText: "Link Student Account",
                 onButtonPressed: () => _openLinkChildSheet(context),
               ),
+            ] else if (selectedChild.approvalStatus == 'pending') ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2410) : Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: isDark ? Colors.amber.shade800 : Colors.amber.shade300, width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.hourglass_top_rounded, color: Colors.amber, size: 26),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            "Link Request Pending Approval",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.darkTextPrimary : const Color(0xFF92400E),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "A connection request has been sent to ${selectedChild.name} (${selectedChild.email}). When your child approves the request in their SPEAXA Student app, their attendance, batches, and analytics will appear here automatically.",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? AppColors.darkTextSecondary : const Color(0xFF78350F),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                          onPressed: () => controller.resendReminderEmail(selectedChild.id),
+                          icon: const Icon(Icons.mark_email_read_outlined, size: 16),
+                          label: const Text("Resend Reminder Email", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 10),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                          onPressed: () => _openLinkChildSheet(context),
+                          child: const Text("Link Another Student", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ] else ...[
               // ── Overview Cards Grid ──────────────────────────
               _buildOverviewStatsGrid(context),
@@ -390,20 +456,52 @@ class ParentDashboardView extends GetView<ParentDashboardController> {
               }
             },
             itemBuilder: (ctx) => [
-              ...kids.map((k) => PopupMenuItem<UserModel?>(
-                    value: k,
-                    child: Row(
-                      children: [
-                        Icon(
-                          k.id == selectedChild?.id ? Icons.check_circle_rounded : Icons.person_outline,
-                          color: k.id == selectedChild?.id ? AppColors.primary : Colors.grey,
-                          size: 18,
+              ...kids.map((k) {
+                final isPending = k.approvalStatus == 'pending';
+                final isSelected = k.id == selectedChild?.id;
+
+                return PopupMenuItem<UserModel?>(
+                  value: k,
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected
+                            ? Icons.check_circle_rounded
+                            : (isPending ? Icons.hourglass_top_rounded : Icons.person_outline),
+                        color: isSelected
+                            ? AppColors.primary
+                            : (isPending ? Colors.amber.shade700 : Colors.grey),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          k.name,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
-                        Text(k.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                      if (isPending) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            "Pending",
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber),
+                          ),
+                        ),
                       ],
-                    ),
-                  )),
+                    ],
+                  ),
+                );
+              }),
               const PopupMenuDivider(),
               const PopupMenuItem<UserModel?>(
                 value: null,

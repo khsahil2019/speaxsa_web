@@ -92,7 +92,7 @@ class UserModel {
       name: json['name']?.toString() ?? '',
       role: json['role']?.toString() ?? 'parent',
       photoUrl: (json['photo_url'] ?? json['photoUrl'] ?? json['avatar'] ?? json['photo'])?.toString(),
-      approvalStatus: json['approval_status']?.toString(),
+      approvalStatus: json['approval_status']?.toString() ?? json['status']?.toString(),
       teacherLevel: json['teacher_level']?.toString(),
       qualification: json['qualification']?.toString(),
       experienceYears: json['experience_years'] is int ? json['experience_years'] : int.tryParse(json['experience_years']?.toString() ?? '0') ?? 0,
