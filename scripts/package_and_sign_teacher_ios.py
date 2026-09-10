@@ -57,30 +57,31 @@ def main():
             shutil.copy2(src_item, dst_item)
             print(f"Copied {item} to Runner.app")
 
-    print("--- 3. Updating Info.plist and Framework Plists (Xcode 26 GM, Build 6) ---")
+    print("--- 3. Recursively Updating ALL Info.plist files across entire app bundle ---")
     def patch_plist(plist_path):
-        with open(plist_path, 'rb') as f:
-            pl = plistlib.load(f)
-        pl['MinimumOSVersion'] = '15.0'
-        pl['CFBundleVersion'] = '6'
-        pl['DTPlatformVersion'] = '26.0'
-        pl['DTSDKName'] = 'iphoneos26.0'
-        pl['DTPlatformBuild'] = '26C100'
-        pl['DTSDKBuild'] = '26C100'
-        pl['DTXcode'] = '2600'
-        pl['DTXcodeBuild'] = '26C100'
-        pl['BuildMachineOSBuild'] = '24C101'
-        with open(plist_path, 'wb') as f:
-            plistlib.dump(pl, f)
+        try:
+            with open(plist_path, 'rb') as f:
+                pl = plistlib.load(f)
+            pl['MinimumOSVersion'] = '15.0'
+            if 'CFBundleVersion' in pl:
+                pl['CFBundleVersion'] = '6'
+            pl['DTPlatformVersion'] = '26.0'
+            pl['DTSDKName'] = 'iphoneos26.0'
+            pl['DTPlatformBuild'] = '26C100'
+            pl['DTSDKBuild'] = '26C100'
+            pl['DTXcode'] = '2600'
+            pl['DTXcodeBuild'] = '26C100'
+            pl['BuildMachineOSBuild'] = '24C101'
+            with open(plist_path, 'wb') as f:
+                plistlib.dump(pl, f)
+            print(f"Patched: {plist_path.replace(work_dir, '')}")
+        except Exception as e:
+            print(f"Failed to patch {plist_path}: {e}")
 
-    main_plist = os.path.join(app_path, "Info.plist")
-    patch_plist(main_plist)
-
-    frameworks = glob.glob(os.path.join(app_path, "Frameworks", "*.framework"))
-    for fw in frameworks:
-        fw_plist = os.path.join(fw, "Info.plist")
-        if os.path.exists(fw_plist):
-            patch_plist(fw_plist)
+    for root, dirs, files in os.walk(app_path):
+        for f in files:
+            if f == "Info.plist":
+                patch_plist(os.path.join(root, f))
 
     print("--- 4. Updating Mach-O SDK Headers with vtool (iOS 26.0 GM) ---")
     for root, dirs, files in os.walk(app_path):
@@ -112,8 +113,19 @@ def main():
     with open(ent_path, 'wb') as f:
         plistlib.dump(entitlements, f)
 
-    print("--- 6. Signing Frameworks ---")
+    print("--- 6. Signing Bundles and Frameworks ---")
     cert_name = "Apple Distribution: SAHIL KHAN (SJQWNCMBX9)"
+    
+    # First sign all resource bundles
+    for root, dirs, files in os.walk(app_path):
+        for d in dirs:
+            if d.endswith(".bundle"):
+                bundle_path = os.path.join(root, d)
+                run_cmd(['codesign', '-f', '-s', cert_name, '--timestamp=none', bundle_path])
+                print(f"Signed bundle: {d}")
+
+    # Next sign all frameworks
+    frameworks = glob.glob(os.path.join(app_path, "Frameworks", "*.framework"))
     for fw in frameworks:
         run_cmd(['codesign', '-f', '-s', cert_name, '--timestamp=none', fw])
         print(f"Signed framework: {os.path.basename(fw)}")
