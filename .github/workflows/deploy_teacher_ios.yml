@@ -11,32 +11,34 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Verify IPA and Secrets
+      - name: Clean and Validate Credentials
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          RAW_APPLE_ID: ${{ secrets.APPLE_ID }}
+          RAW_APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
         run: |
-          if [ -z "$APPLE_ID" ]; then
-            echo "::error::APPLE_ID secret is MISSING in GitHub! Please add it in Repo Settings -> Secrets -> Actions"
+          CLEAN_ID=$(echo -n "$RAW_APPLE_ID" | tr -d '\r\n ' | xargs)
+          CLEAN_PASS=$(echo -n "$RAW_APPLE_PASSWORD" | tr -d '\r\n ' | xargs)
+          
+          if [ -z "$CLEAN_ID" ]; then
+            echo "::error::APPLE_ID secret is empty!"
             exit 1
           fi
-          if [ -z "$APPLE_PASSWORD" ]; then
-            echo "::error::APPLE_PASSWORD secret is MISSING in GitHub! Please add it in Repo Settings -> Secrets -> Actions"
+          if [ -z "$CLEAN_PASS" ]; then
+            echo "::error::APPLE_PASSWORD secret is empty!"
             exit 1
           fi
-          echo "Checking file..."
-          ls -lh ios_builds/speaxsa_teacher.ipa
+          
+          echo "CLEAN_APPLE_ID=$CLEAN_ID" >> $GITHUB_ENV
+          echo "CLEAN_APPLE_PASSWORD=$CLEAN_PASS" >> $GITHUB_ENV
+          echo "Credentials sanitized successfully (Password length: ${#CLEAN_PASS})"
 
       - name: Upload IPA to App Store Connect
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
         run: |
-          echo "Starting upload to App Store Connect..."
+          echo "Starting upload to App Store Connect via altool..."
           xcrun altool --upload-app \
             -f "ios_builds/speaxsa_teacher.ipa" \
             -t ios \
-            -u "$APPLE_ID" \
-            -p "$APPLE_PASSWORD" \
+            -u "$CLEAN_APPLE_ID" \
+            -p "$CLEAN_APPLE_PASSWORD" \
             --verbose
-          echo "Upload complete!"
+          echo "🎉 Upload process completed successfully!"
