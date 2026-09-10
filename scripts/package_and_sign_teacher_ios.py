@@ -57,12 +57,12 @@ def main():
             shutil.copy2(src_item, dst_item)
             print(f"Copied {item} to Runner.app")
 
-    print("--- 3. Updating Info.plist and Framework Plists (Xcode 26 GM) ---")
+    print("--- 3. Updating Info.plist and Framework Plists (Xcode 26 GM, Build 6) ---")
     def patch_plist(plist_path):
         with open(plist_path, 'rb') as f:
             pl = plistlib.load(f)
         pl['MinimumOSVersion'] = '15.0'
-        pl['CFBundleVersion'] = '5'
+        pl['CFBundleVersion'] = '6'
         pl['DTPlatformVersion'] = '26.0'
         pl['DTSDKName'] = 'iphoneos26.0'
         pl['DTPlatformBuild'] = '26C100'
