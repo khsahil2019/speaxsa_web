@@ -64,7 +64,7 @@ def main():
                 pl = plistlib.load(f)
             pl['MinimumOSVersion'] = '15.0'
             if 'CFBundleVersion' in pl:
-                pl['CFBundleVersion'] = '6'
+                pl['CFBundleVersion'] = '7'
             pl['DTPlatformVersion'] = '26.0'
             pl['DTSDKName'] = 'iphoneos26.0'
             pl['DTPlatformBuild'] = '26C100'
