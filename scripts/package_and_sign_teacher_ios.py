@@ -38,12 +38,14 @@ def main():
         with open(plist_path, 'rb') as f:
             pl = plistlib.load(f)
         pl['MinimumOSVersion'] = '15.0'
-        pl['DTPlatformVersion'] = '26.0'
-        pl['DTSDKName'] = 'iphoneos26.0'
-        pl['DTPlatformBuild'] = '26A100'
-        pl['DTSDKBuild'] = '26A100'
-        pl['DTXcode'] = '2600'
-        pl['DTXcodeBuild'] = '26A100'
+        pl['CFBundleVersion'] = '5'
+        pl['DTPlatformVersion'] = '18.2'
+        pl['DTSDKName'] = 'iphoneos18.2'
+        pl['DTPlatformBuild'] = '22C146'
+        pl['DTSDKBuild'] = '22C146'
+        pl['DTXcode'] = '1620'
+        pl['DTXcodeBuild'] = '16C5032'
+        pl['BuildMachineOSBuild'] = '24C101'
         with open(plist_path, 'wb') as f:
             plistlib.dump(pl, f)
 
@@ -56,7 +58,7 @@ def main():
         if os.path.exists(fw_plist):
             patch_plist(fw_plist)
 
-    print("--- 3. Updating Mach-O SDK Headers with vtool ---")
+    print("--- 3. Updating Mach-O SDK Headers with vtool (GM iOS 18.2) ---")
     for root, dirs, files in os.walk(app_path):
         for f in files:
             full_path = os.path.join(root, f)
@@ -66,7 +68,7 @@ def main():
                 if 'LC_BUILD_VERSION' in v_res.stdout:
                     subprocess.run([
                         'vtool',
-                        '-set-build-version', 'ios', '15.0', '26.0',
+                        '-set-build-version', 'ios', '15.0', '18.2',
                         '-tool', 'ld', '1167.5',
                         '-replace',
                         '-output', full_path,
@@ -108,9 +110,7 @@ def main():
     if os.path.exists(output_ipa):
         os.remove(output_ipa)
 
-    # Use zip command to maintain symlinks and permissions
     subprocess.run(['zip', '-q', '-r', '-y', output_ipa, 'Payload'], cwd=work_dir, check=True)
-
     print(f"🎉 Production IPA created successfully at: {output_ipa}")
 
 if __name__ == "__main__":
