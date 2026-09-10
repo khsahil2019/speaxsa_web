@@ -1,0 +1,25 @@
+name: Deploy Teacher iOS to App Store Connect
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload:
+    name: Upload to App Store Connect
+    runs-on: macos-14
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Upload IPA to App Store Connect
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        run: |
+          echo "Starting upload to App Store Connect..."
+          xcrun altool --upload-app \
+            --type ios \
+            --file "ios_builds/speaxsa_teacher.ipa" \
+            --username "$APPLE_ID" \
+            --password "$APPLE_PASSWORD"
+          echo "Upload process complete!"
