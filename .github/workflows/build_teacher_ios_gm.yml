@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - '.github/workflows/build_teacher_ios_gm.yml'
+      - 'speaxa_teacher/ios/**'
+      - 'speaxa_teacher/pubspec.yaml'
 
 jobs:
   build:
@@ -24,18 +26,17 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks
 
-
-        
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies & Build Bundle
+      - name: Install Dependencies & Precache
         run: |
           cd speaxa_teacher
           flutter pub get
+          flutter precache --ios
           flutter build bundle
 
       - name: Install CocoaPods
@@ -68,4 +69,3 @@ jobs:
           name: speaxa-teacher-official-gm-xcarchive
           path: speaxa-teacher-official-gm.xcarchive.zip
           retention-days: 7
-
