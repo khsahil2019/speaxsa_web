@@ -32,40 +32,24 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies & Precache
+      - name: Build iOS Archive with Flutter
         run: |
           cd speaxa_teacher
           flutter pub get
-          flutter precache --ios
-          flutter build bundle
-
-      - name: Install CocoaPods
-        run: |
-          cd speaxa_teacher/ios
-          pod install --repo-update
-
-      - name: Build Native iOS XCArchive
-        run: |
-          cd speaxa_teacher/ios
-          xcodebuild -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$GITHUB_WORKSPACE/Runner.xcarchive" \
-            DEVELOPMENT_TEAM=SJQWNCMBX9 \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            archive
+          flutter build ipa --release --no-codesign
 
       - name: Zip XCArchive
         run: |
-          zip -r -y speaxa-teacher-official-gm.xcarchive.zip Runner.xcarchive
+          cd speaxa_teacher
+          if [ -d "build/ios/archive/Runner.xcarchive" ]; then
+            zip -r -y ../speaxa-teacher-official-gm.xcarchive.zip build/ios/archive/Runner.xcarchive
+          elif [ -d "build/ios/iphoneos/Runner.app" ]; then
+            zip -r -y ../speaxa-teacher-official-gm.app.zip build/ios/iphoneos/Runner.app
+          fi
 
-      - name: Upload Compiled XCArchive Artifact
+      - name: Upload Compiled Artifact
         uses: actions/upload-artifact@v4
         with:
           name: speaxa-teacher-official-gm-xcarchive
-          path: speaxa-teacher-official-gm.xcarchive.zip
+          path: speaxa-teacher-official-gm.*.zip
           retention-days: 7
