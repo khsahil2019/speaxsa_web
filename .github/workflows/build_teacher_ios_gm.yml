@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: Build Native iOS App (Official Xcode 16 GM)
+    name: Build Native iOS XCArchive (Official Xcode 16.2 GM)
     runs-on: macos-15
     steps:
       - name: Checkout Code
@@ -32,14 +32,27 @@ jobs:
           cd speaxa_teacher/ios
           pod install --repo-update
 
-      - name: Build Native iOS Bundle
+      - name: Build Native iOS Archive
         run: |
           cd speaxa_teacher
           flutter build ios --release --no-codesign
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath "$GITHUB_WORKSPACE/Runner.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
 
-      - name: Upload Compiled App Artifact
+      - name: Zip XCArchive
+        run: |
+          zip -r -y speaxa-teacher-build18.xcarchive.zip Runner.xcarchive
+
+      - name: Upload Compiled XCArchive Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: speaxa-teacher-compiled-app
-          path: speaxa_teacher/build/ios/iphoneos/Runner.app
+          name: speaxa-teacher-build18-xcarchive
+          path: speaxa-teacher-build18.xcarchive.zip
           retention-days: 5
