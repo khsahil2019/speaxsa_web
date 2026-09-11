@@ -6,67 +6,78 @@
 
 #import "GeneratedPluginRegistrant.h"
 
-#if __has_include(<file_picker/FilePickerPlugin.h>)
-#import <file_picker/FilePickerPlugin.h>
-#elif __has_include(<file_picker/file_picker-Swift.h>)
+#if __has_include(<file_picker/file_picker-Swift.h>)
 #import <file_picker/file_picker-Swift.h>
-#else
-@import file_picker;
+#elif __has_include(<file_picker/FilePickerPlugin.h>)
+#import <file_picker/FilePickerPlugin.h>
+#elif __has_include("FilePickerPlugin.h")
+#import "FilePickerPlugin.h"
 #endif
 
 #if __has_include(<firebase_analytics/FirebaseAnalyticsPlugin.h>)
 #import <firebase_analytics/FirebaseAnalyticsPlugin.h>
-#else
-@import firebase_analytics;
+#elif __has_include("FirebaseAnalyticsPlugin.h")
+#import "FirebaseAnalyticsPlugin.h"
 #endif
 
 #if __has_include(<firebase_core/FLTFirebaseCorePlugin.h>)
 #import <firebase_core/FLTFirebaseCorePlugin.h>
-#else
-@import firebase_core;
+#elif __has_include("FLTFirebaseCorePlugin.h")
+#import "FLTFirebaseCorePlugin.h"
 #endif
 
 #if __has_include(<firebase_crashlytics/FLTFirebaseCrashlyticsPlugin.h>)
 #import <firebase_crashlytics/FLTFirebaseCrashlyticsPlugin.h>
-#else
-@import firebase_crashlytics;
+#elif __has_include("FLTFirebaseCrashlyticsPlugin.h")
+#import "FLTFirebaseCrashlyticsPlugin.h"
 #endif
 
 #if __has_include(<firebase_messaging/FLTFirebaseMessagingPlugin.h>)
 #import <firebase_messaging/FLTFirebaseMessagingPlugin.h>
-#else
-@import firebase_messaging;
+#elif __has_include("FLTFirebaseMessagingPlugin.h")
+#import "FLTFirebaseMessagingPlugin.h"
 #endif
 
 #if __has_include(<flutter_secure_storage_darwin/FlutterSecureStorageDarwinPlugin.h>)
 #import <flutter_secure_storage_darwin/FlutterSecureStorageDarwinPlugin.h>
-#else
-@import flutter_secure_storage_darwin;
+#elif __has_include("FlutterSecureStorageDarwinPlugin.h")
+#import "FlutterSecureStorageDarwinPlugin.h"
 #endif
 
 #if __has_include(<share_plus/FPPSharePlusPlugin.h>)
 #import <share_plus/FPPSharePlusPlugin.h>
-#else
-@import share_plus;
+#elif __has_include("FPPSharePlusPlugin.h")
+#import "FPPSharePlusPlugin.h"
 #endif
 
 #if __has_include(<shared_preferences_foundation/SharedPreferencesPlugin.h>)
 #import <shared_preferences_foundation/SharedPreferencesPlugin.h>
-#else
-@import shared_preferences_foundation;
+#elif __has_include("SharedPreferencesPlugin.h")
+#import "SharedPreferencesPlugin.h"
 #endif
 
 #if __has_include(<sqflite_darwin/SqflitePlugin.h>)
 #import <sqflite_darwin/SqflitePlugin.h>
-#else
-@import sqflite_darwin;
+#elif __has_include("SqflitePlugin.h")
+#import "SqflitePlugin.h"
 #endif
 
 #if __has_include(<url_launcher_ios/URLLauncherPlugin.h>)
 #import <url_launcher_ios/URLLauncherPlugin.h>
-#else
-@import url_launcher_ios;
+#elif __has_include("URLLauncherPlugin.h")
+#import "URLLauncherPlugin.h"
 #endif
+
+@class FilePickerPlugin;
+@class FirebaseAnalyticsPlugin;
+@class FLTFirebaseCorePlugin;
+@class FLTFirebaseCrashlyticsPlugin;
+@class FLTFirebaseMessagingPlugin;
+@class FlutterSecureStorageDarwinPlugin;
+@class FPPSharePlusPlugin;
+@class SharedPreferencesPlugin;
+@class SqflitePlugin;
+@class URLLauncherPlugin;
 
 @implementation GeneratedPluginRegistrant
 
@@ -82,5 +93,6 @@
   [SqflitePlugin registerWithRegistrar:[registry registrarForPlugin:@"SqflitePlugin"]];
   [URLLauncherPlugin registerWithRegistrar:[registry registrarForPlugin:@"URLLauncherPlugin"]];
 }
+
 
 @end
