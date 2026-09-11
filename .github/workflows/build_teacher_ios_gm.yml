@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: Build Native iOS XCArchive (Official Xcode 16 GM)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
