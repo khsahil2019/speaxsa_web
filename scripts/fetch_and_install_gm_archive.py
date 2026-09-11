@@ -21,7 +21,7 @@ def get_token():
 
 TOKEN = get_token()
 REPO = "khsahil2019/speaxsa_web"
-RUN_ID = "34588632081"
+RUN_ID = sys.argv[1] if len(sys.argv) > 1 else "34589852905"
 CERT_NAME = "Apple Distribution: SAHIL KHAN (SJQWNCMBX9)"
 TEAM_ID = "SJQWNCMBX9"
 BUNDLE_ID = "com.speaxa.teacher"
