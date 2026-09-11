@@ -2,6 +2,9 @@ name: Build Teacher iOS with Official Xcode GM
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build_teacher_ios_gm.yml'
 
 env:
   DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
