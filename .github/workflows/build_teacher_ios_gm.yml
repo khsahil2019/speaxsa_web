@@ -5,15 +5,15 @@ on:
 
 jobs:
   build:
-    name: Build Native iOS XCArchive (Official Xcode 16.2 GM)
-    runs-on: macos-15
+    name: Build Native iOS XCArchive (Official Xcode 16 GM)
+    runs-on: macos-14
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Select Official Xcode 16.1 GM
+      - name: Select Official Xcode 16 GM
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.1.app || sudo xcode-select -s /Applications/Xcode_16.0.app || sudo xcode-select -s /Applications/Xcode_16.app || true
+          sudo xcode-select -s /Applications/Xcode_16.0.app || sudo xcode-select -s /Applications/Xcode.app || true
           xcodebuild -version
           xcodebuild -showsdks
 
@@ -35,12 +35,11 @@ jobs:
 
       - name: Build Native iOS Archive
         run: |
-          cd speaxa_teacher
-          flutter build ios --release --no-codesign
-          cd ios
+          cd speaxa_teacher/ios
           xcodebuild -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
+            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath "$GITHUB_WORKSPACE/Runner.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
