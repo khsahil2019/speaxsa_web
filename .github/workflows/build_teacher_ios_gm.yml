@@ -3,20 +3,23 @@ name: Build Teacher iOS with Official Xcode GM
 on:
   workflow_dispatch:
 
+env:
+  DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
+
 jobs:
   build:
-    name: Build Native iOS XCArchive (Official Xcode 16 GM)
+    name: Build Native iOS XCArchive (Official Xcode 16.1 GM)
     runs-on: macos-15
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Select Official Xcode 16 GM
+      - name: Select Official Xcode 16.1 GM
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.1.app || sudo xcode-select -s /Applications/Xcode_16.0.app || sudo xcode-select -s /Applications/Xcode.app || true
+          sudo xcode-select -s /Applications/Xcode_16.1.app
+          echo "DEVELOPER_DIR=/Applications/Xcode_16.1.app/Contents/Developer" >> $GITHUB_ENV
           xcodebuild -version
           xcodebuild -showsdks
-          sudo xcodebuild -downloadPlatform iOS || true
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -34,7 +37,12 @@ jobs:
           cd speaxa_teacher/ios
           pod install --repo-update
 
-      - name: Build Native iOS Archive
+      - name: Build Flutter iOS App
+        run: |
+          cd speaxa_teacher
+          flutter build ios --release --no-codesign
+
+      - name: Archive Native iOS App
         run: |
           cd speaxa_teacher/ios
           xcodebuild -workspace Runner.xcworkspace \
@@ -46,9 +54,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS=NO \
-            ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS=NO \
-            ENABLE_PREVIEWS=NO \
             archive
 
       - name: Zip XCArchive
@@ -60,4 +65,5 @@ jobs:
         with:
           name: speaxa-teacher-build18-xcarchive
           path: speaxa-teacher-build18.xcarchive.zip
-          retention-days: 5
+          retention-days: 7
+5
