@@ -69,4 +69,3 @@ jobs:
           name: speaxa-teacher-build18-xcarchive
           path: speaxa-teacher-build18.xcarchive.zip
           retention-days: 7
-5
