@@ -4,6 +4,7 @@
 
 // clang-format off
 
+#import <Foundation/Foundation.h>
 #import "GeneratedPluginRegistrant.h"
 
 #pragma clang diagnostic push
