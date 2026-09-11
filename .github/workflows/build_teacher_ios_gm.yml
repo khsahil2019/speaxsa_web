@@ -8,21 +8,19 @@ on:
 
 jobs:
   build:
-    name: Build Native iOS XCArchive (Official Xcode 16 GM)
-    runs-on: macos-15
+    name: Build Native iOS XCArchive (Official Xcode GM)
+    runs-on: macos-14
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Select Official Xcode 16 GM
+      - name: Select Xcode 15.4 GM
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+
+      - name: Verify Xcode Version
         run: |
-          echo "Available Xcode installations:"
-          ls -ld /Applications/Xcode*.app
-          XCODE_APP=$(ls -d /Applications/Xcode_16*.app /Applications/Xcode.app 2>/dev/null | head -n 1)
-          echo "Using Xcode: $XCODE_APP"
-          sudo xcode-select -s "$XCODE_APP"
-          echo "DEVELOPER_DIR=$XCODE_APP/Contents/Developer" >> $GITHUB_ENV
-          export DEVELOPER_DIR="$XCODE_APP/Contents/Developer"
           xcodebuild -version
           xcodebuild -showsdks
 
@@ -32,22 +30,18 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Dependencies
+      - name: Install Dependencies & Build Bundle
         run: |
           cd speaxa_teacher
           flutter pub get
+          flutter build bundle
 
       - name: Install CocoaPods
         run: |
           cd speaxa_teacher/ios
           pod install --repo-update
 
-      - name: Build Flutter iOS App
-        run: |
-          cd speaxa_teacher
-          flutter build ios --release --no-codesign
-
-      - name: Archive Native iOS App
+      - name: Build Native iOS XCArchive
         run: |
           cd speaxa_teacher/ios
           xcodebuild -workspace Runner.xcworkspace \
@@ -56,6 +50,7 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath "$GITHUB_WORKSPACE/Runner.xcarchive" \
+            DEVELOPMENT_TEAM=SJQWNCMBX9 \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -63,11 +58,12 @@ jobs:
 
       - name: Zip XCArchive
         run: |
-          zip -r -y speaxa-teacher-build18.xcarchive.zip Runner.xcarchive
+          zip -r -y speaxa-teacher-official-gm.xcarchive.zip Runner.xcarchive
 
       - name: Upload Compiled XCArchive Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: speaxa-teacher-build18-xcarchive
-          path: speaxa-teacher-build18.xcarchive.zip
+          name: speaxa-teacher-official-gm-xcarchive
+          path: speaxa-teacher-official-gm.xcarchive.zip
           retention-days: 7
+
