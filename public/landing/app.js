@@ -1485,3 +1485,913 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// ============================================================
+// SPEAXA Portal Guidance Popups (Student / Parent / Teacher)
+// ============================================================
+
+const PORTAL_GUIDES = {
+  teacher: {
+    theme: 'teacher',
+    roleName: 'Teacher Portal',
+    badge: 'SPEAXA FACULTY STUDIO',
+    avatarIcon: 'fas fa-chalkboard-teacher',
+    title: 'Welcome to Speaxa Teacher Command Center',
+    subtitle: 'Your complete digital teaching studio — complete mandatory SOP quality verification, conduct live video classes with interactive whiteboard, manage student batches, evaluate homework copies, and track earnings.',
+    proceedUrl: '/teacher',
+    proceedText: 'Proceed to Teacher Portal',
+    highlights: [
+      { icon: 'fas fa-clipboard-check', text: 'Mandatory SOP Verification' },
+      { icon: 'fas fa-video', text: 'Live HD Classroom Studio' },
+      { icon: 'fas fa-chalkboard', text: 'Interactive Digital Whiteboard' },
+      { icon: 'fas fa-users', text: 'Batch & Cohort Manager' }
+    ],
+    capabilitiesTitle: 'Everything You Can Do in Speaxa Teacher Portal',
+    capabilitiesBadge: '12 Faculty Modules',
+    capabilities: [
+      {
+        icon: 'fas fa-clipboard-check',
+        title: 'Mandatory SOP Quality Verification',
+        desc: 'Before taking classes, complete your mandatory SOP (Standard Operating Procedure). Upload Govt ID KYC, degrees, teaching availability slots, webcam/mic checks, internet speed proof, and demo teaching video for Speaxa team approval.',
+        chips: ['✓ Govt ID KYC Upload', '✓ Camera & Mic Check', '✓ Internet Speed Proof', '✓ 2-Min Demo Video Review']
+      },
+      {
+        icon: 'fas fa-video',
+        title: 'Live Video Classroom Studio',
+        desc: 'Launch your live class in 1 click with crystal-clear 2-way audio and HD video. Screen share presentations, textbooks, and manage student mics with ease.',
+        chips: ['✓ 1-Click Class Launch', '✓ HD Camera & Mic Broadcast', '✓ Screen Share PPT & PDF', '✓ Student Mute Controls']
+      },
+      {
+        icon: 'fas fa-chalkboard',
+        title: 'Interactive Digital Whiteboard',
+        desc: 'Write mathematical formulas, draw scientific diagrams, and annotate lesson notes on a real-time shared digital blackboard that students see live.',
+        chips: ['✓ Live Screen Notes', '✓ Geometry & Shape Tools', '✓ Math Equation Solver', '✓ Export PDF Notes']
+      },
+      {
+        icon: 'fas fa-layer-group',
+        title: 'Batch Rosters & Student Manager',
+        desc: 'Organize your assigned student batches, view enrolled students, inspect syllabus completion percentages, and view student profiles in one place.',
+        chips: ['✓ Enrolled Student Lists', '✓ Batch Timetable', '✓ Syllabus Tracker %', '✓ Student Contact Info']
+      },
+      {
+        icon: 'fas fa-tasks',
+        title: 'Homework & Assignment Hub',
+        desc: 'Create daily or weekly assignments for your batches, attach question PDFs, set submission deadlines, and notify students instantly.',
+        chips: ['✓ Create New Tasks', '✓ Attach Question PDFs', '✓ Submission Deadlines', '✓ Instant Student Alert']
+      },
+      {
+        icon: 'fas fa-spell-check',
+        title: 'Inline Copy Checking & Grading',
+        desc: 'Review handwritten homework photos and PDFs submitted by students. Highlight mistakes, award marks, and add encouraging feedback notes.',
+        chips: ['✓ View Photo & PDF Copies', '✓ Award Subject Marks', '✓ Highlight Corrections', '✓ Personalized Advice']
+      },
+      {
+        icon: 'fas fa-calendar-check',
+        title: 'Automated Attendance Register',
+        desc: 'The system automatically records when each student joins, their in-class study duration, and lets you manually adjust present or absent marks.',
+        chips: ['✓ Automated Join Timestamps', '✓ In-Class Duration Tracking', '✓ Monthly Attendance Export', '✓ Present / Absent Toggles']
+      },
+      {
+        icon: 'fas fa-file-alt',
+        title: 'Study Material & Notes Library',
+        desc: 'Upload chapter revision notes, formula sheets, previous year question papers, and reference documents directly to your batch libraries.',
+        chips: ['✓ Upload Revision PDFs', '✓ Formula Handouts', '✓ Chapter Question Banks', '✓ Free Student Downloads']
+      },
+      {
+        icon: 'fas fa-eye',
+        title: 'Student Observations & Remarks',
+        desc: 'Write progress remarks and behavioural observations for each student. Keep parents updated on academic improvements and areas needing focus.',
+        chips: ['✓ Periodic Student Remarks', '✓ Visible to Parents', '✓ Strength & Weakness Notes', '✓ Unit Test Guidance']
+      },
+      {
+        icon: 'fas fa-comments',
+        title: '2-Way Student & Parent Chat',
+        desc: 'Direct messaging inbox to answer student doubts after class hours, address parent queries, and broadcast important batch announcements.',
+        chips: ['✓ Student Doubt Chats', '✓ Parent Query Inbox', '✓ Broadcast Batch Notices', '✓ Unread Counter Badges']
+      },
+      {
+        icon: 'fas fa-play-circle',
+        title: 'Class Video Recordings Library',
+        desc: 'All your completed live sessions are automatically recorded and saved in your faculty library for student revision and faculty quality audit.',
+        chips: ['✓ Automated Lecture Replays', '✓ Revision Video Archive', '✓ Recording Availability Toggle']
+      },
+      {
+        icon: 'fas fa-wallet',
+        title: 'Faculty Earnings & Payout Logs',
+        desc: 'Track total teaching hours conducted, batch enrollments, monthly remuneration statements, and verified bank account transfer details.',
+        chips: ['✓ Teaching Hours Log', '✓ Monthly Remuneration Sheet', '✓ Bank Payout Status', '✓ Transparent Breakdown']
+      }
+    ],
+    steps: [
+      {
+        num: '01',
+        icon: 'fas fa-sign-in-alt',
+        title: 'Log In with Password or Mobile SMS OTP',
+        tag: 'Step 1 • Easy Sign-In',
+        desc: 'Sign in with your verified teacher email or phone and password, or enter your 10-digit mobile number for a fast 6-digit SMS login. Forgot password? Reset in seconds.',
+        chips: ['Email & Password Login', 'Mobile SMS OTP', 'Instant Password Reset', 'Secure Faculty Session']
+      },
+      {
+        num: '02',
+        icon: 'fas fa-clipboard-check',
+        title: 'Complete Mandatory SOP Quality Verification',
+        tag: 'Step 2 • Mandatory SOP',
+        desc: 'Before taking classes, complete your SOP (Standard Operating Procedure): submit Govt ID KYC, degree certificates, available teaching hours, camera/mic/lighting test, internet speed test, and a short 2-minute demo teaching video.',
+        chips: ['Govt ID KYC', 'Camera & Mic Test', 'Internet Speed Proof', '2-Min Demo Video']
+      },
+      {
+        num: '03',
+        icon: 'fas fa-file-signature',
+        title: 'Sign Agreement & Get Batches Allotted',
+        tag: 'Step 3 • Batch Allotment',
+        desc: 'Speaxa Academic Quality Team reviews your SOP within 24-48 hours. Once approved, sign the digital teacher agreement to receive your assigned student batches and curriculum.',
+        chips: ['Digital Agreement Sign', 'Approval in 24-48h', 'Batch Allotment', 'Ready to Teach']
+      },
+      {
+        num: '04',
+        icon: 'fas fa-id-card',
+        title: 'Set Up Faculty Bio & Specializations',
+        tag: 'Step 4 • Profile Setup',
+        desc: 'Update your instructor profile with your educational qualifications, teaching experience, assigned subjects, and profile avatar so students know your credentials.',
+        chips: ['Educational Degrees', 'Teaching Experience', 'Assigned Subjects', 'Profile Avatar']
+      },
+      {
+        num: '05',
+        icon: 'fas fa-calendar-alt',
+        title: 'Inspect Today’s Lecture Timetable',
+        tag: 'Step 5 • Daily Routine',
+        desc: 'Open your dashboard every morning to see today’s lecture timetable, start times, and a live countdown timer until your next scheduled class.',
+        chips: ['Today’s Schedule List', 'Live Countdown Clock', 'Batch Reminders']
+      },
+      {
+        num: '06',
+        icon: 'fas fa-sliders-h',
+        title: 'Test Camera & Mic in Preview Screen',
+        tag: 'Step 6 • Device Check',
+        desc: 'Before starting class, check your webcam video and microphone input in the preview screen to ensure crystal-clear audio and video delivery for students.',
+        chips: ['HD Camera Test', 'Clear Audio Input', 'Lighting & Background Check']
+      },
+      {
+        num: '07',
+        icon: 'fas fa-broadcast-tower',
+        title: 'Click "Start Class" to Broadcast Live',
+        tag: 'Step 7 • Launch Class',
+        desc: 'Click the green "Start Class" button to open your live classroom. Students receive an instant entry notification on their phones and join your room.',
+        chips: ['1-Click Broadcast', 'Live Agora Studio', 'Instant Student Notification']
+      },
+      {
+        num: '08',
+        icon: 'fas fa-chalkboard',
+        title: 'Teach with Live Digital Whiteboard',
+        tag: 'Step 8 • Live Blackboard',
+        desc: 'Use digital pens, highlighters, geometry shapes, and math equation tools on the shared live blackboard. Export your whiteboard notes to PDF with 1 tap.',
+        chips: ['Digital Pen & Highlighter', 'Geometry Shapes', 'Math Equations', 'Export PDF Notes']
+      },
+      {
+        num: '09',
+        icon: 'fas fa-desktop',
+        title: 'Share Screen for Presentation Slides & PDFs',
+        tag: 'Step 9 • Screen Sharing',
+        desc: 'Share your entire screen or specific application windows to show PowerPoint presentations, textbook chapters, or reference educational videos.',
+        chips: ['PPT Presentations', 'PDF Textbooks', 'Interactive Simulations', 'System Audio Sharing']
+      },
+      {
+        num: '10',
+        icon: 'fas fa-hand-paper',
+        title: 'Answer Live Doubts & Manage Raised Hands',
+        tag: 'Step 10 • Doubt Clearing',
+        desc: 'Monitor real-time student messages in the live chat room. When a student clicks "Raise Hand", invite them to speak 1-on-1 via microphone to resolve their query.',
+        chips: ['Live Doubt Chat', 'Raised Hand Queue', '1-on-1 Voice Query', 'Mute All Option']
+      },
+      {
+        num: '11',
+        icon: 'fas fa-user-check',
+        title: 'Verify Automated Attendance Register',
+        tag: 'Step 11 • Smart Attendance',
+        desc: 'Review the automated attendance sheet showing student join times, active in-class duration, and adjust present or absent marks with a single click.',
+        chips: ['Automated Join Times', 'Active Minutes Log', 'Present / Absent Toggles', 'Export Attendance Sheet']
+      },
+      {
+        num: '12',
+        icon: 'fas fa-file-upload',
+        title: 'Create & Assign New Homework',
+        tag: 'Step 12 • Homework Hub',
+        desc: 'Open Assignments, type homework questions or attach problem PDFs, specify submission due dates, and dispatch tasks to your batch instantly.',
+        chips: ['Create Homework Tasks', 'Attach Problem PDFs', 'Submission Deadlines', 'Instant Notification']
+      },
+      {
+        num: '13',
+        icon: 'fas fa-check-double',
+        title: 'Evaluate Student Copies & Award Marks',
+        tag: 'Step 13 • Copy Grading',
+        desc: 'Open student handwritten notebook photos or PDF copies, highlight mistakes, award subject marks, and leave motivating tips for exam improvement.',
+        chips: ['Inline Photo & PDF Review', 'Award Subject Scores', 'Highlight Corrections', 'Constructive Feedback']
+      },
+      {
+        num: '14',
+        icon: 'fas fa-book',
+        title: 'Upload Study Notes & Revision Handouts',
+        tag: 'Step 14 • Study Materials',
+        desc: 'Upload chapter summary notes, formula cheatsheets, and question banks to the Study Materials section so enrolled students can download them 24/7.',
+        chips: ['Upload Revision PDFs', 'Formula Cheatsheets', 'Question Banks', 'Free Student Access']
+      },
+      {
+        num: '15',
+        icon: 'fas fa-chart-pie',
+        title: 'Track Teaching Hours & Monthly Earnings',
+        tag: 'Step 15 • Earnings & Payouts',
+        desc: 'Check your Earnings tab to track total class hours delivered, view verified monthly remuneration statements, and monitor direct bank payouts.',
+        chips: ['Delivered Hours Log', 'Monthly Statements', 'Verified Bank Transfers', 'Transparent Breakdown']
+      }
+    ],
+    tip: '<strong>Important Pro-Tip on SOP:</strong> Naye teachers ke liye SOP (Standard Operating Procedure) complete karna mandatory hai. Aapka camera, mic, lighting, internet speed aur demo video Speaxa Academic Team 24-48 ghante me review karke approve karti hai, jiske baad hi batches allot hote hain!'
+  },
+  parent: {
+    theme: 'parent',
+    roleName: 'Parent Portal',
+    badge: 'SPEAXA GUARDIAN OVERSIGHT',
+    avatarIcon: 'fas fa-user-friends',
+    title: 'Welcome to Speaxa Parent & Guardian Portal',
+    subtitle: 'Stay closely connected to your child’s academic growth — monitor live class attendance, review subject test marks, check homework submissions, chat directly with teachers, and manage fee receipts.',
+    proceedUrl: '/parent',
+    proceedText: 'Proceed to Parent Portal',
+    highlights: [
+      { icon: 'fas fa-user-check', text: 'Live Attendance & Entry Alerts' },
+      { icon: 'fas fa-chart-line', text: 'Subject-wise Test Scorecards' },
+      { icon: 'fas fa-comments', text: 'Direct Teacher 2-Way Chat' },
+      { icon: 'fas fa-users', text: 'Multi-Child Account Switcher' }
+    ],
+    capabilitiesTitle: 'Everything You Can Do in Speaxa Parent Portal',
+    capabilitiesBadge: '12 Guardian Modules',
+    capabilities: [
+      {
+        icon: 'fas fa-user-check',
+        title: 'Live Attendance & Entry Alerts',
+        desc: 'Receive instant notifications when your child joins their live class. Check monthly calendar views with present/absent logs and in-class punctuality.',
+        chips: ['✓ Class Entry Alerts', '✓ Monthly Calendar View', '✓ Punctuality Tracking', '✓ Absent Notifications']
+      },
+      {
+        icon: 'fas fa-chart-line',
+        title: 'Academic Performance & Scorecards',
+        desc: 'Inspect your child’s weekly test results, subject-wise percentages, exam rankings, and percentile benchmarks across Maths, Science, and English.',
+        chips: ['✓ Subject-wise Scores', '✓ Test Percentile Rank', '✓ Class Average Comparison']
+      },
+      {
+        icon: 'fas fa-chart-pie',
+        title: 'Visual Progress & Trend Charts',
+        desc: 'Interactive month-over-month graphs that clearly show if your child’s scores are rising and identify subjects needing extra practice at home.',
+        chips: ['✓ Month-on-Month Trends', '✓ Interactive Graphs', '✓ Strength & Weakness Areas']
+      },
+      {
+        icon: 'fas fa-tasks',
+        title: 'Homework & Assignment Status',
+        desc: 'Verify whether your child submitted homework before the deadline, check pending tasks, and view teacher marks and corrections on copies.',
+        chips: ['✓ Submission Timestamps', '✓ Teacher Corrections', '✓ Evaluated Copy Review']
+      },
+      {
+        icon: 'fas fa-comments',
+        title: 'Direct 2-Way Teacher Connect',
+        desc: 'Privately message your child’s assigned teachers and mentors anytime. Discuss exam preparation, study habits, and child behavior directly.',
+        chips: ['✓ Direct Mentor Chat', '✓ Exam Preparation Advice', '✓ Instant Unread Badges']
+      },
+      {
+        icon: 'fas fa-users',
+        title: 'Multi-Child Account Switcher',
+        desc: 'Have 2 or more children studying on Speaxa? Link all your kids under one guardian account and switch between their dashboards in 1 tap.',
+        chips: ['✓ 1-Tap Child Switcher', '✓ Link via Student Code', '✓ Consolidated Dashboard']
+      },
+      {
+        icon: 'fas fa-calendar-alt',
+        title: 'Today’s Class Timetable & Routine',
+        desc: 'View your child’s daily lecture schedule, assigned mentors, lecture start times, and a live countdown timer until class begins.',
+        chips: ['✓ Daily Timetable List', '✓ Live Countdown Timer', '✓ Teacher Credentials']
+      },
+      {
+        icon: 'fas fa-file-invoice-dollar',
+        title: 'Fee Invoices & Payment Receipts',
+        desc: 'Review active course subscriptions, renewal due dates, and instantly download official GST invoices and payment receipts in PDF format.',
+        chips: ['✓ Course Subscription Status', '✓ Instant PDF Invoices', '✓ Payment History Records']
+      },
+      {
+        icon: 'fas fa-comment-dots',
+        title: 'Mentor Remarks & Observations',
+        desc: 'Read personal feedback and tips written by subject mentors highlighting where your child shines and chapters requiring extra attention.',
+        chips: ['✓ Personalized Teacher Notes', '✓ Focus Topic Advice', '✓ Unit Test Guidance']
+      },
+      {
+        icon: 'fas fa-fire',
+        title: 'Daily Study Hours & Engagement',
+        desc: 'Monitor active minutes spent by your child in live lectures, consecutive daily study streaks, and badges earned for consistent attendance.',
+        chips: ['✓ Active Study Minutes', '✓ Daily Learning Streaks', '✓ Engagement Consistency']
+      },
+      {
+        icon: 'fas fa-book-open',
+        title: 'Syllabus & Course Progress %',
+        desc: 'Track what percentage of the school board curriculum has been taught in each subject and preview upcoming chapter lesson plans.',
+        chips: ['✓ Chapter Completion %', '✓ CBSE / ICSE Roadmaps', '✓ Upcoming Chapters']
+      },
+      {
+        icon: 'fas fa-shield-alt',
+        title: 'Guardian Profile & Security',
+        desc: 'Update your primary mobile number, email address, password, emergency contact info, and customize SMS and app notification preferences.',
+        chips: ['✓ Verified Guardian Contact', '✓ Password Security', '✓ Alert Preferences']
+      }
+    ],
+    steps: [
+      {
+        num: '01',
+        icon: 'fas fa-user-shield',
+        title: 'Log In or Register Guardian Account',
+        tag: 'Step 1 • Easy Sign-In',
+        desc: 'Sign in with your registered mobile number or email and password. Forgot password? Reset it in seconds with SMS/Email OTP. New parent? Click Register to sign up.',
+        chips: ['Mobile / Email Login', 'Secure Password Auth', 'Instant OTP Reset', 'New Parent Registration']
+      },
+      {
+        num: '02',
+        icon: 'fas fa-link',
+        title: 'Link Your Child via Student Code',
+        tag: 'Step 2 • Connect Child',
+        desc: 'Enter your child’s unique 6-digit Student Code (found in their Student Portal profile) to immediately link their data to your guardian account.',
+        chips: ['6-Digit Student Code', 'Instant Child Verification', 'Automatic Data Sync']
+      },
+      {
+        num: '03',
+        icon: 'fas fa-users-cog',
+        title: 'Add Multiple Kids to One Account',
+        tag: 'Step 3 • Multi-Child',
+        desc: 'If you have more than one child studying on Speaxa, add each child’s code in Settings to switch between their report cards with a single click.',
+        chips: ['Multi-Child Switcher', 'Separate Class Data', '1-Tap Child Switch']
+      },
+      {
+        num: '04',
+        icon: 'fas fa-clock',
+        title: 'Check Daily Routine & Live Countdown',
+        tag: 'Step 4 • Daily Routine',
+        desc: 'Open your home dashboard every morning to see your child’s scheduled lectures for today and a ticking live countdown until class starts.',
+        chips: ['Today’s Schedule', 'Live Countdown Clock', 'Assigned Mentors']
+      },
+      {
+        num: '05',
+        icon: 'fas fa-bell',
+        title: 'Receive Instant Class Entry Alerts',
+        tag: 'Step 5 • Live Alerts',
+        desc: 'Get an instant notification on your phone when your child taps Join Class. If your child is late or absent, you are informed immediately.',
+        chips: ['Class Entry Notification', 'Punctuality Alerts', 'Absent Warnings']
+      },
+      {
+        num: '06',
+        icon: 'fas fa-calendar-check',
+        title: 'Check Monthly Attendance Calendar',
+        tag: 'Step 6 • Attendance View',
+        desc: 'Open the Attendance tab to view the monthly calendar with clear green marks for present days, red for missed classes, and total attendance percentage.',
+        chips: ['Monthly Calendar View', 'Present / Absent Count', 'Attendance Percentage %']
+      },
+      {
+        num: '07',
+        icon: 'fas fa-poll',
+        title: 'Inspect Subject-Wise Test Scores',
+        tag: 'Step 7 • Scorecards',
+        desc: 'Go to Performance to see your child’s marks in weekly tests, term exams, and quizzes across Mathematics, Science, English, and Social Studies.',
+        chips: ['Subject-wise Marks', 'Highest Batch Scores', 'Percentile Benchmark']
+      },
+      {
+        num: '08',
+        icon: 'fas fa-chart-line',
+        title: 'Review Progress & Trend Graphs',
+        tag: 'Step 8 • Growth Charts',
+        desc: 'Inspect visual growth graphs that plot your child’s monthly performance over time, showing you whether their academic grades are climbing.',
+        chips: ['Visual Performance Graph', 'Month-over-Month Growth', 'Concept Mastery']
+      },
+      {
+        num: '09',
+        icon: 'fas fa-clipboard-check',
+        title: 'Track Homework Submissions & Marks',
+        tag: 'Step 9 • Homework Log',
+        desc: 'Check if your child completed their homework before the deadline, inspect teacher remarks on their notebook copies, and see marks awarded.',
+        chips: ['On-Time Submission Log', 'Evaluated Copy Photos', 'Teacher Corrections']
+      },
+      {
+        num: '10',
+        icon: 'fas fa-comment-alt',
+        title: 'Read Mentor Remarks & Observations',
+        tag: 'Step 10 • Mentor Notes',
+        desc: 'Read personal feedback left by teachers about your child’s classroom attention, doubt-asking habits, and specific topics needing extra study.',
+        chips: ['Teacher Feedback Notes', 'Weak Area Guidance', 'Exam Readiness Tips']
+      },
+      {
+        num: '11',
+        icon: 'fas fa-comments',
+        title: 'Message Teachers via Teacher Connect',
+        tag: 'Step 11 • Direct Chat',
+        desc: 'Use the Teacher Connect chat to privately message your child’s mentors, ask questions regarding exam preparation, and receive fast responses.',
+        chips: ['Direct Teacher Messaging', 'Private & Secure', 'Unread Alert Badge']
+      },
+      {
+        num: '12',
+        icon: 'fas fa-tasks',
+        title: 'Monitor Syllabus Completion %',
+        tag: 'Step 12 • Syllabus Status',
+        desc: 'Check what percentage of the school board syllabus has been completed so you always know if your child is ahead or behind school exams.',
+        chips: ['Curriculum Coverage %', 'Chapter Milestones', 'Board Exam Roadmaps']
+      },
+      {
+        num: '13',
+        icon: 'fas fa-file-invoice',
+        title: 'Review Fees & Download PDF Receipts',
+        tag: 'Step 13 • Invoices & Fees',
+        desc: 'Check subscription validity, renewal due dates, and instantly download official GST-compliant tax invoices and fee receipts for your records.',
+        chips: ['Active Subscription Dates', 'Download PDF Receipts', 'Transparent Fee Records']
+      },
+      {
+        num: '14',
+        icon: 'fas fa-envelope-open-text',
+        title: 'Get Weekly Automated Summary Digest',
+        tag: 'Step 14 • Weekly Digest',
+        desc: 'Every weekend, review an automated summary recap of your child’s total classes attended, homework submitted, and test marks achieved that week.',
+        chips: ['Weekly Report Digest', 'Quick Performance Recap', 'Automated Summary']
+      },
+      {
+        num: '15',
+        icon: 'fas fa-user-cog',
+        title: 'Update Profile & Alert Preferences',
+        tag: 'Step 15 • Guardian Settings',
+        desc: 'Manage your verified guardian mobile number, email, password, emergency phone numbers, and notification preferences anytime in Settings.',
+        chips: ['Guardian Contact Details', 'Password & Security', 'Notification Toggles']
+      }
+    ],
+    tip: '<strong>Pro-Tip for Parents:</strong> Check the Teacher Connect tab once a week to exchange quick notes with your child’s mentors before upcoming school unit tests!'
+  },
+  student: {
+    theme: 'student',
+    roleName: 'Student Portal',
+    badge: 'SPEAXA STUDENT LEARNING SUITE',
+    avatarIcon: 'fas fa-user-graduate',
+    title: 'Welcome to Speaxa Student Portal',
+    subtitle: 'Your complete digital classroom — attend live video classes, ask doubts in real time, upload homework, watch past class recordings 24/7, and track your study marks.',
+    proceedUrl: '/student',
+    proceedText: 'Proceed to Student Portal',
+    highlights: [
+      { icon: 'fas fa-video', text: 'Live Video Classes with Teachers' },
+      { icon: 'fas fa-book-open', text: 'Class 6 to 12 (CBSE & ICSE)' },
+      { icon: 'fas fa-file-signature', text: 'Photo & PDF Homework Upload' },
+      { icon: 'fas fa-play-circle', text: '24/7 Past Class Video Recordings' }
+    ],
+    capabilitiesTitle: 'Everything You Can Do in Speaxa Student Portal',
+    capabilitiesBadge: '12 Full Features',
+    capabilities: [
+      {
+        icon: 'fas fa-video',
+        title: 'Live Video Classrooms',
+        desc: 'Join your teacher’s live online class with clear video and audio. Click one button to enter the classroom from your phone or laptop.',
+        chips: ['✓ 1-Click Join Button', '✓ 2-Way Audio & Video', '✓ Live Doubt Chat', '✓ Raise Hand Option']
+      },
+      {
+        icon: 'fas fa-chalkboard',
+        title: 'Interactive Digital Whiteboard',
+        desc: 'Watch your teacher solve math problems, write notes, and draw diagrams in real time on a shared live digital blackboard.',
+        chips: ['✓ Live Screen Notes', '✓ Easy Concept Drawing', '✓ Real-time Equations']
+      },
+      {
+        icon: 'fas fa-search',
+        title: 'Browse & Choose Courses',
+        desc: 'Explore courses for CBSE, ICSE, and State Boards from Class 6 to 12. Check subject syllabus, chapter details, and teacher profiles.',
+        chips: ['✓ Class 6 to 12 Courses', '✓ CBSE, ICSE & State Boards', '✓ Complete Syllabus Roadmaps']
+      },
+      {
+        icon: 'fas fa-layer-group',
+        title: 'My Batches & Timetable',
+        desc: 'View your enrolled batches, teacher name, weekly lecture schedule, classmate cohort, and syllabus completion percentage.',
+        chips: ['✓ Assigned Teacher Details', '✓ Batch Mates List', '✓ Syllabus Completion %']
+      },
+      {
+        icon: 'fas fa-file-upload',
+        title: 'Homework & Assignments',
+        desc: 'See homework assigned by your teachers, upload photos or PDF files of your handwritten copies, and get marks with teacher corrections.',
+        chips: ['✓ Upload Photos or PDFs', '✓ Due Date Deadlines', '✓ Teacher Marks & Remarks']
+      },
+      {
+        icon: 'fas fa-play-circle',
+        title: '24/7 Class Video Recordings',
+        desc: 'Missed a live class or need revision before exams? Watch the video recording of any past class anytime with pause and speed controls.',
+        chips: ['✓ Re-watch Anytime 24/7', '✓ 1x / 1.5x / 2x Speed', '✓ Download Lesson Notes']
+      },
+      {
+        icon: 'fas fa-chart-line',
+        title: 'Monthly Report Cards & Marks',
+        desc: 'Track your quiz scores, subject-wise percentages, exam results, and easy progress graphs to see where you are improving.',
+        chips: ['✓ Subject-wise Scores', '✓ Easy Progress Graphs', '✓ Test Percentile Rank']
+      },
+      {
+        icon: 'fas fa-fire',
+        title: 'Attendance Calendar & Streaks',
+        desc: 'Check your monthly attendance calendar with green marks for present days. Attend classes daily to build your learning streak.',
+        chips: ['✓ Monthly Calendar View', '✓ Present / Absent Record', '✓ Fun Learning Badges']
+      },
+      {
+        icon: 'fas fa-receipt',
+        title: 'Fee Invoices & Receipts',
+        desc: 'View active course plans, pay fees easily online with secure Razorpay, and instantly download official payment receipts and invoices.',
+        chips: ['✓ Secure Online Payments', '✓ Instant PDF Receipts', '✓ Active Subscription Details']
+      },
+      {
+        icon: 'fas fa-user-friends',
+        title: 'Link Your Parents’ Account',
+        desc: 'Share your unique Student Code with your parents so they can log into the Parent Portal and view your attendance and reports.',
+        chips: ['✓ Unique Student Code', '✓ Guardian Transparency', '✓ Link Approvals']
+      },
+      {
+        icon: 'fas fa-bell',
+        title: 'Live Class Reminders & Alerts',
+        desc: 'Get instant alerts on your phone whenever a live class is about to start, new homework is posted, or a teacher grades your copy.',
+        chips: ['✓ 15-Min Class Reminders', '✓ Grading Notifications', '✓ Important Notices']
+      },
+      {
+        icon: 'fas fa-id-card',
+        title: 'Student ID & Profile Settings',
+        desc: 'View your verified Student ID Code, update your profile picture, change password, and switch grade or board details.',
+        chips: ['✓ Official Student ID', '✓ Avatar Personalization', '✓ Password Security']
+      }
+    ],
+    steps: [
+      {
+        num: '01',
+        icon: 'fas fa-user-plus',
+        title: 'Create Free Account or Log In (Mobile OTP)',
+        tag: 'Step 1 • Getting Started',
+        desc: 'Enter your 10-digit mobile number to receive a 6-digit SMS code, or log in with your email and password. New student? Click Register to sign up in 30 seconds.',
+        chips: ['Mobile SMS OTP (Fastest)', 'Email & Password Login', 'Instant Account Creation', 'Quick Password Reset']
+      },
+      {
+        num: '02',
+        icon: 'fas fa-graduation-cap',
+        title: 'Select Your Class & School Board',
+        tag: 'Step 2 • Grade Setup',
+        desc: 'Choose your class (Grade 6 to 12) and educational board (CBSE, ICSE, or State Board) so your portal automatically loads your exact school syllabus and books.',
+        chips: ['Class 6 to 12 Selection', 'CBSE / ICSE / State Board', 'Personalized Syllabus']
+      },
+      {
+        num: '03',
+        icon: 'fas fa-book-reader',
+        title: 'Explore Courses & Watch Free Demos',
+        tag: 'Step 3 • Course Catalog',
+        desc: 'Browse subject courses (Maths, Science, English, etc.), read chapter syllabi, check assigned teachers, and watch free batch demo videos before joining.',
+        chips: ['Subject-wise Courses', 'Chapter Breakdown', 'Free Batch Demo Videos']
+      },
+      {
+        num: '04',
+        icon: 'fas fa-credit-card',
+        title: 'Pay Tuition Fees & Download Receipt',
+        tag: 'Step 4 • Safe Payment',
+        desc: 'Choose a monthly or annual course plan and pay securely through Razorpay using UPI (GPay, PhonePe, Paytm), cards, or net banking. Download your official PDF receipt instantly.',
+        chips: ['UPI / Cards / NetBanking', '100% Secure Razorpay', 'Instant PDF Payment Receipt']
+      },
+      {
+        num: '05',
+        icon: 'fas fa-calendar-alt',
+        title: 'Check Your Batch & Lecture Timetable',
+        tag: 'Step 5 • Class Routine',
+        desc: 'Go to My Batches to see your teacher’s profile, classmates in your batch, weekly lecture days, and start times so you are always prepared.',
+        chips: ['Assigned Mentor', 'Classmate Cohort', 'Weekly Timetable', 'Syllabus Progress %']
+      },
+      {
+        num: '06',
+        icon: 'fas fa-clock',
+        title: 'Daily Dashboard & Live Countdown Clock',
+        tag: 'Step 6 • Daily Routine',
+        desc: 'Every day your home dashboard displays today’s upcoming lectures with a live ticking countdown timer showing exact minutes remaining until class starts.',
+        chips: ['Today’s Class Timetable', 'Live Countdown Timer', 'Pending Homework Count']
+      },
+      {
+        num: '07',
+        icon: 'fas fa-video',
+        title: 'Tap Green "Join Class" to Enter',
+        tag: 'Step 7 • 1-Click Join',
+        desc: 'When class time begins, the "Join Class" button turns green. Click it to enter your teacher’s live room directly with clear video and audio without any complicated setup.',
+        chips: ['1-Click Green Join Button', 'Clear HD Video & Audio', 'Works on Phone & Laptop']
+      },
+      {
+        num: '08',
+        icon: 'fas fa-chalkboard-teacher',
+        title: 'Follow Live Digital Blackboard',
+        tag: 'Step 8 • Live Teaching',
+        desc: 'Watch your teacher solve math equations, write key definitions, and draw science diagrams on the real-time shared digital whiteboard right on your screen.',
+        chips: ['Live Screen Blackboard', 'Step-by-Step Math Solutions', 'Diagram Illustrations']
+      },
+      {
+        num: '09',
+        icon: 'fas fa-comments',
+        title: 'Ask Doubts via Live Chat or Raise Hand',
+        tag: 'Step 9 • Instant Doubts',
+        desc: 'If you have a doubt during class, type your question in the live chat or click "Raise Hand" so your teacher can invite you to speak directly via microphone.',
+        chips: ['Live Chat Room', 'Raise Hand Option', 'Speak Directly with Teacher']
+      },
+      {
+        num: '10',
+        icon: 'fas fa-check-double',
+        title: 'Auto Attendance & Daily Study Streak',
+        tag: 'Step 10 • Smart Attendance',
+        desc: 'The moment you enter class, Speaxa automatically marks you Present. Attend daily classes on time to build your learning streak and earn fun student badges.',
+        chips: ['Automatic Present Log', 'Monthly Calendar Green Dots', 'Daily Study Streaks']
+      },
+      {
+        num: '11',
+        icon: 'fas fa-tasks',
+        title: 'Check New Homework & Deadlines',
+        tag: 'Step 11 • Homework Hub',
+        desc: 'Open the Homework tab after class to see questions assigned by your teacher, detailed guidelines, and the exact submission due date.',
+        chips: ['Daily Homework Questions', 'Submission Due Dates', 'Teacher Instructions']
+      },
+      {
+        num: '12',
+        icon: 'fas fa-file-upload',
+        title: 'Upload Notebook Photos or PDF Copy',
+        tag: 'Step 12 • Submit Work',
+        desc: 'Complete your homework in your notebook, take clear photos with your phone camera or upload a single PDF file, and click submit with one tap.',
+        chips: ['Camera Photo Upload', 'PDF File Support', 'Instant Submission Confirmation']
+      },
+      {
+        num: '13',
+        icon: 'fas fa-spell-check',
+        title: 'View Checked Copies & Teacher Marks',
+        tag: 'Step 13 • Checked Copies',
+        desc: 'Once your teacher reviews your work, open the app to see your marks, personalized teacher comments, and highlighted corrections to improve your grades.',
+        chips: ['Subject Scores', 'Teacher Remarks & Advice', 'Correction Highlights']
+      },
+      {
+        num: '14',
+        icon: 'fas fa-play-circle',
+        title: 'Re-watch Past Class Recordings 24/7',
+        tag: 'Step 14 • 24/7 Revision',
+        desc: 'Missed a live class or need revision before exams? Every class video is saved in your library. Watch it anytime at 1x, 1.5x, or 2x speed with downloaded notes.',
+        chips: ['24/7 Video Replays', '1.5x & 2x Speed Controls', 'Download Lecture Notes']
+      },
+      {
+        num: '15',
+        icon: 'fas fa-user-shield',
+        title: 'Link Parents’ App & Inspect Report Cards',
+        tag: 'Step 15 • Report Cards',
+        desc: 'Share your unique Student ID Code with your parents so they can link to your profile, view your test percentiles, monthly progress graphs, and fee receipts.',
+        chips: ['Unique Student Code', 'Parent App Link', 'Monthly Report Cards', 'Test Percentile Rank']
+      }
+    ],
+    tip: '<strong>Pro-Tip for Students:</strong> Join your live class 5 minutes early to test your audio, camera, and download lesson notes before the mentor starts teaching!'
+  }
+};
+
+let portalGuideModalInstance = null;
+
+function renderPortalGuideContent(role) {
+  const guide = PORTAL_GUIDES[role] || PORTAL_GUIDES.student;
+
+  const modalEl = document.getElementById('spxPortalGuideModal');
+  if (!modalEl) return;
+
+  // Set personalized role theme
+  modalEl.setAttribute('data-portal-theme', guide.theme);
+
+  // Avatar Icon
+  const avatarEl = modalEl.querySelector('#spxPortalGuideAvatar');
+  if (avatarEl) {
+    avatarEl.innerHTML = `<i class="${guide.avatarIcon}"></i>`;
+  }
+
+  // Header Badge, Title, Subtitle
+  const badgeEl = modalEl.querySelector('#spxPortalGuideBadge');
+  if (badgeEl) {
+    badgeEl.innerHTML = `<span class="live-dot"></span>${guide.badge}`;
+  }
+
+  const titleEl = modalEl.querySelector('#spxPortalGuideTitle');
+  if (titleEl) titleEl.textContent = guide.title;
+
+  const subtitleEl = modalEl.querySelector('#spxPortalGuideSubtitle');
+  if (subtitleEl) subtitleEl.textContent = guide.subtitle;
+
+  // Highlights Strip
+  const highlightsContainer = modalEl.querySelector('#spxPortalGuideHighlights');
+  if (highlightsContainer && guide.highlights) {
+    highlightsContainer.innerHTML = guide.highlights.map(h => `
+      <div class="spx-highlight-chip">
+        <i class="${h.icon}"></i>
+        <span>${h.text}</span>
+      </div>
+    `).join('');
+  }
+
+  // Capabilities Grid
+  const capabilitiesContainer = modalEl.querySelector('#spxPortalGuideCapabilities');
+  if (capabilitiesContainer) {
+    if (guide.capabilities && guide.capabilities.length > 0) {
+      capabilitiesContainer.innerHTML = `
+        <div class="spx-steps-section-header mt-1 mb-2">
+          <div class="spx-steps-section-title">
+            <i class="fas fa-th-large"></i>
+            <span>${guide.capabilitiesTitle || 'Everything You Can Do'}</span>
+          </div>
+          <span class="spx-steps-section-badge">
+            <i class="fas fa-check-circle me-1"></i> ${guide.capabilitiesBadge || 'Full LMS Suite'}
+          </span>
+        </div>
+        <div class="spx-capabilities-grid">
+          ${guide.capabilities.map(cap => `
+            <div class="spx-capability-card">
+              <div>
+                <div class="spx-capability-top">
+                  <div class="spx-capability-icon">
+                    <i class="${cap.icon}"></i>
+                  </div>
+                  <div class="spx-capability-title">${cap.title}</div>
+                </div>
+                <p class="spx-capability-desc">${cap.desc}</p>
+              </div>
+              ${cap.chips && cap.chips.length > 0 ? `
+                <div class="spx-capability-chips">
+                  ${cap.chips.map(chip => `
+                    <span class="spx-capability-chip">${chip}</span>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+      capabilitiesContainer.style.display = 'block';
+    } else {
+      capabilitiesContainer.innerHTML = '';
+      capabilitiesContainer.style.display = 'none';
+    }
+  }
+
+  // Bullet-wise Animated Steps List
+  const stepsContainer = modalEl.querySelector('#spxPortalGuideSteps');
+  if (stepsContainer && guide.steps) {
+    // Re-render to trigger fresh CSS slide-in animations
+    stepsContainer.innerHTML = guide.steps.map(s => `
+      <div class="spx-step-bullet-item">
+        <div class="spx-step-bullet-indicator">${s.num}</div>
+        <div class="spx-step-bullet-body">
+          <div class="spx-step-bullet-header">
+            <div class="spx-step-bullet-title">
+              <i class="${s.icon}"></i>
+              <span>${s.title}</span>
+            </div>
+            <span class="spx-step-bullet-tag">${s.tag}</span>
+          </div>
+          <p class="spx-step-bullet-desc">${s.desc}</p>
+          <div class="spx-step-bullet-chips">
+            ${s.chips.map(chip => `
+              <span class="spx-step-micro-chip">
+                <i class="fas fa-check-circle"></i>
+                <span>${chip}</span>
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Dynamic Steps Badge Count
+  const stepsBadgeEl = modalEl.querySelector('#spxPortalGuideStepsBadge');
+  if (stepsBadgeEl && guide.steps) {
+    stepsBadgeEl.innerHTML = `<i class="fas fa-check-circle me-1"></i> ${guide.steps.length} Simple Steps`;
+  }
+
+  // Pro tip
+  const tipEl = modalEl.querySelector('#spxPortalGuideTip');
+  if (tipEl) {
+    tipEl.innerHTML = `<i class="fas fa-lightbulb"></i><div>${guide.tip}</div>`;
+  }
+
+  // Proceed button
+  const proceedBtn = modalEl.querySelector('#spxPortalGuideProceedBtn');
+  if (proceedBtn) {
+    proceedBtn.innerHTML = `<span>${guide.proceedText}</span><i class="fas fa-arrow-right"></i>`;
+    proceedBtn.setAttribute('href', guide.proceedUrl);
+  }
+}
+
+function initPortalGuideModal() {
+  let modalEl = document.getElementById('spxPortalGuideModal');
+  if (!modalEl) {
+    modalEl = document.createElement('div');
+    modalEl.id = 'spxPortalGuideModal';
+    modalEl.className = 'modal fade spx-portal-modal';
+    modalEl.tabIndex = -1;
+    modalEl.setAttribute('aria-hidden', 'true');
+    modalEl.style.zIndex = '1095';
+
+    modalEl.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <!-- Personalized Header (No Tabs) -->
+          <div class="spx-portal-header">
+            <div id="spxPortalGuideAvatar" class="spx-portal-avatar"></div>
+            <div class="spx-portal-header-info">
+              <div id="spxPortalGuideBadge" class="spx-portal-badge"></div>
+              <h3 id="spxPortalGuideTitle" class="spx-portal-title"></h3>
+              <p id="spxPortalGuideSubtitle" class="spx-portal-subtitle"></p>
+            </div>
+            <button type="button" class="spx-portal-close" data-bs-dismiss="modal" aria-label="Close">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="spx-portal-body">
+            <!-- Highlight Chips Strip -->
+            <div id="spxPortalGuideHighlights" class="spx-highlights-strip"></div>
+
+            <!-- Capabilities Grid (What student can do) -->
+            <div id="spxPortalGuideCapabilities"></div>
+
+            <!-- Steps Section Header -->
+            <div class="spx-steps-section-header">
+              <div class="spx-steps-section-title">
+                <i class="fas fa-route"></i>
+                <span>How To Use This Panel (Step-by-Step)</span>
+              </div>
+              <span id="spxPortalGuideStepsBadge" class="spx-steps-section-badge">
+                <i class="fas fa-check-circle me-1"></i> Simple Steps
+              </span>
+            </div>
+
+            <!-- Bullet-Wise Animated Steps Timeline -->
+            <div id="spxPortalGuideSteps" class="spx-animated-steps-list"></div>
+
+            <!-- Pro-Tip Box -->
+            <div id="spxPortalGuideTip" class="spx-portal-tip"></div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="spx-portal-footer">
+            <button type="button" class="spx-portal-btn-dismiss" data-bs-dismiss="modal">
+              <i class="fas fa-times me-1"></i> Stay On Page
+            </button>
+            <a id="spxPortalGuideProceedBtn" href="#" class="spx-portal-btn-proceed">
+              <span>Proceed to Portal</span>
+              <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modalEl);
+
+    // Handle proceed button click
+    const proceedBtn = modalEl.querySelector('#spxPortalGuideProceedBtn');
+    if (proceedBtn) {
+      proceedBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = proceedBtn.getAttribute('href');
+        if (url) {
+          window.location.href = url;
+        }
+      });
+    }
+  }
+
+  return modalEl;
+}
+
+window.openPortalGuidanceModal = function(role, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const modalEl = initPortalGuideModal();
+  renderPortalGuideContent(role);
+
+  if (!portalGuideModalInstance) {
+    portalGuideModalInstance = new bootstrap.Modal(modalEl, {
+      backdrop: true,
+      keyboard: true
+    });
+  }
+  portalGuideModalInstance.show();
+};
+
+// Global click delegation for Teacher / Parent / Student buttons
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href="/student"], a[href="/parent"], a[href="/teacher"], a[href^="/student"], a[href^="/parent"], a[href^="/teacher"]');
+  if (!link) return;
+
+  // Do not intercept if inside the modal footer or marked data-no-guide
+  if (link.closest('#spxPortalGuideModal') || link.getAttribute('data-no-guide') === 'true') {
+    return;
+  }
+
+  const href = (link.getAttribute('href') || '').toLowerCase();
+  let role = null;
+  if (href.startsWith('/teacher')) role = 'teacher';
+  else if (href.startsWith('/parent')) role = 'parent';
+  else if (href.startsWith('/student')) role = 'student';
+
+  if (role) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.openPortalGuidanceModal(role);
+  }
+});
+
+

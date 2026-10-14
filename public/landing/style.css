@@ -1541,3 +1541,1048 @@ html, body {
 
 
 
+/* ============================================================
+   SPEAXA Personalized Portal Guidance Popups
+   Dedicated Experience for Teacher, Parent & Student (No Tabs)
+   Bullet-wise Staggered Animated Steps with Speaxa Signature Theme
+   ============================================================ */
+
+.spx-portal-modal .modal-dialog {
+  max-width: 820px;
+  width: 95%;
+  margin: 1.5rem auto;
+}
+
+.spx-portal-modal .modal-content {
+  background: #0b1120;
+  background: radial-gradient(circle at 15% 0%, var(--spx-glow-color, rgba(60, 189, 176, 0.22)) 0%, transparent 45%),
+              radial-gradient(circle at 85% 100%, var(--spx-glow-secondary, rgba(15, 118, 110, 0.2)) 0%, transparent 50%),
+              #0d1527;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 26px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8), 0 0 50px var(--spx-ambient-shadow, rgba(60, 189, 176, 0.2));
+  color: #f8fafc;
+  overflow: hidden;
+  position: relative;
+}
+
+.spx-portal-modal .modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--spx-header-gradient, linear-gradient(90deg, #3CBDB0, #0F766E));
+  z-index: 2;
+}
+
+/* Modal Header */
+.spx-portal-header {
+  padding: 28px 32px 18px 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.spx-portal-avatar {
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+  border-radius: 18px;
+  background: var(--spx-avatar-gradient, linear-gradient(135deg, rgba(60, 189, 176, 0.2), rgba(15, 118, 110, 0.3)));
+  border: 1px solid var(--spx-avatar-border, rgba(60, 189, 176, 0.4));
+  color: var(--spx-accent-color, #3CBDB0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  box-shadow: 0 8px 24px var(--spx-ambient-shadow, rgba(60, 189, 176, 0.25));
+  animation: spxPulseRing 3s infinite;
+}
+
+@keyframes spxPulseRing {
+  0% { box-shadow: 0 0 0 0 var(--spx-ring-color, rgba(60, 189, 176, 0.5)); }
+  70% { box-shadow: 0 0 0 10px rgba(60, 189, 176, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(60, 189, 176, 0); }
+}
+
+.spx-portal-header-info {
+  flex: 1;
+}
+
+.spx-portal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--spx-badge-border, rgba(60, 189, 176, 0.3));
+  color: var(--spx-accent-color, #3CBDB0);
+  margin-bottom: 8px;
+}
+
+.spx-portal-badge .live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--spx-accent-color, #3CBDB0);
+  box-shadow: 0 0 8px var(--spx-accent-color, #3CBDB0);
+  animation: pulse-glow 2s infinite;
+}
+
+.spx-portal-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin-bottom: 5px;
+}
+
+.spx-portal-subtitle {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  margin-bottom: 0;
+}
+
+.spx-portal-close {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+
+.spx-portal-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+/* Modal Body */
+.spx-portal-body {
+  padding: 22px 32px 24px 32px;
+  max-height: calc(85vh - 170px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.spx-portal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.spx-portal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* Highlight Pills Strip */
+.spx-highlights-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.spx-highlight-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.spx-highlight-chip i {
+  color: var(--spx-accent-color, #3CBDB0);
+  font-size: 0.85rem;
+}
+
+/* Section Header */
+.spx-steps-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.spx-steps-section-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.spx-steps-section-title i {
+  color: var(--spx-accent-color, #3CBDB0);
+}
+
+.spx-steps-section-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--spx-pill-bg, rgba(60, 189, 176, 0.12));
+  color: var(--spx-accent-color, #3CBDB0);
+  border: 1px solid var(--spx-badge-border, rgba(60, 189, 176, 0.25));
+}
+
+/* Bullet-Wise Animated Steps Timeline */
+.spx-animated-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  margin-bottom: 22px;
+}
+
+.spx-animated-steps-list::before {
+  content: '';
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 21px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--spx-accent-color, #3CBDB0), rgba(255, 255, 255, 0.08));
+  z-index: 1;
+}
+
+.spx-step-bullet-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 14px 18px;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: spxStepSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered bullet animations up to 15 items */
+.spx-step-bullet-item:nth-child(1) { animation-delay: 0.03s; }
+.spx-step-bullet-item:nth-child(2) { animation-delay: 0.06s; }
+.spx-step-bullet-item:nth-child(3) { animation-delay: 0.09s; }
+.spx-step-bullet-item:nth-child(4) { animation-delay: 0.12s; }
+.spx-step-bullet-item:nth-child(5) { animation-delay: 0.15s; }
+.spx-step-bullet-item:nth-child(6) { animation-delay: 0.18s; }
+.spx-step-bullet-item:nth-child(7) { animation-delay: 0.21s; }
+.spx-step-bullet-item:nth-child(8) { animation-delay: 0.24s; }
+.spx-step-bullet-item:nth-child(9) { animation-delay: 0.27s; }
+.spx-step-bullet-item:nth-child(10) { animation-delay: 0.30s; }
+.spx-step-bullet-item:nth-child(11) { animation-delay: 0.33s; }
+.spx-step-bullet-item:nth-child(12) { animation-delay: 0.36s; }
+.spx-step-bullet-item:nth-child(13) { animation-delay: 0.39s; }
+.spx-step-bullet-item:nth-child(14) { animation-delay: 0.42s; }
+.spx-step-bullet-item:nth-child(15) { animation-delay: 0.45s; }
+
+@keyframes spxStepSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.spx-step-bullet-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--spx-accent-color, #3CBDB0);
+  transform: translateX(4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.spx-step-bullet-indicator {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 10px;
+  background: var(--spx-step-num-bg, linear-gradient(135deg, #3CBDB0, #0F766E));
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px var(--spx-ambient-shadow, rgba(60, 189, 176, 0.3));
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.spx-step-bullet-body {
+  flex: 1;
+}
+
+.spx-step-bullet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.spx-step-bullet-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spx-step-bullet-title i {
+  color: var(--spx-accent-color, #3CBDB0);
+  font-size: 0.88rem;
+}
+
+.spx-step-bullet-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--spx-accent-color, #3CBDB0);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.spx-step-bullet-desc {
+  font-size: 0.83rem;
+  color: #94a3b8;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.spx-step-bullet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.spx-step-micro-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spx-step-micro-chip i {
+  color: var(--spx-accent-color, #3CBDB0);
+  font-size: 0.68rem;
+}
+
+/* Pro Tip Callout */
+.spx-portal-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--spx-accent-color, #3CBDB0);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 0.84rem;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+
+.spx-portal-tip i {
+  color: var(--spx-accent-color, #3CBDB0);
+  font-size: 1.05rem;
+  margin-top: 2px;
+}
+
+/* Modal Footer */
+.spx-portal-footer {
+  padding: 18px 32px 24px 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: rgba(10, 16, 31, 0.8);
+}
+
+.spx-portal-btn-dismiss {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.spx-portal-btn-dismiss:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.spx-portal-btn-proceed {
+  background: var(--spx-btn-gradient, linear-gradient(135deg, #3CBDB0 0%, #0F766E 100%));
+  color: #ffffff;
+  border: none;
+  padding: 11px 26px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px var(--spx-btn-shadow, rgba(60, 189, 176, 0.35));
+  transition: all 0.25s ease;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+
+.spx-portal-btn-proceed:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px var(--spx-btn-shadow, rgba(60, 189, 176, 0.5));
+  color: #ffffff;
+}
+
+.spx-portal-btn-proceed i {
+  transition: transform 0.2s ease;
+}
+
+.spx-portal-btn-proceed:hover i {
+  transform: translateX(4px);
+}
+
+/* Capability Cards Grid (What a user can do in software) */
+.spx-capabilities-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 767px) {
+  .spx-capabilities-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.spx-capability-card {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 16px;
+  transition: all 0.25s ease;
+}
+
+.spx-capability-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--spx-accent-color, #3CBDB0);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+}
+
+.spx-capability-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.spx-capability-icon {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
+  background: var(--spx-pill-bg, rgba(60, 189, 176, 0.12));
+  color: var(--spx-accent-color, #3CBDB0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.spx-capability-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.spx-capability-desc {
+  font-size: 0.81rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  flex-grow: 1;
+}
+
+.spx-capability-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.spx-capability-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============================================================
+   PERSONALIZED THEMES (Teacher, Parent, Student)
+   ============================================================ */
+
+/* 1. TEACHER THEME (Speaxa Signature Teal/Emerald) */
+.spx-portal-modal[data-portal-theme="teacher"] {
+  --spx-glow-color: rgba(60, 189, 176, 0.22);
+  --spx-glow-secondary: rgba(15, 118, 110, 0.22);
+  --spx-ambient-shadow: rgba(60, 189, 176, 0.25);
+  --spx-header-gradient: linear-gradient(90deg, #3CBDB0, #0F766E);
+  --spx-accent-color: #3CBDB0;
+  --spx-avatar-gradient: linear-gradient(135deg, rgba(60, 189, 176, 0.2), rgba(15, 118, 110, 0.35));
+  --spx-avatar-border: rgba(60, 189, 176, 0.45);
+  --spx-ring-color: rgba(60, 189, 176, 0.5);
+  --spx-badge-border: rgba(60, 189, 176, 0.35);
+  --spx-pill-bg: rgba(60, 189, 176, 0.12);
+  --spx-step-num-bg: linear-gradient(135deg, #3CBDB0, #0F766E);
+  --spx-btn-gradient: linear-gradient(135deg, #3CBDB0 0%, #0F766E 100%);
+  --spx-btn-shadow: rgba(60, 189, 176, 0.4);
+}
+
+/* 2. PARENT THEME (Speaxa Warm Amber & Sunset Gold) */
+.spx-portal-modal[data-portal-theme="parent"] {
+  --spx-glow-color: rgba(245, 158, 11, 0.22);
+  --spx-glow-secondary: rgba(234, 88, 12, 0.2);
+  --spx-ambient-shadow: rgba(245, 158, 11, 0.25);
+  --spx-header-gradient: linear-gradient(90deg, #F59E0B, #EA580C);
+  --spx-accent-color: #F59E0B;
+  --spx-avatar-gradient: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 88, 12, 0.35));
+  --spx-avatar-border: rgba(245, 158, 11, 0.45);
+  --spx-ring-color: rgba(245, 158, 11, 0.5);
+  --spx-badge-border: rgba(245, 158, 11, 0.35);
+  --spx-pill-bg: rgba(245, 158, 11, 0.12);
+  --spx-step-num-bg: linear-gradient(135deg, #F59E0B, #D97706);
+  --spx-btn-gradient: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  --spx-btn-shadow: rgba(245, 158, 11, 0.4);
+}
+
+/* 3. STUDENT THEME (Software Signature Teal & Crisp White) */
+.spx-portal-modal[data-portal-theme="student"] {
+  --spx-glow-color: rgba(60, 189, 176, 0.2);
+  --spx-glow-secondary: rgba(15, 118, 110, 0.15);
+  --spx-ambient-shadow: rgba(60, 189, 176, 0.25);
+  --spx-header-gradient: linear-gradient(90deg, #3CBDB0, #0F766E);
+  --spx-accent-color: #0D7A6D;
+  --spx-avatar-gradient: linear-gradient(135deg, rgba(60, 189, 176, 0.18), rgba(15, 118, 110, 0.28));
+  --spx-avatar-border: #3CBDB0;
+  --spx-ring-color: rgba(60, 189, 176, 0.45);
+  --spx-badge-border: rgba(60, 189, 176, 0.35);
+  --spx-pill-bg: rgba(60, 189, 176, 0.12);
+  --spx-step-num-bg: linear-gradient(135deg, #3CBDB0, #0F766E);
+  --spx-btn-gradient: linear-gradient(135deg, #3CBDB0 0%, #0F766E 100%);
+  --spx-btn-shadow: rgba(60, 189, 176, 0.35);
+}
+
+.spx-portal-modal[data-portal-theme="student"] .modal-content {
+  background: radial-gradient(circle at 12% 0%, rgba(60, 189, 176, 0.14) 0%, transparent 45%),
+              radial-gradient(circle at 88% 100%, rgba(15, 118, 110, 0.08) 0%, transparent 50%),
+              #ffffff !important;
+  border: 1px solid rgba(60, 189, 176, 0.35) !important;
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.14), 0 0 50px rgba(60, 189, 176, 0.18) !important;
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-header {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-subtitle {
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-badge {
+  background: rgba(60, 189, 176, 0.12) !important;
+  color: #0D7A6D !important;
+  border-color: rgba(60, 189, 176, 0.35) !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-close {
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-close:hover {
+  background: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-highlights-strip {
+  background: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-highlight-chip {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #1E293B !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-capability-card {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-capability-card:hover {
+  background: #F0FDFA !important;
+  border-color: #3CBDB0 !important;
+  box-shadow: 0 6px 18px rgba(60, 189, 176, 0.15) !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-capability-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-capability-desc {
+  color: #64748B !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-capability-chip {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #0D7A6D !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-steps-section-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-steps-section-badge {
+  background: rgba(60, 189, 176, 0.12) !important;
+  color: #0D7A6D !important;
+  border-color: rgba(60, 189, 176, 0.3) !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-animated-steps-list::before {
+  background: linear-gradient(180deg, #3CBDB0, rgba(60, 189, 176, 0.2)) !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-step-bullet-item {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04) !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-step-bullet-item:hover {
+  background: #F0FDFA !important;
+  border-color: #3CBDB0 !important;
+  box-shadow: 0 8px 24px rgba(60, 189, 176, 0.18) !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-step-bullet-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-step-bullet-tag {
+  background: rgba(60, 189, 176, 0.12) !important;
+  color: #0D7A6D !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-step-bullet-desc {
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-step-micro-chip {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #334155 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-tip {
+  background: #F0FDFA !important;
+  border: 1px solid rgba(60, 189, 176, 0.35) !important;
+  border-left: 4px solid #0D7A6D !important;
+  color: #134E4A !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-footer {
+  background: #F8FAFC !important;
+  border-top: 1px solid #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-btn-dismiss {
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-btn-dismiss:hover {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+
+.spx-portal-modal[data-portal-theme="student"] .spx-portal-btn-proceed {
+  background: linear-gradient(135deg, #3CBDB0 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(60, 189, 176, 0.35) !important;
+}
+
+/* ============================================================
+   PARENT THEME LIGHT OVERRIDES (Warm Amber / Gold & Clean White)
+   ============================================================ */
+.spx-portal-modal[data-portal-theme="parent"] .modal-content {
+  background: radial-gradient(circle at 12% 0%, rgba(245, 158, 11, 0.12) 0%, transparent 45%),
+              radial-gradient(circle at 88% 100%, rgba(234, 88, 12, 0.08) 0%, transparent 50%),
+              #ffffff !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.14), 0 0 50px rgba(245, 158, 11, 0.18) !important;
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-header {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-subtitle {
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-badge {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #B45309 !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-close {
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-close:hover {
+  background: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-highlights-strip {
+  background: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-highlight-chip {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #1E293B !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-capability-card {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-capability-card:hover {
+  background: #FFFBEB !important;
+  border-color: #F59E0B !important;
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.15) !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-capability-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-capability-desc {
+  color: #64748B !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-capability-chip {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #B45309 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-steps-section-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-steps-section-badge {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #B45309 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-animated-steps-list::before {
+  background: linear-gradient(180deg, #F59E0B, rgba(245, 158, 11, 0.2)) !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-step-bullet-item {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04) !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-step-bullet-item:hover {
+  background: #FFFBEB !important;
+  border-color: #F59E0B !important;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.18) !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-step-bullet-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-step-bullet-tag {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #B45309 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-step-bullet-desc {
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-step-micro-chip {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #334155 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-tip {
+  background: #FFFBEB !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  border-left: 4px solid #D97706 !important;
+  color: #92400E !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-footer {
+  background: #F8FAFC !important;
+  border-top: 1px solid #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-btn-dismiss {
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-btn-dismiss:hover {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+
+.spx-portal-modal[data-portal-theme="parent"] .spx-portal-btn-proceed {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35) !important;
+}
+
+/* ============================================================
+   TEACHER THEME LIGHT OVERRIDES (Emerald Teal & Clean White)
+   ============================================================ */
+.spx-portal-modal[data-portal-theme="teacher"] .modal-content {
+  background: radial-gradient(circle at 12% 0%, rgba(60, 189, 176, 0.14) 0%, transparent 45%),
+              radial-gradient(circle at 88% 100%, rgba(15, 118, 110, 0.08) 0%, transparent 50%),
+              #ffffff !important;
+  border: 1px solid rgba(60, 189, 176, 0.35) !important;
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.14), 0 0 50px rgba(60, 189, 176, 0.18) !important;
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-header {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-subtitle {
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-badge {
+  background: rgba(60, 189, 176, 0.12) !important;
+  color: #0D7A6D !important;
+  border-color: rgba(60, 189, 176, 0.35) !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-close {
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-close:hover {
+  background: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-highlights-strip {
+  background: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-highlight-chip {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #1E293B !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-capability-card {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-capability-card:hover {
+  background: #F0FDFA !important;
+  border-color: #3CBDB0 !important;
+  box-shadow: 0 6px 18px rgba(60, 189, 176, 0.15) !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-capability-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-capability-desc {
+  color: #64748B !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-capability-chip {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #0D7A6D !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-steps-section-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-steps-section-badge {
+  background: rgba(60, 189, 176, 0.12) !important;
+  color: #0D7A6D !important;
+  border-color: rgba(60, 189, 176, 0.3) !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-animated-steps-list::before {
+  background: linear-gradient(180deg, #3CBDB0, rgba(60, 189, 176, 0.2)) !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-step-bullet-item {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04) !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-step-bullet-item:hover {
+  background: #F0FDFA !important;
+  border-color: #3CBDB0 !important;
+  box-shadow: 0 8px 24px rgba(60, 189, 176, 0.18) !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-step-bullet-title {
+  color: #0F172A !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-step-bullet-tag {
+  background: rgba(60, 189, 176, 0.12) !important;
+  color: #0D7A6D !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-step-bullet-desc {
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-step-micro-chip {
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #334155 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-tip {
+  background: #F0FDFA !important;
+  border: 1px solid rgba(60, 189, 176, 0.35) !important;
+  border-left: 4px solid #0D7A6D !important;
+  color: #134E4A !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-footer {
+  background: #F8FAFC !important;
+  border-top: 1px solid #E2E8F0 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-btn-dismiss {
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-btn-dismiss:hover {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+
+.spx-portal-modal[data-portal-theme="teacher"] .spx-portal-btn-proceed {
+  background: linear-gradient(135deg, #3CBDB0 0%, #0F766E 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(60, 189, 176, 0.35) !important;
+}
