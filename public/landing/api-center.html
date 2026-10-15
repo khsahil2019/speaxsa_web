@@ -2320,15 +2320,26 @@
       };
 
       let currentLockedModules = { admin: {}, teacher: {}, student: {}, parent: {} };
+      let currentSiteKillswitch = {
+        enabled: true,
+        mode: 'technical_problem',
+        headline: 'Website Temporarily Unavailable',
+        message: 'We are currently experiencing system-level technical difficulties. Access to the SPEAXA platform, all portals, and live classrooms has been temporarily halted. Our engineering team is currently investigating the issue.'
+      };
 
       async function loadModuleLockSettings() {
         const container = document.getElementById('moduleLockContainer');
         if (!container) return;
-        container.innerHTML = '<div class="col-12 text-center py-4 text-muted"><i class="fas fa-circle-notch fa-spin me-2"></i>Loading module locks...</div>';
+        container.innerHTML = '<div class="col-12 text-center py-4 text-muted"><i class="fas fa-circle-notch fa-spin me-2"></i>Loading module locks and site killswitch...</div>';
+        
         try {
-          const res = await fetch('/api/public/module-locks');
-          if (res.ok) {
-            const data = await res.json();
+          const [modRes, ksRes] = await Promise.all([
+            fetch('/api/public/module-locks').catch(() => null),
+            fetch('/api/db-admin/site-killswitch').catch(() => null)
+          ]);
+
+          if (modRes && modRes.ok) {
+            const data = await modRes.json();
             if (data.locked_modules) {
               const normalize = (val) => {
                 if (Array.isArray(val)) {
@@ -2346,8 +2357,18 @@
               };
             }
           }
+
+          if (ksRes && ksRes.ok) {
+            const ksData = await ksRes.json();
+            currentSiteKillswitch = {
+              enabled: ksData.enabled !== false,
+              mode: ksData.mode || 'technical_problem',
+              headline: ksData.headline || (ksData.mode === 'payment_required' ? 'Platform Access Suspended' : 'Website Temporarily Unavailable'),
+              message: ksData.message || 'We are currently experiencing system-level technical difficulties. Access to the SPEAXA platform, all portals, and live classrooms has been temporarily halted.'
+            };
+          }
         } catch (e) {
-          console.warn('Failed to load module locks:', e);
+          console.warn('Failed to load module locks or killswitch:', e);
         }
         renderModuleLockGrid();
       }
@@ -2356,6 +2377,100 @@
         const container = document.getElementById('moduleLockContainer');
         if (!container) return;
         container.innerHTML = '';
+
+        // 🚨 MASTER SITE-WIDE KILL SWITCH BANNER (BLOCKS ALL URLS)
+        const isSiteKilled = currentSiteKillswitch.enabled === true;
+        const siteWideKillSwitchBanner = `
+        <div class="col-12 mb-4">
+          <div class="p-4 rounded-4 border ${isSiteKilled ? 'border-danger shadow-lg' : 'border-secondary-subtle'}" 
+               style="background: ${isSiteKilled ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(15, 23, 42, 0.95))' : 'linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(248, 250, 252, 0.95))'}; transition: all 0.3s;">
+            
+            <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 pb-3 border-bottom ${isSiteKilled ? 'border-danger-subtle' : 'border-secondary-subtle'}">
+              <div class="d-flex align-items-center gap-3">
+                <div style="font-size: 2.4rem;">${isSiteKilled ? '🛑' : '🌐'}</div>
+                <div>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <h4 class="mb-0 fw-bold ${isSiteKilled ? 'text-danger' : 'text-dark'}">
+                      MASTER SITE-WIDE KILL SWITCH
+                    </h4>
+                    <span class="badge ${isSiteKilled ? 'bg-danger text-white' : 'bg-success text-white'} px-3 py-1 fs-6 rounded-pill">
+                      ${isSiteKilled ? '🔴 ENTIRE SITE BLOCKED (ALL URLs DOWN)' : '✅ WEBSITE LIVE & FUNCTIONAL'}
+                    </span>
+                  </div>
+                  <p class="mb-0 small ${isSiteKilled ? 'text-danger fw-semibold' : 'text-muted'}">
+                    ${isSiteKilled 
+                      ? 'Status: ALL URLs on this domain (Home, Admin, Teacher, Student, Parent, Agora Classrooms, APIs) are currently HALTED and returning an emergency notice.' 
+                      : 'When toggled ON, access to all URLs and portal logins will be instantly blocked. Visitors will see your chosen maintenance or payment notice.'}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <button class="btn ${isSiteKilled ? 'btn-success btn-lg px-4 shadow' : 'btn-danger btn-lg px-4 shadow'} rounded-pill fw-bold"
+                        onclick="toggleSiteKillswitch()">
+                  <i class="fas ${isSiteKilled ? 'fa-play me-2' : 'fa-power-off me-2'}"></i>
+                  ${isSiteKilled ? 'RESTORE ENTIRE WEBSITE (NORMAL MODE)' : 'SHUT DOWN ENTIRE WEBSITE (BLOCK ALL URLs)'}
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-3 pt-2">
+              <div class="row g-3">
+                <div class="col-md-5">
+                  <label class="form-label micro-text fw-bold text-secondary mb-1">Notice Display Mode (Shown to Visitors)</label>
+                  <select class="form-select form-select-sm fw-bold border-secondary-subtle" 
+                          onchange="updateKillswitchMode(this.value)" 
+                          style="font-size: 0.82rem;">
+                    <option value="chrome_offline" ${currentSiteKillswitch.mode === 'chrome_offline' ? 'selected' : ''}>
+                      🌐 Google Chrome "This site can’t be reached" (Default / Screenshot Match)
+                    </option>
+                    <option value="technical_problem" ${currentSiteKillswitch.mode === 'technical_problem' ? 'selected' : ''}>
+                      🛠️ Technical Difficulties / Problem Accessing (503)
+                    </option>
+                    <option value="payment_required" ${currentSiteKillswitch.mode === 'payment_required' ? 'selected' : ''}>
+                      💳 Payment Required / Contract Dues Overdue (402)
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label micro-text fw-bold text-secondary mb-1">Error Code / Tag</label>
+                  <input type="text" class="form-control form-control-sm border-secondary-subtle fw-semibold font-monospace" 
+                         value="${currentSiteKillswitch.error_code || 'DNS_PROBE_FINISHED_NXDOMAIN'}" 
+                         placeholder="DNS_PROBE_FINISHED_NXDOMAIN" 
+                         oninput="updateKillswitchErrorCode(this.value)">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label micro-text fw-bold text-secondary mb-1">Heading / Title</label>
+                  <input type="text" class="form-control form-control-sm border-secondary-subtle fw-semibold" 
+                         value="${currentSiteKillswitch.headline || ''}" 
+                         placeholder="This site can’t be reached" 
+                         oninput="updateKillswitchHeadline(this.value)">
+                </div>
+                <div class="col-12">
+                  <label class="form-label micro-text fw-bold text-secondary mb-1">Custom Message Description</label>
+                  <textarea class="form-control form-control-sm border-secondary-subtle" rows="2" 
+                            placeholder="Message shown to visitors when they open any URL..." 
+                            oninput="updateKillswitchMessage(this.value)">${currentSiteKillswitch.message || ''}</textarea>
+                </div>
+              </div>
+              <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mt-3 pt-2 border-top ${isSiteKilled ? 'border-danger-subtle' : 'border-secondary-subtle'}">
+                <div class="small text-muted">
+                  <i class="fas fa-shield-alt text-primary me-1"></i> Developer Exemption: <code>/api-center</code> is permanently unlocked so you can always toggle this anytime.
+                </div>
+                <div class="d-flex gap-2">
+                  <a href="/?preview_killswitch=1" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="fas fa-external-link-alt me-1"></i> Preview Blocked Page
+                  </a>
+                  <button class="btn btn-primary btn-sm rounded-pill px-4" onclick="saveSiteKillswitch(true)">
+                    <i class="fas fa-save me-1"></i> Save Notice Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        `;
+        container.insertAdjacentHTML('beforeend', siteWideKillSwitchBanner);
 
         // Master Admin Portal Entry Lock Box
         const adminMap = currentLockedModules.admin || {};
@@ -2451,6 +2566,83 @@
         `;
           container.insertAdjacentHTML('beforeend', portalCard);
         });
+      }
+
+      function toggleSiteKillswitch() {
+        currentSiteKillswitch.enabled = !currentSiteKillswitch.enabled;
+        renderModuleLockGrid();
+        saveSiteKillswitch(false);
+      }
+
+      function updateKillswitchMode(modeVal) {
+        currentSiteKillswitch.mode = modeVal;
+        if (modeVal === 'chrome_offline') {
+          currentSiteKillswitch.headline = 'This site can’t be reached';
+          currentSiteKillswitch.error_code = 'DNS_PROBE_FINISHED_NXDOMAIN';
+          currentSiteKillswitch.message = 'Check if there is a typo in';
+        } else if (modeVal === 'payment_required') {
+          currentSiteKillswitch.headline = 'Platform Access Suspended';
+          currentSiteKillswitch.error_code = 'HTTP_402_PAYMENT_REQUIRED';
+          currentSiteKillswitch.message = 'Access to the SPEAXA platform, all portals, and live classrooms has been temporarily halted due to non-payment of development and cloud service dues.';
+        } else {
+          currentSiteKillswitch.headline = 'Website Temporarily Unavailable';
+          currentSiteKillswitch.error_code = 'HTTP_503_SERVICE_UNAVAILABLE';
+          currentSiteKillswitch.message = 'We are currently experiencing system-level technical difficulties. Access to the SPEAXA platform, all portals, and live classrooms has been temporarily halted. Our engineering team is currently investigating the issue.';
+        }
+        renderModuleLockGrid();
+        saveSiteKillswitch(false);
+      }
+
+      function updateKillswitchErrorCode(codeVal) {
+        currentSiteKillswitch.error_code = (codeVal || '').toUpperCase().trim();
+        clearTimeout(_ksDebounceTimer);
+        _ksDebounceTimer = setTimeout(() => saveSiteKillswitch(false), 500);
+      }
+
+      let _ksDebounceTimer = null;
+      function updateKillswitchHeadline(val) {
+        currentSiteKillswitch.headline = val;
+        clearTimeout(_ksDebounceTimer);
+        _ksDebounceTimer = setTimeout(() => saveSiteKillswitch(false), 500);
+      }
+
+      function updateKillswitchMessage(val) {
+        currentSiteKillswitch.message = val;
+        clearTimeout(_ksDebounceTimer);
+        _ksDebounceTimer = setTimeout(() => saveSiteKillswitch(false), 500);
+      }
+
+      async function saveSiteKillswitch(showAlert) {
+        const badge = document.getElementById('lockAutoSaveBadge');
+        if (badge) badge.innerHTML = '<i class="fas fa-circle-notch fa-spin me-1"></i>Saving killswitch...';
+        try {
+          const res = await fetch('/api/db-admin/site-killswitch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currentSiteKillswitch)
+          });
+          if (res.ok) {
+            if (badge) {
+              badge.className = 'badge bg-success text-white border border-success-subtle px-3 py-2';
+              badge.innerHTML = '<i class="fas fa-check-circle me-1"></i>Killswitch Synced Live!';
+              setTimeout(() => {
+                if (badge) {
+                  badge.className = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2';
+                  badge.innerHTML = '<i class="fas fa-bolt me-1"></i>Real-time Auto Sync Active';
+                }
+              }, 1800);
+            }
+            if (showAlert) {
+              alert('✅ Site Killswitch setting saved successfully!\n\nStatus: ' + (currentSiteKillswitch.enabled ? 'BLOCKED (All URLs Inactive)' : 'LIVE (All URLs Active)'));
+            }
+          }
+        } catch (err) {
+          console.error('Failed to save site killswitch:', err);
+          if (badge) {
+            badge.className = 'badge bg-danger text-white px-3 py-2';
+            badge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Save Failed';
+          }
+        }
       }
 
       function toggleMasterAdminLock() {

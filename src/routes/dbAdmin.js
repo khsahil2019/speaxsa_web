@@ -410,6 +410,28 @@ router.post('/module-locks', async (req, res) => {
   }
 });
 
+// GET /api/db-admin/site-killswitch — Get Global Site Killswitch Status
+router.get('/site-killswitch', async (req, res) => {
+  try {
+    const { getSiteKillswitchState } = require('../middleware/paymentSuspension');
+    const state = await getSiteKillswitchState();
+    res.json(state);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/db-admin/site-killswitch — Toggle & Update Global Site Killswitch
+router.post('/site-killswitch', async (req, res) => {
+  try {
+    const { setSiteKillswitchState } = require('../middleware/paymentSuspension');
+    const newState = await setSiteKillswitchState(req.body);
+    res.json({ message: 'Global Site Killswitch updated successfully', state: newState });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/db-admin/update-admin-credentials — Update Admin Email/Password
 router.post('/update-admin-credentials', async (req, res) => {
   const { admin_id, new_email, new_password } = req.body;
