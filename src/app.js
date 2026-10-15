@@ -699,6 +699,10 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
+// ── Payment Suspension & Billing Lock Enforcement ─────────────
+const { paymentSuspensionMiddleware } = require('./middleware/paymentSuspension');
+app.use(paymentSuspensionMiddleware);
+
 // ── Static Files ──────────────────────────────────────────────
 app.use('/logo.png', (req, res) => res.sendFile(path.join(__dirname, '../public/logo.png')));
 app.use('/admin/logo.png', (req, res) => res.sendFile(path.join(__dirname, '../public/logo.png')));
