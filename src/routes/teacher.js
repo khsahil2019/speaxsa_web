@@ -109,6 +109,26 @@ sopFields.forEach(({ name, col }) => {
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
       const fileUrl = `/uploads/sop/${req.file.filename}`;
       await db.query(`UPDATE teacher_sop SET ${col} = $1, updated_at = NOW() WHERE teacher_id = $2`, [fileUrl, req.user.id]);
+      
+      // Reset rejected item_approvals for this slot
+      try {
+        const sopRes = await db.query('SELECT item_approvals FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
+        if (sopRes.rows.length > 0 && sopRes.rows[0].item_approvals) {
+          const app = sopRes.rows[0].item_approvals;
+          const targetKeys = [name, col, `${name}_sop`];
+          let updated = false;
+          targetKeys.forEach(k => {
+            if (app[k] && app[k].status === 'rejected') {
+              app[k] = { status: 'pending', notes: '', updatedAt: new Date().toISOString() };
+              updated = true;
+            }
+          });
+          if (updated) {
+            await db.query('UPDATE teacher_sop SET item_approvals = $1, updated_at = NOW() WHERE teacher_id = $2', [JSON.stringify(app), req.user.id]);
+          }
+        }
+      } catch (apErr) {}
+
       res.json({ message: `${name} uploaded`, fileUrl });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -120,6 +140,26 @@ sopFields.forEach(({ name, col }) => {
     try {
       if (!link || !link.trim()) return res.status(400).json({ error: 'Link is required' });
       await db.query(`UPDATE teacher_sop SET ${col} = $1, updated_at = NOW() WHERE teacher_id = $2`, [link.trim(), req.user.id]);
+      
+      // Reset rejected item_approvals for this slot
+      try {
+        const sopRes = await db.query('SELECT item_approvals FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
+        if (sopRes.rows.length > 0 && sopRes.rows[0].item_approvals) {
+          const app = sopRes.rows[0].item_approvals;
+          const targetKeys = [name, col, `${name}_sop`];
+          let updated = false;
+          targetKeys.forEach(k => {
+            if (app[k] && app[k].status === 'rejected') {
+              app[k] = { status: 'pending', notes: '', updatedAt: new Date().toISOString() };
+              updated = true;
+            }
+          });
+          if (updated) {
+            await db.query('UPDATE teacher_sop SET item_approvals = $1, updated_at = NOW() WHERE teacher_id = $2', [JSON.stringify(app), req.user.id]);
+          }
+        }
+      } catch (apErr) {}
+
       res.json({ message: `${name} link saved`, fileUrl: link.trim() });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -206,9 +246,9 @@ router.post('/sop/availability', async (req, res) => {
   }
 });
 
-// Submit SOP for review
+// Submit SOP & Signed Agreement for review (Single Unified Step)
 router.post('/sop/submit', async (req, res) => {
-  const { teacher_checklist } = req.body;
+  const { teacher_checklist, digital_signature, signature_image } = req.body;
   try {
     const sop = await db.query('SELECT * FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
     if (!sop.rows[0]) return res.status(404).json({ error: 'SOP record not found' });
@@ -249,7 +289,7 @@ router.post('/sop/submit', async (req, res) => {
     }
 
     // 4. Validate Profile fields
-    const userResult = await db.query('SELECT subject_expertise, languages, experience_years FROM users WHERE id = $1', [req.user.id]);
+    const userResult = await db.query('SELECT name, subject_expertise, languages, experience_years FROM users WHERE id = $1', [req.user.id]);
     const u = userResult.rows[0];
     if (!u.subject_expertise || !u.subject_expertise.trim()) {
       return res.status(400).json({ error: 'Please update your Subject Expertise under the Profile & Experience section.' });
@@ -261,13 +301,48 @@ router.post('/sop/submit', async (req, res) => {
       return res.status(400).json({ error: 'Please enter your Previous Teaching Experience years.' });
     }
 
-    await db.query(
-      "UPDATE teacher_sop SET status = 'sop_pending', teacher_checklist = $2, submitted_at = NOW() WHERE teacher_id = $1",
-      [req.user.id, JSON.stringify(teacher_checklist || {})]
-    );
+    // 5. Validate Digital Agreement Signature (Now signed together with SOP in single submission)
+    let sigName = (digital_signature || '').trim();
+    if (!sigName) {
+      if (sop.rows[0].digital_signature) {
+        sigName = sop.rows[0].digital_signature;
+      } else if (u.name) {
+        sigName = u.name;
+      } else {
+        return res.status(400).json({ error: 'Please provide your printed full name for the Deed of Affidavit agreement attestation.' });
+      }
+    }
+
+    const sigImage = signature_image || sop.rows[0].signature_image || null;
+
+    // 6. Reset any previously rejected item_approvals back to pending so admin can re-review
+    let approvals = sop.rows[0].item_approvals || {};
+    for (const key of Object.keys(approvals)) {
+      if (approvals[key] && approvals[key].status === 'rejected') {
+        approvals[key].status = 'pending';
+        approvals[key].resubmittedAt = new Date().toISOString();
+      }
+    }
+
+    await db.query(`
+      UPDATE teacher_sop 
+      SET status = 'sop_pending', 
+          teacher_checklist = $2, 
+          digital_signature = $3,
+          signature_image = $4,
+          agreement_signed = true,
+          agreement_signed_at = COALESCE(agreement_signed_at, NOW()),
+          item_approvals = $5,
+          admin_notes = NULL,
+          submitted_at = NOW(),
+          updated_at = NOW()
+      WHERE teacher_id = $1
+    `, [req.user.id, JSON.stringify(teacher_checklist || {}), sigName, sigImage, JSON.stringify(approvals)]);
+
     await db.query("UPDATE users SET approval_status = 'sop_pending' WHERE id = $1", [req.user.id]);
-    await logAudit(req.user.id, 'SOP_SUBMITTED', 'teacher', req.user.id, {});
-    res.json({ message: 'SOP submitted successfully for admin review', status: 'sop_pending' });
+    await logAudit(req.user.id, 'SOP_AND_AGREEMENT_SUBMITTED', 'teacher', req.user.id, { digital_signature: sigName });
+
+    res.json({ message: 'SOP and Signed Agreement submitted successfully for admin review.', status: 'sop_pending' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -386,10 +461,27 @@ router.post('/documents/upload', docUpload.single('document'), async (req, res) 
     if (!doc_type) return res.status(400).json({ error: 'doc_type is required' });
     const fileUrl = `/uploads/documents/${req.file.filename}`;
     const id = generateUID('doc');
+
+    // Remove any previous file of this doc_type for this teacher to prevent duplicates
+    await db.query('DELETE FROM teacher_documents WHERE teacher_id = $1 AND doc_type = $2', [req.user.id, doc_type]);
+
     await db.query(
       'INSERT INTO teacher_documents (id, teacher_id, doc_type, file_url, original_name) VALUES ($1,$2,$3,$4,$5)',
       [id, req.user.id, doc_type, fileUrl, req.file.originalname]
     );
+
+    // Reset rejected status in item_approvals for this doc_type
+    try {
+      const sopRes = await db.query('SELECT item_approvals FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
+      if (sopRes.rows.length > 0 && sopRes.rows[0].item_approvals) {
+        const app = sopRes.rows[0].item_approvals;
+        if (app[doc_type] && app[doc_type].status === 'rejected') {
+          app[doc_type] = { status: 'pending', notes: '', updatedAt: new Date().toISOString() };
+          await db.query('UPDATE teacher_sop SET item_approvals = $1, updated_at = NOW() WHERE teacher_id = $2', [JSON.stringify(app), req.user.id]);
+        }
+      }
+    } catch (apErr) {}
+
     res.json({ message: 'Document uploaded', fileUrl, id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -410,6 +502,19 @@ router.post('/documents/link', async (req, res) => {
       'INSERT INTO teacher_documents (id, teacher_id, doc_type, file_url, original_name) VALUES ($1,$2,$3,$4,$5)',
       [id, req.user.id, doc_type, link.trim(), 'External Link']
     );
+
+    // Reset rejected status in item_approvals for this doc_type
+    try {
+      const sopRes = await db.query('SELECT item_approvals FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
+      if (sopRes.rows.length > 0 && sopRes.rows[0].item_approvals) {
+        const app = sopRes.rows[0].item_approvals;
+        if (app[doc_type] && app[doc_type].status === 'rejected') {
+          app[doc_type] = { status: 'pending', notes: '', updatedAt: new Date().toISOString() };
+          await db.query('UPDATE teacher_sop SET item_approvals = $1, updated_at = NOW() WHERE teacher_id = $2', [JSON.stringify(app), req.user.id]);
+        }
+      }
+    } catch (apErr) {}
+
     res.json({ message: 'Document link saved', fileUrl: link.trim(), id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1705,7 +1810,8 @@ router.get('/pending-counts', async (req, res) => {
     const notifications = await db.query(`
       SELECT COUNT(*) as count 
       FROM notifications 
-      WHERE target_user = $1 AND is_active = true AND is_read = false
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'teacher' OR target_role = 'all')))
+        AND is_active = true AND is_read = false
     `, [req.user.id]);
 
     const total = parseInt(chats.rows[0].count) +
@@ -1758,7 +1864,7 @@ router.get('/notifications', async (req, res) => {
     // 2. Fetch notifications for this teacher
     const result = await db.query(`
       SELECT * FROM notifications
-      WHERE (target_role = 'teacher' OR target_role = 'all' OR target_user = $1)
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'teacher' OR target_role = 'all')))
         AND is_active = true
       ORDER BY created_at DESC LIMIT 50
     `, [teacherId]);
@@ -1933,7 +2039,7 @@ router.post('/notifications/:id/read', async (req, res) => {
     await db.query(`
       UPDATE notifications 
       SET is_read = true 
-      WHERE id = $1 AND (target_user = $2 OR target_role = 'teacher' OR target_role = 'all')
+      WHERE id = $1 AND (target_user = $2 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'teacher' OR target_role = 'all')))
     `, [id, req.user.id]);
     res.json({ success: true, message: 'Notification marked as read' });
   } catch (err) {
@@ -1946,7 +2052,7 @@ router.post('/notifications/read-all', async (req, res) => {
     await db.query(`
       UPDATE notifications 
       SET is_read = true 
-      WHERE (target_user = $1 OR target_role = 'teacher' OR target_role = 'all') AND is_active = true
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'teacher' OR target_role = 'all'))) AND is_active = true
     `, [req.user.id]);
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (err) {
@@ -1959,7 +2065,7 @@ router.delete('/notifications/:id', async (req, res) => {
   try {
     await db.query(`
       DELETE FROM notifications 
-      WHERE id = $1 AND (target_user = $2 OR target_role = 'teacher' OR target_role = 'all')
+      WHERE id = $1 AND (target_user = $2 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'teacher' OR target_role = 'all')))
     `, [id, req.user.id]);
     res.json({ success: true, message: 'Notification deleted' });
   } catch (err) {

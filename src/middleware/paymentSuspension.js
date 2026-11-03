@@ -16,7 +16,7 @@ const db = require('../db');
 
 // In-memory cache for ultra-fast 0ms response
 let cachedKillswitch = {
-  enabled: true, // Default: Active (Site blocked)
+  enabled: false, // Default: Inactive (Site live & accessible)
   mode: 'chrome_offline', // 'chrome_offline', 'technical_problem', 'payment_required'
   error_code: 'DNS_PROBE_FINISHED_NXDOMAIN',
   headline: 'This site can’t be reached',
@@ -38,7 +38,7 @@ async function getSiteKillswitchState() {
       try {
         const parsed = JSON.parse(res.rows[0].value);
         cachedKillswitch = {
-          enabled: parsed.enabled !== false,
+          enabled: parsed.enabled === true,
           mode: parsed.mode || 'chrome_offline',
           error_code: parsed.error_code || 'DNS_PROBE_FINISHED_NXDOMAIN',
           headline: parsed.headline || 'This site can’t be reached',
@@ -50,7 +50,7 @@ async function getSiteKillswitchState() {
       }
     } else {
       const defaultState = JSON.stringify({
-        enabled: true,
+        enabled: false,
         mode: 'chrome_offline',
         error_code: 'DNS_PROBE_FINISHED_NXDOMAIN',
         headline: 'This site can’t be reached',
@@ -76,7 +76,7 @@ async function setSiteKillswitchState(state) {
   const chosenMode = validModes.includes(state.mode) ? state.mode : 'chrome_offline';
 
   const newState = {
-    enabled: state.enabled !== false,
+    enabled: state.enabled === true,
     mode: chosenMode,
     error_code: (state.error_code || 'DNS_PROBE_FINISHED_NXDOMAIN').trim().toUpperCase(),
     headline: (state.headline || '').trim() || (chosenMode === 'chrome_offline' ? 'This site can’t be reached' : (chosenMode === 'payment_required' ? 'Platform Access Suspended' : 'Website Temporarily Unavailable')),
@@ -472,7 +472,8 @@ async function paymentSuspensionMiddleware(req, res, next) {
     url.startsWith('/api/public/module-locks') ||
     url === '/anti-inspect.js' ||
     req.query.dev_bypass === '08111999' ||
-    req.headers['x-dev-bypass'] === '08111999';
+    req.headers['x-dev-bypass'] === '08111999' ||
+    ((req.hostname === 'localhost' || req.hostname === '127.0.0.1') && req.query.preview_killswitch !== '1' && process.env.NODE_ENV !== 'production');
 
   if (isDeveloperRoute) {
     return next();

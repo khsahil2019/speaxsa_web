@@ -1219,6 +1219,35 @@ h1, h2, h3, h4, h5, h6 {
 .sop-wizard-tab-btn.completed {
   color: var(--success);
 }
+.sop-wizard-tab-btn.locked {
+  opacity: 0.52;
+  cursor: not-allowed !important;
+  color: #94a3b8 !important;
+}
+.sop-wizard-tab-btn.locked:hover {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+}
+
+.sop-upload-action-box {
+  background: #f8fafc;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+}
+.sop-upload-action-box:hover {
+  border-color: #0d7a6d;
+  background: #f0fdfa;
+}
+.sop-circular-loader {
+  animation: sopFadeIn 0.25s ease-out;
+}
+@keyframes sopFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
 
 .sop-upload-slot {
   background: #ffffff;

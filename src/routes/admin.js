@@ -218,7 +218,7 @@ router.get('/pending-counts', async (req, res) => {
     const [payouts, sops, courses, links] = await Promise.all([
       db.query("SELECT COUNT(*) as count FROM teacher_payouts WHERE status = 'requested'"),
       db.query("SELECT COUNT(*) as count FROM teacher_sop WHERE status = 'sop_pending'"),
-      db.query("SELECT COUNT(*) as count FROM courses WHERE status = 'pending'"),
+      db.query("SELECT COUNT(*) as count FROM courses WHERE status IN ('pending', 'pending_approval')"),
       db.query("SELECT COUNT(*) as count FROM parent_student_links WHERE status = 'pending'")
     ]);
     const total = parseInt(payouts.rows[0].count) + 
@@ -356,7 +356,7 @@ router.get('/teachers/:id/wallet/statement', async (req, res) => {
 router.post('/teachers/:id/approve', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1 AND role = 'teacher'", [id]);
+    await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1 AND role = 'teacher'", [id]);
     await db.query("UPDATE teacher_sop SET status = 'approved', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1", [id, req.user.id]);
     await logAudit(req.user.id, 'TEACHER_APPROVED', 'teacher', id, {});
 
@@ -368,7 +368,52 @@ router.post('/teachers/:id/approve', async (req, res) => {
       console.error('[Admin Teacher Approve Cert Error]:', certErr.message);
     }
 
-    res.json({ message: 'Teacher SOP approved. Waiting for agreement signature.' });
+    // Also dispatch executed agreement copy if agreement signed
+    try {
+      const sopRes = await db.query('SELECT agreement_signed, digital_signature, signature_image, agreement_signed_at FROM teacher_sop WHERE teacher_id = $1', [id]);
+      if (sopRes.rows.length > 0 && sopRes.rows[0].agreement_signed) {
+        const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [id]);
+        if (uRes.rows.length > 0 && uRes.rows[0].email) {
+          const u = uRes.rows[0];
+          const sopRow = sopRes.rows[0];
+          const { generateAgreementPDFBuffer } = require('../services/AgreementPDFService');
+          const { sendEmail } = require('../services/EmailService');
+          const signedAt = sopRow.agreement_signed_at || new Date();
+          const sigHash = require('crypto').createHash('md5').update(`agreement_${id}_${new Date(signedAt).getTime()}`).digest('hex').substring(0, 16).toUpperCase();
+          const pdfBuffer = await generateAgreementPDFBuffer({
+            teacherName: u.name || sopRow.digital_signature,
+            teacherEmail: u.email,
+            signedAt: new Date(signedAt),
+            digitalSignature: `SPEAXA-DIGITAL-SIG-${sigHash}`,
+            signatureImage: sopRow.signature_image || null
+          });
+          await sendEmail({
+            to: u.email,
+            subject: 'SPEAXA — Executed Teacher Partnership Agreement & Legal Affidavit',
+            type: 'notification',
+            headerTitle: 'Official Executed Agreement',
+            badgeLabel: 'Account Active',
+            html: `
+              <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+                <h3 style="color: #0d7a6d;">Hello ${u.name || 'Educator'},</h3>
+                <p>Congratulations! Your Teacher SOP and onboarding verification have been approved by the SPEAXA administration. Your account is now fully active.</p>
+                <p>Attached is your official executed copy of the <strong>Teacher Partnership Agreement & Deed of Affidavit</strong> signed by you.</p>
+                <p>You can now log in to your Teacher Portal, create study batches, and schedule live interactive classes.</p>
+              </div>
+            `,
+            attachments: [{
+              filename: `SPEAXA-Teacher-Agreement-${(u.name || 'Educator').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }]
+          });
+        }
+      }
+    } catch (agErr) {
+      console.error('[Admin Teacher Approve Agreement Email Error]:', agErr.message);
+    }
+
+    res.json({ message: 'Teacher SOP and account approved successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -378,10 +423,43 @@ router.post('/teachers/:id/reject', async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
   try {
-    await db.query("UPDATE users SET approval_status = 'rejected' WHERE id = $1 AND role = 'teacher'", [id]);
+    await db.query("UPDATE users SET approval_status = 'sop_rejected' WHERE id = $1 AND role = 'teacher'", [id]);
     await db.query("UPDATE teacher_sop SET status = 'rejected', admin_notes = $2, reviewed_by = $3, reviewed_at = NOW() WHERE teacher_id = $1", [id, reason, req.user.id]);
     await logAudit(req.user.id, 'TEACHER_REJECTED', 'teacher', id, { reason });
-    res.json({ message: 'Teacher rejected' });
+
+    // Send email notification to teacher
+    try {
+      const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [id]);
+      if (uRes.rows.length > 0 && uRes.rows[0].email) {
+        const u = uRes.rows[0];
+        const { sendEmail } = require('../services/EmailService');
+        await sendEmail({
+          to: u.email,
+          subject: 'SPEAXA — Action Required: Teacher SOP Needs Revision',
+          type: 'notification',
+          headerTitle: 'SOP Verification Update',
+          badgeLabel: 'Action Required',
+          html: `
+            <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+              <h3 style="color: #0d7a6d;">Hello ${u.name || 'Educator'},</h3>
+              <p>Your <strong>SOP & Onboarding Verification</strong> submission requires corrections before it can be approved.</p>
+              <div style="background: #fff1f2; border-left: 4px solid #f43f5e; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <strong style="color: #9f1239;">Admin Review Feedback:</strong><br>
+                <span style="color: #881337;">${reason || 'Please review your uploaded proofs and details and re-submit for verification.'}</span>
+              </div>
+              <p>All your previously uploaded documents and details remain safely saved. Please log in to your Teacher Portal, make the required updates under <strong>SOP Setup</strong>, and re-submit your complete SOP with your signed agreement.</p>
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${process.env.APP_URL || 'https://speaxa.in'}/teacher/" style="background: #0d7a6d; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Open Teacher Portal</a>
+              </div>
+            </div>
+          `
+        });
+      }
+    } catch (mailErr) {
+      console.error('[Admin Teacher Reject Email Error]:', mailErr.message);
+    }
+
+    res.json({ message: 'Teacher SOP marked as rejected. Account remains active for revisions.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -468,7 +546,7 @@ router.post('/sop/:teacherId/approve', async (req, res) => {
         JSON.stringify(defaultTeaching),
         req.user.id]);
 
-    await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1", [teacherId]);
+    await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1", [teacherId]);
     await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, { note: 'Auto Approved Full' });
 
     try {
@@ -478,7 +556,52 @@ router.post('/sop/:teacherId/approve', async (req, res) => {
       console.error('[Admin SOP Approval Email Error]:', mailErr.message);
     }
 
-    res.json({ message: 'SOP approved. Waiting for teacher to sign agreement.' });
+    // Auto-dispatch executed agreement copy if signed
+    try {
+      const sopRes = await db.query('SELECT agreement_signed, digital_signature, signature_image, agreement_signed_at FROM teacher_sop WHERE teacher_id = $1', [teacherId]);
+      if (sopRes.rows.length > 0 && sopRes.rows[0].agreement_signed) {
+        const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
+        if (uRes.rows.length > 0 && uRes.rows[0].email) {
+          const u = uRes.rows[0];
+          const sopRow = sopRes.rows[0];
+          const { generateAgreementPDFBuffer } = require('../services/AgreementPDFService');
+          const { sendEmail } = require('../services/EmailService');
+          const signedAt = sopRow.agreement_signed_at || new Date();
+          const sigHash = require('crypto').createHash('md5').update(`agreement_${teacherId}_${new Date(signedAt).getTime()}`).digest('hex').substring(0, 16).toUpperCase();
+          const pdfBuffer = await generateAgreementPDFBuffer({
+            teacherName: u.name || sopRow.digital_signature,
+            teacherEmail: u.email,
+            signedAt: new Date(signedAt),
+            digitalSignature: `SPEAXA-DIGITAL-SIG-${sigHash}`,
+            signatureImage: sopRow.signature_image || null
+          });
+          await sendEmail({
+            to: u.email,
+            subject: 'SPEAXA — Executed Teacher Partnership Agreement & Legal Affidavit',
+            type: 'notification',
+            headerTitle: 'Official Executed Agreement',
+            badgeLabel: 'Account Active',
+            html: `
+              <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+                <h3 style="color: #0d7a6d;">Hello ${u.name || 'Educator'},</h3>
+                <p>Congratulations! Your Teacher SOP and onboarding verification have been approved by the SPEAXA administration. Your account is now fully active.</p>
+                <p>Attached is your official executed copy of the <strong>Teacher Partnership Agreement & Deed of Affidavit</strong> signed by you.</p>
+                <p>You can now log in to your Teacher Portal, create study batches, and schedule live interactive classes.</p>
+              </div>
+            `,
+            attachments: [{
+              filename: `SPEAXA-Teacher-Agreement-${(u.name || 'Educator').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }]
+          });
+        }
+      }
+    } catch (agErr) {
+      console.error('[Admin SOP Approve Agreement Email Error]:', agErr.message);
+    }
+
+    res.json({ message: 'SOP and Teacher account approved successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -535,7 +658,7 @@ router.post('/sop/:teacherId/item-approval', async (req, res) => {
         "UPDATE teacher_sop SET status = 'approved', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1",
         [teacherId, req.user.id]
       );
-      await db.query("UPDATE users SET approval_status = 'agreement_pending' WHERE id = $1", [teacherId]);
+      await db.query("UPDATE users SET approval_status = 'approved' WHERE id = $1", [teacherId]);
       await logAudit(req.user.id, 'SOP_APPROVED', 'teacher', teacherId, { note: 'All items granularly approved' });
 
       try {
@@ -545,15 +668,86 @@ router.post('/sop/:teacherId/item-approval', async (req, res) => {
         console.error('[Item Approval Cert Error]:', certErr.message);
       }
 
-      return res.json({ message: 'Item updated. All items are now approved. Teacher account status set to agreement pending.', itemStatus: status, overallStatus: 'approved' });
+      return res.json({ message: 'All items are now approved. Teacher account status is active.', itemStatus: status, overallStatus: 'approved' });
     } else if (hasAnyRejected) {
       await db.query(
         "UPDATE teacher_sop SET status = 'rejected', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1",
         [teacherId, req.user.id]
       );
-      await db.query("UPDATE users SET approval_status = 'rejected' WHERE id = $1", [teacherId]);
+      await db.query("UPDATE users SET approval_status = 'sop_rejected' WHERE id = $1", [teacherId]);
       await logAudit(req.user.id, 'SOP_REJECTED', 'teacher', teacherId, { note: `Item ${item} rejected` });
-      return res.json({ message: `Item ${item} marked as rejected. Overall status set to rejected.`, itemStatus: status, overallStatus: 'rejected' });
+
+      // Send granular item rejection email to teacher
+      try {
+        const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
+        if (uRes.rows.length > 0 && uRes.rows[0].email) {
+          const u = uRes.rows[0];
+          const itemLabels = {
+            aadhaar: 'Aadhaar Card Scan (Identity Proof)',
+            pan: 'PAN Card Scan (Tax & Payout Proof)',
+            resume: 'Professional Resume / CV',
+            qualification: 'Highest Degree Certificate',
+            expertise_proof: 'Subject Expertise Proof Document',
+            language_proof: 'Teaching Language Preference Proof',
+            experience_proof: 'Teaching Experience Proof Document',
+            subject_expertise: 'Subject Expertise Details',
+            languages: 'Teaching Language Preferences',
+            experience_years: 'Teaching Experience Years',
+            availability: 'Weekly Availability Calendar',
+            camera_sop: 'Camera & Framing SOP Proof Video',
+            lighting_sop: 'Lighting & Background SOP Proof Video',
+            audio_sop: 'Microphone & Audio Clarity SOP Proof Video',
+            internet_proof: 'Internet Speed & Connection Proof',
+            demo_teaching: 'Demo Teaching Lecture Video'
+          };
+
+          const rejectedItemsList = [];
+          for (const [k, v] of Object.entries(approvals)) {
+            if (v && v.status === 'rejected') {
+              rejectedItemsList.push({
+                label: itemLabels[k] || k.replace(/_/g, ' ').toUpperCase(),
+                notes: v.notes || 'Please correct or re-upload this item.'
+              });
+            }
+          }
+
+          const itemsHtml = rejectedItemsList.map(it => `
+            <li style="margin-bottom: 10px;">
+              <strong style="color: #0f172a;">${it.label}</strong><br>
+              <span style="color: #dc2626; font-size: 13px;">Reason: ${it.notes}</span>
+            </li>
+          `).join('');
+
+          const { sendEmail } = require('../services/EmailService');
+          await sendEmail({
+            to: u.email,
+            subject: 'SPEAXA — Action Required: Specific SOP Items Require Revision',
+            type: 'notification',
+            headerTitle: 'SOP Verification Update',
+            badgeLabel: 'Corrections Required',
+            html: `
+              <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
+                <h3 style="color: #0d7a6d;">Hello ${u.name || 'Educator'},</h3>
+                <p>Your <strong>SOP & Onboarding Verification</strong> submission was reviewed by our academic compliance team. The following item(s) require your attention and revision:</p>
+                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                  <strong style="color: #9f1239; display: block; margin-bottom: 8px;">Items Flagged for Revision:</strong>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    ${itemsHtml}
+                  </ul>
+                </div>
+                <p><strong>Note:</strong> All your other approved documents, availability slots, and profile details have been preserved. You only need to update the flagged items and re-submit your complete SOP and signed agreement.</p>
+                <div style="text-align: center; margin: 25px 0;">
+                  <a href="${process.env.APP_URL || 'https://speaxa.in'}/teacher/" style="background: #0d7a6d; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Log in to Teacher Portal</a>
+                </div>
+              </div>
+            `
+          });
+        }
+      } catch (mailErr) {
+        console.error('[Item Approval Rejection Email Error]:', mailErr.message);
+      }
+
+      return res.json({ message: `Item ${item} marked as rejected. Teacher notified via email. Account remains active for revisions.`, itemStatus: status, overallStatus: 'rejected' });
     } else {
       await db.query(
         "UPDATE teacher_sop SET status = 'sop_pending', reviewed_by = $2, reviewed_at = NOW() WHERE teacher_id = $1",
@@ -571,32 +765,76 @@ router.post('/sop/:teacherId/reject', async (req, res) => {
   const { teacherId } = req.params;
   const { admin_notes } = req.body;
   try {
-    await db.query(`
-      UPDATE teacher_sop SET status = 'rejected', admin_notes = $2, reviewed_by = $3, reviewed_at = NOW()
-      WHERE teacher_id = $1
-    `, [teacherId, admin_notes, req.user.id]);
-    await db.query("UPDATE users SET approval_status = 'rejected' WHERE id = $1", [teacherId]);
-    await logAudit(req.user.id, 'SOP_REJECTED', 'teacher', teacherId, { admin_notes });
+    // 1. Wipe all uploaded documents for this teacher to ensure a completely fresh start
+    try {
+      await db.query('DELETE FROM teacher_documents WHERE teacher_id = $1', [teacherId]);
+    } catch (docErr) {
+      console.warn('[Admin SOP Reject] Could not delete teacher_documents:', docErr.message);
+    }
 
+    // 2. Clear all SOP video URLs, proofs, checklist, agreement signatures, availability & item approvals
+    await db.query(`
+      UPDATE teacher_sop SET 
+        status = 'rejected', 
+        admin_notes = $2, 
+        reviewed_by = $3, 
+        reviewed_at = NOW(),
+        camera_sop_url = NULL,
+        lighting_sop_url = NULL,
+        audio_sop_url = NULL,
+        internet_proof_url = NULL,
+        demo_teaching_url = NULL,
+        teacher_checklist = '{}',
+        digital_signature = NULL,
+        signature_image = NULL,
+        agreement_signed = false,
+        agreement_signed_at = NULL,
+        availability = '[]',
+        item_approvals = '{}',
+        submitted_at = NULL
+      WHERE teacher_id = $1
+    `, [teacherId, admin_notes || 'Entire SOP rejected. Please fill all stages fresh.', req.user.id]);
+
+    await db.query("UPDATE users SET approval_status = 'sop_rejected' WHERE id = $1", [teacherId]);
+    await logAudit(req.user.id, 'SOP_REJECTED', 'teacher', teacherId, { admin_notes, full_wipe: true });
+
+    // 3. Insert targeted in-app notification specifically for this teacher
+    const notifId = `sop_rejected_${teacherId}_${Date.now()}`;
+    await db.query(`
+      INSERT INTO notifications (id, title, message, target_role, target_user, type, is_active)
+      VALUES ($1, $2, $3, 'teacher', $4, 'danger', true)
+      ON CONFLICT DO NOTHING
+    `, [
+      notifId,
+      'SOP Submission Rejected — Action Required',
+      `Your complete SOP onboarding submission was rejected by admin: "${admin_notes || 'Please fill and submit your entire SOP again'}". All SOP data has been cleared for a fresh submission.`,
+      teacherId
+    ]);
+
+    // 4. Send email notification to teacher
     try {
       const uRes = await db.query('SELECT name, email FROM users WHERE id = $1', [teacherId]);
       if (uRes.rows.length > 0 && uRes.rows[0].email) {
+        const u = uRes.rows[0];
         const { sendEmail } = require('../services/EmailService');
         await sendEmail({
-          to: uRes.rows[0].email,
-          subject: 'SPEAXA — SOP & Profile Review Status Update',
+          to: u.email,
+          subject: 'SPEAXA — Action Required: Complete SOP Submission Rejected',
           type: 'notification',
           headerTitle: 'SOP Verification Update',
-          badgeLabel: 'Action Required',
+          badgeLabel: 'Complete Resubmission Required',
           html: `
             <div style="font-family: sans-serif; color: #334155; line-height: 1.6;">
-              <h3 style="color: #0d7a6d;">Hello ${uRes.rows[0].name || 'Teacher'},</h3>
-              <p>Your <strong>SOP & Profile Verification</strong> submission requires corrections before it can be approved.</p>
+              <h3 style="color: #0d7a6d;">Hello ${u.name || 'Educator'},</h3>
+              <p>Your <strong>SOP & Onboarding Verification</strong> submission has been reviewed by the compliance team and requires a complete resubmission.</p>
               <div style="background: #fff1f2; border-left: 4px solid #f43f5e; padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <strong style="color: #9f1239;">Admin Review Feedback:</strong><br>
-                <span style="color: #881337;">${admin_notes || 'Please review your uploaded equipment details and re-submit for approval.'}</span>
+                <span style="color: #881337;">${admin_notes || 'Please review all SOP requirements, re-upload clean documents/videos, and submit a fresh onboarding agreement.'}</span>
               </div>
-              <p>Please log in to your Teacher Portal, update the required details under <strong>SOP Setup</strong>, and submit for review.</p>
+              <p>All previous SOP documents and details have been reset to allow you to make a completely fresh submission from Stage 1 through Stage 6. Your user account remains active.</p>
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="${process.env.APP_URL || 'https://speaxa.in'}/teacher/" style="background: #0d7a6d; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">Open Teacher Portal & Re-submit SOP</a>
+              </div>
             </div>
           `
         });
@@ -605,7 +843,7 @@ router.post('/sop/:teacherId/reject', async (req, res) => {
       console.error('[Admin SOP Reject Email Error]:', mErr.message);
     }
 
-    res.json({ message: 'SOP rejected. Teacher notified via email.' });
+    res.json({ message: 'Entire SOP rejected. All SOP data cleared for fresh entry. Teacher notified via email and in-app alert.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1874,18 +2112,19 @@ router.post('/payouts/:id/mark-paid', async (req, res) => {
 // ── Notifications ─────────────────────────────────────────────
 router.get('/notifications', async (req, res) => {
   try {
+    const adminId = req.user ? req.user.id : 'adm_1';
     const result = await db.query(`
       SELECT * FROM notifications 
-      WHERE (target_role = 'admin' OR target_role = 'all' OR target_user = $1)
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'admin' OR target_role = 'all')))
         AND is_active = true
       ORDER BY created_at DESC LIMIT 100
-    `, [req.user ? req.user.id : 'adm_1']);
+    `, [adminId]);
     
     const unreadCountRes = await db.query(`
       SELECT COUNT(*) FROM notifications
-      WHERE (target_role = 'admin' OR target_role = 'all' OR target_user = $1)
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'admin' OR target_role = 'all')))
         AND is_active = true AND (is_read IS NOT TRUE)
-    `, [req.user ? req.user.id : 'adm_1']);
+    `, [adminId]);
 
     res.json({
       notifications: result.rows,
@@ -1899,7 +2138,11 @@ router.get('/notifications', async (req, res) => {
 router.post('/notifications/:id/read', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('UPDATE notifications SET is_read = true WHERE id = $1', [id]);
+    const adminId = req.user ? req.user.id : 'adm_1';
+    await db.query(`
+      UPDATE notifications SET is_read = true 
+      WHERE id = $1 AND (target_user = $2 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'admin' OR target_role = 'all')))
+    `, [id, adminId]);
     res.json({ message: 'Notification marked as read' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1908,11 +2151,12 @@ router.post('/notifications/:id/read', async (req, res) => {
 
 router.post('/notifications/read-all', async (req, res) => {
   try {
+    const adminId = req.user ? req.user.id : 'adm_1';
     await db.query(`
       UPDATE notifications SET is_read = true
-      WHERE (target_role = 'admin' OR target_role = 'all')
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'admin' OR target_role = 'all')))
         AND is_active = true
-    `);
+    `, [adminId]);
     res.json({ message: 'All admin notifications marked as read' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1922,7 +2166,11 @@ router.post('/notifications/read-all', async (req, res) => {
 router.delete('/notifications/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('DELETE FROM notifications WHERE id = $1', [id]);
+    const adminId = req.user ? req.user.id : 'adm_1';
+    await db.query(`
+      DELETE FROM notifications 
+      WHERE id = $1 AND (target_user = $2 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'admin' OR target_role = 'all')))
+    `, [id, adminId]);
     res.json({ message: 'Notification deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

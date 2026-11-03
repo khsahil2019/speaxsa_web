@@ -292,8 +292,33 @@ async function sendEmail(options) {
     console.error('[EmailService] Failed to send email:', err);
 
     let loggedError = err.message;
-    if (loggedError.includes('525 5.7.1') || loggedError.toLowerCase().includes('unauthorized ip')) {
-      loggedError += ' | TIP: Your Brevo account settings block SMTP connections from this server\'s IP. Go to Brevo Settings > Security > Authorized IPs to whitelist this IP or disable restrictions. Alternatively, generate a Brevo API Key (prefixed with xkeysib-) and set it as SMTP Password to bypass SMTP entirely via HTTP REST API.';
+    if (
+      loggedError.includes('525 5.7.1') || 
+      loggedError.toLowerCase().includes('unrecognised ip') || 
+      loggedError.toLowerCase().includes('unauthorized ip') || 
+      loggedError.toLowerCase().includes('authorised_ips')
+    ) {
+      console.warn(`
+╔════════════════════════════════════════════════════════════════════════════════════════════╗
+║ ⚠️  BREVO EMAIL SECURITY: UNAUTHORIZED IP ADDRESS DETECTED                                 ║
+║                                                                                            ║
+║ Brevo refused to send this email because your current IP address is not whitelisted.       ║
+║ To enable email delivery to inboxes:                                                       ║
+║ 1. Open: https://app.brevo.com/security/authorised_ips in your browser                     ║
+║ 2. Add your current IP or disable 'Authorized IPs' restriction in Brevo settings.          ║
+║                                                                                            ║
+║ DEV CONSOLE CAPTURE: Action links captured below for immediate local testing:               ║
+╚════════════════════════════════════════════════════════════════════════════════════════════╝`);
+      
+      const linkMatches = (html ? html.match(/href="([^"]+)"/g) || [] : []);
+      const links = linkMatches.map(m => m.replace(/^href="|"/g, '')).filter(l => !l.startsWith('#') && !l.startsWith('mailto:'));
+      console.log(`[EmailService Fallback] To: ${to} | Subject: ${subject}`);
+      if (links.length > 0) {
+        links.forEach(l => console.log(`  -> Action Link: ${l}`));
+      } else {
+        console.log(`  -> Body snippet: ${(html || '').replace(/<[^>]+>/g, ' ').substring(0, 200)}...`);
+      }
+      loggedError += ' | TIP: Your Brevo account settings block outbound requests from this server\'s IP. Go to https://app.brevo.com/security/authorised_ips to whitelist this IP or disable Authorized IPs restrictions.';
     }
 
     // Log failure in database

@@ -760,6 +760,26 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     const updatedUser = result.rows[0];
 
+    // If teacher updated profile, reset rejected status in teacher_sop.item_approvals for modified fields
+    if (req.user.role === 'teacher') {
+      try {
+        const sopRes = await db.query('SELECT item_approvals FROM teacher_sop WHERE teacher_id = $1', [req.user.id]);
+        if (sopRes.rows.length > 0 && sopRes.rows[0].item_approvals) {
+          const app = sopRes.rows[0].item_approvals;
+          let changed = false;
+          ['subject_expertise', 'languages', 'experience_years'].forEach(f => {
+            if (fields[f] !== undefined && app[f] && app[f].status === 'rejected') {
+              app[f] = { status: 'pending', notes: '', updatedAt: new Date().toISOString() };
+              changed = true;
+            }
+          });
+          if (changed) {
+            await db.query('UPDATE teacher_sop SET item_approvals = $1, updated_at = NOW() WHERE teacher_id = $2', [JSON.stringify(app), req.user.id]);
+          }
+        }
+      } catch (apErr) {}
+    }
+
     // Trigger verification resets
     if (phoneChanged) {
       try {
@@ -1124,6 +1144,7 @@ async function sendEmailVerificationLink(userId, req) {
 
   const baseUrl = await getAppBaseUrl(req);
   const verificationLink = `${baseUrl}/api/auth/verify-email?token=${token}`;
+  console.log(`\n======================================================\n🔗 [EMAIL VERIFICATION LINK] Recipient: ${user.email}\nLink: ${verificationLink}\n======================================================\n`);
 
   const { sendEmail } = require('../services/EmailService');
   const mailRes = await sendEmail({

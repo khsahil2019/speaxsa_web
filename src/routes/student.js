@@ -642,14 +642,14 @@ router.get('/notifications', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT * FROM notifications
-      WHERE (target_role = 'student' OR target_role = 'all' OR target_user = $1)
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'student' OR target_role = 'all')))
         AND is_active = true
       ORDER BY created_at DESC LIMIT 100
     `, [req.user.id]);
     
     const unreadCountRes = await db.query(`
       SELECT COUNT(*) FROM notifications
-      WHERE (target_role = 'student' OR target_role = 'all' OR target_user = $1)
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'student' OR target_role = 'all')))
         AND is_active = true AND (is_read IS NOT TRUE)
     `, [req.user.id]);
 
@@ -665,7 +665,10 @@ router.get('/notifications', async (req, res) => {
 router.post('/notifications/:id/read', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('UPDATE notifications SET is_read = true WHERE id = $1', [id]);
+    await db.query(`
+      UPDATE notifications SET is_read = true 
+      WHERE id = $1 AND (target_user = $2 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'student' OR target_role = 'all')))
+    `, [id, req.user.id]);
     res.json({ message: 'Notification marked as read' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -676,7 +679,7 @@ router.post('/notifications/read-all', async (req, res) => {
   try {
     await db.query(`
       UPDATE notifications SET is_read = true
-      WHERE (target_role = 'student' OR target_role = 'all' OR target_user = $1)
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'student' OR target_role = 'all')))
         AND is_active = true
     `, [req.user.id]);
     res.json({ message: 'All notifications marked as read' });
@@ -688,7 +691,10 @@ router.post('/notifications/read-all', async (req, res) => {
 router.delete('/notifications/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('DELETE FROM notifications WHERE id = $1 AND (target_user = $2 OR target_user IS NULL)', [id, req.user.id]);
+    await db.query(`
+      DELETE FROM notifications 
+      WHERE id = $1 AND (target_user = $2 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'student' OR target_role = 'all')))
+    `, [id, req.user.id]);
     res.json({ message: 'Notification deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -460,7 +460,7 @@ function levelBadge(level) {
 function statusBadge(status) {
   const map = {
     active: 'badge-active', approved: 'badge-approved', pending: 'badge-pending',
-    rejected: 'badge-rejected', suspended: 'badge-suspended', sop_pending: 'badge-pending', pending_approval: 'badge-pending', completed: 'badge-active'
+    rejected: 'badge-rejected', sop_rejected: 'badge-rejected', suspended: 'badge-suspended', sop_pending: 'badge-pending', pending_approval: 'badge-pending', completed: 'badge-active'
   };
   return `<span class="${map[status] || 'badge-pending'}">${status || 'unknown'}</span>`;
 }
@@ -3433,14 +3433,32 @@ async function refreshSOPModal(teacherId) {
 
         ${checklistHtml}
 
+        <div class="mt-3 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border);">
+          <h6 class="fw-bold mb-2 text-primary" style="font-family:'Outfit'; font-size:0.85rem;"><i class="fas fa-file-signature me-2"></i>Signed Deed of Affidavit & Agreement</h6>
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div>
+              <span class="text-secondary small">Attestation Name:</span> <strong class="text-white">${s.digital_signature || t.name}</strong>
+            </div>
+            <div>
+              <span class="text-secondary small">Signed Status:</span> 
+              <span class="badge ${s.agreement_signed ? 'bg-success' : 'bg-warning'}">${s.agreement_signed ? 'Signed & Attested ✓' : 'Pending Signature'}</span>
+            </div>
+            ${s.signature_image ? `
+              <div>
+                <a href="${s.signature_image}" target="_blank" class="btn btn-xs btn-outline-info py-1 px-2" style="font-size:0.72rem"><i class="fas fa-eye me-1"></i>View Drawn Signature</a>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
         <div class="mt-4 pt-3 border-top d-flex align-items-center justify-content-between">
           <div>
             <span class="small text-muted">Overall Teacher Status:</span> 
-            <span class="badge ${t.approval_status === 'agreement_pending' || t.approval_status === 'approved' ? 'bg-success' : 'bg-warning'} text-uppercase ms-1">${t.approval_status.replace('_', ' ')}</span>
+            <span class="badge ${t.approval_status === 'approved' ? 'bg-success' : (t.approval_status === 'sop_rejected' ? 'bg-danger' : 'bg-warning')} text-uppercase ms-1">${(t.approval_status || 'pending').replace('_', ' ')}</span>
           </div>
           <div class="d-flex gap-2">
             <button class="btn btn-secondary btn-sm px-3" onclick="formModal.hide()">Close</button>
-            ${t.approval_status === 'approved' || t.approval_status === 'agreement_pending' ? `
+            ${t.approval_status === 'approved' ? `
               <button class="btn btn-outline-danger btn-sm px-3" onclick="deApproveTeacher('${t.id}')"><i class="fas fa-undo me-1"></i> deApprove</button>
             ` : `
               <button class="btn btn-outline-danger btn-sm px-3" onclick="rejectSopFromModal('${t.id}')">Reject entire SOP</button>

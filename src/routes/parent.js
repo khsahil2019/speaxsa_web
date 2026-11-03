@@ -433,7 +433,7 @@ router.get('/notifications', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT * FROM notifications
-      WHERE (target_role = 'parent' OR target_role = 'all' OR target_user = $1)
+      WHERE (target_user = $1 OR ((target_user IS NULL OR target_user = '') AND (target_role = 'parent' OR target_role = 'all')))
         AND is_active = true
       ORDER BY created_at DESC LIMIT 20
     `, [req.user.id]);

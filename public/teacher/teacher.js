@@ -1310,11 +1310,48 @@ async function renderTeacherNotificationsPage() {
 }
 
 // ── SOP Setup ─────────────────────────────────────────────────
+function showSlotCircularLoader(slotKey, title) {
+  const loaderHtml = `
+    <div class="sop-circular-loader d-flex flex-column align-items-center justify-content-center p-4 my-2 text-center w-100" style="min-height: 140px; background: rgba(13, 122, 109, 0.04); border-radius: 12px; border: 2px dashed #0d7a6d;">
+      <div class="spinner-border text-primary mb-3" role="status" style="width: 3.2rem; height: 3.2rem; border-width: 0.28rem; color: #0d7a6d !important;">
+        <span class="visually-hidden">Uploading...</span>
+      </div>
+      <div class="fw-bold text-dark" style="font-size: 0.92rem;">
+        <i class="fas fa-cloud-upload-alt me-2 text-primary"></i>Uploading ${title || 'Document'}...
+      </div>
+      <div class="text-muted small mt-1" style="font-size: 0.76rem;">
+        Please wait, your upload is in progress. The preview will appear once complete.
+      </div>
+      <div class="progress mt-3 w-75" style="height: 6px; background: rgba(13, 122, 109, 0.15); border-radius: 999px; overflow: hidden;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%; background: #0d7a6d;"></div>
+      </div>
+    </div>
+  `;
+
+  const actionBox = document.getElementById(`action_box_kyc_${slotKey}`) ||
+                    document.getElementById(`action_box_slot_${slotKey}`) ||
+                    document.getElementById(`action_box_sop_${slotKey}`);
+
+  if (actionBox) {
+    actionBox.innerHTML = loaderHtml;
+    return;
+  }
+
+  const slotEl = document.getElementById(`kyc_slot_${slotKey}`) || 
+                 document.getElementById(`slot_${slotKey}`) || 
+                 document.getElementById(slotKey);
+  if (slotEl) {
+    const card = slotEl.querySelector('.sop-upload-slot') || slotEl;
+    card.innerHTML = loaderHtml;
+  }
+}
+
 function renderAttachmentPreview(url, originalName, docType, removeFnName, isSubmitted) {
   if (!url) return '';
   const cleanUrl = url.toLowerCase().split('?')[0];
   const isImg = cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') || cleanUrl.endsWith('.webp') || cleanUrl.endsWith('.gif') || cleanUrl.endsWith('.svg') || cleanUrl.startsWith('data:image/');
-  const isPdf = cleanUrl.endsWith('.pdf') || (!isImg && url.startsWith('/uploads/'));
+  const isVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.ogg') || cleanUrl.endsWith('.m4v');
+  const isPdf = cleanUrl.endsWith('.pdf') || (!isImg && !isVideo && url.startsWith('/uploads/') && !url.includes('/sop/'));
 
   if (isImg) {
     return `
@@ -1327,6 +1364,24 @@ function renderAttachmentPreview(url, originalName, docType, removeFnName, isSub
             <a href="${url}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-3" style="font-size:0.75rem;"><i class="fas fa-external-link-alt me-1"></i>View Full Image</a>
             ${isSubmitted ? '' : `
               <button type="button" class="btn btn-sm btn-outline-danger py-1 px-3" style="font-size:0.75rem;" onclick="${removeFnName}('${docType}')" title="Remove Document">
+                <i class="fas fa-trash-alt me-1"></i>Remove
+              </button>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (isVideo) {
+    return `
+      <div class="p-3 rounded-3 mt-2 shadow-sm border border-success-subtle text-center" style="background: #f0fdf4 !important; border: 1.5px solid #86efac !important;">
+        <div class="d-flex flex-column align-items-center gap-2">
+          <video src="${url}" controls class="w-100 rounded-3 border bg-dark" style="max-height: 200px; object-fit: contain;"></video>
+          <div class="d-flex align-items-center justify-content-center gap-2 w-100 mt-1">
+            <a href="${url}" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-3" style="font-size:0.75rem;"><i class="fas fa-play me-1"></i>Open Video</a>
+            ${isSubmitted ? '' : `
+              <button type="button" class="btn btn-sm btn-outline-danger py-1 px-3" style="font-size:0.75rem;" onclick="${removeFnName}('${docType}')" title="Remove Video">
                 <i class="fas fa-trash-alt me-1"></i>Remove
               </button>
             `}
@@ -1430,24 +1485,27 @@ async function renderSop(targetSlotId) {
     const docLanguage = documents.find(d => d.doc_type === 'language_proof');
     const docExperience = documents.find(d => d.doc_type === 'experience_proof');
 
-    const allKycUploaded = docAadhaar && docPan && docResume && docDegree;
-    const allSopUploaded = sop && sop.camera_sop_url && sop.lighting_sop_url && sop.audio_sop_url && sop.internet_proof_url && sop.demo_teaching_url;
+    const allKycUploaded = !!(docAadhaar && docPan && docResume && docDegree);
+    const allSopUploaded = !!(sop && sop.camera_sop_url && sop.lighting_sop_url && sop.audio_sop_url && sop.internet_proof_url && sop.demo_teaching_url);
 
     // Validate Profile and Availability fields
-    const allProfileFilled = profile.subject_expertise && profile.languages &&
-      (profile.experience_years !== null && profile.experience_years !== undefined) &&
-      profile.alt_email && profile.mobile_number &&
-      docExpertise && docLanguage && docExperience;
+    const allProfileFilled = !!(
+      profile.subject_expertise && profile.subject_expertise.trim() &&
+      profile.languages && profile.languages.trim() &&
+      (profile.experience_years !== null && profile.experience_years !== undefined && profile.experience_years !== '') &&
+      profile.alt_email && profile.alt_email.trim() &&
+      profile.mobile_number && profile.mobile_number.trim() &&
+      docExpertise && docLanguage && docExperience
+    );
 
     let parsedAvail = [];
     try {
       if (sop && sop.availability) {
-        parsedAvail = JSON.parse(sop.availability);
+        parsedAvail = typeof sop.availability === 'string' ? JSON.parse(sop.availability) : sop.availability;
       }
     } catch (e) {
-      // legacy raw string
       if (sop && sop.availability && sop.availability.trim()) {
-        parsedAvail = [{ days: ['Legacy Days'], startTime: '00:00', endTime: '00:00', timezone: 'IST', rawText: sop.availability }];
+        parsedAvail = [{ days: ['Custom'], startTime: '00:00', endTime: '00:00', timezone: 'IST', rawText: sop.availability }];
       }
     }
 
@@ -1456,23 +1514,73 @@ async function renderSop(targetSlotId) {
       window._tempAvailabilitySlots = Array.isArray(parsedAvail) ? JSON.parse(JSON.stringify(parsedAvail)) : [];
     }
 
-    const allAvailFilled = Array.isArray(window._tempAvailabilitySlots) && window._tempAvailabilitySlots.length > 0;
-    const canSubmitSop = allKycUploaded && allSopUploaded && allProfileFilled && allAvailFilled;
+    const allAvailFilled = Array.isArray(parsedAvail) && parsedAvail.length > 0;
+    const isSubmitted = sop && (sop.status === 'sop_pending' || sop.status === 'approved' || sop.status === 'suspended');
 
-    // Define defaults for active tab
-    window._sopActiveTab = window._sopActiveTab || 'guidelines';
+    const approvals = sop?.item_approvals || {};
+    const isItemRejected = (key) => approvals[key] && approvals[key].status === 'rejected';
 
-    // Auto-navigate to Agreement tab if approved
-    if (sop && sop.status === 'approved' && !window._sopTabSetExplicitly) {
-      window._sopActiveTab = 'agreement';
+    const kycRejected = isItemRejected('aadhaar') || isItemRejected('pan') || isItemRejected('resume') || isItemRejected('qualification');
+    const profileRejected = isItemRejected('subject_expertise') || isItemRejected('languages') || isItemRejected('experience_years') || 
+                            isItemRejected('expertise_proof') || isItemRejected('language_proof') || isItemRejected('experience_proof');
+    const availRejected = isItemRejected('availability');
+    const videoRejected = isItemRejected('camera_sop') || isItemRejected('lighting_sop') || isItemRejected('audio_sop') || 
+                          isItemRejected('internet_proof') || isItemRejected('demo_teaching') ||
+                          isItemRejected('camera_sop_url') || isItemRejected('lighting_sop_url') || isItemRejected('audio_sop_url') || 
+                          isItemRejected('internet_proof_url') || isItemRejected('demo_teaching_url');
+
+    const anyItemRejected = kycRejected || profileRejected || availRejected || videoRejected;
+    const isOverallRejected = sop && sop.status === 'rejected';
+    const isFullyWiped = isOverallRejected && !anyItemRejected;
+
+    // Reset local guide state if entire SOP was wiped
+    if (isFullyWiped) {
+      localStorage.removeItem('teacher_sop_guide_done');
+      localStorage.removeItem('teacher_sop_checklist_state');
+    }
+
+    // Sequential Step Completion
+    const step1Complete = (localStorage.getItem('teacher_sop_guide_done') === 'true') || 
+                          (!isFullyWiped && !!(docAadhaar || docPan || docResume || docDegree || profile.subject_expertise));
+    const step2Complete = allKycUploaded && !kycRejected;
+    const step3Complete = allProfileFilled && !profileRejected;
+    const step4Complete = allAvailFilled && !availRejected;
+    const step5Complete = allSopUploaded && !videoRejected;
+    const step6Complete = !isOverallRejected && !anyItemRejected && !!(sop?.agreement_signed) && (sop?.status === 'sop_pending' || sop?.status === 'approved');
+
+    // Expose for setSopTab lock guards
+    window._sopIsSubmitted = isSubmitted;
+    window._sopHasRejections = anyItemRejected || isOverallRejected;
+    window._sopStep1Complete = step1Complete;
+    window._sopStep2Complete = step2Complete;
+    window._sopStep3Complete = step3Complete;
+    window._sopStep4Complete = step4Complete;
+    window._sopStep5Complete = step5Complete;
+    window._sopStep6Complete = step6Complete;
+
+    // Automatic earliest incomplete or rejected tab selection
+    if (!window._sopTabSetExplicitly) {
+      if (sop && (sop.status === 'approved' || sop.status === 'sop_pending')) {
+        window._sopActiveTab = 'agreement';
+      } else if (!step1Complete) {
+        window._sopActiveTab = 'guidelines';
+      } else if (!step2Complete) {
+        window._sopActiveTab = 'kyc';
+      } else if (!step3Complete) {
+        window._sopActiveTab = 'profile';
+      } else if (!step4Complete) {
+        window._sopActiveTab = 'availability';
+      } else if (!step5Complete) {
+        window._sopActiveTab = 'video';
+      } else {
+        window._sopActiveTab = 'agreement';
+      }
     }
 
     const statusBadge = (status) => {
       const cls = { approved: 'bg-success', pending: 'bg-warning', sop_pending: 'bg-warning', rejected: 'bg-danger', suspended: 'bg-danger', draft: 'bg-secondary' };
       return `<span class="badge ${cls[status] || 'bg-info'}">${status ? status.toUpperCase().replace('_', ' ') : 'NOT UPLOADED'}</span>`;
     };
-
-    const approvals = sop?.item_approvals || {};
     const getGranularStatusHtml = (key, hasItem) => {
       if (!hasItem) return '<span class="badge bg-secondary-subtle text-secondary py-1 px-2" style="font-size:0.72rem"><i class="fas fa-exclamation-circle me-1"></i>Missing</span>';
       const app = approvals[key];
@@ -1494,7 +1602,6 @@ async function renderSop(targetSlotId) {
       return uploadedTag + '<span class="badge bg-warning-subtle text-warning py-1 px-2" style="font-size:0.72rem"><i class="fas fa-clock me-1"></i>Pending Review</span>';
     };
 
-    const isSubmitted = sop && (sop.status === 'sop_pending' || sop.status === 'approved' || sop.status === 'suspended');
     const savedLocalChecklist = JSON.parse(localStorage.getItem('teacher_sop_checklist_state') || '{}');
     const tc = Object.assign({}, sop?.teacher_checklist || {}, savedLocalChecklist, window._sopChecklistState || {});
     const chk = (key) => tc[key] ? 'checked' : '';
@@ -1536,17 +1643,26 @@ async function renderSop(targetSlotId) {
             </div>
             <div class="col-md-6">
               <div class="p-3 rounded-3 h-100" style="background: rgba(15,23,42,0.02); border: 1px solid var(--border);">
-                <h6 class="fw-bold text-dark" style="font-size:0.875rem"><i class="fas fa-video text-primary me-2"></i>Stage 5: Onboarding Call & Deed Sign</h6>
-                <p class="text-muted mb-0" style="font-size:0.78rem">Admin will review your details, schedule a live onboarding verification call, and prompt you to sign the legally-binding Deed of Affidavit under oath.</p>
+                <h6 class="fw-bold text-dark" style="font-size:0.875rem"><i class="fas fa-file-contract text-primary me-2"></i>Stage 5: Deed of Affidavit & Sign</h6>
+                <p class="text-muted mb-0" style="font-size:0.78rem">Review and digitally sign the legally binding Deed of Affidavit and Undertaking on oath for full admin verification.</p>
               </div>
             </div>
           </div>
 
-          <div class="alert alert-info d-flex align-items-center mt-4 mb-0 py-3" style="border-radius:12px">
+          <div class="alert alert-info d-flex align-items-center mt-4 mb-3 py-3" style="border-radius:12px">
             <i class="fas fa-info-circle me-3" style="font-size: 1.5rem;"></i>
             <div style="font-size:0.8rem">
-              <strong>Need Help?</strong> Ensure files uploaded are under 20MB for documents and 200MB for video proofs. If you encounter upload issues, paste shareable Google Drive links in Stage 4.
+              <strong>Sequential Verification:</strong> Each stage unlocks sequentially once the previous stage is fully completed. Ensure document uploads are clear and under 20MB (or up to 200MB for video proofs).
             </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="text-muted small">
+              <i class="fas fa-shield-alt text-primary me-1"></i> Stage 1 of 6: Onboarding Guide
+            </div>
+            <button type="button" class="btn btn-spx px-4 py-2 fw-bold" onclick="acknowledgeGuideAndProceed()">
+              Acknowledge & Proceed to KYC Documents <i class="fas fa-arrow-right ms-1"></i>
+            </button>
           </div>
         </div>
       `;
@@ -1560,12 +1676,12 @@ async function renderSop(targetSlotId) {
 
       tabContentHtml = `
         <div class="spx-card text-start p-4">
-          <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
               <h5 class="fw-bold text-dark mb-1"><i class="fas fa-id-card me-2 text-primary"></i>KYC Documents Verification</h5>
-              <p class="text-muted small mb-0">Upload individual documents. Uploading happens automatically when a file is selected.</p>
+              <p class="text-muted small mb-0">Upload all 4 mandatory KYC documents. Uploading begins automatically with a clean progress loader as soon as a file is selected.</p>
             </div>
-            ${allKycUploaded ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>All Documents Uploaded</span>' : '<span class="badge bg-secondary">Upload Pending</span>'}
+            ${allKycUploaded ? '<span class="badge bg-success py-2 px-3"><i class="fas fa-check-circle me-1"></i>All 4 Documents Uploaded</span>' : '<span class="badge bg-warning-subtle text-warning border border-warning py-2 px-3"><i class="fas fa-clock me-1"></i>All 4 Uploads Required</span>'}
           </div>
 
           <div class="row g-4">
@@ -1582,17 +1698,19 @@ async function renderSop(targetSlotId) {
                       <p class="text-muted small mb-3" style="font-size:0.75rem">${slot.desc}</p>
                     </div>
                     ${hasDoc ? renderAttachmentPreview(slot.doc.file_url, slot.doc.original_name, slot.id, 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
-                      <div class="d-flex align-items-center gap-2 mt-auto pt-2 flex-wrap border-top border-light mt-3">
-                        <div class="w-100 d-flex flex-column gap-2 mb-2">
-                          <div class="d-flex align-items-center gap-1">
-                            <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">File Upload:</label>
-                            <input type="file" class="form-control form-control-sm spx-input" id="kyc_file_${slot.id}" onchange="autoUploadDoc(this, '${slot.id}')" style="max-width:180px">
-                            <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_${slot.id}" role="status"></div>
+                      <div class="sop-upload-action-box mt-auto" id="action_box_kyc_${slot.id}">
+                        <div class="d-flex flex-column gap-2">
+                          <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <label class="btn btn-sm btn-primary py-2 px-3 mb-0 fw-semibold text-white d-inline-flex align-items-center gap-2 shadow-sm" style="cursor: pointer; background: #0d7a6d; border-color: #0d7a6d; font-size: 0.78rem;">
+                              <i class="fas fa-arrow-up-from-bracket"></i> Choose File to Upload
+                              <input type="file" class="d-none" id="kyc_file_${slot.id}" onchange="autoUploadDoc(this, '${slot.id}')" accept=".pdf,.png,.jpg,.jpeg,.webp">
+                            </label>
+                            <span class="text-muted" style="font-size: 0.72rem;">(PDF, JPG, PNG up to 20MB)</span>
                           </div>
-                          <div class="d-flex align-items-center gap-1">
-                            <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">Or Paste Link:</label>
-                            <input type="text" class="form-control form-control-sm spx-input" id="link_doc_${slot.id}" placeholder="e.g. Google Drive Link" style="max-width:150px">
-                            <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('${slot.id}')" style="font-size: 0.7rem;">Save</button>
+                          <div class="input-group input-group-sm mt-1">
+                            <span class="input-group-text bg-white text-muted" style="font-size: 0.75rem;"><i class="fas fa-link"></i></span>
+                            <input type="text" class="form-control form-control-sm spx-input" id="link_doc_${slot.id}" placeholder="Or paste Google Drive link..." style="font-size: 0.75rem;">
+                            <button type="button" class="btn btn-sm btn-spx px-3" onclick="saveDocLink('${slot.id}')" style="font-size: 0.75rem;">Save</button>
                           </div>
                         </div>
                       </div>
@@ -1601,6 +1719,23 @@ async function renderSop(targetSlotId) {
                 </div>
               `;
       }).join('')}
+          </div>
+
+          <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="text-muted small">
+              ${allKycUploaded 
+                ? '<span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i> All 4 KYC documents uploaded. Stage 3 is now unlocked.</span>' 
+                : '<span class="text-danger fw-semibold"><i class="fas fa-lock me-1"></i> Upload all 4 documents above to unlock Stage 3 (Profile & Experience).</span>'}
+            </div>
+            ${allKycUploaded ? `
+              <button type="button" class="btn btn-spx px-4 py-2 fw-bold" onclick="setSopTab('profile')">
+                Proceed to Profile & Experience <i class="fas fa-arrow-right ms-1"></i>
+              </button>
+            ` : `
+              <button type="button" class="btn btn-secondary px-4 py-2 fw-semibold" disabled title="Upload all 4 documents above to unlock">
+                <i class="fas fa-lock me-1"></i> Next: Profile & Experience
+              </button>
+            `}
           </div>
         </div>
       `;
@@ -1627,23 +1762,29 @@ async function renderSop(targetSlotId) {
                 <div class="text-muted small mt-1" style="font-size:0.7rem">Enter subjects you specialize in, separated by commas.</div>
               </div>
               <div class="col-md-6" id="slot_expertise_proof">
-                <div class="sop-upload-slot ${docExpertise ? 'uploaded' : ''} p-3 rounded" style="${docExpertise ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="small fw-bold text-dark"><i class="fas fa-file-invoice text-primary me-1"></i>Subject Expertise Proof *</span>
-                    ${getGranularStatusHtml('expertise_proof', !!docExpertise)}
+                <div class="sop-upload-slot ${docExpertise ? 'uploaded' : ''} p-3 rounded h-100 d-flex flex-column justify-content-between" style="${docExpertise ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
+                  <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="small fw-bold text-dark"><i class="fas fa-file-invoice text-primary me-1"></i>Subject Expertise Proof *</span>
+                      ${getGranularStatusHtml('expertise_proof', !!docExpertise)}
+                    </div>
+                    <div class="text-muted mb-2" style="font-size:0.7rem">Upload syllabus, credentials, or certifications validating your expertise.</div>
                   </div>
-                  <div class="text-muted mb-2" style="font-size:0.7rem">Upload syllabus, credentials, or certifications validating your expertise.</div>
                   ${docExpertise ? renderAttachmentPreview(docExpertise.file_url, docExpertise.original_name, 'expertise_proof', 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
-                    <div class="d-flex flex-column gap-2">
-                      <div class="d-flex align-items-center gap-1">
-                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
-                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadDoc(this, 'expertise_proof')" style="max-width:180px">
-                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_expertise_proof" role="status"></div>
-                      </div>
-                      <div class="d-flex align-items-center gap-1">
-                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_expertise_proof" placeholder="e.g. Cert Link" style="max-width:130px">
-                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('expertise_proof')" style="font-size: 0.68rem;">Save</button>
+                    <div class="sop-upload-action-box mt-auto" id="action_box_slot_expertise_proof">
+                      <div class="d-flex flex-column gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <label class="btn btn-sm btn-primary py-2 px-3 mb-0 fw-semibold text-white d-inline-flex align-items-center gap-2 shadow-sm" style="cursor: pointer; background: #0d7a6d; border-color: #0d7a6d; font-size: 0.78rem;">
+                            <i class="fas fa-arrow-up-from-bracket"></i> Choose File
+                            <input type="file" class="d-none" onchange="autoUploadDoc(this, 'expertise_proof')" accept=".pdf,.png,.jpg,.jpeg,.webp">
+                          </label>
+                          <span class="text-muted" style="font-size: 0.72rem;">(PDF, JPG, PNG up to 20MB)</span>
+                        </div>
+                        <div class="input-group input-group-sm mt-1">
+                          <span class="input-group-text bg-white text-muted" style="font-size: 0.75rem;"><i class="fas fa-link"></i></span>
+                          <input type="text" class="form-control form-control-sm spx-input" id="link_doc_expertise_proof" placeholder="Or paste cert link..." style="font-size: 0.75rem;">
+                          <button type="button" class="btn btn-sm btn-spx px-3" onclick="saveDocLink('expertise_proof')" style="font-size: 0.75rem;">Save</button>
+                        </div>
                       </div>
                     </div>
                   `)}
@@ -1660,23 +1801,29 @@ async function renderSop(targetSlotId) {
                 <div class="text-muted small mt-1" style="font-size:0.7rem">Specify languages in which you can teach.</div>
               </div>
               <div class="col-md-6" id="slot_language_proof">
-                <div class="sop-upload-slot ${docLanguage ? 'uploaded' : ''} p-3 rounded" style="${docLanguage ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="small fw-bold text-dark"><i class="fas fa-microphone text-primary me-1"></i>Language Preferred Proof *</span>
-                    ${getGranularStatusHtml('language_proof', !!docLanguage)}
+                <div class="sop-upload-slot ${docLanguage ? 'uploaded' : ''} p-3 rounded h-100 d-flex flex-column justify-content-between" style="${docLanguage ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
+                  <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="small fw-bold text-dark"><i class="fas fa-microphone text-primary me-1"></i>Language Preferred Proof *</span>
+                      ${getGranularStatusHtml('language_proof', !!docLanguage)}
+                    </div>
+                    <div class="text-muted mb-2" style="font-size:0.7rem">Upload language certificates or a short video/audio clip speaking in this language.</div>
                   </div>
-                  <div class="text-muted mb-2" style="font-size:0.7rem">Upload language certificates or a short video/audio clip speaking in this language.</div>
                   ${docLanguage ? renderAttachmentPreview(docLanguage.file_url, docLanguage.original_name, 'language_proof', 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
-                    <div class="d-flex flex-column gap-2">
-                      <div class="d-flex align-items-center gap-1">
-                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
-                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadDoc(this, 'language_proof')" style="max-width:180px">
-                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_language_proof" role="status"></div>
-                      </div>
-                      <div class="d-flex align-items-center gap-1">
-                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_language_proof" placeholder="e.g. Clip Link" style="max-width:130px">
-                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('language_proof')" style="font-size: 0.68rem;">Save</button>
+                    <div class="sop-upload-action-box mt-auto" id="action_box_slot_language_proof">
+                      <div class="d-flex flex-column gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <label class="btn btn-sm btn-primary py-2 px-3 mb-0 fw-semibold text-white d-inline-flex align-items-center gap-2 shadow-sm" style="cursor: pointer; background: #0d7a6d; border-color: #0d7a6d; font-size: 0.78rem;">
+                            <i class="fas fa-arrow-up-from-bracket"></i> Choose File
+                            <input type="file" class="d-none" onchange="autoUploadDoc(this, 'language_proof')" accept=".pdf,.png,.jpg,.jpeg,.webp">
+                          </label>
+                          <span class="text-muted" style="font-size: 0.72rem;">(PDF, JPG, PNG up to 20MB)</span>
+                        </div>
+                        <div class="input-group input-group-sm mt-1">
+                          <span class="input-group-text bg-white text-muted" style="font-size: 0.75rem;"><i class="fas fa-link"></i></span>
+                          <input type="text" class="form-control form-control-sm spx-input" id="link_doc_language_proof" placeholder="Or paste clip link..." style="font-size: 0.75rem;">
+                          <button type="button" class="btn btn-sm btn-spx px-3" onclick="saveDocLink('language_proof')" style="font-size: 0.75rem;">Save</button>
+                        </div>
                       </div>
                     </div>
                   `)}
@@ -1693,23 +1840,29 @@ async function renderSop(targetSlotId) {
                 <div class="text-muted small mt-1" style="font-size:0.7rem">Enter your total years of teaching experience.</div>
               </div>
               <div class="col-md-6" id="slot_experience_proof">
-                <div class="sop-upload-slot ${docExperience ? 'uploaded' : ''} p-3 rounded" style="${docExperience ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="small fw-bold text-dark"><i class="fas fa-briefcase text-primary me-1"></i>Experience Letter Proof *</span>
-                    ${getGranularStatusHtml('experience_proof', !!docExperience)}
+                <div class="sop-upload-slot ${docExperience ? 'uploaded' : ''} p-3 rounded h-100 d-flex flex-column justify-content-between" style="${docExperience ? 'background:#f0fdf4 !important; border:1.5px solid #86efac !important;' : 'background: rgba(15,23,42,0.01); border: 1px dashed var(--border);'}">
+                  <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="small fw-bold text-dark"><i class="fas fa-briefcase text-primary me-1"></i>Experience Letter Proof *</span>
+                      ${getGranularStatusHtml('experience_proof', !!docExperience)}
+                    </div>
+                    <div class="text-muted mb-2" style="font-size:0.7rem">Upload experience letters or proofs of previous online/offline teaching.</div>
                   </div>
-                  <div class="text-muted mb-2" style="font-size:0.7rem">Upload experience letters or proofs of previous online/offline teaching.</div>
                   ${docExperience ? renderAttachmentPreview(docExperience.file_url, docExperience.original_name, 'experience_proof', 'removeDoc', isSubmitted) : (isSubmitted ? '' : `
-                    <div class="d-flex flex-column gap-2">
-                      <div class="d-flex align-items-center gap-1">
-                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">File:</label>
-                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadDoc(this, 'experience_proof')" style="max-width:180px">
-                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_kyc_experience_proof" role="status"></div>
-                      </div>
-                      <div class="d-flex align-items-center gap-1">
-                        <label class="text-muted small me-2" style="font-size:0.65rem; flex-shrink:0;">Or Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_doc_experience_proof" placeholder="e.g. Doc Link" style="max-width:130px">
-                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveDocLink('experience_proof')" style="font-size: 0.68rem;">Save</button>
+                    <div class="sop-upload-action-box mt-auto" id="action_box_slot_experience_proof">
+                      <div class="d-flex flex-column gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <label class="btn btn-sm btn-primary py-2 px-3 mb-0 fw-semibold text-white d-inline-flex align-items-center gap-2 shadow-sm" style="cursor: pointer; background: #0d7a6d; border-color: #0d7a6d; font-size: 0.78rem;">
+                            <i class="fas fa-arrow-up-from-bracket"></i> Choose File
+                            <input type="file" class="d-none" onchange="autoUploadDoc(this, 'experience_proof')" accept=".pdf,.png,.jpg,.jpeg,.webp">
+                          </label>
+                          <span class="text-muted" style="font-size: 0.72rem;">(PDF, JPG, PNG up to 20MB)</span>
+                        </div>
+                        <div class="input-group input-group-sm mt-1">
+                          <span class="input-group-text bg-white text-muted" style="font-size: 0.75rem;"><i class="fas fa-link"></i></span>
+                          <input type="text" class="form-control form-control-sm spx-input" id="link_doc_experience_proof" placeholder="Or paste letter link..." style="font-size: 0.75rem;">
+                          <button type="button" class="btn btn-sm btn-spx px-3" onclick="saveDocLink('experience_proof')" style="font-size: 0.75rem;">Save</button>
+                        </div>
                       </div>
                     </div>
                   `)}
@@ -1774,6 +1927,23 @@ async function renderSop(targetSlotId) {
               `}
             </div>
           </form>
+
+          <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="text-muted small">
+              ${allProfileFilled 
+                ? '<span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i> Profile details and verification proofs are complete. Stage 4 is now unlocked.</span>' 
+                : '<span class="text-danger fw-semibold"><i class="fas fa-lock me-1"></i> Fill required fields (*), upload 3 proofs, and save profile to unlock Stage 4 (Availability Calendar).</span>'}
+            </div>
+            ${allProfileFilled ? `
+              <button type="button" class="btn btn-spx px-4 py-2 fw-bold" onclick="setSopTab('availability')">
+                Proceed to Availability Calendar <i class="fas fa-arrow-right ms-1"></i>
+              </button>
+            ` : `
+              <button type="button" class="btn btn-secondary px-4 py-2 fw-semibold" disabled title="Save profile details and proofs above to unlock">
+                <i class="fas fa-lock me-1"></i> Next: Availability Calendar
+              </button>
+            `}
+          </div>
         </div>
       `;
     } else if (window._sopActiveTab === 'availability') {
@@ -1852,6 +2022,23 @@ async function renderSop(targetSlotId) {
               </div>
             </form>
           `}
+
+          <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="text-muted small">
+              ${allAvailFilled 
+                ? '<span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i> Weekly availability calendar is saved. Stage 5 is now unlocked.</span>' 
+                : '<span class="text-danger fw-semibold"><i class="fas fa-lock me-1"></i> Add at least 1 weekly slot and click "Save Availability Calendar" to unlock Stage 5 (Technical SOPs).</span>'}
+            </div>
+            ${allAvailFilled ? `
+              <button type="button" class="btn btn-spx px-4 py-2 fw-bold" onclick="setSopTab('video')">
+                Proceed to Technical SOPs <i class="fas fa-arrow-right ms-1"></i>
+              </button>
+            ` : `
+              <button type="button" class="btn btn-secondary px-4 py-2 fw-semibold" disabled title="Save availability calendar to unlock">
+                <i class="fas fa-lock me-1"></i> Next: Technical SOPs
+              </button>
+            `}
+          </div>
         </div>
       `;
     } else if (window._sopActiveTab === 'video') {
@@ -1901,10 +2088,10 @@ async function renderSop(targetSlotId) {
 
       tabContentHtml = `
         <div class="spx-card text-start p-4">
-          <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
               <h5 class="fw-bold text-dark mb-1"><i class="fas fa-video me-2 text-primary"></i>Technical & Pedagogical SOP Evidence</h5>
-              <p class="text-muted small mb-0">Provide video clips/photos or paste shareable links for each technical check.</p>
+              <p class="text-muted small mb-0">Provide video clips/photos or paste shareable links for each technical check. Uploading runs a clean circular progress indicator until complete.</p>
             </div>
             <div>Status: ${statusBadge(sop?.status)}</div>
           </div>
@@ -1925,16 +2112,22 @@ async function renderSop(targetSlotId) {
                     ${getGranularStatusHtml(slot.id, hasSop)}
                   </div>
                   ${hasSop ? renderAttachmentPreview(slot.url, slot.label, slot.id, 'removeSopEvidence', isSubmitted) : (isSubmitted ? '' : `
-                    <div class="row g-2 mt-2 align-items-center border-top pt-2">
-                      <div class="col-md-6 d-flex align-items-center gap-1 border-end border-light">
-                        <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">File Upload:</label>
-                        <input type="file" class="form-control form-control-sm spx-input" onchange="autoUploadSopVideo(this, '${slot.id}')" style="max-width:180px">
-                        <div class="spinner-border text-primary spinner-upload d-none" id="spinner_sop_${slot.id}" role="status"></div>
-                      </div>
-                      <div class="col-md-6 d-flex align-items-center gap-1">
-                        <label class="text-muted small me-2" style="font-size:0.7rem; flex-shrink:0;">Or Paste Link:</label>
-                        <input type="text" class="form-control form-control-sm spx-input" id="link_${slot.id}" placeholder="e.g. YouTube / Drive URL">
-                        <button type="button" class="btn btn-sm btn-spx py-1" onclick="saveSopLink('${slot.id}')">Save Link</button>
+                    <div class="sop-upload-action-box mt-2" id="action_box_sop_${slot.id}">
+                      <div class="row g-2 align-items-center">
+                        <div class="col-md-6 d-flex align-items-center gap-2 flex-wrap">
+                          <label class="btn btn-sm btn-primary py-2 px-3 mb-0 fw-semibold text-white d-inline-flex align-items-center gap-2 shadow-sm" style="cursor: pointer; background: #0d7a6d; border-color: #0d7a6d; font-size: 0.78rem;">
+                            <i class="fas fa-arrow-up-from-bracket"></i> Upload Video / Proof
+                            <input type="file" class="d-none" onchange="autoUploadSopVideo(this, '${slot.id}')" accept=".mp4,.webm,.mov,.png,.jpg,.jpeg,.pdf">
+                          </label>
+                          <span class="text-muted" style="font-size: 0.72rem;">(Video / Screenshot up to 200MB)</span>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white text-muted" style="font-size: 0.75rem;"><i class="fas fa-link"></i></span>
+                            <input type="text" class="form-control form-control-sm spx-input" id="link_${slot.id}" placeholder="Or paste YouTube / Drive / Loom link..." style="font-size: 0.75rem;">
+                            <button type="button" class="btn btn-sm btn-spx px-3" onclick="saveSopLink('${slot.id}')" style="font-size: 0.75rem;">Save Link</button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   `)}
@@ -2004,16 +2197,87 @@ async function renderSop(targetSlotId) {
 
             ${isSubmitted ? `
               <div class="alert alert-info text-center mt-3 py-2 small">SOP details submitted and locked for admin review.</div>
-            ` : (canSubmitSop ? `
-              <button class="btn btn-secondary w-100 mt-3" id="sopSubmitButton" onclick="submitSopForReview()" disabled>Submit SOP For Admin Verification</button>
             ` : `
-              <button class="btn btn-secondary w-100 mt-3" disabled>Submit SOP For Admin Verification (Fill KYC Docs, Onboarding Profile, Availability Calendar, Technical SOPs & check all checkboxes)</button>
-            `)}
+              <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="small text-muted">
+                  ${allSopUploaded 
+                    ? '<span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i> All 5 Technical SOP proofs uploaded. Stage 6 is now unlocked.</span>' 
+                    : '<span class="text-danger fw-semibold"><i class="fas fa-lock me-1"></i> Upload all 5 technical proofs above to unlock Stage 6 (Deed of Affidavit & Agreement).</span>'}
+                </div>
+                ${allSopUploaded ? `
+                  <button type="button" class="btn btn-spx px-4 py-2 fw-bold" onclick="setSopTab('agreement')">
+                    Proceed to Deed of Affidavit & Agreement <i class="fas fa-arrow-right ms-1"></i>
+                  </button>
+                ` : `
+                  <button type="button" class="btn btn-secondary px-4 py-2 fw-semibold" disabled title="Upload all 5 technical proofs above to unlock">
+                    <i class="fas fa-lock me-1"></i> Next: Deed of Affidavit & Agreement
+                  </button>
+                `}
+              </div>
+            `}
           </div>
         </div>
       `;
     } else if (window._sopActiveTab === 'agreement') {
-      if (sop && sop.status === 'approved' && !sop.agreement_signed) {
+      if (sop && sop.status === 'approved' && sop.agreement_signed) {
+        tabContentHtml = `
+          <div class="row justify-content-center text-start">
+            <div class="col-lg-12">
+              <div class="legal-affidavit p-5">
+                <div class="stamp-header text-center" style="background: var(--success)">
+                  SIGNED AFFIDAVIT OF UNDERTAKING
+                </div>
+                <div class="text-center mb-4">
+                  <h5 class="fw-bold mb-1" style="text-transform: uppercase;">DEED SIGNED AND COMPLETED</h5>
+                  <div class="badge bg-success-subtle text-success py-1 px-3 mt-1"><i class="fas fa-check-circle me-1"></i>Active Account</div>
+                </div>
+
+                <p>Digital Agreement Signed on <strong>${fmtDate(sop.agreement_signed_at)}</strong> by educator <strong>${sop.digital_signature}</strong>.</p>
+                <p class="text-muted small">Your credentials are now validated. Your account is fully active and visible in the public courses directory.</p>
+                
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                  <button class="btn btn-spx" onclick="navigateTo('batches')">Go to Batches</button>
+                  <button class="btn btn-outline-primary" onclick="navigateTo('home')">Dashboard</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (isSubmitted) {
+        tabContentHtml = `
+          <div class="row justify-content-center text-start">
+            <div class="col-lg-12">
+              <div class="legal-affidavit p-5">
+                <div class="stamp-header text-center" style="background: var(--gold)">
+                  DEED OF AFFIDAVIT & SOP SUBMITTED — UNDER ADMIN REVIEW
+                </div>
+                <div class="text-center mb-4">
+                  <h5 class="fw-bold mb-1" style="text-transform: uppercase;">VERIFICATION IN PROGRESS</h5>
+                  <div class="badge bg-warning-subtle text-warning py-1 px-3 mt-1"><i class="fas fa-clock me-1"></i>Pending Admin Approval (Est. 24–48 Hours)</div>
+                </div>
+
+                <p>Digital Agreement Signed by educator <strong>${sop.digital_signature || user.name}</strong> on <strong>${fmtDate(sop.submitted_at || sop.agreement_signed_at || new Date())}</strong>.</p>
+                ${sop.signature_image ? `
+                  <div class="mb-3 text-center">
+                    <label class="small text-muted mb-1 d-block">Attested Digital Signature:</label>
+                    <img src="${sop.signature_image}" alt="Signature" style="max-height:80px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:4px;">
+                  </div>
+                ` : ''}
+                <p class="text-muted small">Your complete SOP details and signed legal affidavit have been submitted in a single unified step. You will be notified automatically once approved.</p>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        const missingStages = [];
+        if (!allKycUploaded) missingStages.push({ label: 'Stage 2: KYC Documents', tab: 'kyc' });
+        if (!allProfileFilled) missingStages.push({ label: 'Stage 3: Profile & Experience', tab: 'profile' });
+        if (!allAvailFilled) missingStages.push({ label: 'Stage 4: Availability Calendar', tab: 'availability' });
+        if (!allSopUploaded) missingStages.push({ label: 'Stage 5: Technical SOPs', tab: 'video' });
+
+        const canFinalSubmit = missingStages.length === 0;
+        window._savedSignatureImage = sop?.signature_image || null;
+
         tabContentHtml = `
           <div class="row justify-content-center text-start">
             <div class="col-lg-12">
@@ -2044,7 +2308,7 @@ async function renderSop(targetSlotId) {
                   </div>
                 </div>
 
-                <p>I, <strong>${user.name}</strong>, having been approved as an educator on the SPEAXA Edtech Platform, do hereby solemnly declare, depose, and state on oath as follows:</p>
+                <p>I, <strong>${user.name}</strong>, applying as an educator on the SPEAXA Edtech Platform, do hereby solemnly declare, depose, and state on oath as follows:</p>
                 
                 <ol class="mt-3" style="padding-left: 20px;">
                   <li class="mb-3">
@@ -2070,7 +2334,7 @@ async function renderSop(targetSlotId) {
 
                 <div class="mt-4 text-start">
                   <div class="form-check mb-3">
-                    <input class="form-check-input spx-checkbox" type="checkbox" id="agreementConsentCheckbox" style="cursor:pointer">
+                    <input class="form-check-input spx-checkbox" type="checkbox" id="agreementConsentCheckbox" style="cursor:pointer" checked>
                     <label class="form-check-label text-secondary small fw-semibold" for="agreementConsentCheckbox" style="cursor:pointer; user-select:none">
                       I solemnly read and accept all the terms, platform commissions, payout tranches, and standard operating procedures of SPEAXA.
                     </label>
@@ -2089,48 +2353,36 @@ async function renderSop(targetSlotId) {
                     </div>
                   </div>
 
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <label class="spx-label font-bold text-dark mb-1">Printed Full Name (Attestation Name)</label>
-                    <input type="text" class="form-control border p-3 spx-input" id="agreementSigInput" placeholder="Type your full registered name here" value="${user?.name || ''}" style="background:#ffffff; color:#000000; border-color:#cbd5e1 !important">
+                    <input type="text" class="form-control border p-3 spx-input" id="agreementSigInput" placeholder="Type your full registered name here" value="${sop?.digital_signature || user?.name || ''}" style="background:#ffffff; color:#000000; border-color:#cbd5e1 !important">
                   </div>
                 </div>
 
-                <button class="btn btn-spx w-100 py-3 fw-bold" onclick="submitDigitalAgreement()"><i class="fas fa-file-signature me-2"></i>Sign & Activate Account</button>
+                ${!canFinalSubmit ? `
+                  <div class="alert alert-warning p-3 mb-3" style="border-radius:10px">
+                    <strong class="d-block mb-1"><i class="fas fa-exclamation-triangle me-1"></i> Please complete all onboarding stages before final submission:</strong>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                      ${missingStages.map(m => `
+                        <button type="button" class="btn btn-sm btn-outline-dark" onclick="setSopTab('${m.tab}')">
+                          ${m.label} →
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-secondary w-100 py-3 fw-bold" disabled>
+                    <i class="fas fa-lock me-2"></i>Complete Missing Stages to Submit SOP & Agreement
+                  </button>
+                ` : `
+                  <div class="alert alert-success p-2 mb-3 small text-center" style="border-radius:8px">
+                    <i class="fas fa-check-circle me-1"></i> All KYC documents, profile data, availability calendar, and technical proofs are complete.
+                  </div>
+                  <button type="button" class="btn btn-spx w-100 py-3 fw-bold" id="finalSopSubmitBtn" onclick="submitCombinedSopAndAgreement()">
+                    <i class="fas fa-file-signature me-2"></i>Submit Complete SOP & Signed Agreement for Admin Verification
+                  </button>
+                `}
               </div>
             </div>
-          </div>
-        `;
-      } else if (sop && sop.status === 'approved' && sop.agreement_signed) {
-        tabContentHtml = `
-          <div class="row justify-content-center text-start">
-            <div class="col-lg-12">
-              <div class="legal-affidavit p-5">
-                <div class="stamp-header text-center" style="background: var(--success)">
-                  SIGNED AFFIDAVIT OF UNDERTAKING
-                </div>
-                <div class="text-center mb-4">
-                  <h5 class="fw-bold mb-1" style="text-transform: uppercase;">DEED SIGNED AND COMPLETED</h5>
-                  <div class="badge bg-success-subtle text-success py-1 px-3 mt-1"><i class="fas fa-check-circle me-1"></i>Active Account</div>
-                </div>
-
-                <p>Digital Agreement Signed on <strong>${fmtDate(sop.agreement_signed_at)}</strong> by educator <strong>${sop.digital_signature}</strong>.</p>
-                <p class="text-muted small">Your credentials are now validated. Your account is fully active and visible in the public courses directory.</p>
-                
-                <div class="d-flex justify-content-center gap-3 mt-4">
-                  <button class="btn btn-spx" onclick="navigateTo('batches')">Go to Batches</button>
-                  <button class="btn btn-outline-primary" onclick="navigateTo('home')">Dashboard</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      } else {
-        tabContentHtml = `
-          <div class="spx-card text-center py-5 border-start border-4 border-warning" style="background: rgba(245,158,11,0.02)">
-            <div class="display-4 text-warning mb-3"><i class="fas fa-lock"></i></div>
-            <h4 class="fw-bold text-dark">Agreement Signature Locked</h4>
-            <p class="text-muted small max-width-500 mx-auto">Your Video SOP and KYC documents are under verification. You will be notified via email once they are approved by the admin. After approval, you can review and sign the Legal Educator Affidavit.</p>
-            <button class="btn btn-warning mt-3 btn-sm" onclick="setSopTab('kyc')">Upload Documents</button>
           </div>
         `;
       }
@@ -2138,18 +2390,76 @@ async function renderSop(targetSlotId) {
 
     let rejectAlertHtml = '';
     if (sop && sop.status === 'rejected') {
+      const itemLabels = {
+        aadhaar: 'Aadhaar Card (Identity Proof)',
+        pan: 'PAN Card (Tax & Payout Proof)',
+        resume: 'Professional Resume / CV',
+        qualification: 'Highest Degree Certificate',
+        expertise_proof: 'Subject Expertise Proof Document',
+        language_proof: 'Teaching Language Preference Proof',
+        experience_proof: 'Teaching Experience Proof Document',
+        subject_expertise: 'Subject Expertise Configuration',
+        languages: 'Teaching Language Preferences',
+        experience_years: 'Teaching Experience Years',
+        availability: 'Weekly Availability Calendar',
+        camera_sop: 'Camera & Framing SOP Proof',
+        lighting_sop: 'Lighting & Background SOP Proof',
+        audio_sop: 'Microphone & Audio Clarity SOP Proof',
+        internet_proof: 'Internet Speed & Connection Proof',
+        demo_teaching: 'Demo Teaching Lecture Video'
+      };
+
+      const itemTabMap = {
+        aadhaar: 'kyc', pan: 'kyc', resume: 'kyc', qualification: 'kyc',
+        expertise_proof: 'profile', language_proof: 'profile', experience_proof: 'profile',
+        subject_expertise: 'profile', languages: 'profile', experience_years: 'profile',
+        availability: 'availability',
+        camera_sop: 'video', lighting_sop: 'video', audio_sop: 'video', internet_proof: 'video', demo_teaching: 'video'
+      };
+
+      const rejectedItems = Object.entries(approvals).filter(([k, v]) => v && v.status === 'rejected');
+
       rejectAlertHtml = `
-        <div class="alert alert-danger p-4 mb-4 text-start" style="border-radius: 12px; border-left: 5px solid var(--bs-danger); background: rgba(239, 68, 68, 0.05); color: var(--bs-danger);">
+        <div class="alert alert-danger p-4 mb-4 text-start shadow-sm" style="border-radius: 14px; border-left: 5px solid #ef4444; background: #fff5f5; color: #1e293b;">
           <div class="d-flex gap-3 align-items-start">
-            <div class="text-danger" style="font-size: 1.75rem; line-height: 1;"><i class="fas fa-times-circle text-danger"></i></div>
+            <div class="text-danger fs-2" style="line-height: 1;"><i class="fas fa-times-circle"></i></div>
             <div class="flex-grow-1">
-              <h5 class="fw-bold text-danger mb-1">Onboarding Verification Rejected</h5>
-              <p class="text-secondary small mb-3">Your standard operating procedure (SOP) setup or documents did not pass the verification checks. Please read the admin review notes below, correct the flagged items, and re-submit the complete SOP for verification.</p>
-              <div class="p-3 mb-2 rounded bg-light border-start border-3 border-danger text-dark font-monospace" style="font-size: 0.85rem;">
-                <strong>Admin Feedback:</strong> ${sop.admin_notes || 'Please verify the uploaded proofs and details.'}
-              </div>
-              <div class="text-muted small mt-2">
-                <i class="fas fa-info-circle me-1"></i> You can edit and re-upload any rejected items under the tabs below (e.g. KYC Documents, Profile, Availability, Technical SOPs).
+              <h5 class="fw-bold text-danger mb-1">
+                ${rejectedItems.length > 0 ? 'Specific SOP Items Require Revision' : 'SOP Submission Requires Revision'}
+              </h5>
+              <p class="text-secondary small mb-3">
+                ${rejectedItems.length > 0 
+                  ? 'Our compliance team reviewed your submission. Specific items below require corrections. All other approved documents and details have been safely preserved.' 
+                  : 'Your SOP submission did not pass verification. Please review the admin feedback below, update your details, and re-submit your complete SOP with your signed agreement.'}
+              </p>
+
+              ${sop.admin_notes ? `
+                <div class="p-3 mb-3 rounded bg-white border border-danger-subtle font-monospace" style="font-size: 0.85rem;">
+                  <strong class="text-danger">Admin Feedback:</strong> ${sop.admin_notes}
+                </div>
+              ` : ''}
+
+              ${rejectedItems.length > 0 ? `
+                <div class="p-3 mb-3 rounded bg-white border border-danger-subtle">
+                  <strong class="text-danger d-block mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Flagged Items to Fix:</strong>
+                  <div class="row g-2">
+                    ${rejectedItems.map(([k, v]) => `
+                      <div class="col-md-6">
+                        <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center">
+                          <div>
+                            <span class="fw-bold small text-dark d-block">${itemLabels[k] || k}</span>
+                            <span class="text-danger" style="font-size:0.75rem;">${v.notes || 'Needs correction'}</span>
+                          </div>
+                          <button type="button" class="btn btn-xs btn-outline-danger px-2 py-1 ms-2" style="font-size:0.75rem;" onclick="setSopTab('${itemTabMap[k] || 'kyc'}')">Fix →</button>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+              <div class="text-muted small">
+                <i class="fas fa-shield-alt text-primary me-1"></i> Your account is active. Update the flagged items above and proceed to Stage 6 to submit your signed agreement.
               </div>
             </div>
           </div>
@@ -2170,7 +2480,7 @@ async function renderSop(targetSlotId) {
             </div>
           </div>
 
-          <h4 class="fw-bold text-dark mb-1">SOP Verification Under Admin Review</h4>
+          <h4 class="fw-bold text-dark mb-1">SOP & Agreement Under Admin Review</h4>
           <div class="d-flex align-items-center justify-content-center gap-2 mb-3 flex-wrap">
             <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-1 rounded-pill fw-semibold" style="font-size: 0.8rem;">
               <i class="fas fa-clock me-1"></i>Est. Review Time: 24–48 Hours
@@ -2181,7 +2491,7 @@ async function renderSop(targetSlotId) {
           </div>
 
           <p class="text-muted small mx-auto mb-3" style="max-width: 520px; line-height: 1.5;">
-            Your SOP submission is under active review by the Admin team. Once approved, your official <strong>Certificate PDF</strong> will be automatically issued and emailed to you.
+            Your SOP details and signed agreement are under active review by the Admin team. Once approved, your official <strong>Certificate PDF</strong> and executed agreement copy will be automatically issued.
           </p>
 
           <div class="d-flex justify-content-center">
@@ -2201,7 +2511,7 @@ async function renderSop(targetSlotId) {
           </div>
           <div class="d-flex gap-2">
             <button class="btn btn-sm btn-success" onclick="navigateTo('certificates')"><i class="fas fa-award me-1"></i>View Certificate</button>
-            ${!sop.agreement_signed ? `<button class="btn btn-sm btn-warning" onclick="setSopTab('agreement')"><i class="fas fa-file-contract me-1"></i>Sign Agreement →</button>` : ''}
+            <button class="btn btn-sm btn-primary" onclick="navigateTo('batches')"><i class="fas fa-chalkboard me-1"></i>Go to Batches</button>
           </div>
         </div>
       `;
@@ -2212,23 +2522,23 @@ async function renderSop(targetSlotId) {
       ${pendingStatusHeaderHtml}
       ${approvedStatusHeaderHtml}
       <div class="sop-wizard-tabs">
-        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'guidelines' ? 'active' : ''}" onclick="setSopTab('guidelines')">
-          <i class="fas fa-book-open"></i> 1. Onboarding Guide
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'guidelines' ? 'active' : ''} ${step1Complete ? 'completed' : ''}" onclick="setSopTab('guidelines')">
+          <i class="fas fa-book-open"></i> 1. Onboarding Guide ${step1Complete ? '<i class="fas fa-check-circle text-success ms-1"></i>' : ''}
         </button>
-        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'kyc' ? 'active' : ''} ${allKycUploaded ? 'completed' : ''}" onclick="setSopTab('kyc')">
-          <i class="fas fa-id-card"></i> 2. KYC Documents ${allKycUploaded ? '✓' : ''}
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'kyc' ? 'active' : ''} ${step2Complete ? 'completed' : ''} ${(!step1Complete && !isSubmitted) ? 'locked' : ''}" onclick="setSopTab('kyc')">
+          <i class="fas fa-id-card"></i> 2. KYC Documents ${step2Complete ? '<i class="fas fa-check-circle text-success ms-1"></i>' : (kycRejected ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem">Needs Fix</span>' : ((!step1Complete && !isSubmitted) ? '<i class="fas fa-lock text-muted ms-1" style="font-size:0.75rem"></i>' : ''))}
         </button>
-        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'profile' ? 'active' : ''} ${allProfileFilled ? 'completed' : ''}" onclick="setSopTab('profile')">
-          <i class="fas fa-user-edit"></i> 3. Profile & Experience ${allProfileFilled ? '✓' : ''}
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'profile' ? 'active' : ''} ${step3Complete ? 'completed' : ''} ${(!step2Complete && !isSubmitted && !anyItemRejected) ? 'locked' : ''}" onclick="setSopTab('profile')">
+          <i class="fas fa-user-edit"></i> 3. Profile & Experience ${step3Complete ? '<i class="fas fa-check-circle text-success ms-1"></i>' : (profileRejected ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem">Needs Fix</span>' : ((!step2Complete && !isSubmitted && !anyItemRejected) ? '<i class="fas fa-lock text-muted ms-1" style="font-size:0.75rem"></i>' : ''))}
         </button>
-        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'availability' ? 'active' : ''} ${allAvailFilled ? 'completed' : ''}" onclick="setSopTab('availability')">
-          <i class="fas fa-calendar-alt"></i> 4. Availability Calendar ${allAvailFilled ? '✓' : ''}
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'availability' ? 'active' : ''} ${step4Complete ? 'completed' : ''} ${(!step3Complete && !isSubmitted && !anyItemRejected) ? 'locked' : ''}" onclick="setSopTab('availability')">
+          <i class="fas fa-calendar-alt"></i> 4. Availability Calendar ${step4Complete ? '<i class="fas fa-check-circle text-success ms-1"></i>' : (availRejected ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem">Needs Fix</span>' : ((!step3Complete && !isSubmitted && !anyItemRejected) ? '<i class="fas fa-lock text-muted ms-1" style="font-size:0.75rem"></i>' : ''))}
         </button>
-        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'video' ? 'active' : ''} ${allSopUploaded ? 'completed' : ''}" onclick="setSopTab('video')">
-          <i class="fas fa-video"></i> 5. Technical SOPs ${allSopUploaded ? '✓' : ''}
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'video' ? 'active' : ''} ${step5Complete ? 'completed' : ''} ${(!step4Complete && !isSubmitted && !anyItemRejected) ? 'locked' : ''}" onclick="setSopTab('video')">
+          <i class="fas fa-video"></i> 5. Technical SOPs ${step5Complete ? '<i class="fas fa-check-circle text-success ms-1"></i>' : (videoRejected ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem">Needs Fix</span>' : ((!step4Complete && !isSubmitted && !anyItemRejected) ? '<i class="fas fa-lock text-muted ms-1" style="font-size:0.75rem"></i>' : ''))}
         </button>
-        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'agreement' ? 'active' : ''} ${sop?.agreement_signed ? 'completed' : ''}" onclick="setSopTab('agreement')">
-          <i class="fas fa-file-contract"></i> 6. Deed of Affidavit ${sop?.agreement_signed ? '✓' : ''}
+        <button class="sop-wizard-tab-btn ${window._sopActiveTab === 'agreement' ? 'active' : ''} ${step6Complete ? 'completed' : ''} ${((!step5Complete || anyItemRejected || isOverallRejected) && !isSubmitted) ? 'locked' : ''}" onclick="setSopTab('agreement')">
+          <i class="fas fa-file-contract"></i> 6. Deed of Affidavit & Agreement ${step6Complete ? '<i class="fas fa-check-circle text-success ms-1"></i>' : ((!step5Complete || anyItemRejected || isOverallRejected) ? '<i class="fas fa-lock text-muted ms-1" style="font-size:0.75rem"></i>' : '')}
         </button>
       </div>
 
@@ -2278,7 +2588,44 @@ async function renderSop(targetSlotId) {
 }
 
 function setSopTab(tabName) {
+  const hasRejections = window._sopHasRejections || false;
+  if (!window._sopIsSubmitted && !hasRejections) {
+    if (tabName === 'kyc' && !window._sopStep1Complete) {
+      showToast('Please review Stage 1 (Onboarding Guide) first.', 'warning');
+      return;
+    }
+    if (tabName === 'profile' && !window._sopStep2Complete) {
+      showToast('Please upload all 4 KYC documents in Stage 2 first.', 'warning');
+      return;
+    }
+    if (tabName === 'availability' && !window._sopStep3Complete) {
+      showToast('Please complete and save your Profile & Experience details and proofs in Stage 3 first.', 'warning');
+      return;
+    }
+    if (tabName === 'video' && !window._sopStep4Complete) {
+      showToast('Please add and save your Weekly Availability Calendar in Stage 4 first.', 'warning');
+      return;
+    }
+    if (tabName === 'agreement' && !window._sopStep5Complete) {
+      showToast('Please complete all 5 Technical SOP uploads in Stage 5 first.', 'warning');
+      return;
+    }
+  } else if (!window._sopIsSubmitted && hasRejections) {
+    if (tabName === 'agreement' && (!window._sopStep1Complete || !window._sopStep2Complete || !window._sopStep3Complete || !window._sopStep4Complete || !window._sopStep5Complete)) {
+      showToast('Please resolve all flagged and incomplete items in Stages 1–5 before proceeding to submit your agreement in Stage 6.', 'warning');
+      return;
+    }
+  }
+
   window._sopActiveTab = tabName;
+  window._sopTabSetExplicitly = true;
+  renderSop();
+}
+
+function acknowledgeGuideAndProceed() {
+  localStorage.setItem('teacher_sop_guide_done', 'true');
+  window._sopStep1Complete = true;
+  window._sopActiveTab = 'kyc';
   window._sopTabSetExplicitly = true;
   renderSop();
 }
@@ -2287,15 +2634,26 @@ async function autoUploadDoc(input, docType) {
   const file = input.files[0];
   if (!file) return;
 
-  const spinner = document.getElementById(`spinner_kyc_${docType}`);
-  if (spinner) spinner.classList.remove('d-none');
+  const titleMap = {
+    aadhaar: 'Aadhaar Card',
+    pan: 'PAN Card',
+    resume: 'Resume / CV',
+    qualification: 'Degree Certificate',
+    expertise_proof: 'Subject Expertise Proof',
+    language_proof: 'Language Preferred Proof',
+    experience_proof: 'Experience Letter Proof'
+  };
+  const label = titleMap[docType] || docType.toUpperCase();
+
+  // Show prominent circular spinner loader immediately
+  showSlotCircularLoader(docType, label);
 
   const formData = new FormData();
   formData.append('doc_type', docType);
   formData.append('document', file);
 
   try {
-    showToast(`Uploading ${docType.toUpperCase()} document...`, 'info');
+    showToast(`Uploading ${label}...`, 'info');
     const res = await fetch(`${API}/teacher/documents/upload`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
@@ -2303,12 +2661,11 @@ async function autoUploadDoc(input, docType) {
     });
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
-    showToast(`${docType.toUpperCase()} uploaded successfully!`);
-    renderSop(docType);
+    showToast(`${label} uploaded successfully!`);
+    await renderSop(docType);
   } catch (e) {
     showToast(e.message, 'error');
-  } finally {
-    if (spinner) spinner.classList.add('d-none');
+    await renderSop(docType);
   }
 }
 
@@ -2317,8 +2674,21 @@ async function saveDocLink(docType) {
   const link = linkInput ? linkInput.value.trim() : '';
   if (!link) return showToast('Please enter a valid link URL', 'error');
 
+  const titleMap = {
+    aadhaar: 'Aadhaar Card Link',
+    pan: 'PAN Card Link',
+    resume: 'Resume Link',
+    qualification: 'Degree Certificate Link',
+    expertise_proof: 'Subject Expertise Link',
+    language_proof: 'Language Preference Link',
+    experience_proof: 'Experience Letter Link'
+  };
+  const label = titleMap[docType] || docType.toUpperCase();
+
+  showSlotCircularLoader(docType, label);
+
   try {
-    showToast(`Saving link for ${docType.toUpperCase()}...`, 'info');
+    showToast(`Saving link for ${label}...`, 'info');
     const res = await fetch(`${API}/teacher/documents/link`, {
       method: 'POST',
       headers: {
@@ -2329,10 +2699,11 @@ async function saveDocLink(docType) {
     });
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
-    showToast(`${docType.toUpperCase()} link saved successfully!`);
-    renderSop(docType);
+    showToast(`${label} saved successfully!`);
+    await renderSop(docType);
   } catch (e) {
     showToast(e.message, 'error');
+    await renderSop(docType);
   }
 }
 
@@ -2340,14 +2711,22 @@ async function autoUploadSopVideo(input, fieldId) {
   const file = input.files[0];
   if (!file) return;
 
-  const spinner = document.getElementById(`spinner_sop_${fieldId}`);
-  if (spinner) spinner.classList.remove('d-none');
+  const sopLabelMap = {
+    camera_sop: 'Camera Setup Video',
+    lighting_sop: 'Lighting Setup Video',
+    audio_sop: 'Audio Setup Video',
+    internet_proof: 'Internet Speed Proof',
+    demo_teaching: 'Demo Teaching Snippet'
+  };
+  const label = sopLabelMap[fieldId] || fieldId.replace('_', ' ');
+
+  showSlotCircularLoader(fieldId, label);
 
   const formData = new FormData();
   formData.append(fieldId, file);
 
   try {
-    showToast(`Uploading ${fieldId.replace('_', ' ')}... Please wait.`, 'info');
+    showToast(`Uploading ${label}... Please wait.`, 'info');
     const res = await fetch(`${API}/teacher/sop/upload/${fieldId}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
@@ -2355,12 +2734,11 @@ async function autoUploadSopVideo(input, fieldId) {
     });
     const data = await parseFetchResponse(res);
     if (data.error) throw new Error(data.error);
-    showToast(`${fieldId.replace('_', ' ')} uploaded successfully!`);
-    renderSop(fieldId);
+    showToast(`${label} uploaded successfully!`);
+    await renderSop(fieldId);
   } catch (e) {
     showToast(e.message, 'error');
-  } finally {
-    if (spinner) spinner.classList.add('d-none');
+    await renderSop(fieldId);
   }
 }
 
@@ -2369,8 +2747,19 @@ async function saveSopLink(fieldId) {
   const link = linkInput ? linkInput.value.trim() : '';
   if (!link) return showToast('Please enter a valid link URL', 'error');
 
+  const sopLabelMap = {
+    camera_sop: 'Camera Setup Link',
+    lighting_sop: 'Lighting Setup Link',
+    audio_sop: 'Audio Setup Link',
+    internet_proof: 'Internet Speed Link',
+    demo_teaching: 'Demo Teaching Link'
+  };
+  const label = sopLabelMap[fieldId] || fieldId.replace('_', ' ');
+
+  showSlotCircularLoader(fieldId, label);
+
   try {
-    showToast(`Saving link for ${fieldId.replace('_', ' ')}...`, 'info');
+    showToast(`Saving link for ${label}...`, 'info');
     const res = await fetch(`${API}/teacher/sop/link/${fieldId}`, {
       method: 'POST',
       headers: {
@@ -2381,7 +2770,7 @@ async function saveSopLink(fieldId) {
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    showToast(`${fieldId.replace('_', ' ')} link saved successfully!`);
+    showToast(`${label} saved successfully!`);
 
     // Clear item from links autosave cache
     try {
@@ -2391,9 +2780,10 @@ async function saveSopLink(fieldId) {
       localStorage.setItem(key, JSON.stringify(saved));
     } catch { }
 
-    renderSop(fieldId);
+    await renderSop(fieldId);
   } catch (e) {
     showToast(e.message, 'error');
+    await renderSop(fieldId);
   }
 }
 
@@ -2499,6 +2889,17 @@ function initSignaturePad() {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
+  if (window._savedSignatureImage) {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        window._hasSignatureDrawn = true;
+      } catch (e) {}
+    };
+    img.src = window._savedSignatureImage;
+  }
+
   function getPos(e) {
     const rect = canvas.getBoundingClientRect();
     const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
@@ -2546,18 +2947,19 @@ function clearSignaturePad() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   window._hasSignatureDrawn = false;
+  window._savedSignatureImage = null;
 }
 
-async function submitDigitalAgreement() {
+async function submitCombinedSopAndAgreement() {
   const signatureInput = document.getElementById('agreementSigInput');
   const signature = signatureInput ? signatureInput.value.trim() : '';
   const consentCb = document.getElementById('agreementConsentCheckbox');
   const canvas = document.getElementById('signaturePadCanvas');
 
   if (!consentCb || !consentCb.checked) {
-    return showToast('You must consent to the agreement terms', 'error');
+    return showToast('You must consent to the agreement terms and code of conduct', 'error');
   }
-  if (!window._hasSignatureDrawn) {
+  if (!window._hasSignatureDrawn && !window._savedSignatureImage) {
     return showToast('Please draw your signature using your touchpad or mouse inside the signature box', 'error');
   }
   if (!signature) {
@@ -2565,28 +2967,39 @@ async function submitDigitalAgreement() {
   }
 
   let signatureImage = null;
-  if (canvas) {
+  if (canvas && window._hasSignatureDrawn) {
     signatureImage = canvas.toDataURL('image/png');
+  } else if (window._savedSignatureImage) {
+    signatureImage = window._savedSignatureImage;
   }
 
+  // Collect all pedagogy checkboxes
+  const checklist = Object.assign({}, JSON.parse(localStorage.getItem('teacher_sop_checklist_state') || '{}'), window._sopChecklistState || {});
+  const checkboxes = document.querySelectorAll('.sop-checklist-item-checkbox');
+  checkboxes.forEach(cb => {
+    if (cb.dataset.key) checklist[cb.dataset.key] = cb.checked;
+  });
+
   try {
-    showToast('Executing agreement & generating signed PDF copy...', 'info');
-    const data = await api('/teacher/sop/sign-agreement', {
+    showToast('Submitting complete SOP and signed agreement for admin verification...', 'info');
+    const data = await api('/teacher/sop/submit', {
       method: 'POST',
-      body: JSON.stringify({ digital_signature: signature, signature_image: signatureImage })
+      body: JSON.stringify({
+        teacher_checklist: checklist,
+        digital_signature: signature,
+        signature_image: signatureImage
+      })
     });
-    showToast(data.message || 'Agreement signed successfully!');
-
-    // Update local user object's approval status
-    user.approval_status = 'approved';
-    localStorage.setItem('teacher_user', JSON.stringify(user));
-    sessionStorage.setItem('teacher_user', JSON.stringify(user));
-
-    showApp();
-    navigateTo('home');
+    showToast(data.message || 'SOP and Signed Agreement submitted successfully!');
+    if (typeof checkSopStatus === 'function') checkSopStatus();
+    renderSop();
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+async function submitDigitalAgreement() {
+  return submitCombinedSopAndAgreement();
 }
 
 async function uploadKYCDocument(e) {

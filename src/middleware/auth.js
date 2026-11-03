@@ -59,7 +59,7 @@ function authenticateToken(req, res, next) {
       const dbUser = userRes.rows[0];
 
       // If account is disabled or suspended by admin
-      if (dbUser.is_disabled === true || dbUser.approval_status === 'suspended' || dbUser.approval_status === 'rejected') {
+      if (dbUser.is_disabled === true || dbUser.approval_status === 'suspended') {
         return res.status(401).json({
           error: 'Your account has been suspended or deactivated by administration. You have been logged out.',
           code: 'ACCOUNT_SUSPENDED'
